@@ -151,6 +151,61 @@
   #cabecalhoImpressao { display: none; }
   #cabecalhoImpressao .titulo-rel { font-size: 14px; font-weight: 800; color: #0f2460; }
   #cabecalhoImpressao .periodo-rel { font-size: 11px; color: #475569; margin-top: 2px; }
+
+  /* ===== RESUMO (relatório em PDF) ===== */
+  #resumoContainer { display: none; }
+  .resumo-bloco { background: white; border: 1.5px solid #e3e8f5; border-radius: 10px; overflow: hidden; margin-bottom: 20px; }
+  .resumo-titulo-secao {
+    background: #ffd54a; color: #1a1a2e; font-weight: 800; font-size: 12.5px;
+    text-align: center; padding: 8px; letter-spacing: .5px;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  table.resumo-table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  table.resumo-table caption {
+    background: #cddcf0; color: #0f2460; font-weight: 800; font-size: 11px;
+    text-align: left; padding: 6px 12px; caption-side: top;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  table.resumo-table thead th {
+    background: #d6e4f7; color: #0f2460; font-weight: 700; font-size: 10.5px;
+    text-transform: uppercase; letter-spacing: .3px; padding: 6px 10px; text-align: left;
+    border: 1px solid #b9c9e6;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  table.resumo-table thead th.num, table.resumo-table td.num { text-align: right; }
+  table.resumo-table tbody td { padding: 5px 10px; border: 1px solid #e3e8f5; }
+  table.resumo-table tbody tr.linha-total td {
+    background: #eef2fb; font-weight: 800; border-top: 2px solid #1a3a7c;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  table.resumo-table tbody tr.linha-objeto td {
+    background: #dde4ef; font-weight: 800; font-size: 10.5px; text-transform: none;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  table.resumo-table tbody tr.linha-subtotal td {
+    background: #eceff5; font-weight: 700;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  table.resumo-table tbody tr.linha-encargos td {
+    background: #ffd54a; color: #1a1a2e; font-weight: 800; font-size: 11.5px;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  table.resumo-table tbody tr.linha-total-geral td {
+    background: #1a3a7c; color: white; font-weight: 800; font-size: 12.5px;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .resumo-obs { font-size: 10.5px; color: #94a0b8; margin: -6px 0 18px; text-align: right; }
+
+  body.modo-resumo #resultado,
+  body.modo-resumo .filtros-card,
+  body.modo-resumo .export-bar { display: none !important; }
+  body.modo-resumo #resumoContainer { display: block; }
+
+  @media print {
+    body.modo-resumo .header, body.modo-resumo .btn-voltar { display: none !important; }
+    body.modo-resumo #cabecalhoImpressao { display: block !important; margin-bottom: 12px; }
+    body.modo-resumo .resumo-bloco { break-inside: avoid; }
+  }
 </style>
 </head>
 <body>
@@ -210,6 +265,10 @@
         <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
         PDF
       </button>
+      <button class="btn-export" onclick="gerarResumo()">
+        <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
+        RESUMO
+      </button>
     </div>
   </div>
 
@@ -218,6 +277,8 @@
       <p>Informe a(s) fazenda(s) e o período para gerar o relatório.</p>
     </div>
   </div>
+
+  <div id="resumoContainer"></div>
 
 </div>
 
@@ -553,6 +614,189 @@ function imprimirComCabecalho() {
 function escapeHtml(s) {
   if (s == null) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ===================== RESUMO =====================
+// Classifica os lançamentos nos 3 blocos do relatório: Mão de Obra
+// (inclui a categorização por "Objeto" do automotivo/liderança), Transporte
+// de Pessoal (origem 'TRANSPORTE DE PESSOAL') e Encargos Sociais (origem
+// 'ENCARGOS SOCIAIS', já calculados a 70% na consulta). A origem sintética
+// 'ADMINISTRAÇÃO ' (6,5%) fica fora do Resumo Geral por não aparecer no
+// layout de referência.
+function gerarResumo() {
+  if (!DADOS_RAW || DADOS_RAW.length === 0) { alert('Gere o relatório antes de criar o resumo.'); return; }
+
+  const ehTransporte = d => (d.origem || '').toUpperCase().includes('TRANSPORTE DE PESSOAL');
+  const ehEncargos = d => (d.origem || '').toUpperCase().includes('ENCARGOS SOCIAIS');
+  const ehAdministracaoSintetica = d => d.tipo === 'MÃO DE OBRA' && (d.origem || '').toUpperCase().trim() === 'ADMINISTRAÇÃO';
+  const ehFaturamento = d => d.tipo === 'FATURAMENTO';
+
+  const maoObraRows = DADOS_RAW.filter(d => !ehFaturamento(d) && !ehTransporte(d) && !ehEncargos(d) && !ehAdministracaoSintetica(d));
+  const transporteRows = DADOS_RAW.filter(ehTransporte);
+  const encargosRows = DADOS_RAW.filter(ehEncargos);
+
+  const porData = agruparResumo(maoObraRows, d => d.dataMovimento);
+  const porFazenda = agruparResumo(maoObraRows, d => d.descFazenda || '—');
+  const objetos = montarObjetos(maoObraRows);
+  const transportePorData = agruparResumo(transporteRows, d => d.dataMovimento);
+
+  const moTotal = somaGrupo(maoObraRows);
+  const encargosTotal = somaGrupo(encargosRows);
+  const transporteTotal = somaGrupo(transporteRows);
+  const transporteDias = transportePorData.filter(g => g.valor > 0).length;
+  const totalGeral = moTotal.valor + encargosTotal.valor + transporteTotal.valor;
+
+  const dataIni = document.getElementById('dataIni').value;
+  const dataFim = document.getElementById('dataFim').value;
+  document.getElementById('periodoImpressao').textContent =
+    'Período: ' + formatarData(dataIni) + ' a ' + formatarData(dataFim);
+
+  document.getElementById('resumoContainer').innerHTML = `
+    <div class="resumo-bloco">
+      <div class="resumo-titulo-secao">DESPESAS COM MÃO DE OBRA</div>
+      ${tabelaAgrupada('Dias Apontamentos', 'DIAS APONTAMENTOS', porData, v => formatarData(v))}
+      ${tabelaAgrupada('Fazendas', 'FAZENDAS', porFazenda, v => escapeHtml(v))}
+      ${tabelaObjeto(objetos, moTotal)}
+    </div>
+
+    <div class="resumo-bloco">
+      <div class="resumo-titulo-secao">DESPESAS COM TRANSPORTE PESSOAL</div>
+      ${tabelaTransporte(transportePorData)}
+    </div>
+
+    <div class="resumo-bloco">
+      <div class="resumo-titulo-secao">RESUMO GERAL</div>
+      <table class="resumo-table">
+        <thead><tr><th>RESUMO GERAL</th><th>UND</th><th class="num">QUANTIDADE</th><th class="num">R$/UND</th><th class="num">VALOR (R$)</th></tr></thead>
+        <tbody>
+          <tr><td>MÃO DE OBRA</td><td>DIARIAS</td><td class="num">${fmtNum(moTotal.qtd)}</td><td class="num">${fmtMoeda(divSafe(moTotal.valor, moTotal.qtd))}</td><td class="num">${fmtMoeda(moTotal.valor)}</td></tr>
+          <tr><td>ENCARGOS</td><td>%</td><td class="num">${fmtNum(70)}</td><td class="num">${fmtMoeda(divSafe(encargosTotal.valor, 70))}</td><td class="num">${fmtMoeda(encargosTotal.valor)}</td></tr>
+          <tr><td>TRANSPORTE PESSOAL</td><td>DIARIAS</td><td class="num">${fmtNum(transporteDias)}</td><td class="num">${fmtMoeda(divSafe(transporteTotal.valor, transporteDias))}</td><td class="num">${fmtMoeda(transporteTotal.valor)}</td></tr>
+          <tr class="linha-total-geral"><td colspan="4">TOTAL GERAL</td><td class="num">${fmtMoeda(totalGeral)}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  document.body.classList.add('modo-resumo');
+  window.print();
+}
+
+window.addEventListener('afterprint', () => document.body.classList.remove('modo-resumo'));
+
+function divSafe(a, b) { return b ? a / b : 0; }
+
+function somaGrupo(rows) {
+  return rows.reduce((acc, d) => {
+    acc.qtd += (d.qtdApontada || 0);
+    acc.valor += (d.valorTotal || 0);
+    return acc;
+  }, { qtd: 0, valor: 0 });
+}
+
+function agruparResumo(rows, chaveFn) {
+  const mapa = {};
+  rows.forEach(d => {
+    const chave = chaveFn(d);
+    if (!mapa[chave]) mapa[chave] = { chave, qtd: 0, valor: 0 };
+    mapa[chave].qtd += (d.qtdApontada || 0);
+    mapa[chave].valor += (d.valorTotal || 0);
+  });
+  return Object.values(mapa).sort((a, b) => (a.chave || '').localeCompare(b.chave || ''));
+}
+
+// Agrupa a mão de obra em "Objeto" (categoria de custo) > Serviço, usando o
+// campo descObjeto exposto pelo backend (só preenchido para o bloco
+// AUTOMOTIVO e para LIDERANÇA RURAL, mapeado como "Administração/Controle
+// Agrícola"). Quando não há classificação, cai no próprio nome da origem.
+function montarObjetos(rows) {
+  const mapa = {};
+  rows.forEach(d => {
+    const objeto = (d.descObjeto || (d.origem || '—').trim());
+    if (!mapa[objeto]) mapa[objeto] = { nome: objeto, qtd: 0, valor: 0, servicos: {} };
+    mapa[objeto].qtd += (d.qtdApontada || 0);
+    mapa[objeto].valor += (d.valorTotal || 0);
+
+    const chaveServ = d.descServico || d.origem || '—';
+    if (!mapa[objeto].servicos[chaveServ]) {
+      mapa[objeto].servicos[chaveServ] = { nome: chaveServ, unidade: d.unidade || 'UND', qtd: 0, valor: 0 };
+    }
+    mapa[objeto].servicos[chaveServ].qtd += (d.qtdApontada || 0);
+    mapa[objeto].servicos[chaveServ].valor += (d.valorTotal || 0);
+  });
+  return Object.values(mapa).map(o => ({
+    ...o,
+    servicos: Object.values(o.servicos).sort((a, b) => b.valor - a.valor)
+  }));
+}
+
+function tabelaAgrupada(caption, colunaChave, grupos, formatChave) {
+  const total = grupos.reduce((acc, g) => ({ qtd: acc.qtd + g.qtd, valor: acc.valor + g.valor }), { qtd: 0, valor: 0 });
+  const linhas = grupos.map(g => `
+    <tr>
+      <td>${formatChave(g.chave)}</td>
+      <td>UND</td>
+      <td class="num">${fmtMoeda(g.valor)}</td>
+      <td class="num">${fmtNum(g.qtd)}</td>
+      <td class="num">${g.qtd ? fmtMoeda(g.valor / g.qtd) : '—'}</td>
+    </tr>`).join('');
+  return `
+    <table class="resumo-table">
+      <caption>${escapeHtml(caption)}</caption>
+      <thead><tr><th>${escapeHtml(colunaChave)}</th><th>UNIDADE</th><th class="num">VALOR TOTAL</th><th class="num">QTD DIARIAS</th><th class="num">R$/DIARIA</th></tr></thead>
+      <tbody>
+        ${linhas}
+        <tr class="linha-total"><td colspan="2">TOTAL</td><td class="num">${fmtMoeda(total.valor)}</td><td class="num">${fmtNum(total.qtd)}</td><td class="num">${total.qtd ? fmtMoeda(total.valor / total.qtd) : '—'}</td></tr>
+      </tbody>
+    </table>`;
+}
+
+function tabelaObjeto(objetos, moTotal) {
+  const linhas = objetos.map(o => {
+    const servLinhas = o.servicos.map(s => `
+      <tr>
+        <td>${escapeHtml(s.nome)}</td>
+        <td>${escapeHtml(s.unidade)}</td>
+        <td class="num">${fmtMoeda(s.valor)}</td>
+        <td class="num">${fmtNum(s.qtd)}</td>
+        <td class="num">${s.qtd ? fmtMoeda(s.valor / s.qtd) : '—'}</td>
+      </tr>`).join('');
+    return `
+      <tr class="linha-objeto"><td colspan="5">Objeto - ${escapeHtml(o.nome)}</td></tr>
+      ${servLinhas}
+      <tr class="linha-subtotal"><td colspan="2">SUBTOTAL</td><td class="num">${fmtMoeda(o.valor)}</td><td class="num">${fmtNum(o.qtd)}</td><td class="num">${o.qtd ? fmtMoeda(o.valor / o.qtd) : '—'}</td></tr>`;
+  }).join('');
+
+  return `
+    <table class="resumo-table">
+      <thead><tr><th>Objeto / Serviço</th><th>UNIDADE</th><th class="num">VALOR TOTAL</th><th class="num">QTD DIARIAS</th><th class="num">R$/DIARIA</th></tr></thead>
+      <tbody>
+        ${linhas}
+        <tr class="linha-total"><td colspan="2">TOTAL</td><td class="num">${fmtMoeda(moTotal.valor)}</td><td class="num">${fmtNum(moTotal.qtd)}</td><td class="num">${moTotal.qtd ? fmtMoeda(moTotal.valor / moTotal.qtd) : '—'}</td></tr>
+      </tbody>
+    </table>`;
+}
+
+function tabelaTransporte(grupos) {
+  const total = grupos.reduce((acc, g) => ({ qtd: acc.qtd + g.qtd, valor: acc.valor + g.valor }), { qtd: 0, valor: 0 });
+  const linhas = grupos.map(g => `
+    <tr>
+      <td>${formatarData(g.chave)}</td>
+      <td class="num">${fmtMoeda(g.valor)}</td>
+      <td class="num">${fmtNum(g.qtd)}</td>
+      <td class="num">—</td>
+      <td class="num">${g.qtd ? fmtMoeda(g.valor / g.qtd) : '—'}</td>
+      <td class="num">—</td>
+    </tr>`).join('');
+  return `
+    <table class="resumo-table">
+      <thead><tr><th>Dias Apontamentos</th><th class="num">Valor Total</th><th class="num">Nº Funcionários</th><th class="num">Km Total</th><th class="num">R$/Pessoa</th><th class="num">R$/Km</th></tr></thead>
+      <tbody>
+        ${linhas}
+        <tr class="linha-total"><td>TOTAL</td><td class="num">${fmtMoeda(total.valor)}</td><td class="num">${fmtNum(total.qtd)}</td><td class="num">—</td><td class="num">${total.qtd ? fmtMoeda(total.valor / total.qtd) : '—'}</td><td class="num">—</td></tr>
+      </tbody>
+    </table>
+    <div class="resumo-obs">Km Total e R$/Km não disponíveis na fonte de dados atual.</div>`;
 }
 </script>
 

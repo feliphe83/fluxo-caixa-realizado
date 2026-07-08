@@ -38,13 +38,14 @@ public class ServicosFornecedorServlet extends HttpServlet {
         "SELECT '1' EMPRESA, tipo, origem, cod_equipamento cod_funcionario, " +
         "rh.fn_nomefuncionario(1,cod_equipamento) nome, cod_fazenda_origem, cod_codservico, desc_servico, " +
         "(select f.descricao from agricola.fazenda f where f.cod_fazenda = cod_fazenda_origem) descrica, " +
-        "desc_fornecedor, sum(qtd_apontada), data_movimento, sum(valor_total) " +
+        "desc_fornecedor, sum(qtd_apontada), data_movimento, sum(valor_total), MAX(unidade) unidade, MAX(descobjeto) descobjeto " +
         "FROM ( " +
         "select 'MÃO DE OBRA' tipo, 'TRANSPORTE DE PESSOAL' origem, a.dt_apontamento data_movimento, " +
         "te.cod_tipoequipamento, te.descricaotipoequipamento, it.cod_equipamento, e.descricao desc_equipamento, " +
         "it.cod_fazenda_destino cod_fazenda_origem, agricola.fn_busca_nomeproprietario(it.cod_fazenda_destino) desc_fornecedor, " +
         "it.cod_operacaoagricola cod_codservico, o.descricao desc_servico, it.cod_unidade unidade, " +
-        "a.numerocontrato, a.parcela, sum(it.quantidade) qtd_apontada, sum(it.valor_total) valor_total " +
+        "a.numerocontrato, a.parcela, sum(it.quantidade) qtd_apontada, sum(it.valor_total) valor_total, " +
+        "null descobjeto " +
         "from automotivo.apontamentoterceiro a, automotivo.itens_apontamentoterceiro it, " +
         "automotivo.historico_tipoequipamento he, automotivo.tipoequipamento te, automotivo.equipamento e, " +
         "rh.operacaoagricola o, rh.pessoa p, material.fornecedor fo " +
@@ -65,7 +66,7 @@ public class ServicosFornecedorServlet extends HttpServlet {
         "null cod_tipoequipamento, null descricaotipoequipamento, a.cod_funcionario cod_equipamento, null desc_equipamento, " +
         "a.cod_fazenda, agricola.fn_busca_nomeproprietario(a.cod_fazenda), RR.COD_TIPOSERVICO cod_codservico, " +
         "rr.descricao desc_servico, null unidade, null numerocontrato, null parcela, " +
-        "sum(a.qtde_apontada)/1000 qtd_apontada, sum(a.valortotal) valor_total " +
+        "sum(a.qtde_apontada)/1000 qtd_apontada, sum(a.valortotal) valor_total, null descobjeto " +
         "from rh.apontamento a, rh.tiposervico rr where a.cod_itemtabelapreco = rr.cod_tiposervico " +
         "AND RR.COD_TIPOSERVICO IN (5558,5554,5532,5526,5555,5531,5553) " +
         "group by a.data_apontamento, a.cod_fazenda, a.cod_funcionario, RR.COD_TIPOSERVICO, rr.descricao " +
@@ -75,7 +76,7 @@ public class ServicosFornecedorServlet extends HttpServlet {
         "null cod_tipoequipamento, null descricaotipoequipamento, a.cod_funcionario cod_equipamento, null desc_equipamento, " +
         "a.cod_fazenda, agricola.fn_busca_nomeproprietario(a.cod_fazenda), RR.COD_TIPOSERVICO cod_codservico, " +
         "rr.descricao desc_servico, null unidade, null numerocontrato, null parcela, " +
-        "sum(a.qtde_apontada) qtd_apontada, sum(a.valortotal) valor_total " +
+        "sum(a.qtde_apontada) qtd_apontada, sum(a.valortotal) valor_total, 'Administração/Controle Agrícola' descobjeto " +
         "from rh.apontamento a, rh.tiposervico rr where a.cod_itemtabelapreco = rr.cod_tiposervico " +
         "AND RR.COD_TIPOSERVICO NOT IN (5558,5554,5532,5526,5555,5531,5553) " +
         "group by a.data_apontamento, a.cod_fazenda, a.cod_funcionario, RR.COD_TIPOSERVICO, rr.descricao " +
@@ -85,7 +86,7 @@ public class ServicosFornecedorServlet extends HttpServlet {
         "null cod_tipoequipamento, null descricaotipoequipamento, null cod_equipamento, null desc_equipamento, " +
         "a.cod_fazenda, agricola.fn_busca_nomeproprietario(a.cod_fazenda), RR.COD_TIPOSERVICO cod_codservico, " +
         "rr.descricao desc_servico, null unidade, null numerocontrato, null parcela, " +
-        "0 qtd_apontada, sum(a.valortotal)*0.70 valor_total " +
+        "0 qtd_apontada, sum(a.valortotal)*0.70 valor_total, null descobjeto " +
         "from rh.apontamento a, rh.tiposervico rr where a.cod_itemtabelapreco = rr.cod_tiposervico " +
         "group by a.data_apontamento, a.cod_fazenda, RR.COD_TIPOSERVICO, rr.descricao " +
 
@@ -94,7 +95,7 @@ public class ServicosFornecedorServlet extends HttpServlet {
         "null cod_tipoequipamento, null descricaotipoequipamento, a.cod_funcionario cod_equipamento, null desc_equipamento, " +
         "a.cod_fazenda, agricola.fn_busca_nomeproprietario(a.cod_fazenda), RR.COD_TIPOSERVICO cod_codservico, " +
         "rr.descricao desc_servico, null unidade, null numerocontrato, null parcela, " +
-        "0 qtd_apontada, sum(a.valortotal)*0.065 valor_total " +
+        "0 qtd_apontada, sum(a.valortotal)*0.065 valor_total, null descobjeto " +
         "from rh.apontamento a, rh.tiposervico rr where a.cod_fazenda = 26632 " +
         "and a.cod_itemtabelapreco = rr.cod_tiposervico " +
         "group by a.data_apontamento, a.cod_fazenda, RR.COD_TIPOSERVICO, a.cod_funcionario, rr.descricao " +
@@ -103,7 +104,8 @@ public class ServicosFornecedorServlet extends HttpServlet {
         "select 'AUTOMOTIVO' tipo, tarefa origem, dt_apontamento, null cod_tipoequipamento, " +
         "null descricaoequipamento, cod_equipamento, null desc_equipamento, Cod_Fazenda, " +
         "agricola.fn_busca_nomeproprietario(cod_fazenda), null cod_servico, tarefa, null unidade, " +
-        "null numerocontrato, null parcela, sum(tot_hs) total_horas, (sum(tot_km) * max(valor)) valor1 " +
+        "null numerocontrato, null parcela, sum(tot_hs) total_horas, (sum(tot_km) * max(valor)) valor1, " +
+        "max(DescObjetoCusto) descobjeto " +
         "from ( " +
         "Select Apontamento.Ano_Apontamento, Apontamento.Numero_Apontamento, Apontamento.Dt_Apontamento, " +
         "to_char(to_date(apontamento.dt_apontamento,'dd/mm/yyyy'),'mm/yyyy') mes_ano, " +
@@ -146,7 +148,7 @@ public class ServicosFornecedorServlet extends HttpServlet {
         "null cod_tipoequipamento, null descricaotipoequipamento, null cod_equipamento, null desc_equipamento, " +
         "a.cod_fazenda, agricola.fn_busca_nomeproprietario(a.cod_fazenda), RR.COD_TIPOSERVICO cod_codservico, " +
         "rr.descricao desc_servico, null unidade, null numerocontrato, null parcela, " +
-        "0 qtd_apontada, sum(a.qtde_apontada)*2.40/1000 valor_total " +
+        "0 qtd_apontada, sum(a.qtde_apontada)*2.40/1000 valor_total, null descobjeto " +
         "from rh.apontamento a, rh.tiposervico rr where a.cod_itemtabelapreco = rr.cod_tiposervico " +
         "AND RR.COD_TIPOSERVICO IN (5558,5554,5532,5526,5555,5531,5553) " +
         "group by a.data_apontamento, a.cod_fazenda, RR.COD_TIPOSERVICO, rr.descricao " +
@@ -229,6 +231,8 @@ public class ServicosFornecedorServlet extends HttpServlet {
                 o.addProperty("dataMovimento", dataMov != null ? dataMov.toString() : null);
 
                 o.addProperty("valorTotal",       rs.getBigDecimal(13));
+                o.addProperty("unidade",          rs.getString(14));
+                o.addProperty("descObjeto",       rs.getString(15));
                 arr.add(o);
             }
 
