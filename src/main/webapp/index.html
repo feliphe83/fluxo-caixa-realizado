@@ -1048,7 +1048,7 @@ function fmtR(v) {
 }
 function fmtMilhoes(v) {
   const sinal = v < 0 ? '-' : '';
-  return sinal + 'R$ ' + (Math.abs(v) / 1e6).toFixed(3) + 'M';
+  return sinal + 'R$ ' + (Math.abs(v) / 1e6).toFixed(3);
 }
 function imprimirComCabecalho() {
   const dataIniStr = document.getElementById('dataInicio').value;
