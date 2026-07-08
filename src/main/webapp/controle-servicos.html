@@ -41,7 +41,7 @@
   }
   .filtros-grid {
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr 1fr;
+    grid-template-columns: 1.4fr 1.4fr 1fr 1fr 1fr;
     gap: 14px;
     align-items: start;
   }
@@ -239,6 +239,11 @@
         <div class="hint">Separe múltiplos códigos por vírgula. Deixe vazio para todas.</div>
       </div>
       <div class="campo">
+        <label>Fornecedor</label>
+        <input type="text" id="fornecedor" placeholder="Ex: João da Silva">
+        <div class="hint">Filtra pelo nome do fornecedor/proprietário. Deixe vazio para todos.</div>
+      </div>
+      <div class="campo">
         <label>Data Início</label>
         <input type="date" id="dataIni">
       </div>
@@ -301,8 +306,15 @@ function fmt8(d) {
   return y + '-' + m + '-' + dd;
 }
 
+// Remove acentos e normaliza caixa, para o filtro de fornecedor funcionar
+// mesmo se o texto digitado não tiver os mesmos acentos do cadastro.
+function normalizarTexto(s) {
+  return (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+}
+
 async function gerarRelatorio() {
   const fazendas = document.getElementById('fazendas').value.trim();
+  const fornecedor = document.getElementById('fornecedor').value.trim();
   const dataIni = document.getElementById('dataIni').value;
   const dataFim = document.getElementById('dataFim').value;
 
@@ -323,6 +335,10 @@ async function gerarRelatorio() {
     if (!j.ok) throw new Error(j.erro);
 
     DADOS_RAW = j.data;
+    if (fornecedor) {
+      const termo = normalizarTexto(fornecedor);
+      DADOS_RAW = DADOS_RAW.filter(d => normalizarTexto(d.descFornecedor).includes(termo));
+    }
     montarGrupos();
     renderizarTabela();
 
