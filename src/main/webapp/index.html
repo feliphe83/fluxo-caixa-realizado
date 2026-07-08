@@ -143,8 +143,11 @@
   thead th.total-col   { background: var(--verde-escuro); }
 
   /* Cabeçalho + linha "TOTAL DO PERÍODO" congelados no topo ao rolar */
-  #resultado > table > thead > tr > th { position: sticky; top: 0; z-index: 5; }
-  #resultado > table > tbody > tr.total-topo > td { position: sticky; top: var(--thead-h, 38px); z-index: 4; }
+  #resultado > table > thead > tr > th { position: sticky; top: var(--chrome-h, 0px); z-index: 5; }
+  #resultado > table > tbody > tr.total-topo > td { position: sticky; top: calc(var(--chrome-h, 0px) + var(--thead-h, 38px)); z-index: 4; }
+
+  /* Header + filtros + resumo, congelados no topo (acima do cabeçalho da tabela) */
+  #chrome-fixo { position: sticky; top: 0; z-index: 20; background: var(--creme); }
 
   tbody tr { border-bottom: 1px solid var(--border); }
   tbody tr:last-child { border-bottom: none; }
@@ -393,6 +396,8 @@
 </head>
 <body>
 
+<!-- BLOCO FIXO: header + filtros + resumo, congelado no topo ao rolar -->
+<div id="chrome-fixo">
 <!-- HEADER -->
 <div class="header">
   <div class="logo-box">
@@ -546,6 +551,8 @@
 
 <!-- RESUMO -->
 <div class="resumo" id="resumo" style="display:none"></div>
+</div>
+<!-- /chrome-fixo -->
 
 <!-- RESULTADO -->
 <div class="tabela-wrap" id="resultado">
@@ -884,11 +891,20 @@ function renderizar() {
 // linha "TOTAL DO PERÍODO" (congelada logo abaixo) não ficar sobreposta.
 function ajustarStickyTotal() {
   requestAnimationFrame(() => {
+    const chrome = document.getElementById('chrome-fixo');
+    if (chrome) {
+      document.documentElement.style.setProperty('--chrome-h', chrome.getBoundingClientRect().height + 'px');
+    }
     const thead = document.querySelector('#resultado > table > thead');
     if (!thead) return;
     document.documentElement.style.setProperty('--thead-h', thead.getBoundingClientRect().height + 'px');
   });
 }
+
+// A altura do bloco fixo (header/filtros/resumo) muda quando os chips
+// quebram linha, a janela é redimensionada, ou o resumo/comparativo aparece
+// e desaparece — recalcula nesses casos também.
+window.addEventListener('resize', ajustarStickyTotal);
 
 // ─── Detalhe ──────────────────────────────────────────────────────────────
 // Ao clicar num valor de período, abre uma caixa (modal) com o valor por
@@ -1052,6 +1068,7 @@ function limparResultado() {
   document.getElementById('resumo').style.display = 'none';
   document.getElementById('resultado').innerHTML =
     '<div class="empty-state"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg><p>Configure os filtros e clique em <strong>Gerar Relatório</strong></p></div>';
+  ajustarStickyTotal();
 }
 
 // ─── Export ───────────────────────────────────────────────────────────────
