@@ -121,8 +121,21 @@
   .card-resumo .sub   { font-size: 10px; color: var(--cinza); margin-top: 2px; }
 
   /* TABELA */
-  .tabela-wrap { padding: 16px 24px 24px; overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); min-width: 700px; }
+  /* Sem overflow-x aqui de propósito: um wrapper com overflow-x:auto força o
+     overflow-y computado a virar 'auto' também (regra do CSS Overflow), o
+     que faz esse div virar o container de referência do position:sticky —
+     e como ele nunca rola de verdade (a altura sempre acompanha o
+     conteúdo), o cabeçalho/linha de total congelados param de funcionar ao
+     rolar a página. Sem overflow aqui, a página inteira rola normalmente e
+     o sticky funciona relativo à viewport; se a tabela ficar mais larga que
+     a tela, a página ganha rolagem horizontal (aceitável). */
+  .tabela-wrap { padding: 16px 24px 24px; }
+  /* Sem overflow:hidden aqui pelo mesmo motivo do .tabela-wrap acima: isso
+     também bloquearia o position:sticky do cabeçalho/total. O border-radius
+     fica só decorativo na borda externa (com border-collapse:collapse ele
+     não recorta o fundo das células dos cantos, mas prioriza o cabeçalho
+     congelado funcionar). */
+  table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; border: 1px solid var(--border); min-width: 700px; }
   thead tr  { background: var(--verde-escuro); }
   thead th  { color: white; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; padding: 10px 12px; text-align: right; white-space: nowrap; }
   thead th:first-child { text-align: left; min-width: 220px; position: sticky; left: 0; background: var(--verde-escuro); }
@@ -130,7 +143,7 @@
   thead th.total-col   { background: var(--verde-escuro); }
 
   /* Cabeçalho + linha "TOTAL DO PERÍODO" congelados no topo ao rolar */
-  #resultado > table > thead > th { position: sticky; top: 0; z-index: 5; }
+  #resultado > table > thead > tr > th { position: sticky; top: 0; z-index: 5; }
   #resultado > table > tbody > tr.total-topo > td { position: sticky; top: var(--thead-h, 38px); z-index: 4; }
 
   tbody tr { border-bottom: 1px solid var(--border); }
