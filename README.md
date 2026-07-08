@@ -116,3 +116,4 @@ Acessível em:
 - [ ] Autenticação: integrar ao sistema de login existente (App Lopes)
 - [ ] Pool de conexões com DBCP2 (substituir `DriverManager`)
 - [ ] Nginx proxy reverso: `/fluxo-caixa/` → Tomcat
+# fluxo-caixa-realizado
