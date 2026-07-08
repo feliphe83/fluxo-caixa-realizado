@@ -416,7 +416,7 @@
   </div>
   <div style="flex:1">
     <div class="header-title">Usina Santa Clotilde S/A</div>
-    <div class="header-sub">Relatório Financeiro · <span id="hdr-tipo-doc">Títulos Pagos</span> · Safra 2026/2027<span id="periodoImpressao" class="periodo-print"></span></div>
+    <div class="header-sub">Relatório Financeiro · <span id="hdr-tipo-doc">Títulos a Pagar</span> · Safra 2026/2027<span id="periodoImpressao" class="periodo-print"></span></div>
   </div>
   <div class="header-clock">
     <div id="hdr-data"></div>
@@ -432,11 +432,11 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
       Administração
     </button>
-    <button class="nav-tab ativo" id="tab-realizado" onclick="setModo('realizado')">
+    <button class="nav-tab" id="tab-realizado" onclick="setModo('realizado')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
       Realizado
     </button>
-    <button class="nav-tab" id="tab-arealizar" onclick="setModo('arealizar')">
+    <button class="nav-tab ativo" id="tab-arealizar" onclick="setModo('arealizar')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       A Realizar
     </button>
@@ -453,7 +453,7 @@
 </div>
 
 <!-- BARRA TIPO DE RELATÓRIO -->
-<div class="modo-bar" id="modo-bar">
+<div class="modo-bar" id="modo-bar" style="display:none">
   <div class="modo-inner">
     <span class="modo-label">Tipo de relatório:</span>
     <button class="modo-btn ativo" id="mbtn-simples" onclick="setTipoRel('simples')">
@@ -592,7 +592,7 @@ let DADOS_RAW    = [];
 let PERIODOS     = [];
 let GRUPOS       = [];
 let filtrosAtivos = new Set(); // vazio = todos
-let modoAtual    = 'realizado';
+let modoAtual    = 'arealizar';
 let tipoRel      = 'simples';
 const COR_COLS = ['#0f2460','#1a5276','#1e8449','#784212','#512e5f'];
 let compPeriodos = [];
@@ -609,6 +609,7 @@ let compPeriodos = [];
   atualizarRelogio();
   setInterval(atualizarRelogio, 1000);
   carregarPautaFechada();
+  setModo('arealizar');
 })();
 
 // ─── Pauta Fechada (parâmetro financeiro) ──────────────────────────────────
@@ -1045,7 +1046,10 @@ function fmtR(v) {
   if (!v || v === 0) return '<span class="zero">—</span>';
   return v.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
-function fmtMilhoes(v) { return (v / 1e6).toFixed(3) + 'M'; }
+function fmtMilhoes(v) {
+  const sinal = v < 0 ? '-' : '';
+  return sinal + 'R$ ' + (Math.abs(v) / 1e6).toFixed(3) + 'M';
+}
 function imprimirComCabecalho() {
   const dataIniStr = document.getElementById('dataInicio').value;
   let textoPeriodo = '';
