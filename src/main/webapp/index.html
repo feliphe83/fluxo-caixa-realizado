@@ -151,11 +151,34 @@
 
   tbody tr.item-row { cursor: pointer; }
   tbody tr.item-row:hover td:first-child { color: var(--verde); }
-  tbody tr.item-row td:first-child::before        { content: '▶ '; font-size: 9px; opacity: .5; }
-  tbody tr.item-row.aberto td:first-child::before { content: '▼ '; opacity: .8; color: var(--verde); }
+  tbody tr.item-row td:first-child::before { content: '▶ '; font-size: 9px; opacity: .5; }
 
-  tr.detalhe-row { background: #f5f3fc; }
-  tr.detalhe-row td { padding: 0; }
+  /* MODAL: valor por fornecedor */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(15,36,96,0.55);
+    z-index: 100; align-items: center; justify-content: center; padding: 24px;
+  }
+  .modal-overlay.aberto { display: flex; }
+  .modal-box {
+    background: white; border-radius: 12px; max-width: 900px; width: 100%;
+    max-height: 82vh; display: flex; flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+  .modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px; background: var(--verde-escuro); color: white;
+    border-radius: 12px 12px 0 0; font-size: 14px; font-weight: 700;
+  }
+  .modal-fechar {
+    background: rgba(255,255,255,0.12); border: none; color: white;
+    width: 28px; height: 28px; border-radius: 6px; cursor: pointer; font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .modal-fechar:hover { background: rgba(255,255,255,0.25); }
+  .modal-body { padding: 6px 10px 16px; overflow: auto; }
+  .modal-body .detalhe-inner { padding: 10px 10px 4px; }
+  .modal-body .detalhe-inner table { min-width: unset; }
+
   .detalhe-inner { padding: 10px 16px 14px; }
   .detalhe-inner table { border: none; border-radius: 0; background: transparent; min-width: 500px; }
   .detalhe-inner table thead tr { background: #d4dff5; }
@@ -190,10 +213,9 @@
   @media print {
     /* Ocultar controles */
     .filtros, .modo-bar, .nav-tabs, .btn-gerar, .btn-export, .resumo,
-    .filtros-row2, .btn-sair, .comp-bar, .comp-cards { display: none !important; }
+    .filtros-row2, .btn-sair, .comp-bar, .comp-cards, .modal-overlay { display: none !important; }
 
     body { background: white; font-size: 10px; margin: 0; }
-    .detalhe-row { display: none !important; }
 
     /* Cabeçalho compacto */
     .header {
@@ -521,6 +543,17 @@
   </div>
 </div>
 
+<!-- MODAL: valor por fornecedor -->
+<div class="modal-overlay" id="modalFornecedores" onclick="if(event.target===this) fecharModalFornecedores()">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span id="modalFornecedoresTitulo">Valor por Fornecedor</span>
+      <button class="modal-fechar" onclick="fecharModalFornecedores()" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body" id="modalFornecedoresBody"></div>
+  </div>
+</div>
+
 <script>
 // ─── Estado global ─────────────────────────────────────────────────────────
 let DADOS_RAW    = [];
@@ -807,14 +840,9 @@ function renderizar() {
       `<td>${g.colunas[p.id] ? fmtR(g.colunas[p.id]) : '<span class="zero">—</span>'}</td>`
     ).join('');
     return `
-      <tr class="item-row" id="row-${idx}" onclick="toggleDetalhe(${idx})">
+      <tr class="item-row" id="row-${idx}" onclick="abrirModalFornecedores(${idx})">
         <td class="item-nome">${esc(g.label)}</td>${tdCols}
         <td style="font-weight:700">${fmtR(g.total)}</td>
-      </tr>
-      <tr class="detalhe-row" id="det-${idx}" style="display:none">
-        <td colspan="${PERIODOS.length + 2}">
-          <div class="detalhe-inner" id="det-inner-${idx}"></div>
-        </td>
       </tr>`;
   }).join('');
 
@@ -848,15 +876,9 @@ function ajustarStickyTotal() {
 }
 
 // ─── Detalhe ──────────────────────────────────────────────────────────────
-// Ao clicar num grupo, mostra o valor por fornecedor (maior para o menor),
-// só daquele grupo clicado — nível único, sem detalhamento adicional.
-function toggleDetalhe(idx) {
-  const tr  = document.getElementById('row-' + idx);
-  const det = document.getElementById('det-' + idx);
-  const aberto = tr.classList.toggle('aberto');
-  det.style.display = aberto ? '' : 'none';
-  if (!aberto) return;
-
+// Ao clicar num grupo, abre uma caixa (modal) com o valor por fornecedor
+// (maior para o menor), só daquele grupo clicado — nível único.
+function abrirModalFornecedores(idx) {
   const g = GRUPOS[idx];
   const thCols = PERIODOS.map(p => `<th class="semana">${p.label}</th>`).join('');
 
@@ -883,14 +905,26 @@ function toggleDetalhe(idx) {
     return `<tr><td>${esc(f.nome)}</td>${tdCols}<td style="font-weight:700">${fmtR(f.total)}</td></tr>`;
   }).join('');
 
-  document.getElementById('det-inner-' + idx).innerHTML = `
-    <table>
-      <thead><tr>
-        <th>Fornecedor</th>${thCols}<th>Total</th>
-      </tr></thead>
-      <tbody>${linhas}</tbody>
-    </table>`;
+  document.getElementById('modalFornecedoresTitulo').textContent = 'Valor por Fornecedor — ' + g.label;
+  document.getElementById('modalFornecedoresBody').innerHTML = `
+    <div class="detalhe-inner">
+      <table>
+        <thead><tr>
+          <th>Fornecedor</th>${thCols}<th>Total</th>
+        </tr></thead>
+        <tbody>${linhas}</tbody>
+      </table>
+    </div>`;
+  document.getElementById('modalFornecedores').classList.add('aberto');
 }
+
+function fecharModalFornecedores() {
+  document.getElementById('modalFornecedores').classList.remove('aberto');
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') fecharModalFornecedores();
+});
 
 // ─── Períodos ─────────────────────────────────────────────────────────────
 function gerarPeriodos(ini, fim, tipo) {
@@ -991,6 +1025,7 @@ function esc(s) {
 }
 function limparResultado() {
   DADOS_RAW = []; PERIODOS = []; GRUPOS = [];
+  fecharModalFornecedores();
   document.getElementById('resumo').style.display = 'none';
   document.getElementById('resultado').innerHTML =
     '<div class="empty-state"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg><p>Configure os filtros e clique em <strong>Gerar Relatório</strong></p></div>';
@@ -1345,16 +1380,11 @@ function renderComparativo(resultados) {
     const tdPeriodos = g.totaisPorPeriodo.map(v =>
       `<td>${v > 0 ? fmtRn(v) : '<span class="zero">—</span>'}</td>`).join('');
     return `
-      <tr class="item-row" id="crow-${idx}" onclick="toggleDetComp(${idx})">
+      <tr class="item-row" id="crow-${idx}" onclick="abrirModalFornecedoresComp(${idx})">
         <td class="item-nome">${esc(g.label)}</td>
         ${tdPeriodos}
         <td style="font-weight:700;color:${g.totaisPorPeriodo.length>=2&&(g.totaisPorPeriodo[g.totaisPorPeriodo.length-1]-g.totaisPorPeriodo[0])>=0?'#166534':'#dc2626'}">${fmtRn(g.totaisPorPeriodo.length>=2 ? g.totaisPorPeriodo[g.totaisPorPeriodo.length-1]-g.totaisPorPeriodo[0] : g.totalGeral)}</td>
         <td style="font-weight:700;color:${g.totaisPorPeriodo.length>=2&&(g.totaisPorPeriodo[g.totaisPorPeriodo.length-1]-g.totaisPorPeriodo[0])>=0?'#166534':'#dc2626'}">${g.totaisPorPeriodo.length>=2&&g.totaisPorPeriodo[0]!==0?((g.totaisPorPeriodo[g.totaisPorPeriodo.length-1]-g.totaisPorPeriodo[0])/Math.abs(g.totaisPorPeriodo[0])*100).toFixed(1)+"%":"—"}</td>
-      </tr>
-      <tr class="detalhe-row" id="cdet-${idx}" style="display:none">
-        <td colspan="${compPeriodos.length + 3}">
-          <div class="detalhe-inner" id="cdet-inner-${idx}"></div>
-        </td>
       </tr>`;
   }).join('');
 
@@ -1384,15 +1414,10 @@ function renderComparativo(resultados) {
   ajustarStickyTotal();
 }
 
-function toggleDetComp(idx) {
-  const tr  = document.getElementById(`crow-${idx}`);
-  const det = document.getElementById(`cdet-${idx}`);
-  const aberto = tr.classList.toggle('aberto');
-  det.style.display = aberto ? '' : 'none';
-  if (!aberto) return;
-
+// Abre a caixa (modal) com o valor por fornecedor/empenho (maior para o
+// menor), só do grupo clicado.
+function abrirModalFornecedoresComp(idx) {
   const g = window._compGrupos[idx];
-  const inner = document.getElementById(`cdet-inner-${idx}`);
 
   const thPeriodos = compPeriodos.map((p, i) =>
     `<th style="background:#d4dff5;color:${COR_COLS[i%COR_COLS.length]}">${esc(p.label)}</th>`).join('');
@@ -1417,14 +1442,18 @@ function toggleDetComp(idx) {
       <td>${fmtRn(vals.reduce((a,b)=>a+b,0))}</td>
     </tr>`).join('');
 
-  inner.innerHTML = `
-    <table>
-      <thead><tr>
-        <th>Fornecedor / Empenho</th>${thPeriodos}
-        <th style="background:#d4dff5;color:#0f2460">Total</th>
-      </tr></thead>
-      <tbody>${subRows}</tbody>
-    </table>`;
+  document.getElementById('modalFornecedoresTitulo').textContent = 'Valor por Fornecedor — ' + g.label;
+  document.getElementById('modalFornecedoresBody').innerHTML = `
+    <div class="detalhe-inner">
+      <table>
+        <thead><tr>
+          <th>Fornecedor / Empenho</th>${thPeriodos}
+          <th style="background:#d4dff5;color:#0f2460">Total</th>
+        </tr></thead>
+        <tbody>${subRows}</tbody>
+      </table>
+    </div>`;
+  document.getElementById('modalFornecedores').classList.add('aberto');
 }
 
 function fmtRn(v) {
