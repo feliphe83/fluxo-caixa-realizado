@@ -151,6 +151,7 @@
   #cabecalhoImpressao { display: none; }
   #cabecalhoImpressao .titulo-rel { font-size: 14px; font-weight: 800; color: #0f2460; }
   #cabecalhoImpressao .periodo-rel { font-size: 11px; color: #475569; margin-top: 2px; }
+  #cabecalhoImpressao .fornecedor-rel { font-size: 11px; color: #475569; margin-top: 2px; font-weight: 600; }
 
   /* ===== RESUMO (relatório em PDF) ===== */
   #resumoContainer { display: none; }
@@ -229,6 +230,7 @@
   <div id="cabecalhoImpressao">
     <div class="titulo-rel">Usina Santa Clotilde S/A — Controle de Serviços</div>
     <div class="periodo-rel" id="periodoImpressao"></div>
+    <div class="fornecedor-rel" id="fornecedorImpressao"></div>
   </div>
 
   <div class="filtros-card">
@@ -624,7 +626,18 @@ function imprimirComCabecalho() {
   const dataFim = document.getElementById('dataFim').value;
   document.getElementById('periodoImpressao').textContent =
     'Período: ' + formatarData(dataIni) + ' a ' + formatarData(dataFim);
+  document.getElementById('fornecedorImpressao').textContent = fornecedorHeaderTexto();
   window.print();
+}
+
+// Lista os fornecedores presentes nos dados carregados (já refletindo o
+// filtro de Fornecedor, se preenchido) para exibir no cabeçalho impresso.
+function fornecedorHeaderTexto() {
+  if (!DADOS_RAW || DADOS_RAW.length === 0) return '';
+  const nomes = [...new Set(DADOS_RAW.map(d => d.descFornecedor).filter(Boolean))].sort();
+  if (nomes.length === 0) return '';
+  const rotulo = nomes.length === 1 ? 'Fornecedor: ' : 'Fornecedores: ';
+  return rotulo + nomes.join(', ');
 }
 
 function escapeHtml(s) {
@@ -651,12 +664,12 @@ function gerarResumo() {
   const transporteRows = DADOS_RAW.filter(ehTransporte);
   const encargosRows = DADOS_RAW.filter(ehEncargos);
 
-  const porData = agruparResumo(maoObraRows, d => d.dataMovimento);
-  const porFazenda = agruparResumo(maoObraRows, d => d.descFazenda || '—');
+  const porData = agruparResumoDiarias(maoObraRows, d => d.dataMovimento);
+  const porFazenda = agruparResumoDiarias(maoObraRows, d => d.descFazenda || '—');
   const objetos = montarObjetos(maoObraRows);
   const transportePorData = agruparResumo(transporteRows, d => d.dataMovimento);
 
-  const moTotal = somaGrupo(maoObraRows);
+  const moTotal = { valor: somaGrupo(maoObraRows).valor, qtd: contarDiarias(maoObraRows) };
   const encargosTotal = somaGrupo(encargosRows);
   const transporteTotal = somaGrupo(transporteRows);
   const transporteDias = transportePorData.filter(g => g.valor > 0).length;
@@ -666,6 +679,7 @@ function gerarResumo() {
   const dataFim = document.getElementById('dataFim').value;
   document.getElementById('periodoImpressao').textContent =
     'Período: ' + formatarData(dataIni) + ' a ' + formatarData(dataFim);
+  document.getElementById('fornecedorImpressao').textContent = fornecedorHeaderTexto();
 
   document.getElementById('resumoContainer').innerHTML = `
     <div class="resumo-bloco">
@@ -710,6 +724,10 @@ function somaGrupo(rows) {
   }, { qtd: 0, valor: 0 });
 }
 
+// Agrupamento "cru", somando a quantidade apontada como está no banco —
+// usado no Transporte Pessoal, onde o código carregado no lançamento é do
+// veículo/equipamento, não do funcionário, então não dá pra deduplicar por
+// pessoa/dia.
 function agruparResumo(rows, chaveFn) {
   const mapa = {};
   rows.forEach(d => {
@@ -721,28 +739,60 @@ function agruparResumo(rows, chaveFn) {
   return Object.values(mapa).sort((a, b) => (a.chave || '').localeCompare(b.chave || ''));
 }
 
+// Conta "diárias" como dias-pessoa distintos: cada funcionário só é contado
+// uma vez por dia, mesmo que apareça em vários lançamentos naquele dia
+// (serviços/fazendas/origens diferentes no mesmo dia).
+function contarDiarias(rows) {
+  const chaves = new Set();
+  rows.forEach(d => {
+    const funcionario = d.codFuncionario || ('SRV:' + (d.codServico || '') + ':' + (d.origem || ''));
+    chaves.add((d.dataMovimento || '') + '|' + funcionario);
+  });
+  return chaves.size;
+}
+
+// Como agruparResumo, mas a "qtd" de cada grupo é a contagem de diárias
+// (dias-pessoa distintos) em vez da soma bruta de qtdApontada.
+function agruparResumoDiarias(rows, chaveFn) {
+  const mapa = {};
+  rows.forEach(d => {
+    const chave = chaveFn(d);
+    if (!mapa[chave]) mapa[chave] = { chave, itens: [], valor: 0 };
+    mapa[chave].itens.push(d);
+    mapa[chave].valor += (d.valorTotal || 0);
+  });
+  return Object.values(mapa)
+    .map(g => ({ chave: g.chave, valor: g.valor, qtd: contarDiarias(g.itens) }))
+    .sort((a, b) => (a.chave || '').localeCompare(b.chave || ''));
+}
+
 // Agrupa a mão de obra em "Objeto" (categoria de custo) > Serviço, usando o
 // campo descObjeto exposto pelo backend (só preenchido para o bloco
 // AUTOMOTIVO e para LIDERANÇA RURAL, mapeado como "Administração/Controle
 // Agrícola"). Quando não há classificação, cai no próprio nome da origem.
+// A "qtd" (QTD DIARIAS) conta dias-pessoa distintos, não a soma bruta.
 function montarObjetos(rows) {
   const mapa = {};
   rows.forEach(d => {
     const objeto = (d.descObjeto || (d.origem || '—').trim());
-    if (!mapa[objeto]) mapa[objeto] = { nome: objeto, qtd: 0, valor: 0, servicos: {} };
-    mapa[objeto].qtd += (d.qtdApontada || 0);
+    if (!mapa[objeto]) mapa[objeto] = { nome: objeto, itens: [], valor: 0, servicos: {} };
+    mapa[objeto].itens.push(d);
     mapa[objeto].valor += (d.valorTotal || 0);
 
     const chaveServ = d.descServico || d.origem || '—';
     if (!mapa[objeto].servicos[chaveServ]) {
-      mapa[objeto].servicos[chaveServ] = { nome: chaveServ, unidade: d.unidade || 'UND', qtd: 0, valor: 0 };
+      mapa[objeto].servicos[chaveServ] = { nome: chaveServ, unidade: d.unidade || 'UND', itens: [], valor: 0 };
     }
-    mapa[objeto].servicos[chaveServ].qtd += (d.qtdApontada || 0);
+    mapa[objeto].servicos[chaveServ].itens.push(d);
     mapa[objeto].servicos[chaveServ].valor += (d.valorTotal || 0);
   });
   return Object.values(mapa).map(o => ({
-    ...o,
-    servicos: Object.values(o.servicos).sort((a, b) => b.valor - a.valor)
+    nome: o.nome,
+    valor: o.valor,
+    qtd: contarDiarias(o.itens),
+    servicos: Object.values(o.servicos)
+      .map(s => ({ nome: s.nome, unidade: s.unidade, valor: s.valor, qtd: contarDiarias(s.itens) }))
+      .sort((a, b) => b.valor - a.valor)
   }));
 }
 
