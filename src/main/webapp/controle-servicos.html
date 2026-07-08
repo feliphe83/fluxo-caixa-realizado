@@ -241,9 +241,9 @@
         <div class="hint">Separe múltiplos códigos por vírgula. Deixe vazio para todas.</div>
       </div>
       <div class="campo">
-        <label>Fornecedor</label>
-        <input type="text" id="fornecedor" placeholder="Ex: João da Silva">
-        <div class="hint">Filtra pelo nome do fornecedor/proprietário. Deixe vazio para todos.</div>
+        <label>Fornecedor (código)</label>
+        <input type="text" id="fornecedor" placeholder="Ex: 3092, 150071">
+        <div class="hint">Código(s) de fazenda do fornecedor/proprietário. Separe por vírgula. Deixe vazio para todos.</div>
       </div>
       <div class="campo">
         <label>Data Início</label>
@@ -308,10 +308,11 @@ function fmt8(d) {
   return y + '-' + m + '-' + dd;
 }
 
-// Remove acentos e normaliza caixa, para o filtro de fornecedor funcionar
-// mesmo se o texto digitado não tiver os mesmos acentos do cadastro.
-function normalizarTexto(s) {
-  return (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+// Converte "3092, 3096, 150071" em ['3092','3096','150071']. O "código do
+// fornecedor" aqui é o código da fazenda (o nome do fornecedor/proprietário
+// no relatório vem de uma função que traduz cod_fazenda_origem em nome).
+function parseCodigos(valor) {
+  return valor.split(',').map(s => s.trim()).filter(Boolean);
 }
 
 async function gerarRelatorio() {
@@ -338,8 +339,8 @@ async function gerarRelatorio() {
 
     DADOS_RAW = j.data;
     if (fornecedor) {
-      const termo = normalizarTexto(fornecedor);
-      DADOS_RAW = DADOS_RAW.filter(d => normalizarTexto(d.descFornecedor).includes(termo));
+      const codigos = parseCodigos(fornecedor);
+      DADOS_RAW = DADOS_RAW.filter(d => codigos.includes(String(d.codFazendaOrigem)));
     }
     montarGrupos();
     renderizarTabela();
