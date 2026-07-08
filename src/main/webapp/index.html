@@ -129,7 +129,10 @@
      rolar a página. Sem overflow aqui, a página inteira rola normalmente e
      o sticky funciona relativo à viewport; se a tabela ficar mais larga que
      a tela, a página ganha rolagem horizontal (aceitável). */
-  .tabela-wrap { padding: 16px 24px 24px; }
+  /* Sem padding-top: o espaço aqui apareceria como uma faixa bege entre o
+     bloco fixo (#chrome-fixo) e o cabeçalho da tabela, já que os dois ficam
+     congelados um logo abaixo do outro ao rolar. */
+  .tabela-wrap { padding: 0 24px 24px; }
   /* Sem overflow:hidden aqui pelo mesmo motivo do .tabela-wrap acima: isso
      também bloquearia o position:sticky do cabeçalho/total. O border-radius
      fica só decorativo na borda externa (com border-collapse:collapse ele
