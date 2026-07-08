@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login — USC Intranet</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; display: flex; }
+
+  /* ── ESQUERDA ── */
+  .left {
+    width: 42%; min-height: 100vh;
+    background: linear-gradient(160deg, #0c1a3a 0%, #0f2460 50%, #1a3a7c 100%);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 48px 40px; position: relative; overflow: hidden;
+  }
+  .left::before {
+    content: ''; position: absolute;
+    width: 480px; height: 480px; border-radius: 50%;
+    background: rgba(255,255,255,0.04);
+    bottom: -160px; left: -120px;
+  }
+  .left::after {
+    content: ''; position: absolute;
+    width: 280px; height: 280px; border-radius: 50%;
+    background: rgba(255,255,255,0.04);
+    top: -80px; right: -60px;
+  }
+  .left-content { position: relative; z-index: 1; text-align: center; }
+
+  .logo-card {
+    width: 120px; height: 120px; border-radius: 24px;
+    background: white; display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 28px; padding: 14px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+  }
+  .logo-card img { width: 92px; height: 92px; object-fit: contain; display: none; }
+  .logo-fallback {
+    width: 92px; height: 92px; display: flex; align-items: center; justify-content: center;
+  }
+
+  .left-title {
+    font-size: 32px; font-weight: 800; color: white;
+    line-height: 1.15; margin-bottom: 10px; letter-spacing: -0.5px;
+  }
+  .left-sub {
+    font-size: 15px; color: rgba(255,255,255,0.65);
+    margin-bottom: 48px; line-height: 1.6;
+  }
+  .left-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 11px; color: rgba(255,255,255,0.4);
+    text-transform: uppercase; letter-spacing: 2px;
+    border-top: 1px solid rgba(255,255,255,0.12);
+    padding-top: 24px; width: 100%; justify-content: center;
+  }
+  .left-badge-dot { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.3); }
+
+  /* ── DIREITA ── */
+  .right {
+    flex: 1; background: #f8fafc;
+    display: flex; align-items: center; justify-content: center;
+    padding: 40px 32px;
+  }
+  .form-box { width: 100%; max-width: 400px; }
+
+  .form-title { font-size: 34px; font-weight: 800; color: #0f172a; margin-bottom: 8px; letter-spacing: -0.5px; }
+  .form-sub   { font-size: 15px; color: #64748b; margin-bottom: 36px; }
+
+  .field { margin-bottom: 20px; }
+  .field label {
+    display: block; font-size: 11px; font-weight: 700;
+    color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;
+  }
+  .input-wrap { position: relative; }
+  .field input {
+    width: 100%; padding: 14px 16px;
+    border: 1.5px solid #e2e8f0; border-radius: 10px;
+    font-size: 15px; color: #0f172a; background: white;
+    outline: none; transition: border-color .2s, box-shadow .2s;
+  }
+  .field input::placeholder { color: #94a3b8; }
+  .field input:focus { border-color: #0f2460; box-shadow: 0 0 0 3px rgba(15,36,96,0.1); }
+  .field input.err  { border-color: #ef4444; box-shadow: 0 0 0 3px rgba(239,68,68,0.1); }
+
+  .btn-eye {
+    position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; cursor: pointer;
+    color: #94a3b8; font-size: 13px; font-weight: 500;
+    display: flex; align-items: center; gap: 5px; transition: color .15s;
+  }
+  .btn-eye:hover { color: #0f2460; }
+  .btn-eye svg { width: 16px; height: 16px; }
+
+  .erro-box {
+    background: #fef2f2; border: 1.5px solid #fecaca; border-radius: 10px;
+    padding: 12px 16px; margin-bottom: 20px;
+    display: none; align-items: center; gap: 10px;
+    color: #dc2626; font-size: 14px;
+  }
+  .erro-box svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+  .btn-login {
+    width: 100%; padding: 15px;
+    background: #0f2460; color: white;
+    border: none; border-radius: 10px;
+    font-size: 16px; font-weight: 700; cursor: pointer;
+    transition: all .2s; letter-spacing: 0.2px;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    box-shadow: 0 4px 16px rgba(15,36,96,0.35);
+  }
+  .btn-login:hover:not(:disabled) { background: #0c1a3a; box-shadow: 0 6px 20px rgba(15,36,96,0.45); transform: translateY(-1px); }
+  .btn-login:disabled { background: #94a3b8; box-shadow: none; transform: none; cursor: not-allowed; }
+
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2.5px solid rgba(255,255,255,0.3);
+    border-top-color: white; border-radius: 50%;
+    animation: spin .6s linear infinite; display: none;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .link-esqueci { display: block; text-align: center; margin-top: 20px; font-size: 14px; color: #1a3a7c; font-weight: 600; cursor: pointer; text-decoration: none; }
+  .link-esqueci:hover { text-decoration: underline; }
+
+  @keyframes shake {
+    0%,100%{transform:translateX(0)} 20%{transform:translateX(-7px)}
+    40%{transform:translateX(7px)}  60%{transform:translateX(-4px)} 80%{transform:translateX(4px)}
+  }
+  @media (max-width: 700px) {
+    body { flex-direction: column; }
+    .left { width: 100%; min-height: auto; padding: 40px 24px; }
+    .left-badge { display: none; }
+  }
+</style>
+  <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
+  <link rel="apple-touch-icon" sizes="152x152" href="img/apple-touch-icon-152.png">
+  <link rel="apple-touch-icon" sizes="167x167" href="img/apple-touch-icon-167.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="USC">
+  <meta name="theme-color" content="#0f2460">
+</head>
+<body>
+
+<div class="left">
+  <div class="left-content">
+    <div class="logo-card">
+      <img id="logoImg" src="img/logo.png" alt="USC"
+           onload="this.style.display='block';document.getElementById('logoFallback').style.display='none'">
+      <div class="logo-fallback" id="logoFallback">
+        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#0f2460" stroke-width="1.5">
+          <rect x="3" y="3" width="18" height="18" rx="3"/>
+          <circle cx="12" cy="10" r="3"/>
+          <path d="M6 21v-1a6 6 0 0112 0v1"/>
+        </svg>
+      </div>
+    </div>
+    <div class="left-title">Usina Santa<br>Clotilde S/A</div>
+    <div class="left-badge">
+      <div class="left-badge-dot"></div>
+      Intranet corporativa
+      <div class="left-badge-dot"></div>
+    </div>
+  </div>
+</div>
+
+<div class="right">
+  <div class="form-box" id="formBox">
+    <div class="form-title">Bem-vindo</div>
+    <div class="form-sub">Faça login para acessar o sistema</div>
+
+    <div class="erro-box" id="erroBox">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      <span id="erroMsg"></span>
+    </div>
+
+    <div class="field">
+      <label>Usuário</label>
+      <input type="text" id="logon" placeholder="Seu usuário de acesso" autocomplete="username"
+             onkeydown="if(event.key==='Enter') document.getElementById('senha').focus()">
+    </div>
+
+    <div class="field">
+      <label>Senha</label>
+      <div class="input-wrap">
+        <input type="password" id="senha" placeholder="••••••••" autocomplete="current-password"
+               onkeydown="if(event.key==='Enter') fazerLogin()">
+        <button class="btn-eye" onclick="toggleSenha()">
+          <svg id="eyeIcon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+          </svg>
+          <span id="eyeTxt">Exibir</span>
+        </button>
+      </div>
+    </div>
+
+    <button class="btn-login" id="btnLogin" onclick="fazerLogin()">
+      <div class="spinner" id="spinner"></div>
+      <span id="btnTxt">Entrar</span>
+    </button>
+
+    <a href="esqueci-senha.html" class="link-esqueci">Esqueci minha senha</a>
+  </div>
+</div>
+
+<script>
+async function fazerLogin() {
+  const logon = document.getElementById('logon').value.trim();
+  const senha = document.getElementById('senha').value;
+  const btn = document.getElementById('btnLogin');
+  const spin = document.getElementById('spinner');
+  const txt = document.getElementById('btnTxt');
+  if (!logon || !senha) { mostrarErro('Preencha usuário e senha.'); return; }
+  btn.disabled = true; spin.style.display = 'block'; txt.textContent = 'Autenticando…';
+  document.getElementById('erroBox').style.display = 'none';
+  document.getElementById('logon').classList.remove('err');
+  document.getElementById('senha').classList.remove('err');
+  try {
+    const form = new URLSearchParams();
+    form.append('logon', logon); form.append('senha', senha);
+    const resp = await fetch('api/login', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: form.toString() });
+    const json = await resp.json();
+    if (json.ok) {
+      spin.style.display = 'none'; txt.textContent = '✓ Bem-vindo, ' + json.logon;
+      btn.style.background = '#16a34a';
+      setTimeout(() => { window.location.href = 'hub.html'; }, 700);
+    } else { mostrarErro(json.erro || 'Usuário ou senha incorretos'); }
+  } catch(e) { mostrarErro('Erro de conexão: ' + e.message); }
+}
+function mostrarErro(msg) {
+  document.getElementById('erroMsg').textContent = msg;
+  document.getElementById('erroBox').style.display = 'flex';
+  document.getElementById('logon').classList.add('err');
+  document.getElementById('senha').classList.add('err');
+  const btn = document.getElementById('btnLogin');
+  btn.disabled = false; btn.style.background = '';
+  document.getElementById('spinner').style.display = 'none';
+  document.getElementById('btnTxt').textContent = 'Entrar';
+  const box = document.getElementById('formBox');
+  box.style.animation = 'none'; void box.offsetHeight; box.style.animation = 'shake .4s ease';
+}
+function toggleSenha() {
+  const inp = document.getElementById('senha');
+  const icon = document.getElementById('eyeIcon');
+  const txt = document.getElementById('eyeTxt');
+  if (inp.type === 'password') {
+    inp.type = 'text'; txt.textContent = 'Ocultar';
+    icon.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
+  } else {
+    inp.type = 'password'; txt.textContent = 'Exibir';
+    icon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+  }
+}
+window.addEventListener('DOMContentLoaded', () => document.getElementById('logon').focus());
+</script>
+</body>
+</html>

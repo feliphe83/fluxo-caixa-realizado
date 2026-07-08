@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controle de Serviços · USC</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f4f6fb;
+    color: #1a1a2e;
+  }
+
+  .header {
+    background: linear-gradient(135deg, #0f2460 0%, #1a3a7c 100%);
+    color: white;
+    padding: 16px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .header-logo { width: 38px; height: 38px; border-radius: 8px; background: rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; }
+  .header-title { font-size: 16px; font-weight: 700; }
+  .header-sub { font-size: 11px; opacity: .75; margin-top: 2px; }
+  .btn-voltar {
+    display: flex; align-items: center; gap: 7px;
+    padding: 8px 16px; border-radius: 8px;
+    border: 1.5px solid rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.9);
+    font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .btn-voltar:hover { background: rgba(255,255,255,0.18); }
+
+  .conteudo { max-width: 1200px; margin: 0 auto; padding: 28px 24px; }
+
+  .filtros-card {
+    background: white; border: 1.5px solid #e3e8f5; border-radius: 14px;
+    padding: 22px 24px; margin-bottom: 22px;
+  }
+  .filtros-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 14px;
+    align-items: start;
+  }
+  .campo { display: flex; flex-direction: column; min-height: 78px; }
+  .campo label { display: block; font-size: 11.5px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 6px; }
+  .campo input[type="text"], .campo input[type="date"] {
+    width: 100%; padding: 9px 12px; border: 1.5px solid #d8dfee; border-radius: 8px;
+    font-size: 13.5px; color: #1a1a2e; outline: none; height: 40px;
+  }
+  .campo input:focus { border-color: #1a3a7c; }
+  .campo .hint { font-size: 11px; color: #94a0b8; margin-top: 5px; }
+
+  .btn-gerar {
+    padding: 11px 22px; border-radius: 9px; border: none;
+    background: #1a3a7c; color: white; font-size: 14px; font-weight: 700;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+    height: 40px; margin-top: 24px;
+  }
+  .btn-gerar:hover { background: #0f2460; }
+  .btn-gerar:disabled { background: #9ca3af; cursor: not-allowed; }
+
+  .export-bar { display: flex; gap: 10px; justify-content: flex-end; margin-bottom: 14px; }
+  .btn-export {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 14px; border-radius: 8px; border: 1.5px solid #d8dfee;
+    background: white; color: #475569; font-size: 12.5px; font-weight: 600; cursor: pointer;
+  }
+  .btn-export:hover { border-color: #1a3a7c; color: #1a3a7c; }
+
+  .resultado-card { background: white; border: 1.5px solid #e3e8f5; border-radius: 14px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    background: #0f2460; color: white; text-align: left;
+    padding: 11px 14px; font-size: 11.5px; text-transform: uppercase; letter-spacing: .4px;
+  }
+  thead th.num { text-align: right; }
+  tbody td { padding: 10px 14px; border-bottom: 1px solid #eef1f8; }
+  tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tbody tr.item-row { cursor: pointer; }
+  tbody tr.item-row:hover { background: #f8faff; }
+  tbody tr.item-row .seta { display: inline-block; transition: transform .15s; margin-right: 8px; color: #94a0b8; }
+  tbody tr.item-row.aberto .seta { transform: rotate(90deg); }
+  tfoot td { padding: 12px 14px; font-weight: 700; background: #eef2fb; border-top: 2px solid #1a3a7c; }
+  tfoot td.num { text-align: right; }
+
+  .detalhe-row td { padding: 0; background: #f5f3fc; }
+  .detalhe-inner { padding: 10px 16px 14px; }
+  .detalhe-inner table { font-size: 12px; }
+  .detalhe-inner thead th { background: #d4dff5; color: #1a3a7c; font-size: 10px; padding: 7px 12px; }
+  .detalhe-inner tbody td { padding: 6px 12px; background: transparent; }
+  .detalhe-inner tbody tr:hover { background: #e8eef8; }
+  .detalhe-inner tbody tr.item-row2 { cursor: pointer; }
+  .detalhe-inner tbody tr.item-row2 .seta2 { display: inline-block; transition: transform .15s; margin-right: 6px; color: #94a0b8; }
+  .detalhe-inner tbody tr.item-row2.aberto .seta2 { transform: rotate(90deg); }
+  .detalhe-row2 td { padding: 0; background: #ece8f9; }
+  .detalhe-inner2 { padding: 8px 14px 12px; }
+  .detalhe-inner2 table { font-size: 11.5px; }
+  .detalhe-inner2 thead th { background: #c7d4f0; color: #0f2460; font-size: 9.5px; padding: 6px 10px; }
+  .detalhe-inner2 tbody td { padding: 5px 10px; background: transparent; }
+  .detalhe-inner2 tbody tr:hover { background: #ddd9f0; }
+  .detalhe-inner2 tbody tr.item-row3 { cursor: pointer; }
+  .detalhe-inner2 tbody tr.item-row3 .seta3 { display: inline-block; transition: transform .15s; margin-right: 6px; color: #94a0b8; }
+  .detalhe-inner2 tbody tr.item-row3.aberto .seta3 { transform: rotate(90deg); }
+  .detalhe-row3 td { padding: 0; background: #e0dbf3; }
+  .detalhe-inner3 { padding: 7px 12px 10px; }
+  .detalhe-inner3 table { font-size: 11px; }
+  .detalhe-inner3 thead th { background: #b8c8ec; color: #0f2460; font-size: 9px; padding: 5px 9px; }
+  .detalhe-inner3 tbody td { padding: 4px 9px; background: transparent; }
+  .detalhe-inner3 tbody tr:hover { background: #d2cbe9; }
+
+  .loading-state, .erro-state, .vazio-state { text-align: center; padding: 60px 20px; color: #94a0b8; }
+  .spinner { width: 30px; height: 30px; border: 3px solid #e3e8f5; border-top-color: #1a3a7c; border-radius: 50%; margin: 0 auto 12px; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .erro-state { color: #ef4444; }
+  @media print {
+    .header, .filtros-card, .export-bar, .btn-voltar { display: none !important; }
+
+    body { background: white; margin: 0; }
+    .conteudo { padding: 0; max-width: 100%; }
+
+    .resultado-card { border: none; border-radius: 0; }
+    table { font-size: 9px; }
+    thead th {
+      padding: 5px 7px; font-size: 8.5px;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    tbody td { padding: 4px 7px; }
+    tfoot td {
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+
+    .detalhe-inner thead th, .detalhe-inner2 thead th, .detalhe-inner3 thead th {
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    .detalhe-row, .detalhe-row2, .detalhe-row3 {
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+
+    #cabecalhoImpressao { display: block !important; margin-bottom: 12px; }
+
+    @page {
+      margin: 10mm;
+      size: landscape;
+    }
+  }
+
+  #cabecalhoImpressao { display: none; }
+  #cabecalhoImpressao .titulo-rel { font-size: 14px; font-weight: 800; color: #0f2460; }
+  #cabecalhoImpressao .periodo-rel { font-size: 11px; color: #475569; margin-top: 2px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="header-logo">USC</div>
+    <div>
+      <div class="header-title">Controle de Serviços</div>
+      <div class="header-sub">Apontamentos de mão de obra, automotivo e faturamento por fazenda</div>
+    </div>
+  </div>
+  <button class="btn-voltar" onclick="window.location.href='hub.html'">
+    <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+    Voltar ao Hub
+  </button>
+</div>
+
+<div class="conteudo">
+
+  <div id="cabecalhoImpressao">
+    <div class="titulo-rel">Usina Santa Clotilde S/A — Controle de Serviços</div>
+    <div class="periodo-rel" id="periodoImpressao"></div>
+  </div>
+
+  <div class="filtros-card">
+    <div class="filtros-grid">
+      <div class="campo">
+        <label>Fazenda(s)</label>
+        <input type="text" id="fazendas" placeholder="Ex: 3092, 3096, 150071">
+        <div class="hint">Separe múltiplos códigos por vírgula. Deixe vazio para todas.</div>
+      </div>
+      <div class="campo">
+        <label>Data Início</label>
+        <input type="date" id="dataIni">
+      </div>
+      <div class="campo">
+        <label>Data Fim</label>
+        <input type="date" id="dataFim">
+      </div>
+      <div class="campo">
+        <button class="btn-gerar" id="btnGerar" onclick="gerarRelatorio()">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Gerar Relatório
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="export-area" style="display:none">
+    <div class="export-bar">
+      <button class="btn-export" onclick="exportarExcel()">
+        <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+        Excel
+      </button>
+      <button class="btn-export" onclick="imprimirComCabecalho()">
+        <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        PDF
+      </button>
+    </div>
+  </div>
+
+  <div id="resultado">
+    <div class="vazio-state">
+      <p>Informe a(s) fazenda(s) e o período para gerar o relatório.</p>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+let DADOS_RAW = [];
+let GRUPOS = [];
+
+// Datas padrão: mês atual
+(function initDatas() {
+  const hoje = new Date();
+  const ini = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+  const fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+  document.getElementById('dataIni').value = fmt8(ini);
+  document.getElementById('dataFim').value = fmt8(fim);
+})();
+
+function fmt8(d) {
+  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), dd = String(d.getDate()).padStart(2,'0');
+  return y + '-' + m + '-' + dd;
+}
+
+async function gerarRelatorio() {
+  const fazendas = document.getElementById('fazendas').value.trim();
+  const dataIni = document.getElementById('dataIni').value;
+  const dataFim = document.getElementById('dataFim').value;
+
+  if (!dataIni || !dataFim) { alert('Informe o período completo.'); return; }
+  if (dataFim < dataIni) { alert('Data Fim não pode ser anterior à Data Início.'); return; }
+
+  const btn = document.getElementById('btnGerar');
+  btn.disabled = true;
+  btn.textContent = 'Consultando…';
+  document.getElementById('export-area').style.display = 'none';
+  document.getElementById('resultado').innerHTML =
+    '<div class="loading-state"><div class="spinner"></div><p>Consultando Oracle…</p></div>';
+
+  try {
+    const url = `api/controle-servicos?fazendas=${encodeURIComponent(fazendas)}&dataIni=${dataIni}&dataFim=${dataFim}`;
+    const r = await fetch(url);
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro);
+
+    DADOS_RAW = j.data;
+    montarGrupos();
+    renderizarTabela();
+
+  } catch(e) {
+    document.getElementById('resultado').innerHTML =
+      '<div class="erro-state"><p>❌ ' + e.message + '</p></div>';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Gerar Relatório`;
+  }
+}
+
+// Agrupa os lançamentos individuais (por data) em linhas únicas por
+// Tipo/Origem/Fazenda/Fornecedor, somando Qtd e Valor. Cada grupo guarda
+// seus itens originais para o detalhe expandido (nível 2, por data).
+function montarGrupos() {
+  // Nível 1: agrupado só por Fornecedor (soma de Qtd e Valor de todas as fazendas)
+  const mapaForn = {};
+  DADOS_RAW.forEach(d => {
+    const chaveForn = d.descFornecedor || '—';
+    if (!mapaForn[chaveForn]) {
+      mapaForn[chaveForn] = {
+        descFornecedor: d.descFornecedor,
+        qtdTotal: 0, valorTotal: 0, itens: []
+      };
+    }
+    mapaForn[chaveForn].qtdTotal += (d.qtdApontada || 0);
+    mapaForn[chaveForn].valorTotal += (d.valorTotal || 0);
+    mapaForn[chaveForn].itens.push(d);
+  });
+
+  GRUPOS = Object.values(mapaForn).sort((a, b) => {
+    // Ordena por Fornecedor, depois Fazenda (conforme solicitado)
+    const fa = (a.descFornecedor || '').localeCompare(b.descFornecedor || '');
+    if (fa !== 0) return fa;
+    return 0;
+  });
+
+  // Dentro de cada fornecedor, monta o Nível 2: agrupado por Tipo + Origem + Fazenda
+  GRUPOS.forEach(g => {
+    const mapaSub = {};
+    g.itens.forEach(d => {
+      const chaveSub = [d.tipo, d.origem, d.codFazendaOrigem].join('|');
+      if (!mapaSub[chaveSub]) {
+        mapaSub[chaveSub] = {
+          tipo: d.tipo, origem: d.origem, descFazenda: d.descFazenda,
+          qtdTotal: 0, valorTotal: 0, itens: []
+        };
+      }
+      mapaSub[chaveSub].qtdTotal += (d.qtdApontada || 0);
+      mapaSub[chaveSub].valorTotal += (d.valorTotal || 0);
+      mapaSub[chaveSub].itens.push(d);
+    });
+
+    g.subgrupos = Object.values(mapaSub).sort((a, b) => {
+      const fa = (a.descFazenda || '').localeCompare(b.descFazenda || '');
+      if (fa !== 0) return fa;
+      return b.valorTotal - a.valorTotal;
+    });
+
+    // Dentro de cada subgrupo (Tipo+Origem+Fazenda), monta o Nível 3: agrupado por Serviço
+    g.subgrupos.forEach(sg => {
+      const mapaServ = {};
+      sg.itens.forEach(d => {
+        const chaveServ = [d.codServico, d.descServico].join('|');
+        if (!mapaServ[chaveServ]) {
+          mapaServ[chaveServ] = {
+            codServico: d.codServico, descServico: d.descServico,
+            qtdTotal: 0, valorTotal: 0, itens: []
+          };
+        }
+        mapaServ[chaveServ].qtdTotal += (d.qtdApontada || 0);
+        mapaServ[chaveServ].valorTotal += (d.valorTotal || 0);
+        mapaServ[chaveServ].itens.push(d);
+      });
+
+      sg.servicos = Object.values(mapaServ).sort((a, b) => b.valorTotal - a.valorTotal);
+
+      // Ordena os itens de cada serviço por data (Nível 4)
+      sg.servicos.forEach(serv =>
+        serv.itens.sort((a, b) => (a.dataMovimento || '').localeCompare(b.dataMovimento || ''))
+      );
+    });
+  });
+}
+
+function renderizarTabela() {
+  const el = document.getElementById('resultado');
+
+  if (GRUPOS.length === 0) {
+    el.innerHTML = '<div class="vazio-state"><p>Nenhum lançamento encontrado para essa(s) fazenda(s) no período.</p></div>';
+    document.getElementById('export-area').style.display = 'none';
+    return;
+  }
+
+  let totalQtd = 0, totalValor = 0;
+  GRUPOS.forEach(g => { totalQtd += g.qtdTotal; totalValor += g.valorTotal; });
+
+  const linhas = GRUPOS.map((g, idx) => `
+    <tr class="item-row" id="row-${idx}" onclick="toggleDetalhe(${idx})">
+      <td><span class="seta">▶</span>${escapeHtml(g.descFornecedor || '—')}</td>
+      <td class="num">${fmtNum(g.qtdTotal)}</td>
+      <td class="num">${fmtMoeda(g.valorTotal)}</td>
+    </tr>
+    <tr class="detalhe-row" id="det-${idx}" style="display:none">
+      <td colspan="3"><div class="detalhe-inner" id="det-inner-${idx}"></div></td>
+    </tr>
+  `).join('');
+
+  el.innerHTML = `
+    <div class="resultado-card">
+      <table>
+        <thead>
+          <tr>
+            <th>Fornecedor/Proprietário</th>
+            <th class="num">Qtd. Apontada</th><th class="num">Valor Total</th>
+          </tr>
+        </thead>
+        <tbody>${linhas}</tbody>
+        <tfoot>
+          <tr>
+            <td>TOTAL</td>
+            <td class="num">${fmtNum(totalQtd)}</td>
+            <td class="num">${fmtMoeda(totalValor)}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  `;
+
+  document.getElementById('export-area').style.display = 'block';
+}
+
+// Nível 2: expande o grupo mostrando os lançamentos individuais por data,
+// com código e descrição do serviço.
+function toggleDetalhe(idx) {
+  const tr  = document.getElementById('row-' + idx);
+  const det = document.getElementById('det-' + idx);
+  const aberto = tr.classList.toggle('aberto');
+  det.style.display = aberto ? '' : 'none';
+  if (!aberto) return;
+
+  const g = GRUPOS[idx];
+  const linhas = g.subgrupos.map((sg, sidx) => `
+    <tr class="item-row2" id="row2-${idx}-${sidx}" onclick="toggleDetalhe2(${idx}, ${sidx})">
+      <td><span class="seta2">▶</span>${escapeHtml(sg.tipo || '—')}</td>
+      <td>${escapeHtml(sg.origem || '—')}</td>
+      <td>${escapeHtml(sg.descFazenda || '—')}</td>
+      <td class="num">${fmtNum(sg.qtdTotal)}</td>
+      <td class="num">${fmtMoeda(sg.valorTotal)}</td>
+    </tr>
+    <tr class="detalhe-row2" id="det2-${idx}-${sidx}" style="display:none">
+      <td colspan="5"><div class="detalhe-inner2" id="det2-inner-${idx}-${sidx}"></div></td>
+    </tr>
+  `).join('');
+
+  document.getElementById('det-inner-' + idx).innerHTML = `
+    <table>
+      <thead><tr>
+        <th>Tipo</th><th>Origem</th><th>Fazenda</th>
+        <th class="num">Qtd.</th><th class="num">Valor</th>
+      </tr></thead>
+      <tbody>${linhas}</tbody>
+    </table>`;
+}
+
+// Nível 3: agrupado por Serviço (soma Qtd/Valor), expansível para o Nível 4
+function toggleDetalhe2(idx, sidx) {
+  const tr  = document.getElementById('row2-' + idx + '-' + sidx);
+  const det = document.getElementById('det2-' + idx + '-' + sidx);
+  const aberto = tr.classList.toggle('aberto');
+  det.style.display = aberto ? '' : 'none';
+  if (!aberto) return;
+
+  const sg = GRUPOS[idx].subgrupos[sidx];
+  const linhas = sg.servicos.map((serv, vidx) => `
+    <tr class="item-row3" id="row3-${idx}-${sidx}-${vidx}" onclick="toggleDetalhe3(${idx}, ${sidx}, ${vidx})">
+      <td><span class="seta3">▶</span>${escapeHtml(serv.codServico || '—')}</td>
+      <td>${escapeHtml(serv.descServico || '—')}</td>
+      <td class="num">${fmtNum(serv.qtdTotal)}</td>
+      <td class="num">${fmtMoeda(serv.valorTotal)}</td>
+    </tr>
+    <tr class="detalhe-row3" id="det3-${idx}-${sidx}-${vidx}" style="display:none">
+      <td colspan="4"><div class="detalhe-inner3" id="det3-inner-${idx}-${sidx}-${vidx}"></div></td>
+    </tr>
+  `).join('');
+
+  document.getElementById('det2-inner-' + idx + '-' + sidx).innerHTML = `
+    <table>
+      <thead><tr>
+        <th>Cód. Serviço</th><th>Descrição do Serviço</th>
+        <th class="num">Qtd.</th><th class="num">Valor</th>
+      </tr></thead>
+      <tbody>${linhas}</tbody>
+    </table>`;
+}
+
+// Nível 4: lançamentos individuais (Data, Qtd, Valor)
+function toggleDetalhe3(idx, sidx, vidx) {
+  const tr  = document.getElementById('row3-' + idx + '-' + sidx + '-' + vidx);
+  const det = document.getElementById('det3-' + idx + '-' + sidx + '-' + vidx);
+  const aberto = tr.classList.toggle('aberto');
+  det.style.display = aberto ? '' : 'none';
+  if (!aberto) return;
+
+  const serv = GRUPOS[idx].subgrupos[sidx].servicos[vidx];
+  const linhas = serv.itens.map(it => `
+    <tr>
+      <td>${formatarData(it.dataMovimento)}</td>
+      <td class="num">${fmtNum(it.qtdApontada)}</td>
+      <td class="num">${fmtMoeda(it.valorTotal)}</td>
+    </tr>
+  `).join('');
+
+  document.getElementById('det3-inner-' + idx + '-' + sidx + '-' + vidx).innerHTML = `
+    <table>
+      <thead><tr>
+        <th>Data</th><th class="num">Qtd.</th><th class="num">Valor</th>
+      </tr></thead>
+      <tbody>${linhas}</tbody>
+    </table>`;
+}
+
+function formatarData(iso) {
+  if (!iso) return '—';
+  const [y, m, d] = iso.split('-');
+  return d + '/' + m + '/' + y;
+}
+
+function exportarExcel() {
+  if (!DADOS_RAW || DADOS_RAW.length === 0) { alert('Gere o relatório antes de exportar.'); return; }
+
+  const cabecalho = ['Fornecedor/Proprietário', 'Fazenda', 'Data', 'Tipo', 'Origem', 'Cód. Serviço', 'Descrição do Serviço', 'Funcionário', 'Qtd. Apontada', 'Valor Total'];
+  const dadosOrdenados = [...DADOS_RAW].sort((a, b) => {
+    const fa = (a.descFornecedor || '').localeCompare(b.descFornecedor || '');
+    if (fa !== 0) return fa;
+    return (a.descFazenda || '').localeCompare(b.descFazenda || '');
+  });
+
+  const linhas = dadosOrdenados.map(d => [
+    d.descFornecedor || '',
+    d.descFazenda || '',
+    formatarData(d.dataMovimento),
+    d.tipo || '',
+    d.origem || '',
+    d.codServico || '',
+    d.descServico || '',
+    d.nomeFuncionario || '',
+    d.qtdApontada != null ? Number(d.qtdApontada) : '',
+    d.valorTotal != null ? Number(d.valorTotal) : ''
+  ]);
+
+  const wsData = [cabecalho, ...linhas];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+  ws['!cols'] = [
+    { wch: 34 }, { wch: 22 }, { wch: 12 }, { wch: 14 }, { wch: 28 }, { wch: 12 }, { wch: 30 }, { wch: 26 }, { wch: 14 }, { wch: 16 }
+  ];
+
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  for (let row = 1; row <= range.e.r; row++) {
+    const qtdRef = XLSX.utils.encode_cell({ r: row, c: 8 });
+    const valRef = XLSX.utils.encode_cell({ r: row, c: 9 });
+    if (ws[qtdRef] && typeof ws[qtdRef].v === 'number') ws[qtdRef].z = '#,##0.00';
+    if (ws[valRef] && typeof ws[valRef].v === 'number') ws[valRef].z = '#,##0.00';
+  }
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Controle de Serviços');
+  XLSX.writeFile(wb, 'controle_servicos_USC.xlsx');
+}
+
+function fmtNum(v) {
+  if (v == null) return '—';
+  return Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function fmtMoeda(v) {
+  if (v == null) return '—';
+  return Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+function imprimirComCabecalho() {
+  const dataIni = document.getElementById('dataIni').value;
+  const dataFim = document.getElementById('dataFim').value;
+  document.getElementById('periodoImpressao').textContent =
+    'Período: ' + formatarData(dataIni) + ' a ' + formatarData(dataFim);
+  window.print();
+}
+
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+
+</body>
+</html>
