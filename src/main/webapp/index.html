@@ -235,6 +235,17 @@
     .filtros, .modo-bar, .nav-tabs, .btn-gerar, .btn-export, .resumo,
     .filtros-row2, .btn-sair, .comp-bar, .comp-cards, .modal-overlay { display: none !important; }
 
+    /* position:sticky não faz sentido na impressão/PDF — o navegador acaba
+       "flutuando" esses blocos e eles reaparecem no meio de uma página
+       paginada, em vez de ficar só no topo do documento. Volta pro fluxo
+       normal só na hora de imprimir. */
+    #chrome-fixo,
+    #resultado > table > thead > tr > th,
+    #resultado > table > tbody > tr.total-topo > td {
+      position: static !important;
+    }
+    #chrome-fixo { background: none !important; }
+
     body { background: white; font-size: 10px; margin: 0; }
 
     /* Cabeçalho compacto */
