@@ -891,20 +891,26 @@ function renderizar() {
 // linha "TOTAL DO PERÍODO" (congelada logo abaixo) não ficar sobreposta.
 function ajustarStickyTotal() {
   requestAnimationFrame(() => {
-    const chrome = document.getElementById('chrome-fixo');
-    if (chrome) {
-      document.documentElement.style.setProperty('--chrome-h', chrome.getBoundingClientRect().height + 'px');
-    }
     const thead = document.querySelector('#resultado > table > thead');
     if (!thead) return;
     document.documentElement.style.setProperty('--thead-h', thead.getBoundingClientRect().height + 'px');
   });
 }
 
-// A altura do bloco fixo (header/filtros/resumo) muda quando os chips
-// quebram linha, a janela é redimensionada, ou o resumo/comparativo aparece
-// e desaparece — recalcula nesses casos também.
-window.addEventListener('resize', ajustarStickyTotal);
+// A altura do bloco fixo (header/filtros/resumo) pode mudar por vários
+// motivos que não passam por renderizar() — chips quebrando linha, resize
+// da janela, o nome do usuário chegando via /api/sessao, o aviso de
+// "Parâmetro" chegando via /api/pauta-fechada — tudo assíncrono. Em vez de
+// recalcular manualmente em cada gatilho, observamos o próprio elemento e
+// atualizamos --chrome-h sempre que o tamanho dele mudar de verdade.
+const chromeFixoEl = document.getElementById('chrome-fixo');
+if (chromeFixoEl && 'ResizeObserver' in window) {
+  new ResizeObserver(entries => {
+    for (const entry of entries) {
+      document.documentElement.style.setProperty('--chrome-h', entry.contentRect.height + 'px');
+    }
+  }).observe(chromeFixoEl);
+}
 
 // ─── Detalhe ──────────────────────────────────────────────────────────────
 // Ao clicar num valor de período, abre uma caixa (modal) com o valor por
