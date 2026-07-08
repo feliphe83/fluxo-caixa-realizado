@@ -129,6 +129,10 @@
   thead th.semana      { background: var(--verde); min-width: 110px; }
   thead th.total-col   { background: var(--verde-escuro); }
 
+  /* Cabeçalho + linha "TOTAL DO PERÍODO" congelados no topo ao rolar */
+  #resultado > table > thead > th { position: sticky; top: 0; z-index: 5; }
+  #resultado > table > tbody > tr.total-topo > td { position: sticky; top: var(--thead-h, 38px); z-index: 4; }
+
   tbody tr { border-bottom: 1px solid var(--border); }
   tbody tr:last-child { border-bottom: none; }
   tbody tr:hover { background: var(--verde-claro); }
@@ -830,9 +834,22 @@ function renderizar() {
         ${rows}
       </tbody>
     </table>`;
+  ajustarStickyTotal();
+}
+
+// Mede a altura real do cabeçalho da tabela e guarda numa CSS var, para a
+// linha "TOTAL DO PERÍODO" (congelada logo abaixo) não ficar sobreposta.
+function ajustarStickyTotal() {
+  requestAnimationFrame(() => {
+    const thead = document.querySelector('#resultado > table > thead');
+    if (!thead) return;
+    document.documentElement.style.setProperty('--thead-h', thead.getBoundingClientRect().height + 'px');
+  });
 }
 
 // ─── Detalhe ──────────────────────────────────────────────────────────────
+// Ao clicar num grupo, mostra o valor por fornecedor (maior para o menor),
+// só daquele grupo clicado — nível único, sem detalhamento adicional.
 function toggleDetalhe(idx) {
   const tr  = document.getElementById('row-' + idx);
   const det = document.getElementById('det-' + idx);
@@ -841,94 +858,35 @@ function toggleDetalhe(idx) {
   if (!aberto) return;
 
   const g = GRUPOS[idx];
-
-  // Nível 1: sempre agrupa por fornecedor dentro do grupo, com colunas de
-  // período preenchidas (sem repetir Empenho/Dt.Pgto/Dt.Vcto). Cada linha
-  // de fornecedor é clicável para abrir o Nível 2 com os títulos individuais.
   const thCols = PERIODOS.map(p => `<th class="semana">${p.label}</th>`).join('');
 
   // Agrupar itens do grupo por fornecedor (nome)
   const porFornecedor = {};
   g.itens.forEach(it => {
     const chave = it.nome || '—';
-    if (!porFornecedor[chave]) porFornecedor[chave] = { nome: chave, colunas: {}, total: 0, itens: [] };
+    if (!porFornecedor[chave]) porFornecedor[chave] = { nome: chave, colunas: {}, total: 0 };
     const dataRef = it.dataPgto || it.dataVcto;
     const colPeriodo = dataRef ? encontrarPeriodo(dataRef) : null;
     if (colPeriodo) {
       porFornecedor[chave].colunas[colPeriodo] = (porFornecedor[chave].colunas[colPeriodo] || 0) + (it.realizado || 0);
     }
     porFornecedor[chave].total += (it.realizado || 0);
-    porFornecedor[chave].itens.push(it);
   });
 
   const fornecedoresArr = Object.values(porFornecedor).sort((a, b) => b.total - a.total);
 
-  // Guarda a lista para o nível 2 acessar pelo índice
-  DETALHE_FORNECEDORES[idx] = fornecedoresArr;
-
-  const linhas = fornecedoresArr.map((f, fidx) => {
+  const linhas = fornecedoresArr.map(f => {
     const tdCols = PERIODOS.map(p => {
       const valor = f.colunas[p.id] || 0;
       return `<td>${valor ? fmtR(valor) : '<span class="zero">—</span>'}</td>`;
     }).join('');
-
-    return `
-      <tr class="item-row-nivel2" id="frow-${idx}-${fidx}" onclick="toggleDetalheFornecedor(${idx}, ${fidx})">
-        <td>${esc(f.nome)}</td>${tdCols}
-      </tr>
-      <tr class="detalhe-row" id="fdet-${idx}-${fidx}" style="display:none">
-        <td colspan="${PERIODOS.length + 1}">
-          <div class="detalhe-inner" id="fdet-inner-${idx}-${fidx}"></div>
-        </td>
-      </tr>`;
+    return `<tr><td>${esc(f.nome)}</td>${tdCols}<td style="font-weight:700">${fmtR(f.total)}</td></tr>`;
   }).join('');
 
   document.getElementById('det-inner-' + idx).innerHTML = `
     <table>
       <thead><tr>
-        <th>Fornecedor</th>${thCols}
-      </tr></thead>
-      <tbody>${linhas}</tbody>
-    </table>`;
-}
-
-// Armazena, por grupo (idx do nível 1), a lista de fornecedores já calculada —
-// usado pelo nível 2 para não precisar recalcular ao expandir.
-let DETALHE_FORNECEDORES = {};
-
-// Nível 2: expande um fornecedor específico mostrando os títulos individuais
-// (Documento, Dt. Pgto, Dt. Vcto, Valor).
-function toggleDetalheFornecedor(idx, fidx) {
-  const tr  = document.getElementById('frow-' + idx + '-' + fidx);
-  const det = document.getElementById('fdet-' + idx + '-' + fidx);
-  const aberto = tr.classList.toggle('aberto');
-  det.style.display = aberto ? '' : 'none';
-  if (!aberto) return;
-
-  const fornecedor = DETALHE_FORNECEDORES[idx][fidx];
-
-  const linhas = fornecedor.itens.map(it => {
-    const badge = it.provisao === 'S'
-      ? '<span class="badge badge-S">Provisão</span>'
-      : it.provisao === 'Manual'
-      ? '<span class="badge badge-Manual">Manual</span>'
-      : '<span class="badge badge-N">Título</span>';
-    const tipoConta = it.descricaoTipoDeContasPagar || it.descricaoTipoConta || '—';
-    return `<tr>
-      <td>${esc(tipoConta)}${badge}</td>
-      <td>${esc(it.documento || '—')}</td>
-      <td>${esc(it.parcela || '—')}</td>
-      <td>${it.dataPgto || '—'}</td>
-      <td>${it.dataVcto || '—'}</td>
-      <td>${fmtR(it.realizado != null ? it.realizado : (it.valor || 0))}</td>
-    </tr>`;
-  }).join('');
-
-  document.getElementById('fdet-inner-' + idx + '-' + fidx).innerHTML = `
-    <table>
-      <thead><tr>
-        <th>Tipo de Conta</th><th>Documento</th><th>Parcela</th>
-        <th>Dt. Pgto</th><th>Dt. Vcto</th><th>Valor</th>
+        <th>Fornecedor</th>${thCols}<th>Total</th>
       </tr></thead>
       <tbody>${linhas}</tbody>
     </table>`;
@@ -1423,6 +1381,7 @@ function renderComparativo(resultados) {
   // Guardar para detalhe
   window._compGrupos   = todosGrupos;
   window._compResultados = resultados;
+  ajustarStickyTotal();
 }
 
 function toggleDetComp(idx) {
@@ -1449,7 +1408,9 @@ function toggleDetComp(idx) {
     });
   });
 
-  const subRows = Object.entries(subMap).map(([nome, vals]) => `
+  const subRows = Object.entries(subMap)
+    .sort(([, valsA], [, valsB]) => valsB.reduce((a,b)=>a+b,0) - valsA.reduce((a,b)=>a+b,0))
+    .map(([nome, vals]) => `
     <tr>
       <td>${esc(nome)}</td>
       ${vals.map(v => `<td>${v > 0 ? fmtRn(v) : '<span class="zero">—</span>'}</td>`).join('')}
