@@ -910,7 +910,7 @@ function abrirModalFornecedores(idx, periodoId) {
       const valor = f.colunas[p.id] || 0;
       return `<td>${valor ? fmtR(valor) : '<span class="zero">—</span>'}</td>`;
     }).join('');
-    return `<tr><td>${esc(f.nome)}</td>${tdCols}<td style="font-weight:700">${fmtR(f.total)}</td></tr>`;
+    return `<tr><td>${esc(f.nome)}</td>${tdCols}</tr>`;
   }).join('');
 
   const periodoLabel = periodoId ? PERIODOS.find(p => p.id === periodoId)?.label : null;
@@ -920,7 +920,7 @@ function abrirModalFornecedores(idx, periodoId) {
     <div class="detalhe-inner">
       <table>
         <thead><tr>
-          <th>Fornecedor</th>${thCols}<th>Total</th>
+          <th>Fornecedor</th>${thCols}
         </tr></thead>
         <tbody>${linhas}</tbody>
       </table>
@@ -1450,11 +1450,10 @@ function abrirModalFornecedoresComp(idx, periodoIdx) {
   const subRows = Object.entries(subMap)
     .map(([nome, vals]) => ({ nome, vals, total: idxs.reduce((s, i) => s + (vals[i] || 0), 0) }))
     .sort((a, b) => b.total - a.total)
-    .map(({ nome, vals, total }) => `
+    .map(({ nome, vals }) => `
     <tr>
       <td>${esc(nome)}</td>
       ${idxs.map(i => `<td>${vals[i] ? fmtRn(vals[i]) : '<span class="zero">—</span>'}</td>`).join('')}
-      <td>${fmtRn(total)}</td>
     </tr>`).join('');
 
   const tituloPeriodo = (periodoIdx != null) ? ' · ' + compPeriodos[periodoIdx].label : '';
@@ -1464,7 +1463,6 @@ function abrirModalFornecedoresComp(idx, periodoIdx) {
       <table>
         <thead><tr>
           <th>Fornecedor / Empenho</th>${thPeriodos}
-          <th style="background:#d4dff5;color:#0f2460">Total</th>
         </tr></thead>
         <tbody>${subRows}</tbody>
       </table>
