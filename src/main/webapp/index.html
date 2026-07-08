@@ -149,9 +149,10 @@
   td.item-nome { color: var(--verde-escuro); font-weight: 600; font-size: 12px; }
   td.zero { color: #d1d5db; }
 
-  tbody tr.item-row { cursor: pointer; }
   tbody tr.item-row:hover td:first-child { color: var(--verde); }
   tbody tr.item-row td:first-child::before { content: '▶ '; font-size: 9px; opacity: .5; }
+  td.valor-clicavel { cursor: pointer; }
+  td.valor-clicavel:hover { background: var(--verde-claro); text-decoration: underline; }
 
   /* MODAL: valor por fornecedor */
   .modal-overlay {
@@ -836,13 +837,14 @@ function renderizar() {
 
   // Linhas
   const rows = GRUPOS.map((g, idx) => {
-    const tdCols = PERIODOS.map(p =>
-      `<td>${g.colunas[p.id] ? fmtR(g.colunas[p.id]) : '<span class="zero">—</span>'}</td>`
-    ).join('');
+    const tdCols = PERIODOS.map(p => {
+      const v = g.colunas[p.id];
+      return `<td class="valor-clicavel" onclick="abrirModalFornecedores(${idx}, '${p.id}')">${v ? fmtR(v) : '<span class="zero">—</span>'}</td>`;
+    }).join('');
     return `
-      <tr class="item-row" id="row-${idx}" onclick="abrirModalFornecedores(${idx})">
-        <td class="item-nome">${esc(g.label)}</td>${tdCols}
-        <td style="font-weight:700">${fmtR(g.total)}</td>
+      <tr class="item-row" id="row-${idx}">
+        <td class="item-nome valor-clicavel" onclick="abrirModalFornecedores(${idx})">${esc(g.label)}</td>${tdCols}
+        <td class="valor-clicavel" style="font-weight:700" onclick="abrirModalFornecedores(${idx})">${fmtR(g.total)}</td>
       </tr>`;
   }).join('');
 
@@ -876,19 +878,25 @@ function ajustarStickyTotal() {
 }
 
 // ─── Detalhe ──────────────────────────────────────────────────────────────
-// Ao clicar num grupo, abre uma caixa (modal) com o valor por fornecedor
-// (maior para o menor), só daquele grupo clicado — nível único.
-function abrirModalFornecedores(idx) {
+// Ao clicar num valor de período, abre uma caixa (modal) com o valor por
+// fornecedor (maior para o menor) daquele período específico. Ao clicar no
+// nome do item ou no Total da linha (periodoId omitido), mostra todos os
+// períodos somados.
+function abrirModalFornecedores(idx, periodoId) {
   const g = GRUPOS[idx];
-  const thCols = PERIODOS.map(p => `<th class="semana">${p.label}</th>`).join('');
+  const periodosFiltro = periodoId ? PERIODOS.filter(p => p.id === periodoId) : PERIODOS;
+  const thCols = periodosFiltro.map(p => `<th class="semana">${p.label}</th>`).join('');
 
-  // Agrupar itens do grupo por fornecedor (nome)
+  // Agrupar itens do grupo por fornecedor (nome), restrito ao período clicado
+  // quando informado.
   const porFornecedor = {};
   g.itens.forEach(it => {
-    const chave = it.nome || '—';
-    if (!porFornecedor[chave]) porFornecedor[chave] = { nome: chave, colunas: {}, total: 0 };
     const dataRef = it.dataPgto || it.dataVcto;
     const colPeriodo = dataRef ? encontrarPeriodo(dataRef) : null;
+    if (periodoId && colPeriodo !== periodoId) return;
+
+    const chave = it.nome || '—';
+    if (!porFornecedor[chave]) porFornecedor[chave] = { nome: chave, colunas: {}, total: 0 };
     if (colPeriodo) {
       porFornecedor[chave].colunas[colPeriodo] = (porFornecedor[chave].colunas[colPeriodo] || 0) + (it.realizado || 0);
     }
@@ -898,14 +906,16 @@ function abrirModalFornecedores(idx) {
   const fornecedoresArr = Object.values(porFornecedor).sort((a, b) => b.total - a.total);
 
   const linhas = fornecedoresArr.map(f => {
-    const tdCols = PERIODOS.map(p => {
+    const tdCols = periodosFiltro.map(p => {
       const valor = f.colunas[p.id] || 0;
       return `<td>${valor ? fmtR(valor) : '<span class="zero">—</span>'}</td>`;
     }).join('');
     return `<tr><td>${esc(f.nome)}</td>${tdCols}<td style="font-weight:700">${fmtR(f.total)}</td></tr>`;
   }).join('');
 
-  document.getElementById('modalFornecedoresTitulo').textContent = 'Valor por Fornecedor — ' + g.label;
+  const periodoLabel = periodoId ? PERIODOS.find(p => p.id === periodoId)?.label : null;
+  document.getElementById('modalFornecedoresTitulo').textContent =
+    'Valor por Fornecedor — ' + g.label + (periodoLabel ? ' · ' + periodoLabel : '');
   document.getElementById('modalFornecedoresBody').innerHTML = `
     <div class="detalhe-inner">
       <table>
@@ -1377,14 +1387,14 @@ function renderComparativo(resultados) {
 
   // Linhas
   const rows = todosGrupos.map((g, idx) => {
-    const tdPeriodos = g.totaisPorPeriodo.map(v =>
-      `<td>${v > 0 ? fmtRn(v) : '<span class="zero">—</span>'}</td>`).join('');
+    const tdPeriodos = g.totaisPorPeriodo.map((v, pi) =>
+      `<td class="valor-clicavel" onclick="abrirModalFornecedoresComp(${idx}, ${pi})">${v > 0 ? fmtRn(v) : '<span class="zero">—</span>'}</td>`).join('');
     return `
-      <tr class="item-row" id="crow-${idx}" onclick="abrirModalFornecedoresComp(${idx})">
-        <td class="item-nome">${esc(g.label)}</td>
+      <tr class="item-row" id="crow-${idx}">
+        <td class="item-nome valor-clicavel" onclick="abrirModalFornecedoresComp(${idx})">${esc(g.label)}</td>
         ${tdPeriodos}
-        <td style="font-weight:700;color:${g.totaisPorPeriodo.length>=2&&(g.totaisPorPeriodo[g.totaisPorPeriodo.length-1]-g.totaisPorPeriodo[0])>=0?'#166534':'#dc2626'}">${fmtRn(g.totaisPorPeriodo.length>=2 ? g.totaisPorPeriodo[g.totaisPorPeriodo.length-1]-g.totaisPorPeriodo[0] : g.totalGeral)}</td>
-        <td style="font-weight:700;color:${g.totaisPorPeriodo.length>=2&&(g.totaisPorPeriodo[g.totaisPorPeriodo.length-1]-g.totaisPorPeriodo[0])>=0?'#166534':'#dc2626'}">${g.totaisPorPeriodo.length>=2&&g.totaisPorPeriodo[0]!==0?((g.totaisPorPeriodo[g.totaisPorPeriodo.length-1]-g.totaisPorPeriodo[0])/Math.abs(g.totaisPorPeriodo[0])*100).toFixed(1)+"%":"—"}</td>
+        <td class="valor-clicavel" onclick="abrirModalFornecedoresComp(${idx})" style="font-weight:700;color:${g.totaisPorPeriodo.length>=2&&(g.totaisPorPeriodo[g.totaisPorPeriodo.length-1]-g.totaisPorPeriodo[0])>=0?'#166534':'#dc2626'}">${fmtRn(g.totaisPorPeriodo.length>=2 ? g.totaisPorPeriodo[g.totaisPorPeriodo.length-1]-g.totaisPorPeriodo[0] : g.totalGeral)}</td>
+        <td class="valor-clicavel" onclick="abrirModalFornecedoresComp(${idx})" style="font-weight:700;color:${g.totaisPorPeriodo.length>=2&&(g.totaisPorPeriodo[g.totaisPorPeriodo.length-1]-g.totaisPorPeriodo[0])>=0?'#166534':'#dc2626'}">${g.totaisPorPeriodo.length>=2&&g.totaisPorPeriodo[0]!==0?((g.totaisPorPeriodo[g.totaisPorPeriodo.length-1]-g.totaisPorPeriodo[0])/Math.abs(g.totaisPorPeriodo[0])*100).toFixed(1)+"%":"—"}</td>
       </tr>`;
   }).join('');
 
@@ -1415,34 +1425,40 @@ function renderComparativo(resultados) {
 }
 
 // Abre a caixa (modal) com o valor por fornecedor/empenho (maior para o
-// menor), só do grupo clicado.
-function abrirModalFornecedoresComp(idx) {
+// menor), só do grupo clicado. Se periodoIdx for informado, mostra só
+// aquele período; caso contrário, todos os períodos somados.
+function abrirModalFornecedoresComp(idx, periodoIdx) {
   const g = window._compGrupos[idx];
+  const idxs = (periodoIdx != null) ? [periodoIdx] : compPeriodos.map((_, i) => i);
 
-  const thPeriodos = compPeriodos.map((p, i) =>
-    `<th style="background:#d4dff5;color:${COR_COLS[i%COR_COLS.length]}">${esc(p.label)}</th>`).join('');
+  const thPeriodos = idxs.map(i =>
+    `<th style="background:#d4dff5;color:${COR_COLS[i%COR_COLS.length]}">${esc(compPeriodos[i].label)}</th>`).join('');
 
-  // Linhas de detalhe por fornecedor/empenho dentro do grupo
+  // Linhas de detalhe por fornecedor/empenho dentro do grupo, restrito ao
+  // período clicado quando informado.
   const agrupar = document.getElementById('agrupar').value;
   const subMap = {};
   window._compResultados.forEach((dados, pi) => {
+    if (!idxs.includes(pi)) return;
     dados.filter(d => getChave(d, agrupar) === g.chave).forEach(d => {
       const k = d.nome || d.descEmpenho || '—';
-      if (!subMap[k]) subMap[k] = new Array(compPeriodos.length).fill(0);
-      subMap[k][pi] += (d.realizado || 0);
+      if (!subMap[k]) subMap[k] = {};
+      subMap[k][pi] = (subMap[k][pi] || 0) + (d.realizado || 0);
     });
   });
 
   const subRows = Object.entries(subMap)
-    .sort(([, valsA], [, valsB]) => valsB.reduce((a,b)=>a+b,0) - valsA.reduce((a,b)=>a+b,0))
-    .map(([nome, vals]) => `
+    .map(([nome, vals]) => ({ nome, vals, total: idxs.reduce((s, i) => s + (vals[i] || 0), 0) }))
+    .sort((a, b) => b.total - a.total)
+    .map(({ nome, vals, total }) => `
     <tr>
       <td>${esc(nome)}</td>
-      ${vals.map(v => `<td>${v > 0 ? fmtRn(v) : '<span class="zero">—</span>'}</td>`).join('')}
-      <td>${fmtRn(vals.reduce((a,b)=>a+b,0))}</td>
+      ${idxs.map(i => `<td>${vals[i] ? fmtRn(vals[i]) : '<span class="zero">—</span>'}</td>`).join('')}
+      <td>${fmtRn(total)}</td>
     </tr>`).join('');
 
-  document.getElementById('modalFornecedoresTitulo').textContent = 'Valor por Fornecedor — ' + g.label;
+  const tituloPeriodo = (periodoIdx != null) ? ' · ' + compPeriodos[periodoIdx].label : '';
+  document.getElementById('modalFornecedoresTitulo').textContent = 'Valor por Fornecedor — ' + g.label + tituloPeriodo;
   document.getElementById('modalFornecedoresBody').innerHTML = `
     <div class="detalhe-inner">
       <table>
