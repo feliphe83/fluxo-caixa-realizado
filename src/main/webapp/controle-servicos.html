@@ -243,7 +243,7 @@
       <div class="campo">
         <label>Fornecedor (código)</label>
         <input type="text" id="fornecedor" placeholder="Ex: 3092, 150071">
-        <div class="hint">Código(s) de fazenda do fornecedor/proprietário. Separe por vírgula. Deixe vazio para todos.</div>
+        <div class="hint">Código(s) de fornecedor (material.fornecedor). Separe por vírgula. Deixe vazio para todos.</div>
       </div>
       <div class="campo">
         <label>Data Início</label>
@@ -340,7 +340,7 @@ async function gerarRelatorio() {
     DADOS_RAW = j.data;
     if (fornecedor) {
       const codigos = parseCodigos(fornecedor);
-      DADOS_RAW = DADOS_RAW.filter(d => codigos.includes(String(d.codFazendaOrigem)));
+      DADOS_RAW = DADOS_RAW.filter(d => codigos.includes(String(d.codFornecedor)));
     }
     montarGrupos();
     renderizarTabela();

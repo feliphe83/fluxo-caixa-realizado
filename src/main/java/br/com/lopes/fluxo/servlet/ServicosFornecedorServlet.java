@@ -38,7 +38,10 @@ public class ServicosFornecedorServlet extends HttpServlet {
         "SELECT '1' EMPRESA, tipo, origem, cod_equipamento cod_funcionario, " +
         "rh.fn_nomefuncionario(1,cod_equipamento) nome, cod_fazenda_origem, cod_codservico, desc_servico, " +
         "(select f.descricao from agricola.fazenda f where f.cod_fazenda = cod_fazenda_origem) descrica, " +
-        "desc_fornecedor, sum(qtd_apontada), data_movimento, sum(valor_total), MAX(unidade) unidade, MAX(descobjeto) descobjeto " +
+        "desc_fornecedor, " +
+        "(select max(f.cod_fornecedor) from material.fornecedor f, rh.pessoa p " +
+        "where p.cod_pessoa = f.cod_pessoa and upper(trim(p.nome)) = upper(trim(desc_fornecedor))) cod_fornecedor, " +
+        "sum(qtd_apontada), data_movimento, sum(valor_total), MAX(unidade) unidade, MAX(descobjeto) descobjeto " +
         "FROM ( " +
         "select 'MÃO DE OBRA' tipo, 'TRANSPORTE DE PESSOAL' origem, a.dt_apontamento data_movimento, " +
         "te.cod_tipoequipamento, te.descricaotipoequipamento, it.cod_equipamento, e.descricao desc_equipamento, " +
@@ -225,14 +228,15 @@ public class ServicosFornecedorServlet extends HttpServlet {
                 o.addProperty("descServico",      rs.getString(8));
                 o.addProperty("descFazenda",      rs.getString(9));
                 o.addProperty("descFornecedor",   rs.getString(10));
-                o.addProperty("qtdApontada",      rs.getBigDecimal(11));
+                o.addProperty("codFornecedor",    rs.getString(11));
+                o.addProperty("qtdApontada",      rs.getBigDecimal(12));
 
-                java.sql.Date dataMov = rs.getDate(12);
+                java.sql.Date dataMov = rs.getDate(13);
                 o.addProperty("dataMovimento", dataMov != null ? dataMov.toString() : null);
 
-                o.addProperty("valorTotal",       rs.getBigDecimal(13));
-                o.addProperty("unidade",          rs.getString(14));
-                o.addProperty("descObjeto",       rs.getString(15));
+                o.addProperty("valorTotal",       rs.getBigDecimal(14));
+                o.addProperty("unidade",          rs.getString(15));
+                o.addProperty("descObjeto",       rs.getString(16));
                 arr.add(o);
             }
 
