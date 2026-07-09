@@ -43,6 +43,7 @@ public class AgroChatServlet extends HttpServlet {
 
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(15))
+            .version(HttpClient.Version.HTTP_1_1)
             .build();
 
     @Override
