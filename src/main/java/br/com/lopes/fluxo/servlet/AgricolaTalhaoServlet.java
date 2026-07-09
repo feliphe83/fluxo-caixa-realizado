@@ -23,12 +23,20 @@ import java.util.logging.Logger;
  *
  * GET /api/agricola/talhoes?safra=NNNN
  *
- * Resposta: { "ok": true, "data": [ { ...colunas da consulta... }, ... ] }
+ * Resposta: { "ok": true, "totalEncontrado": N, "truncado": bool,
+ *             "data": [ { ...colunas da consulta... }, ... ] }
+ *
+ * O resultado é limitado a MAX_LINHAS registros — uma safra inteira pode ter
+ * centenas de talhões, e devolver tudo de uma vez estoura o limite de
+ * contexto do modelo de IA (já aconteceu com Groq e OpenAI durante os
+ * testes). Se truncado, o agente é instruído (via system prompt) a avisar
+ * o usuário e sugerir uma pergunta mais específica.
  */
 @WebServlet("/api/agricola/talhoes")
 public class AgricolaTalhaoServlet extends HttpServlet {
 
     private static final Logger LOG = Logger.getLogger(AgricolaTalhaoServlet.class.getName());
+    private static final int MAX_LINHAS = 40;
 
     private final Gson gson = new Gson();
     private final AgricolaTalhaoDAO dao = new AgricolaTalhaoDAO();
@@ -51,9 +59,15 @@ public class AgricolaTalhaoServlet extends HttpServlet {
 
             List<Map<String, Object>> lista = dao.buscar(safra.trim());
 
+            int total = lista.size();
+            boolean truncado = total > MAX_LINHAS;
+            List<Map<String, Object>> listaLimitada = truncado ? lista.subList(0, MAX_LINHAS) : lista;
+
             JsonObject resultado = new JsonObject();
             resultado.addProperty("ok", true);
-            resultado.add("data", gson.toJsonTree(lista));
+            resultado.addProperty("totalEncontrado", total);
+            resultado.addProperty("truncado", truncado);
+            resultado.add("data", gson.toJsonTree(listaLimitada));
             out.print(gson.toJson(resultado));
 
         } catch (Exception e) {
