@@ -28,6 +28,22 @@ public class AuthFilter implements Filter {
         String uri = hreq.getRequestURI();
         String ctx = hreq.getContextPath();
 
+        // Rotas do chatbot agrícola (chamadas pelo n8n, sem sessão de navegador) —
+        // autenticadas por chave de API própria em vez de login.
+        if (uri.startsWith(ctx + "/api/agricola/")) {
+            String chave = hreq.getHeader("X-Agro-Api-Key");
+            String esperada = System.getenv("AGRO_API_KEY");
+            if (esperada != null && !esperada.isBlank() && esperada.equals(chave)) {
+                chain.doFilter(req, res);
+            } else {
+                hresp.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                hresp.setContentType("application/json;charset=UTF-8");
+                hresp.getWriter().print("{\"ok\":false,\"erro\":\"Chave de API inválida ou não configurada\"}");
+                hresp.getWriter().flush();
+            }
+            return;
+        }
+
         // Recursos liberados sem autenticação
         boolean liberado =
             uri.equals(ctx + "/login.html")              ||

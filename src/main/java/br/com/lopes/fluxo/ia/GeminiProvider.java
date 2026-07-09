@@ -13,12 +13,13 @@ import java.time.Duration;
  *     (obtida em https://aistudio.google.com)
  *
  * Para trocar de modelo, altere a constante MODEL abaixo.
- * Modelos disponíveis (jun/2026): gemini-2.0-flash, gemini-2.0-pro, etc.
+ * gemini-2.0-flash-lite foi desativado pelo Google (jul/2026); modelo atual
+ * recomendado da família "flash-lite": gemini-2.5-flash-lite.
  * Consulte https://ai.google.dev/gemini-api/docs/models para a lista atual.
  */
 public class GeminiProvider implements IaProvider {
 
-    private static final String MODEL = "gemini-2.0-flash-lite";
+    private static final String MODEL = "gemini-2.5-flash-lite";
     private static final String API_URL =
         "https://generativelanguage.googleapis.com/v1beta/models/" + MODEL + ":generateContent";
 

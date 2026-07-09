@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Assistente Agrícola — USC</title>
+<style>
+  :root {
+    --verde: #1a3a7c;
+    --verde-escuro: #0f2460;
+    --verde-claro: #e8eef8;
+    --creme: #F5F0E8;
+    --cinza: #6b7280;
+    --cinza-claro: #f3f4f6;
+    --border: #d1d5db;
+    --text: #1f2937;
+    --white: #ffffff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--creme); color: var(--text); font-size: 13px; height: 100vh; display: flex; flex-direction: column; }
+
+  .header {
+    background: var(--verde-escuro); color: white;
+    padding: 16px 24px; display: flex; align-items: center; gap: 14px; flex-shrink: 0;
+  }
+  .logo-box {
+    width: 44px; height: 44px; background: white; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; font-weight: 800; color: var(--verde-escuro); flex-shrink: 0;
+  }
+  .header-title { font-size: 18px; font-weight: 800; letter-spacing: -0.3px; }
+  .header-sub   { font-size: 12px; opacity: .85; margin-top: 2px; }
+
+  .nav-tabs { display: flex; gap: 8px; }
+  .nav-tab {
+    display: flex; align-items: center; gap: 7px;
+    padding: 8px 18px; border-radius: 8px;
+    border: 1.5px solid rgba(255,255,255,0.25);
+    background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.75);
+    font-size: 13px; font-weight: 600; cursor: pointer; transition: all .18s;
+  }
+  .nav-tab:hover { background: rgba(255,255,255,0.2); color: white; border-color: rgba(255,255,255,0.5); }
+
+  .chat-wrap {
+    flex: 1; max-width: 860px; width: 100%; margin: 0 auto;
+    display: flex; flex-direction: column; min-height: 0; padding: 20px 24px;
+  }
+
+  .chat-mensagens {
+    flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 14px;
+    padding: 8px 4px 16px;
+  }
+
+  .msg { display: flex; gap: 10px; max-width: 85%; }
+  .msg.usuario { align-self: flex-end; flex-direction: row-reverse; }
+  .msg-avatar {
+    width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; color: white;
+  }
+  .msg.bot .msg-avatar { background: var(--verde-escuro); }
+  .msg.usuario .msg-avatar { background: #16a34a; }
+  .msg-bolha {
+    background: white; border: 1px solid var(--border); border-radius: 12px;
+    padding: 10px 14px; font-size: 13.5px; line-height: 1.5; white-space: pre-wrap;
+  }
+  .msg.usuario .msg-bolha { background: var(--verde-escuro); color: white; border-color: var(--verde-escuro); }
+  .msg.erro .msg-bolha { background: #fef2f2; border-color: #fca5a5; color: #b91c1c; }
+
+  .msg-loading .msg-bolha { display: flex; gap: 4px; align-items: center; padding: 12px 16px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--cinza); animation: pulse 1.2s infinite ease-in-out; }
+  .dot:nth-child(2) { animation-delay: .2s; }
+  .dot:nth-child(3) { animation-delay: .4s; }
+  @keyframes pulse { 0%, 80%, 100% { opacity: .3; } 40% { opacity: 1; } }
+
+  .chat-vazio { text-align: center; color: var(--cinza); padding: 60px 24px; margin: auto; }
+  .chat-vazio svg { width: 40px; height: 40px; opacity: .35; margin-bottom: 10px; }
+  .chat-vazio p { font-size: 13.5px; }
+  .chat-vazio .exemplos { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+  .exemplo-btn {
+    background: white; border: 1.5px solid var(--border); border-radius: 8px;
+    padding: 8px 14px; font-size: 12.5px; color: var(--verde-escuro); cursor: pointer; transition: all .15s;
+  }
+  .exemplo-btn:hover { border-color: var(--verde); background: var(--verde-claro); }
+
+  .chat-input-bar {
+    display: flex; gap: 10px; padding: 14px 0 4px; flex-shrink: 0;
+    border-top: 1px solid var(--border);
+  }
+  .chat-input-bar textarea {
+    flex: 1; resize: none; border: 1.5px solid var(--border); border-radius: 10px;
+    padding: 10px 14px; font-size: 13.5px; font-family: inherit; background: white;
+    max-height: 120px; min-height: 42px; line-height: 1.4;
+  }
+  .chat-input-bar textarea:focus { outline: none; border-color: var(--verde); }
+  .btn-enviar {
+    background: var(--verde); color: white; border: none; border-radius: 10px;
+    padding: 0 20px; font-weight: 700; font-size: 13px; cursor: pointer; transition: background .15s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .btn-enviar:hover:not(:disabled) { background: var(--verde-escuro); }
+  .btn-enviar:disabled { background: #9ca3af; cursor: not-allowed; }
+</style>
+  <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0f2460">
+</head>
+<body>
+
+<div class="header">
+  <div class="logo-box">USC</div>
+  <div style="flex:1">
+    <div class="header-title">Assistente Agrícola</div>
+    <div class="header-sub">Insumos e talhões · Usina Santa Clotilde S/A</div>
+  </div>
+  <div class="nav-tabs">
+    <button class="nav-tab" onclick="window.location.href='hub.html'">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      Voltar ao Hub
+    </button>
+  </div>
+</div>
+
+<div class="chat-wrap">
+  <div class="chat-mensagens" id="chatMensagens">
+    <div class="chat-vazio" id="chatVazio">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.97-4.03 9-9 9a9.01 9.01 0 01-5.24-1.67L3 21l1.67-3.76A8.96 8.96 0 013 12c0-4.97 4.03-9 9-9s9 4.03 9 9z"/>
+      </svg>
+      <p>Pergunte sobre insumos agrícolas ou talhões. Ex:</p>
+      <div class="exemplos">
+        <button class="exemplo-btn" onclick="enviarExemplo(this)">Quanto de adubo foi usado na fazenda 12 em junho de 2026?</button>
+        <button class="exemplo-btn" onclick="enviarExemplo(this)">Quais talhões da safra 2025/2026 têm cana com mais de 12 meses?</button>
+        <button class="exemplo-btn" onclick="enviarExemplo(this)">Resuma os insumos aplicados na última semana</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="chat-input-bar">
+    <textarea id="chatInput" placeholder="Digite sua pergunta…" rows="1" onkeydown="aoTeclar(event)"></textarea>
+    <button class="btn-enviar" id="btnEnviar" onclick="enviarPergunta()">Enviar</button>
+  </div>
+</div>
+
+<script>
+let SESSION_ID = sessionStorage.getItem('agroChatSessionId');
+if (!SESSION_ID) {
+  SESSION_ID = 'web-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
+  sessionStorage.setItem('agroChatSessionId', SESSION_ID);
+}
+
+fetch('api/sessao').then(r => r.json()).then(j => {
+  if (!j || !j.logon) window.location.href = 'login.html';
+}).catch(() => { window.location.href = 'login.html'; });
+
+const chatMensagens = document.getElementById('chatMensagens');
+const chatInput     = document.getElementById('chatInput');
+const btnEnviar     = document.getElementById('btnEnviar');
+
+function aoTeclar(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    enviarPergunta();
+  }
+}
+
+chatInput.addEventListener('input', () => {
+  chatInput.style.height = 'auto';
+  chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + 'px';
+});
+
+function enviarExemplo(btn) {
+  chatInput.value = btn.textContent;
+  enviarPergunta();
+}
+
+function removerVazio() {
+  const vazio = document.getElementById('chatVazio');
+  if (vazio) vazio.remove();
+}
+
+function addMensagem(tipo, texto) {
+  removerVazio();
+  const div = document.createElement('div');
+  div.className = 'msg ' + tipo;
+  const avatar = tipo === 'usuario' ? 'Eu' : 'IA';
+  div.innerHTML = `<div class="msg-avatar">${avatar}</div><div class="msg-bolha"></div>`;
+  div.querySelector('.msg-bolha').textContent = texto;
+  chatMensagens.appendChild(div);
+  chatMensagens.scrollTop = chatMensagens.scrollHeight;
+  return div;
+}
+
+function addLoading() {
+  removerVazio();
+  const div = document.createElement('div');
+  div.className = 'msg bot msg-loading';
+  div.innerHTML = `<div class="msg-avatar">IA</div><div class="msg-bolha"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>`;
+  chatMensagens.appendChild(div);
+  chatMensagens.scrollTop = chatMensagens.scrollHeight;
+  return div;
+}
+
+async function enviarPergunta() {
+  const pergunta = chatInput.value.trim();
+  if (!pergunta) return;
+
+  chatInput.value = '';
+  chatInput.style.height = 'auto';
+  btnEnviar.disabled = true;
+
+  addMensagem('usuario', pergunta);
+  const loadingEl = addLoading();
+
+  try {
+    const resp = await fetch('api/ia/agro-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pergunta, sessionId: SESSION_ID })
+    });
+    const json = await resp.json();
+    loadingEl.remove();
+
+    if (!json.ok) {
+      addMensagem('bot erro', json.erro || 'Não foi possível obter resposta do assistente.');
+    } else {
+      addMensagem('bot', json.resposta || '(resposta vazia)');
+    }
+  } catch (e) {
+    loadingEl.remove();
+    addMensagem('bot erro', 'Falha de comunicação com o assistente: ' + e.message);
+  } finally {
+    btnEnviar.disabled = false;
+    chatInput.focus();
+  }
+}
+</script>
+
+</body>
+</html>
