@@ -146,6 +146,18 @@
       margin: 10mm;
       size: landscape;
     }
+
+    /* Resumo (relatório em PDF) sempre em retrato, independente do
+       tamanho de página padrão acima usado pela tabela de resultado.
+       "page" é herdado, então aplicar no body cobre o cabeçalho de
+       impressão e o próprio conteúdo do resumo. */
+    @page resumo {
+      margin: 10mm;
+      size: portrait;
+    }
+    body.modo-resumo {
+      page: resumo;
+    }
   }
 
   #cabecalhoImpressao { display: none; }
