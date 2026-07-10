@@ -794,7 +794,7 @@ function renderizar() {
   const nPeriodos = parseInt(document.getElementById('numPeriodos').value) || 4;
   const fim       = calcularFim(new Date(dataIni + 'T00:00:00'), nPeriodos, period);
 
-  PERIODOS = gerarPeriodos(dataIni, fmt8(fim), period);
+  PERIODOS = gerarPeriodos(dataIni, fmt8(fim), period, nPeriodos);
 
   const dados = getDadosFiltrados();
 
@@ -983,7 +983,10 @@ document.addEventListener('keydown', e => {
 });
 
 // ─── Períodos ─────────────────────────────────────────────────────────────
-function gerarPeriodos(ini, fim, tipo) {
+function gerarPeriodos(ini, fim, tipo, nPeriodos) {
+  // Semanal com 1 única semana: mostrar dia a dia em vez de uma coluna só
+  if (tipo === 'semanal' && nPeriodos === 1) tipo = 'diario';
+
   const periodos = [];
   let cur = new Date(ini + 'T00:00:00');
   const fimDate = new Date(fim + 'T00:00:00');
