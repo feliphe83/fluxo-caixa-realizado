@@ -390,7 +390,7 @@ public class AgricolaInsumoDAO {
 
         } catch (SQLException e) {
             LOG.log(Level.SEVERE, "Erro ao buscar insumos: " + e.getMessage(), e);
-            throw new RuntimeException("Falha na consulta de insumos", e);
+            throw new RuntimeException("Falha na consulta de insumos: " + e.getMessage(), e);
         }
     }
 }
