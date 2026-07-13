@@ -1,6 +1,7 @@
 package br.com.lopes.fluxo.servlet;
 
 import br.com.lopes.fluxo.dao.AgricolaTalhaoDAO;
+import br.com.lopes.fluxo.util.AgroConsultaCache;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
@@ -58,6 +59,11 @@ public class AgricolaTalhaoServlet extends HttpServlet {
             }
 
             List<Map<String, Object>> lista = dao.buscar(safra.trim());
+
+            // Guarda o resultado COMPLETO para exportação (Excel/PDF) pelo
+            // front-end do chat — o agente de IA só recebe a versão truncada.
+            String sessionId = req.getParameter("sessionId");
+            AgroConsultaCache.guardar(sessionId, "Talhões — Safra " + safra.trim(), lista);
 
             int total = lista.size();
             boolean truncado = total > MAX_LINHAS;

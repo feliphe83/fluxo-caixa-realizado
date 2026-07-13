@@ -99,6 +99,29 @@
   }
   .btn-enviar:hover:not(:disabled) { background: var(--verde-escuro); }
   .btn-enviar:disabled { background: #9ca3af; cursor: not-allowed; }
+
+  /* Área usada apenas para exportar a última consulta do banco em PDF */
+  #printArea { display: none; }
+
+  @page { size: A4 landscape; margin: 10mm; }
+  @media print {
+    body { height: auto; display: block; background: white; }
+    .header, .chat-wrap { display: none !important; }
+    #printArea { display: block; }
+    #printArea h1 {
+      font-size: 15px; color: var(--verde-escuro);
+      padding-bottom: 8px; border-bottom: 2px solid var(--verde-escuro);
+    }
+    #printArea .print-meta { font-size: 10px; color: var(--cinza); margin: 4px 0 12px; }
+    #printArea h2.print-titulo { font-size: 11px; color: var(--verde-escuro); margin: 14px 0 4px; page-break-after: avoid; }
+    #printArea table { border-collapse: collapse; width: 100%; }
+    #printArea th, #printArea td {
+      border: 0.5px solid #999; padding: 2px 4px;
+      font-size: 6.5px; text-align: left; word-break: break-word;
+    }
+    #printArea th { background: #e8eef8; font-weight: 700; font-size: 7px; }
+    #printArea tr { page-break-inside: avoid; }
+  }
 </style>
   <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
@@ -115,12 +138,22 @@
     <div class="header-sub">Insumos e talhões · Usina Santa Clotilde S/A</div>
   </div>
   <div class="nav-tabs">
+    <button class="nav-tab" onclick="exportarExcel()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
+      Excel
+    </button>
+    <button class="nav-tab" onclick="exportarPDF()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      PDF
+    </button>
     <button class="nav-tab" onclick="window.location.href='hub.html'">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
       Voltar ao Hub
     </button>
   </div>
 </div>
+
+<div id="printArea"></div>
 
 <div class="chat-wrap">
   <div class="chat-mensagens" id="chatMensagens">
@@ -133,6 +166,7 @@
         <button class="exemplo-btn" onclick="enviarExemplo(this)">Quanto de adubo foi usado na fazenda 12 em junho de 2026?</button>
         <button class="exemplo-btn" onclick="enviarExemplo(this)">Quais talhões da safra 2025/2026 têm cana com mais de 12 meses?</button>
         <button class="exemplo-btn" onclick="enviarExemplo(this)">Resuma os insumos aplicados na última semana</button>
+        <button class="exemplo-btn" onclick="enviarExemplo(this)">Gere um excel com os talhões da safra 2025/2026</button>
       </div>
     </div>
   </div>
@@ -143,6 +177,7 @@
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 let SESSION_ID = sessionStorage.getItem('agroChatSessionId');
 if (!SESSION_ID) {
@@ -192,6 +227,134 @@ function addMensagem(tipo, texto) {
   return div;
 }
 
+// ─── Export das consultas ao banco ───────────────────────────────────────
+// A exportação usa os DADOS BRUTOS das consultas feitas pelo agente no
+// Oracle (guardados no servidor por sessão) — não o texto da conversa.
+// Uma pergunta pode gerar mais de uma consulta (ex.: comparativo entre duas
+// safras): cada consulta vira uma aba no Excel / uma tabela no PDF.
+
+async function buscarConsultas(desde) {
+  try {
+    let url = 'api/ia/agro-ultima-consulta?sessionId=' + encodeURIComponent(SESSION_ID);
+    if (desde) url += '&desde=' + desde;
+    const r = await fetch(url);
+    const j = await r.json();
+    if (!j || !j.ok || !Array.isArray(j.consultas)) return [];
+    return j.consultas.filter(c => c.data && c.data.length > 0);
+  } catch (e) {
+    return [];
+  }
+}
+
+function detectarExport(pergunta) {
+  const p = pergunta.toLowerCase();
+  const querExcel = /\b(excel|planilha|xlsx)\b/.test(p);
+  const querPdf   = /\bpdf\b/.test(p);
+  const generico  = /\b(exportar?|exporte|baixar|baixe|download)\b/.test(p);
+  return { excel: querExcel || (generico && !querPdf), pdf: querPdf };
+}
+
+function nomeAba(titulo, indice, usados) {
+  let nome = (titulo || 'Consulta ' + (indice + 1))
+    .replace(/[\\\/\?\*\[\]:]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 28);
+  let unico = nome, n = 2;
+  while (usados.has(unico)) unico = nome.slice(0, 25) + ' (' + (n++) + ')';
+  usados.add(unico);
+  return unico;
+}
+
+function exportarExcelDados(consultas) {
+  const wb = XLSX.utils.book_new();
+  const usados = new Set();
+
+  consultas.forEach((consulta, i) => {
+    const dados = consulta.data;
+    const colunas = Object.keys(dados[0]);
+
+    const ws = XLSX.utils.json_to_sheet(dados, { header: colunas });
+
+    // Largura das colunas conforme o conteúdo (limitada a 40 caracteres)
+    ws['!cols'] = colunas.map(c => {
+      let w = c.length;
+      for (const linha of dados) {
+        const v = linha[c];
+        if (v != null) w = Math.max(w, String(v).length);
+      }
+      return { wch: Math.min(w + 2, 40) };
+    });
+
+    XLSX.utils.book_append_sheet(wb, ws, nomeAba(consulta.titulo, i, usados));
+  });
+
+  XLSX.writeFile(wb, 'consulta_agricola_USC.xlsx');
+}
+
+function exportarPDFDados(consultas) {
+  const agora = new Date();
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  let html = '<h1>Assistente Agrícola — Usina Santa Clotilde S/A</h1>';
+  html += '<p class="print-meta">Exportado em ' + agora.toLocaleDateString('pt-BR') + ' às '
+        + agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + '</p>';
+
+  for (const consulta of consultas) {
+    const dados = consulta.data;
+
+    // Descarta colunas totalmente vazias (o Excel mantém tudo; no PDF o
+    // espaço horizontal é escasso)
+    const colunas = Object.keys(dados[0]).filter(c => dados.some(l => l[c] != null && l[c] !== ''));
+
+    html += '<h2 class="print-titulo">' + esc(consulta.titulo || 'Consulta Agrícola')
+          + ' · ' + dados.length + ' registro(s)</h2>';
+    html += '<table><thead><tr>' + colunas.map(c => '<th>' + esc(c) + '</th>').join('') + '</tr></thead><tbody>';
+    for (const linha of dados) {
+      html += '<tr>' + colunas.map(c => '<td>' + (linha[c] != null ? esc(linha[c]) : '') + '</td>').join('') + '</tr>';
+    }
+    html += '</tbody></table>';
+  }
+
+  document.getElementById('printArea').innerHTML = html;
+  window.print();
+}
+
+const MSG_SEM_CONSULTA = 'Nenhuma consulta ao banco encontrada nesta conversa. Faça uma pergunta ao assistente primeiro (ex.: talhões da safra).';
+
+async function exportarExcel() {
+  const consultas = await buscarConsultas(0);
+  if (consultas.length === 0) { alert(MSG_SEM_CONSULTA); return; }
+  exportarExcelDados(consultas);
+}
+
+async function exportarPDF() {
+  const consultas = await buscarConsultas(0);
+  if (consultas.length === 0) { alert(MSG_SEM_CONSULTA); return; }
+  exportarPDFDados(consultas);
+}
+
+async function processarPedidoExport(pergunta, marco) {
+  const intent = detectarExport(pergunta);
+  if (!intent.excel && !intent.pdf) return;
+
+  // Preferir as consultas geradas por ESTA pergunta; se o agente respondeu
+  // sem consultar de novo (ex.: "agora gere o excel disso"), usar as últimas.
+  let consultas = await buscarConsultas(marco);
+  if (consultas.length === 0) consultas = await buscarConsultas(0);
+
+  if (consultas.length === 0) {
+    addMensagem('bot', 'Você pediu um arquivo, mas ainda não há nenhuma consulta ao banco nesta conversa para exportar. Pergunte algo sobre os talhões primeiro.');
+    return;
+  }
+
+  const formatos = [];
+  if (intent.excel) { exportarExcelDados(consultas); formatos.push('Excel'); }
+  if (intent.pdf)   { exportarPDFDados(consultas);   formatos.push('PDF'); }
+
+  const titulos = consultas.map(c => c.titulo || 'Consulta Agrícola').join('; ');
+  const totalLinhas = consultas.reduce((soma, c) => soma + c.data.length, 0);
+  addMensagem('bot', '📎 ' + formatos.join(' e ') + ' gerado com os dados de: ' + titulos
+    + ' (' + totalLinhas + ' registros no total). Verifique os downloads do navegador.');
+}
+
 function addLoading() {
   removerVazio();
   const div = document.createElement('div');
@@ -213,6 +376,15 @@ async function enviarPergunta() {
   addMensagem('usuario', pergunta);
   const loadingEl = addLoading();
 
+  // Se a pergunta pede um arquivo, marca o momento atual para depois saber
+  // quais consultas ao banco foram geradas por ELA (e não por perguntas antigas).
+  const intent = detectarExport(pergunta);
+  let marco = 0;
+  if (intent.excel || intent.pdf) {
+    const antes = await buscarConsultas(0);
+    marco = antes.reduce((m, c) => Math.max(m, c.timestamp || 0), 0);
+  }
+
   try {
     const resp = await fetch('api/ia/agro-chat', {
       method: 'POST',
@@ -226,6 +398,7 @@ async function enviarPergunta() {
       addMensagem('bot erro', json.erro || 'Não foi possível obter resposta do assistente.');
     } else {
       addMensagem('bot', json.resposta || '(resposta vazia)');
+      await processarPedidoExport(pergunta, marco);
     }
   } catch (e) {
     loadingEl.remove();
