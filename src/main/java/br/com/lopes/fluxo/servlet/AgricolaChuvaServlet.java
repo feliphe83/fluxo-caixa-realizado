@@ -40,7 +40,9 @@ import java.util.logging.Logger;
 public class AgricolaChuvaServlet extends HttpServlet {
 
     private static final Logger LOG = Logger.getLogger(AgricolaChuvaServlet.class.getName());
-    private static final int MAX_LINHAS = 40;
+    // Linhas de chuva são pequenas (5 campos); 120 cobre um ano de somas
+    // mensais de todos os pontos de coleta sem estourar o contexto do modelo.
+    private static final int MAX_LINHAS = 120;
     private static final String FORMATO_DATA = "\\d{4}-\\d{2}-\\d{2}";
 
     private final Gson gson = new Gson();
