@@ -129,9 +129,9 @@ public class AgricolaInsumoDAO {
              , utilizacao utilizacao_old
              , NVL(to_char(trunc(vw_ordemservico.DATA)-( SELECT trunc(max(o.data_encerramento))
                    FROM   agricola.ordem_corte_unica o
-                   WHERE  o.cod_grupoempresa   = agricola.pkg_planoagricola.fn_obter_grupoempresa_view
-                   AND    o.cod_empresa        = agricola.pkg_planoagricola.fn_obter_empresa_view
-                   AND    o.cod_filial         = agricola.pkg_planoagricola.fn_obter_filial_view
+                   WHERE  o.cod_grupoempresa   = vw_ordemservico.cod_grupoempresa
+                   AND    o.cod_empresa        = vw_ordemservico.cod_empresa
+                   AND    o.cod_filial         = vw_ordemservico.cod_filial
                    AND    o.cod_fazenda        = vw_ordemservico.cod_fazenda
                    AND    o.zona               = vw_ordemservico.zona
                    AND    o.cod_talhao         = vw_ordemservico.cod_talhao
@@ -153,9 +153,9 @@ public class AgricolaInsumoDAO {
              , nvl((select material.f_calcula_expressao(replace(vw_ordemservico.utilizacao,',','.')
                                                      || conversao_unidade.formula_conversao)
                     from   agricola.conversao_unidade
-                    where  conversao_unidade.cod_grupoempresa     = agricola.pkg_planoagricola.fn_obter_grupoempresa_view
-                    and    conversao_unidade.cod_empresa          = agricola.pkg_planoagricola.fn_obter_empresa_view
-                    and    conversao_unidade.cod_filial           = agricola.pkg_planoagricola.fn_obter_filial_view
+                    where  conversao_unidade.cod_grupoempresa     = vw_ordemservico.cod_grupoempresa
+                    and    conversao_unidade.cod_empresa          = vw_ordemservico.cod_empresa
+                    and    conversao_unidade.cod_filial           = vw_ordemservico.cod_filial
                     and    conversao_unidade.cod_unidade_original = vw_ordemservico.cod_unidade
                     and    conversao_unidade.cod_tipofazenda      = vw_ordemservico.cod_tipofazenda
                     and    conversao_unidade.cod_objetocusto      = vw_ordemservico.cod_objetocusto
@@ -168,9 +168,9 @@ public class AgricolaInsumoDAO {
                     , decode(nvl((select material.f_calcula_expressao(replace(vw_ordemservico.utilizacao,',','.')
                                                                    || conversao_unidade.formula_conversao)
                                   from   agricola.conversao_unidade
-                                  where  conversao_unidade.cod_grupoempresa     = agricola.pkg_planoagricola.fn_obter_grupoempresa_view
-                                  and    conversao_unidade.cod_empresa          = agricola.pkg_planoagricola.fn_obter_empresa_view
-                                  and    conversao_unidade.cod_filial           = agricola.pkg_planoagricola.fn_obter_filial_view
+                                  where  conversao_unidade.cod_grupoempresa     = vw_ordemservico.cod_grupoempresa
+                                  and    conversao_unidade.cod_empresa          = vw_ordemservico.cod_empresa
+                                  and    conversao_unidade.cod_filial           = vw_ordemservico.cod_filial
                                   and    conversao_unidade.cod_unidade_original = vw_ordemservico.cod_unidade
                                   and    conversao_unidade.cod_tipofazenda      = vw_ordemservico.cod_tipofazenda
                                   and    conversao_unidade.cod_objetocusto      = vw_ordemservico.cod_objetocusto
@@ -180,9 +180,9 @@ public class AgricolaInsumoDAO {
                             nvl((select material.f_calcula_expressao(replace(vw_ordemservico.utilizacao,',','.')
                                                                   || conversao_unidade.formula_conversao)
                                  from   agricola.conversao_unidade
-                                 where  conversao_unidade.cod_grupoempresa     = agricola.pkg_planoagricola.fn_obter_grupoempresa_view
-                                 and    conversao_unidade.cod_empresa          = agricola.pkg_planoagricola.fn_obter_empresa_view
-                                 and    conversao_unidade.cod_filial           = agricola.pkg_planoagricola.fn_obter_filial_view
+                                 where  conversao_unidade.cod_grupoempresa     = vw_ordemservico.cod_grupoempresa
+                                 and    conversao_unidade.cod_empresa          = vw_ordemservico.cod_empresa
+                                 and    conversao_unidade.cod_filial           = vw_ordemservico.cod_filial
                                  and    conversao_unidade.cod_unidade_original = vw_ordemservico.cod_unidade
                                  and    conversao_unidade.cod_tipofazenda      = vw_ordemservico.cod_tipofazenda
                                  and    conversao_unidade.cod_objetocusto      = vw_ordemservico.cod_objetocusto
@@ -196,9 +196,9 @@ public class AgricolaInsumoDAO {
                       nvl((select material.f_calcula_expressao(replace(vw_ordemservico.utilizacao,',','.')
                                                                   || conversao_unidade.formula_conversao)
                                  from   agricola.conversao_unidade
-                                 where  conversao_unidade.cod_grupoempresa     = agricola.pkg_planoagricola.fn_obter_grupoempresa_view
-                                 and    conversao_unidade.cod_empresa          = agricola.pkg_planoagricola.fn_obter_empresa_view
-                                 and    conversao_unidade.cod_filial           = agricola.pkg_planoagricola.fn_obter_filial_view
+                                 where  conversao_unidade.cod_grupoempresa     = vw_ordemservico.cod_grupoempresa
+                                 and    conversao_unidade.cod_empresa          = vw_ordemservico.cod_empresa
+                                 and    conversao_unidade.cod_filial           = vw_ordemservico.cod_filial
                                  and    conversao_unidade.cod_unidade_original = vw_ordemservico.cod_unidade
                                  and    conversao_unidade.cod_tipofazenda      = vw_ordemservico.cod_tipofazenda
                                  and    conversao_unidade.cod_objetocusto      = vw_ordemservico.cod_objetocusto
@@ -209,9 +209,9 @@ public class AgricolaInsumoDAO {
 
             , nvl((select conversao_unidade.cod_unidade_destino
                     from   agricola.conversao_unidade
-                    where  conversao_unidade.cod_grupoempresa     = agricola.pkg_planoagricola.fn_obter_grupoempresa_view
-                    and    conversao_unidade.cod_empresa          = agricola.pkg_planoagricola.fn_obter_empresa_view
-                    and    conversao_unidade.cod_filial           = agricola.pkg_planoagricola.fn_obter_filial_view
+                    where  conversao_unidade.cod_grupoempresa     = vw_ordemservico.cod_grupoempresa
+                    and    conversao_unidade.cod_empresa          = vw_ordemservico.cod_empresa
+                    and    conversao_unidade.cod_filial           = vw_ordemservico.cod_filial
                     and    conversao_unidade.cod_unidade_original = vw_ordemservico.cod_unidade
                     and    conversao_unidade.cod_tipofazenda      = vw_ordemservico.cod_tipofazenda
                     and    conversao_unidade.cod_objetocusto      = vw_ordemservico.cod_objetocusto
@@ -220,9 +220,9 @@ public class AgricolaInsumoDAO {
 
              , nvl((select conversao_unidade.cod_unidade_destino
                     from   agricola.conversao_unidade
-                    where  conversao_unidade.cod_grupoempresa     = agricola.pkg_planoagricola.fn_obter_grupoempresa_view
-                    and    conversao_unidade.cod_empresa          = agricola.pkg_planoagricola.fn_obter_empresa_view
-                    and    conversao_unidade.cod_filial           = agricola.pkg_planoagricola.fn_obter_filial_view
+                    where  conversao_unidade.cod_grupoempresa     = vw_ordemservico.cod_grupoempresa
+                    and    conversao_unidade.cod_empresa          = vw_ordemservico.cod_empresa
+                    and    conversao_unidade.cod_filial           = vw_ordemservico.cod_filial
                     and    conversao_unidade.cod_unidade_original = vw_ordemservico.cod_unidade
                     and    conversao_unidade.cod_tipofazenda      = vw_ordemservico.cod_tipofazenda
                     and    conversao_unidade.cod_objetocusto      = vw_ordemservico.cod_objetocusto
