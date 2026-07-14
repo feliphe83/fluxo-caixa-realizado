@@ -28,9 +28,9 @@ public class AuthFilter implements Filter {
         String uri = hreq.getRequestURI();
         String ctx = hreq.getContextPath();
 
-        // Rotas do chatbot agrícola (chamadas pelo n8n, sem sessão de navegador) —
-        // autenticadas por chave de API própria em vez de login.
-        if (uri.startsWith(ctx + "/api/agricola/")) {
+        // Rotas de ferramentas do chatbot (chamadas pelo n8n, sem sessão de
+        // navegador) — autenticadas por chave de API própria em vez de login.
+        if (uri.startsWith(ctx + "/api/agricola/") || uri.startsWith(ctx + "/api/financeiro/")) {
             String chave = hreq.getHeader("X-Agro-Api-Key");
             String esperada = System.getenv("AGRO_API_KEY");
             if (esperada != null && !esperada.isBlank() && esperada.equals(chave)) {
