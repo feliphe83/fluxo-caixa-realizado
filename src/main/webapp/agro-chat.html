@@ -419,12 +419,22 @@ async function transcreverEEnviar(blob) {
 function toggleVoz() {
   lerRespostas = !lerRespostas;
   document.getElementById('btnVoz').classList.toggle('ativo', lerRespostas);
-  if (!lerRespostas && 'speechSynthesis' in window) speechSynthesis.cancel();
+  if (!('speechSynthesis' in window)) {
+    if (lerRespostas) alert('Este navegador não suporta leitura em voz alta.');
+    return;
+  }
+  if (!lerRespostas) { speechSynthesis.cancel(); return; }
+  // Ao ligar, lê a última resposta que já está na tela — além de ser o que o
+  // usuário espera, "destrava" a voz no Safari, que exige que a primeira
+  // fala parta de um clique.
+  const bolhas = document.querySelectorAll('.msg.bot:not(.msg-loading) .msg-bolha');
+  if (bolhas.length > 0) falar(bolhas[bolhas.length - 1].textContent);
 }
 
 function falar(texto) {
   if (!lerRespostas || !('speechSynthesis' in window) || !texto) return;
   speechSynthesis.cancel();
+  speechSynthesis.resume();
   const u = new SpeechSynthesisUtterance(texto);
   u.lang = 'pt-BR';
   u.rate = 1.05;
