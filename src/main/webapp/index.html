@@ -57,6 +57,7 @@
   /* MODO BAR */
   .modo-bar { background: #edf1fa; border-bottom: 1px solid var(--border); padding: 10px 24px; }
   .modo-inner { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  #grupo-tiporel { display: flex; align-items: center; gap: 12px; padding-right: 14px; border-right: 1px solid var(--border); }
   .modo-label { font-size: 11px; font-weight: 700; color: var(--cinza); text-transform: uppercase; letter-spacing: .4px; }
   .modo-btn {
     display: flex; align-items: center; gap: 6px;
@@ -139,7 +140,7 @@
   thead tr  { background: var(--verde-escuro); }
   thead th  { color: white; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; padding: 10px 12px; text-align: right; white-space: nowrap; }
   thead th:first-child { text-align: left; min-width: 220px; position: sticky; left: 0; background: var(--verde-escuro); }
-  thead th.semana      { background: var(--verde); min-width: 110px; }
+  thead th.semana      { background: var(--verde-escuro); min-width: 110px; }
   thead th.total-col   { background: var(--verde-escuro); }
 
   /* Cabeçalho + linha "TOTAL DO PERÍODO" congelados no topo ao rolar */
@@ -207,7 +208,7 @@
   .detalhe-inner table tbody tr:hover { background: #e8eef8; }
   .detalhe-inner table tbody tr:hover td:first-child { background: #e8eef8; }
 
-  tr.total-topo td { color: white; font-weight: 700; font-size: 12px; padding: 10px 12px; background: var(--verde); }
+  tr.total-topo td { color: #111827; font-weight: 700; font-size: 12px; padding: 10px 12px; background: #e5e7eb; }
 
   .empty-state { text-align: center; padding: 60px 24px; color: var(--cinza); }
   .empty-state svg { width: 48px; height: 48px; opacity: .3; margin-bottom: 12px; }
@@ -452,18 +453,36 @@
   </button>
 </div>
 
-<!-- BARRA TIPO DE RELATÓRIO -->
-<div class="modo-bar" id="modo-bar" style="display:none">
+<!-- BARRA TIPO DE RELATÓRIO + TIPO DE LANÇAMENTO -->
+<div class="modo-bar" id="modo-bar">
   <div class="modo-inner">
-    <span class="modo-label">Tipo de relatório:</span>
-    <button class="modo-btn ativo" id="mbtn-simples" onclick="setTipoRel('simples')">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
-      Simples
+    <span id="grupo-tiporel" style="display:none">
+      <span class="modo-label">Tipo de relatório:</span>
+      <button class="modo-btn ativo" id="mbtn-simples" onclick="setTipoRel('simples')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
+        Simples
+      </button>
+      <button class="modo-btn" id="mbtn-comparativo" onclick="setTipoRel('comparativo')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        Comparativo
+      </button>
+    </span>
+    <span class="modo-label">Tipo de Lançamento:</span>
+    <button class="chip-btn ativo" id="chip-todos" onclick="toggleChip('todos')">
+      <span class="chip-check">✓</span> Todos
     </button>
-    <button class="modo-btn" id="mbtn-comparativo" onclick="setTipoRel('comparativo')">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-      Comparativo
+    <button class="chip-btn" id="chip-N" onclick="toggleChip('N')">
+      <span class="chip-check">✓</span> Títulos a Pagar
     </button>
+    <button class="chip-btn" id="chip-S" onclick="toggleChip('S')">
+      <span class="chip-check">✓</span> Provisão
+    </button>
+    <button class="chip-btn" id="chip-Manual" onclick="toggleChip('Manual')">
+      <span class="chip-check">✓</span> Lançamento Manual
+    </button>
+    <span id="pautaFechadaInfo" style="margin-left:14px;font-size:13px;color:#475569;font-weight:600;display:none">
+      Parâmetro: <span id="pautaFechadaData" style="color:#1a3a7c">—</span>
+    </span>
   </div>
 </div>
 
@@ -512,25 +531,6 @@
     </div>
   </div>
 
-  <!-- CHIPS TIPO DE LANÇAMENTO -->
-  <div class="filtros-row2">
-    <label>Tipo de Lançamento:</label>
-    <button class="chip-btn ativo" id="chip-todos" onclick="toggleChip('todos')">
-      <span class="chip-check">✓</span> Todos
-    </button>
-    <button class="chip-btn" id="chip-N" onclick="toggleChip('N')">
-      <span class="chip-check">✓</span> Títulos a Pagar
-    </button>
-    <button class="chip-btn" id="chip-S" onclick="toggleChip('S')">
-      <span class="chip-check">✓</span> Provisão
-    </button>
-    <button class="chip-btn" id="chip-Manual" onclick="toggleChip('Manual')">
-      <span class="chip-check">✓</span> Lançamento Manual
-    </button>
-    <span id="pautaFechadaInfo" style="margin-left:14px;font-size:13px;color:#475569;font-weight:600;display:none">
-      Parâmetro: <span id="pautaFechadaData" style="color:#1a3a7c">—</span>
-    </span>
-  </div>
 </div>
 
 
@@ -651,8 +651,9 @@ function setModo(modo) {
   document.getElementById('tab-arealizar').classList.toggle('ativo', modo === 'arealizar');
   document.getElementById('hdr-tipo-doc').textContent = modo === 'realizado' ? 'Títulos Pagos' : 'Títulos a Pagar';
 
-  // Modo-bar (Simples/Comparativo) só aparece no Realizado
-  document.getElementById('modo-bar').style.display = modo === 'realizado' ? '' : 'none';
+  // Grupo Simples/Comparativo só aparece no Realizado (a barra em si fica
+  // sempre visível por causa dos chips de Tipo de Lançamento)
+  document.getElementById('grupo-tiporel').style.display = modo === 'realizado' ? '' : 'none';
 
   // Resetar para Simples ao trocar de aba
   if (modo === 'arealizar') {
@@ -818,47 +819,12 @@ function renderizar() {
   // Totais
   const totaisCols = {};
   let totalGeral = 0;
-  let picoVal = 0, picoPer = '';
   GRUPOS.forEach(g => {
     Object.entries(g.colunas).forEach(([col, v]) => {
       totaisCols[col] = (totaisCols[col] || 0) + v;
     });
     totalGeral += g.total;
   });
-  Object.entries(totaisCols).forEach(([col, v]) => {
-    if (v > picoVal) { picoVal = v; picoPer = col; }
-  });
-  const periodosComDados = Object.keys(totaisCols).length;
-  const media = periodosComDados > 0 ? totalGeral / periodosComDados : 0;
-
-  // Cards resumo
-  const resumoEl = document.getElementById('resumo');
-  resumoEl.style.display = 'grid';
-  resumoEl.innerHTML = `
-    <div class="card-resumo">
-      <div class="label">Total do Período</div>
-      <div class="val">R$ ${totalGeral.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
-    </div>
-    <div class="card-resumo">
-      <div class="label">Períodos</div>
-      <div class="val">${PERIODOS.length}</div>
-      <div class="sub">${periodosComDados} com lançamentos</div>
-    </div>
-    <div class="card-resumo">
-      <div class="label">Grupos</div>
-      <div class="val">${GRUPOS.length}</div>
-      <div class="sub">itens no período</div>
-    </div>
-    <div class="card-resumo">
-      <div class="label">Média por Período</div>
-      <div class="val">${fmtMilhoes(media)}</div>
-      <div class="sub">média por período ativo</div>
-    </div>
-    <div class="card-resumo">
-      <div class="label">Período de Pico</div>
-      <div class="val">${fmtMilhoes(picoVal)}</div>
-      <div class="sub">maior desembolso</div>
-    </div>`;
 
   // Cabeçalho
   const thCols = PERIODOS.map(p => `<th class="semana">${p.label}</th>`).join('');
