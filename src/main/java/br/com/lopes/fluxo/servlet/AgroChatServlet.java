@@ -1,5 +1,7 @@
 package br.com.lopes.fluxo.servlet;
 
+import br.com.lopes.fluxo.util.ChatPermissaoUtil;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -8,6 +10,7 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -78,9 +81,26 @@ public class AgroChatServlet extends HttpServlet {
                 return;
             }
 
+            // Categorias de consulta do usuário logado (AuthFilter garante a
+            // sessão): registradas por sessionId para as ferramentas validarem,
+            // e enviadas ao n8n para o agente saber o que pode usar.
+            long idUsuario = 0;
+            boolean administrador = false;
+            HttpSession session = req.getSession(false);
+            if (session != null) {
+                Object idAttr = session.getAttribute("idUsuario");
+                if (idAttr instanceof Number n) idUsuario = n.longValue();
+                administrador = Boolean.TRUE.equals(session.getAttribute("administrador"));
+            }
+            var categorias = ChatPermissaoUtil.carregarCategorias(idUsuario, administrador);
+            ChatPermissaoUtil.registrar(sessionId, categorias);
+
             JsonObject payload = new JsonObject();
             payload.addProperty("pergunta", pergunta);
             payload.addProperty("sessionId", sessionId);
+            JsonArray categoriasArr = new JsonArray();
+            categorias.stream().map(c -> c.replace("chat_", "")).sorted().forEach(categoriasArr::add);
+            payload.add("categorias", categoriasArr);
 
             HttpRequest.Builder builder = HttpRequest.newBuilder()
                     .uri(URI.create(webhookUrl))

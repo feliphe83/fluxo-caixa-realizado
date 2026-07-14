@@ -2,6 +2,7 @@ package br.com.lopes.fluxo.servlet;
 
 import br.com.lopes.fluxo.dao.AgricolaTalhaoDAO;
 import br.com.lopes.fluxo.util.AgroConsultaCache;
+import br.com.lopes.fluxo.util.ChatPermissaoUtil;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
@@ -51,6 +52,14 @@ public class AgricolaTalhaoServlet extends HttpServlet {
         PrintWriter out = resp.getWriter();
 
         try {
+            String sessionId = req.getParameter("sessionId");
+            String negado = ChatPermissaoUtil.verificarAcesso(sessionId, ChatPermissaoUtil.AGRICOLA, "consultas agrícolas");
+            if (negado != null) {
+                resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                out.print("{\"ok\":false,\"erro\":\"" + negado + "\"}");
+                return;
+            }
+
             String safra = req.getParameter("safra");
             if (safra == null || safra.isBlank()) {
                 resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
@@ -62,7 +71,6 @@ public class AgricolaTalhaoServlet extends HttpServlet {
 
             // Guarda o resultado COMPLETO para exportação (Excel/PDF) pelo
             // front-end do chat — o agente de IA só recebe a versão truncada.
-            String sessionId = req.getParameter("sessionId");
             AgroConsultaCache.guardar(sessionId, "Talhões — Safra " + safra.trim(), lista);
 
             int total = lista.size();
