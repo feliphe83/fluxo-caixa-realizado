@@ -3,6 +3,7 @@ package br.com.lopes.fluxo.servlet;
 import br.com.lopes.fluxo.dao.FinanceiroContasPagarDAO;
 import br.com.lopes.fluxo.util.AgroConsultaCache;
 import br.com.lopes.fluxo.util.ChatPermissaoUtil;
+import br.com.lopes.fluxo.util.DataParamUtil;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
@@ -39,7 +40,6 @@ public class FinanceiroContasPagarServlet extends HttpServlet {
 
     private static final Logger LOG = Logger.getLogger(FinanceiroContasPagarServlet.class.getName());
     private static final int MAX_LINHAS = 30;
-    private static final String FORMATO_DATA = "\\d{4}-\\d{2}-\\d{2}";
 
     private final Gson gson = new Gson();
     private final FinanceiroContasPagarDAO dao = new FinanceiroContasPagarDAO();
@@ -61,30 +61,28 @@ public class FinanceiroContasPagarServlet extends HttpServlet {
                 return;
             }
 
-            String dataIniVcto = req.getParameter("dataIniVcto");
-            String dataFimVcto = req.getParameter("dataFimVcto");
-            if (dataIniVcto == null || dataIniVcto.isBlank() || dataFimVcto == null || dataFimVcto.isBlank()) {
+            String dataIniVcto = DataParamUtil.normalizar(req.getParameter("dataIniVcto"));
+            String dataFimVcto = DataParamUtil.normalizar(req.getParameter("dataFimVcto"));
+            if (dataIniVcto == null || dataFimVcto == null) {
                 resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                out.print("{\"ok\":false,\"erro\":\"Parâmetros dataIniVcto e dataFimVcto são obrigatórios (período de vencimento)\"}");
+                out.print("{\"ok\":false,\"erro\":\"Parâmetros dataIniVcto e dataFimVcto são obrigatórios (período de vencimento), nos formatos yyyy-MM-dd ou dd/mm/aaaa\"}");
                 return;
             }
 
-            String dataIniEntrada = req.getParameter("dataIniEntrada");
-            String dataFimEntrada = req.getParameter("dataFimEntrada");
-            boolean temIniEntrada = dataIniEntrada != null && !dataIniEntrada.isBlank();
-            boolean temFimEntrada = dataFimEntrada != null && !dataFimEntrada.isBlank();
+            String dataIniEntrada = DataParamUtil.normalizar(req.getParameter("dataIniEntrada"));
+            String dataFimEntrada = DataParamUtil.normalizar(req.getParameter("dataFimEntrada"));
+            if (DataParamUtil.invalida(req.getParameter("dataIniEntrada"), dataIniEntrada)
+             || DataParamUtil.invalida(req.getParameter("dataFimEntrada"), dataFimEntrada)) {
+                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                out.print("{\"ok\":false,\"erro\":\"Datas devem estar no formato yyyy-MM-dd ou dd/mm/aaaa\"}");
+                return;
+            }
+            boolean temIniEntrada = dataIniEntrada != null;
+            boolean temFimEntrada = dataFimEntrada != null;
             if (temIniEntrada != temFimEntrada) {
                 resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                 out.print("{\"ok\":false,\"erro\":\"Informe dataIniEntrada e dataFimEntrada juntas (ou nenhuma)\"}");
                 return;
-            }
-
-            for (String d : new String[]{dataIniVcto, dataFimVcto, dataIniEntrada, dataFimEntrada}) {
-                if (d != null && !d.isBlank() && !d.trim().matches(FORMATO_DATA)) {
-                    resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                    out.print("{\"ok\":false,\"erro\":\"Datas devem estar no formato yyyy-MM-dd\"}");
-                    return;
-                }
             }
 
             String fornecedor = req.getParameter("fornecedor");

@@ -3,6 +3,7 @@ package br.com.lopes.fluxo.servlet;
 import br.com.lopes.fluxo.dao.AgricolaChuvaDAO;
 import br.com.lopes.fluxo.util.AgroConsultaCache;
 import br.com.lopes.fluxo.util.ChatPermissaoUtil;
+import br.com.lopes.fluxo.util.DataParamUtil;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
@@ -44,7 +45,6 @@ public class AgricolaChuvaServlet extends HttpServlet {
     // Linhas de chuva são pequenas (5 campos); 120 cobre um ano de somas
     // mensais de todos os pontos de coleta sem estourar o contexto do modelo.
     private static final int MAX_LINHAS = 120;
-    private static final String FORMATO_DATA = "\\d{4}-\\d{2}-\\d{2}";
 
     private final Gson gson = new Gson();
     private final AgricolaChuvaDAO dao = new AgricolaChuvaDAO();
@@ -66,14 +66,13 @@ public class AgricolaChuvaServlet extends HttpServlet {
                 return;
             }
 
-            String dataIni = req.getParameter("dataIni");
-            String dataFim = req.getParameter("dataFim");
-            for (String d : new String[]{dataIni, dataFim}) {
-                if (d != null && !d.isBlank() && !d.trim().matches(FORMATO_DATA)) {
-                    resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                    out.print("{\"ok\":false,\"erro\":\"Datas devem estar no formato yyyy-MM-dd\"}");
-                    return;
-                }
+            String dataIni = DataParamUtil.normalizar(req.getParameter("dataIni"));
+            String dataFim = DataParamUtil.normalizar(req.getParameter("dataFim"));
+            if (DataParamUtil.invalida(req.getParameter("dataIni"), dataIni)
+             || DataParamUtil.invalida(req.getParameter("dataFim"), dataFim)) {
+                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                out.print("{\"ok\":false,\"erro\":\"Datas devem estar no formato yyyy-MM-dd ou dd/mm/aaaa\"}");
+                return;
             }
 
             String ponto = req.getParameter("ponto");
