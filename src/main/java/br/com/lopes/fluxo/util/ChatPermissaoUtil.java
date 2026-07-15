@@ -27,10 +27,13 @@ import java.util.logging.Logger;
  */
 public final class ChatPermissaoUtil {
 
+    /** Nível 1: pode abrir e usar o assistente (sem isso, o chat nem responde). */
+    public static final String ACESSO     = "chat_acesso";
+    /** Nível 2: o que o usuário pode consultar dentro do chat. */
     public static final String AGRICOLA   = "chat_agricola";
     public static final String FINANCEIRO = "chat_financeiro";
 
-    private static final Set<String> TODAS = Set.of(AGRICOLA, FINANCEIRO);
+    private static final Set<String> TODAS = Set.of(ACESSO, AGRICOLA, FINANCEIRO);
 
     private static final Logger LOG = Logger.getLogger(ChatPermissaoUtil.class.getName());
 
@@ -58,13 +61,14 @@ public final class ChatPermissaoUtil {
     public static Set<String> carregarCategorias(long idUsuario, boolean administrador) {
         if (administrador) return TODAS;
 
-        String sql = "SELECT relatorio FROM fc_permissao WHERE id_usuario=? AND ativo='S' AND relatorio IN (?,?)";
+        String sql = "SELECT relatorio FROM fc_permissao WHERE id_usuario=? AND ativo='S' AND relatorio IN (?,?,?)";
         Set<String> categorias = new HashSet<>();
         try (Connection c = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS);
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setLong(1, idUsuario);
-            ps.setString(2, AGRICOLA);
-            ps.setString(3, FINANCEIRO);
+            ps.setString(2, ACESSO);
+            ps.setString(3, AGRICOLA);
+            ps.setString(4, FINANCEIRO);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) categorias.add(rs.getString("relatorio"));
             }

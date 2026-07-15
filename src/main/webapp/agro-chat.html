@@ -204,7 +204,14 @@ if (!SESSION_ID) {
 }
 
 fetch('api/sessao').then(r => r.json()).then(j => {
-  if (!j || !j.logon) window.location.href = 'login.html';
+  if (!j || !j.logon) { window.location.href = 'login.html'; return; }
+  // Nível 1 de permissão: acesso ao assistente (admin sempre tem)
+  return fetch('api/ia/agro-chat-acesso').then(r => r.json()).then(a => {
+    if (a && a.ok && !a.acesso) {
+      alert('Você ainda não tem acesso ao Assistente IA. Solicite a liberação ao administrador da intranet.');
+      window.location.href = 'hub.html';
+    }
+  });
 }).catch(() => { window.location.href = 'login.html'; });
 
 const chatMensagens = document.getElementById('chatMensagens');

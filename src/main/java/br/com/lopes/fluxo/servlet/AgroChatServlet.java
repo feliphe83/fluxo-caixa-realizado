@@ -93,13 +93,23 @@ public class AgroChatServlet extends HttpServlet {
                 administrador = Boolean.TRUE.equals(session.getAttribute("administrador"));
             }
             var categorias = ChatPermissaoUtil.carregarCategorias(idUsuario, administrador);
+
+            // Nível 1: sem a permissão de acesso ao assistente, o chat não responde
+            if (!categorias.contains(ChatPermissaoUtil.ACESSO)) {
+                resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                out.print("{\"ok\":false,\"erro\":\"Você não tem acesso ao assistente. Solicite a liberação ao administrador da intranet.\"}");
+                return;
+            }
+
             ChatPermissaoUtil.registrar(sessionId, categorias);
 
             JsonObject payload = new JsonObject();
             payload.addProperty("pergunta", pergunta);
             payload.addProperty("sessionId", sessionId);
             JsonArray categoriasArr = new JsonArray();
-            categorias.stream().map(c -> c.replace("chat_", "")).sorted().forEach(categoriasArr::add);
+            categorias.stream()
+                    .filter(c -> !ChatPermissaoUtil.ACESSO.equals(c))
+                    .map(c -> c.replace("chat_", "")).sorted().forEach(categoriasArr::add);
             payload.add("categorias", categoriasArr);
 
             HttpRequest.Builder builder = HttpRequest.newBuilder()
