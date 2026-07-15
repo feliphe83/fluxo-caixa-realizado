@@ -103,8 +103,19 @@ public class AgroChatServlet extends HttpServlet {
 
             ChatPermissaoUtil.registrar(sessionId, categorias);
 
+            // O modelo de IA não sabe a data atual — sem isso, "próxima semana"
+            // vira uma data inventada (ex.: 2023). Anexada à pergunta para
+            // funcionar independentemente do system prompt configurado no n8n.
+            java.time.LocalDate hoje = java.time.LocalDate.now(java.time.ZoneId.of("America/Maceio"));
+            String diaSemana = hoje.getDayOfWeek().getDisplayName(
+                    java.time.format.TextStyle.FULL, new java.util.Locale("pt", "BR"));
+            String contextoData = "\n\n[Contexto do sistema: hoje é " + diaSemana + ", "
+                    + hoje.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                    + ". Converta períodos relativos como 'esta semana', 'próxima semana' ou 'este mês' "
+                    + "em datas concretas (semana = segunda a domingo) ao usar as ferramentas.]";
+
             JsonObject payload = new JsonObject();
-            payload.addProperty("pergunta", pergunta);
+            payload.addProperty("pergunta", pergunta + contextoData);
             payload.addProperty("sessionId", sessionId);
             JsonArray categoriasArr = new JsonArray();
             categorias.stream()

@@ -111,6 +111,20 @@
   .btn-voz.ativo { background: var(--verde); border-color: var(--verde); color: white; }
   @keyframes pulseMic { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
 
+  /* Telefone: logo + título numa linha, botões em linha própria ocupando a largura */
+  @media (max-width: 640px) {
+    .header { flex-wrap: wrap; padding: 10px 12px; gap: 10px; }
+    .logo-box { width: 36px; height: 36px; font-size: 13px; }
+    .header-title { font-size: 15px; }
+    .header-sub { display: none; }
+    .nav-tabs { width: 100%; gap: 6px; }
+    .nav-tab { flex: 1; justify-content: center; padding: 8px 6px; font-size: 12px; white-space: nowrap; }
+    .chat-wrap { padding: 12px; }
+    .msg { max-width: 95%; }
+    .btn-mic, .btn-voz { padding: 0 11px; }
+    .btn-enviar { padding: 0 14px; }
+  }
+
   /* PDF = impressão da conversa (window.print) */
   .print-header { display: none; }
 
