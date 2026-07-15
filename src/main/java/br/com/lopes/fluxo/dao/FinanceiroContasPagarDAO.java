@@ -328,7 +328,7 @@ public class FinanceiroContasPagarDAO {
          and a.parcela   = q.parcela
          and a.cod_tipocontaspagar = q.cod_tipocontaspagar
         order by q.datavcto, q.documento, q.parcela
-        ) where nvl(valor, 0) <> 0
+        ) where nvl(valor, 0) > 0
           and rownum <= %d
         /*FILTRO_FORNECEDOR*/
         """.formatted(MAX_TOTAL);
