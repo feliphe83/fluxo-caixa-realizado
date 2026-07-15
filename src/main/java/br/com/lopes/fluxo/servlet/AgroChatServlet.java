@@ -112,7 +112,9 @@ public class AgroChatServlet extends HttpServlet {
             String contextoData = "\n\n[Contexto do sistema: hoje é " + diaSemana + ", "
                     + hoje.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"))
                     + ". Converta períodos relativos como 'esta semana', 'próxima semana' ou 'este mês' "
-                    + "em datas concretas (semana = segunda a domingo) ao usar as ferramentas.]";
+                    + "em datas concretas ao usar as ferramentas. A semana da usina começa no SÁBADO e "
+                    + "termina na sexta-feira: 'esta semana' = do último sábado (inclusive hoje, se for sábado) "
+                    + "até a próxima sexta-feira; 'próxima semana' = do próximo sábado até a sexta seguinte.]";
 
             JsonObject payload = new JsonObject();
             payload.addProperty("pergunta", pergunta + contextoData);
