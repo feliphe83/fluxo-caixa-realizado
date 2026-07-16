@@ -42,6 +42,7 @@ public class AgroCombustivelDAO {
              , itensrequisicaomaterial.cod_material cod_combustivel
              , substr(material.descricao,0,50)     desc_combustivel
              , abastecimento.qtde_litros          qtde_litros
+             , abastecimento.kmhs_rodados         kmhs_rodados
              , itensrequisicaomaterial.nrrequisicao nr_requisicao
              , itensrequisicaomaterial.item        item_requisicao
              , decode(itensrequisicaomaterial.situacao, 'P', 'Pendente', 'A', 'Retirada', 'C', 'Cancelada') situacao_requisicao
