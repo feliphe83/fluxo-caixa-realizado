@@ -26,12 +26,22 @@ import java.util.logging.Logger;
  *
  * GET /api/agricola/combustivel?dataIni=yyyy-MM-dd&dataFim=yyyy-MM-dd
  *        [&codEquipamento=N] [&codTipoCliente=N] [&combustivel=trecho]
- *        [&sessionId=...]
+ *        [&agrupar=combustivel|equipamento] [&sessionId=...]
  *
  * Resposta: { "ok": true, "totalEncontrado": N, "truncado": bool,
  *             "data": [ { ...colunas da consulta... }, ... ] }
  *
- * Período de abastecimento é obrigatório; os demais filtros são opcionais.
+ * Período de abastecimento é obrigatório; os demais filtros são opcionais e,
+ * se vierem em formato inválido, são apenas ignorados (não bloqueiam a
+ * consulta) — o agente de IA às vezes manda um valor vazio/errado num filtro
+ * opcional mesmo sem o usuário ter pedido esse filtro.
+ *
+ * Com agrupar=combustivel ou agrupar=equipamento, os litros vêm somados
+ * direto do banco, do maior para o menor consumo — use para perguntas de
+ * total por combustível/equipamento ou "top N por consumo": sem isso, o
+ * agente só vê uma amostra truncada (MAX_LINHAS) do modo detalhado e não
+ * consegue somar/ranquear com precisão.
+ *
  * O agente recebe no máximo MAX_LINHAS; o resultado completo fica no
  * AgroConsultaCache para exportação em Excel pelo front-end do chat.
  */
@@ -69,26 +79,20 @@ public class AgroCombustivelServlet extends HttpServlet {
                 return;
             }
 
+            // Filtros opcionais: valor ausente/vazio/inválido é tratado como
+            // "sem filtro" em vez de erro — evita travar a consulta quando o
+            // agente manda um parâmetro em branco para algo que o usuário
+            // não pediu.
             Integer codEquipamento = lerInteiro(req.getParameter("codEquipamento"));
             Integer codTipoCliente = lerInteiro(req.getParameter("codTipoCliente"));
-            if (codEquipamento == null && temValorInvalido(req.getParameter("codEquipamento"))) {
-                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                out.print("{\"ok\":false,\"erro\":\"Parâmetro codEquipamento deve ser numérico\"}");
-                return;
-            }
-            if (codTipoCliente == null && temValorInvalido(req.getParameter("codTipoCliente"))) {
-                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                out.print("{\"ok\":false,\"erro\":\"Parâmetro codTipoCliente deve ser numérico\"}");
-                return;
-            }
-
             String combustivel = req.getParameter("combustivel");
+            String agrupar = req.getParameter("agrupar");
 
-            List<Map<String, Object>> lista = dao.buscar(dataIni, dataFim, codEquipamento, codTipoCliente, combustivel);
+            List<Map<String, Object>> lista = dao.buscar(dataIni, dataFim, codEquipamento, codTipoCliente, combustivel, agrupar);
 
             // Guarda o resultado COMPLETO para exportação (Excel) pelo
             // front-end do chat — o agente de IA só recebe a versão truncada.
-            AgroConsultaCache.guardar(sessionId, montarTitulo(dataIni, dataFim, codEquipamento, combustivel), lista);
+            AgroConsultaCache.guardar(sessionId, montarTitulo(dataIni, dataFim, codEquipamento, combustivel, agrupar), lista);
 
             int total = lista.size();
             boolean truncado = total > MAX_LINHAS;
@@ -118,12 +122,11 @@ public class AgroCombustivelServlet extends HttpServlet {
         return Integer.valueOf(v.trim());
     }
 
-    private static boolean temValorInvalido(String v) {
-        return v != null && !v.isBlank() && !v.trim().matches("\\d+");
-    }
-
-    private static String montarTitulo(String dataIni, String dataFim, Integer codEquipamento, String combustivel) {
-        StringBuilder t = new StringBuilder("Combustível — ").append(dataIni).append(" a ").append(dataFim);
+    private static String montarTitulo(String dataIni, String dataFim, Integer codEquipamento,
+                                       String combustivel, String agrupar) {
+        StringBuilder t = new StringBuilder("Combustível");
+        if (agrupar != null && !agrupar.isBlank()) t.append(" por ").append(agrupar.trim());
+        t.append(" — ").append(dataIni).append(" a ").append(dataFim);
         if (codEquipamento != null) t.append(" · Equipamento ").append(codEquipamento);
         if (combustivel != null && !combustivel.isBlank()) t.append(" · ").append(combustivel.trim());
         return t.toString();
