@@ -26,8 +26,8 @@ import java.util.logging.Logger;
  *
  * GET /api/agricola/produtividade?safra=NNNN
  *        [&fazenda=N] [&talhao=N] [&frente=N] [&tipoCorte=N] [&variedade=trecho]
- *        [&dataIni=yyyy-MM-dd&dataFim=yyyy-MM-dd] [&agrupar=fazenda|talhao|variedade]
- *        [&sessionId=...]
+ *        [&dataIni=yyyy-MM-dd&dataFim=yyyy-MM-dd]
+ *        [&agrupar=fazenda|talhao|variedade|detalhado] [&sessionId=...]
  *
  * Resposta: { "ok": true, "totalEncontrado": N, "truncado": bool,
  *             "data": [ { ...colunas da consulta... }, ... ] }
@@ -35,9 +35,14 @@ import java.util.logging.Logger;
  * Safra é obrigatória; os demais filtros são opcionais e, se vierem em
  * formato inválido, são apenas ignorados (não bloqueiam a consulta).
  *
- * Com agrupar=fazenda, agrupar=talhao ou agrupar=variedade, a área cortada e
- * a produção vêm somadas direto do banco e o TCH/ATR saem ponderados — use
- * para perguntas de "produtividade por fazenda" ou "top N mais produtivo".
+ * Por padrão (sem agrupar, ou agrupar=geral), devolve um único total (área,
+ * produção, TCH/ATR médios ponderados) da safra filtrada — é o formato
+ * certo para "qual foi a produtividade da safra". Com agrupar=fazenda,
+ * talhao ou variedade, a mesma soma sai quebrada por dimensão — use para
+ * "produtividade por fazenda" ou "top N mais produtivo". agrupar=detalhado
+ * (linha a linha, por ordem de colheita) só quando pedido explicitamente —
+ * nesse modo o agente só vê uma amostra truncada e não deve tentar somar
+ * sozinho a partir dela.
  *
  * O agente recebe no máximo MAX_LINHAS; o resultado completo fica no
  * AgroConsultaCache para exportação em Excel pelo front-end do chat.

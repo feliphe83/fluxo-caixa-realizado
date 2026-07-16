@@ -26,7 +26,7 @@ import java.util.logging.Logger;
  *
  * GET /api/agricola/combustivel?dataIni=yyyy-MM-dd&dataFim=yyyy-MM-dd
  *        [&codEquipamento=N] [&codTipoCliente=N] [&combustivel=trecho]
- *        [&agrupar=combustivel|equipamento] [&sessionId=...]
+ *        [&agrupar=equipamento|detalhado] [&sessionId=...]
  *
  * Resposta: { "ok": true, "totalEncontrado": N, "truncado": bool,
  *             "data": [ { ...colunas da consulta... }, ... ] }
@@ -36,11 +36,13 @@ import java.util.logging.Logger;
  * consulta) — o agente de IA às vezes manda um valor vazio/errado num filtro
  * opcional mesmo sem o usuário ter pedido esse filtro.
  *
- * Com agrupar=combustivel ou agrupar=equipamento, os litros vêm somados
- * direto do banco, do maior para o menor consumo — use para perguntas de
- * total por combustível/equipamento ou "top N por consumo": sem isso, o
- * agente só vê uma amostra truncada (MAX_LINHAS) do modo detalhado e não
- * consegue somar/ranquear com precisão.
+ * Por padrão (sem agrupar, ou agrupar=combustivel), os litros vêm somados
+ * direto do banco por combustível, do maior para o menor consumo — é o
+ * formato certo para "quanto de combustível foi abastecido". Use
+ * agrupar=equipamento para "top N por consumo" por equipamento.
+ * agrupar=detalhado (linha a linha) só quando pedido explicitamente — nesse
+ * modo o agente só vê uma amostra truncada (MAX_LINHAS) e não deve tentar
+ * somar/ranquear a partir dela.
  *
  * O agente recebe no máximo MAX_LINHAS; o resultado completo fica no
  * AgroConsultaCache para exportação em Excel pelo front-end do chat.

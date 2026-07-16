@@ -27,11 +27,14 @@ import java.util.logging.Logger;
  * período da ordem de colheita são filtros opcionais, mas recomendados: uma
  * safra inteira pode ter milhares de ordens de colheita.
  *
- * Com agrupar=fazenda|talhao|variedade, a área cortada e a produção vêm
- * somadas direto no banco e o TCH médio sai ponderado (produção/área, não a
- * média simples das linhas) — necessário para perguntas de "produtividade
- * por fazenda" ou "top N mais produtivo", já que o modo detalhado só expõe
- * uma amostra truncada ao agente.
+ * Por padrão (agrupar nulo/vazio ou "geral"), devolve um único total: área
+ * cortada, produção e TCH/ATR médios ponderados de toda a safra filtrada —
+ * é o formato certo para "qual foi a produtividade da safra". Com
+ * agrupar=fazenda, talhao ou variedade, a mesma soma/ponderação sai
+ * quebrada por dimensão (para "produtividade por fazenda" ou "top N mais
+ * produtivo"). O detalhamento linha a linha só entra com agrupar=detalhado,
+ * pedido explicitamente — nesse modo o agente só recebe uma amostra
+ * truncada e não deve tentar somar/ranquear a partir dela.
  */
 public class AgroProdutividadeDAO {
 
@@ -322,6 +325,17 @@ public class AgroProdutividadeDAO {
         ) where rownum <= %d
         """.formatted(COLUNAS_DETALHE, FROM_WHERE_BASE, MAX_TOTAL);
 
+    /** Total geral (uma única linha, sem quebra por dimensão) — usado quando a pergunta não pede detalhamento. */
+    private static final String SQL_GERAL = """
+        select
+               round(sum(areacortada), 2) area_cortada
+             , round(sum(producaorealizada), 2) producao_realizada_ton
+             , round(decode(sum(areacortada),0,0,sum(producaorealizada)/sum(areacortada)),2) tch_medio
+             , round(decode(sum(pesoliquido),0,0,sum(ATR_Media*pesoliquido)/sum(pesoliquido)),4) atr_medio
+             , count(*) qtde_ordens
+        from ( %s %s )
+        """.formatted(COLUNAS_DETALHE, FROM_WHERE_BASE);
+
     /**
      * @param codSafra    obrigatório
      * @param codFazenda  opcional
@@ -331,8 +345,11 @@ public class AgroProdutividadeDAO {
      * @param variedade   opcional, trecho da descrição da variedade
      * @param dataIni     opcional (com dataFim), yyyy-MM-dd — data da ordem de colheita
      * @param dataFim     opcional (com dataIni), yyyy-MM-dd
-     * @param agrupar     opcional: null/"detalhado", "fazenda", "talhao" ou
-     *                    "variedade" — soma área/produção e pondera TCH/ATR
+     * @param agrupar     opcional: null/"geral" (padrão — total único, sem
+     *                    quebra), "fazenda", "talhao" ou "variedade" (soma
+     *                    área/produção e pondera TCH/ATR por dimensão) ou
+     *                    "detalhado" (linha a linha, só quando pedido
+     *                    explicitamente)
      */
     public List<Map<String, Object>> buscar(String codSafra, Integer codFazenda, Integer codTalhao,
                                             Integer codFrente, Integer codTipoCorte, String variedade,
@@ -373,7 +390,8 @@ public class AgroProdutividadeDAO {
             case "fazenda" -> SQL_POR_FAZENDA;
             case "talhao" -> SQL_POR_TALHAO;
             case "variedade" -> SQL_POR_VARIEDADE;
-            default -> SQL_DETALHADO;
+            case "detalhado" -> SQL_DETALHADO;
+            default -> SQL_GERAL;
         };
         String sql = template.replace("/*FILTROS*/", filtros.toString());
 

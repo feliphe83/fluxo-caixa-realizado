@@ -21,10 +21,13 @@ import java.util.logging.Logger;
  * Período de abastecimento é obrigatório. Equipamento, tipo de cliente e
  * descrição do combustível são filtros opcionais.
  *
- * Com agrupar=combustivel ou agrupar=equipamento, os litros são somados
- * direto no banco (ordenados do maior para o menor consumo) — necessário
- * para perguntas de "total por X" e "top N por consumo", já que o agente só
- * recebe uma amostra limitada de linhas do modo detalhado.
+ * Por padrão (agrupar nulo/vazio ou "combustivel"), os litros são somados
+ * direto no banco por combustível (ordenado do maior para o menor consumo)
+ * — é o formato certo para "quanto de combustível foi abastecido". Com
+ * agrupar=equipamento, a soma é por equipamento (usado para "top N por
+ * consumo"). O detalhamento linha a linha só entra com agrupar=detalhado,
+ * pedido explicitamente — nesse modo o agente só recebe uma amostra
+ * truncada e não deve tentar somar sozinho a partir dela.
  */
 public class AgroCombustivelDAO {
 
@@ -119,10 +122,11 @@ public class AgroCombustivelDAO {
      * @param codEquipamento opcional
      * @param codTipoCliente opcional
      * @param combustivel    opcional, trecho da descrição do combustível
-     * @param agrupar        opcional: null/"detalhado" (linha a linha),
-     *                       "combustivel" (soma por combustível) ou
-     *                       "equipamento" (soma por equipamento, maior
-     *                       consumo primeiro — usado para "top N")
+     * @param agrupar        opcional: null/"combustivel" (padrão — soma por
+     *                       combustível), "equipamento" (soma por
+     *                       equipamento, maior consumo primeiro — usado
+     *                       para "top N") ou "detalhado" (linha a linha, só
+     *                       quando pedido explicitamente)
      */
     public List<Map<String, Object>> buscar(String dataIni, String dataFim, Integer codEquipamento,
                                             Integer codTipoCliente, String combustivel, String agrupar) {
@@ -146,9 +150,9 @@ public class AgroCombustivelDAO {
         }
 
         String template = switch (agrupar == null ? "" : agrupar.trim().toLowerCase()) {
-            case "combustivel" -> SQL_POR_COMBUSTIVEL;
+            case "detalhado" -> SQL_DETALHADO;
             case "equipamento" -> SQL_POR_EQUIPAMENTO;
-            default -> SQL_DETALHADO;
+            default -> SQL_POR_COMBUSTIVEL;
         };
         String sql = template.replace("/*FILTROS*/", filtros.toString());
 
