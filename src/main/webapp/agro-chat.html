@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Assistente Agrícola — USC</title>
+<title>Dr. Alfredo — USC</title>
 <style>
   :root {
     --verde: #1a3a7c;
@@ -157,8 +157,8 @@
 <div class="header">
   <div class="logo-box">USC</div>
   <div style="flex:1">
-    <div class="header-title">Assistente Agrícola</div>
-    <div class="header-sub">Talhões, insumos, chuvas e financeiro · Usina Santa Clotilde S/A</div>
+    <div class="header-title">Dr. Alfredo</div>
+    <div class="header-sub">Assistente de talhões, insumos, chuvas e financeiro · Usina Santa Clotilde S/A</div>
   </div>
   <div class="nav-tabs">
     <button class="nav-tab" onclick="exportarExcel()">
@@ -178,7 +178,7 @@
 
 <div class="chat-wrap">
   <div class="print-header">
-    <h1>Assistente Agrícola — Usina Santa Clotilde S/A</h1>
+    <h1>Dr. Alfredo — Usina Santa Clotilde S/A</h1>
     <p id="printData"></p>
   </div>
   <div class="chat-mensagens" id="chatMensagens">
@@ -222,7 +222,7 @@ fetch('api/sessao').then(r => r.json()).then(j => {
   // Nível 1 de permissão: acesso ao assistente (admin sempre tem)
   return fetch('api/ia/agro-chat-acesso').then(r => r.json()).then(a => {
     if (a && a.ok && !a.acesso) {
-      alert('Você ainda não tem acesso ao Assistente IA. Solicite a liberação ao administrador da intranet.');
+      alert('Você ainda não tem acesso ao Dr. Alfredo. Solicite a liberação ao administrador da intranet.');
       window.location.href = 'hub.html';
     }
   });
@@ -258,7 +258,7 @@ function addMensagem(tipo, texto) {
   removerVazio();
   const div = document.createElement('div');
   div.className = 'msg ' + tipo;
-  const avatar = tipo === 'usuario' ? 'Eu' : 'IA';
+  const avatar = tipo === 'usuario' ? 'Eu' : 'Dr';
   div.innerHTML = `<div class="msg-avatar">${avatar}</div><div class="msg-bolha"></div>`;
   div.querySelector('.msg-bolha').textContent = texto;
   chatMensagens.appendChild(div);
@@ -466,7 +466,7 @@ function addLoading() {
   removerVazio();
   const div = document.createElement('div');
   div.className = 'msg bot msg-loading';
-  div.innerHTML = `<div class="msg-avatar">IA</div><div class="msg-bolha"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>`;
+  div.innerHTML = `<div class="msg-avatar">Dr</div><div class="msg-bolha"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>`;
   chatMensagens.appendChild(div);
   chatMensagens.scrollTop = chatMensagens.scrollHeight;
   return div;

@@ -1,4 +1,4 @@
-// Botão flutuante do Assistente IA (agro-chat), exibido em todas as telas da
+// Botão flutuante do Dr. Alfredo (agro-chat), exibido em todas as telas da
 // intranet para quem tem a permissão "Chat — Acesso ao Assistente"
 // (administradores sempre têm). Basta incluir nas páginas:
 //   <script src="js/agro-chat-widget.js" defer></script>
@@ -44,7 +44,7 @@
 
     var btn = document.createElement('button');
     btn.id = 'agroChatFab';
-    btn.setAttribute('aria-label', 'Abrir o Assistente IA');
+    btn.setAttribute('aria-label', 'Abrir o Dr. Alfredo');
     btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">'
       + '<path stroke-linecap="round" stroke-linejoin="round" '
       + 'd="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.97-4.03 9-9 9a9.01 9.01 0 01-5.24-1.67L3 21l1.67-3.76A8.96 8.96 0 013 12c0-4.97 4.03-9 9-9s9 4.03 9 9z"/></svg>';
@@ -52,7 +52,7 @@
 
     var tip = document.createElement('div');
     tip.id = 'agroChatFabTip';
-    tip.textContent = 'Assistente IA';
+    tip.textContent = 'Dr. Alfredo';
 
     document.body.appendChild(btn);
     document.body.appendChild(tip);
