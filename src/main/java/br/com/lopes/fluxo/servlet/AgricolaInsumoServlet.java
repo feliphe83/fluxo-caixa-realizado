@@ -26,7 +26,7 @@ import java.util.logging.Logger;
  *
  * GET /api/agricola/insumos?safra=NNNN
  *        [&fazenda=NN] [&dataIni=yyyy-MM-dd] [&dataFim=yyyy-MM-dd]
- *        [&insumo=trecho da descrição] [&agrupar=insumo] [&sessionId=...]
+ *        [&insumo=trecho da descrição] [&agrupar=detalhado] [&sessionId=...]
  *
  * Resposta: { "ok": true, "totalEncontrado": N, "truncado": bool,
  *             "data": [ { ...colunas da consulta... }, ... ] }
@@ -34,11 +34,12 @@ import java.util.logging.Logger;
  * Safra é obrigatória; os demais filtros são opcionais mas recomendados —
  * uma safra inteira tem dezenas de milhares de apontamentos de insumo.
  *
- * Com agrupar=insumo, a utilização/área/custo vêm somadas direto do banco
- * por insumo — use para perguntas de "total aplicado de X" ou "quanto foi
- * usado de cada insumo", já que o modo detalhado (padrão) só expõe uma
- * amostra truncada linha a linha (por dia/talhão) e a IA não deve tentar
- * somar essa amostra sozinha.
+ * Por padrão (sem agrupar, ou agrupar=insumo), a utilização/área/custo vêm
+ * somadas direto do banco por insumo — é o formato certo para "quais
+ * insumos foram aplicados" ou "total aplicado de X". Só use
+ * agrupar=detalhado quando o pedido for claramente dia a dia/talhão a
+ * talhão (ex.: "liste os dias que X foi aplicado") — nesse modo o agente só
+ * recebe uma amostra truncada e não deve tentar somar sozinho a partir dela.
  *
  * O resultado devolvido ao agente é limitado a MAX_LINHAS registros (limite
  * de contexto do modelo de IA); o resultado completo fica no

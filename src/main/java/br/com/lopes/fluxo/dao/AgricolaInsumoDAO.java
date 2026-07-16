@@ -23,11 +23,14 @@ import java.util.logging.Logger;
  * opcionais, mas recomendados: a safra inteira pode ter dezenas de milhares
  * de linhas.
  *
- * Com agrupar=insumo, a utilização/área/custo vêm somadas direto no banco
- * por insumo (ordenado do maior para o menor consumo), com custo ponderado
- * (valor/utilização, não a média simples das linhas) — necessário para
- * perguntas de "total por insumo", já que o modo detalhado só expõe uma
- * amostra truncada (linha a linha, por dia/talhão) ao agente.
+ * Por padrão (agrupar nulo/vazio ou "insumo"), a utilização/área/custo vêm
+ * somadas direto no banco por insumo (ordenado do maior para o menor
+ * consumo), com custo ponderado (valor/utilização, não a média simples das
+ * linhas) — é o formato mais útil para "quais insumos foram aplicados" ou
+ * "total por insumo". O detalhamento linha a linha (por dia/talhão) só
+ * entra com agrupar=detalhado, pedido explicitamente (ex.: "liste os dias
+ * que X foi aplicado") — nesse modo o agente só recebe uma amostra
+ * truncada, então não deve tentar somar a partir dela.
  */
 public class AgricolaInsumoDAO {
 
@@ -380,9 +383,10 @@ public class AgricolaInsumoDAO {
      * @param dataFim    opcional, formato yyyy-MM-dd (data do apontamento <=)
      * @param insumo     opcional, trecho da descrição do insumo (busca contém,
      *                   sem diferenciar maiúsculas)
-     * @param agrupar    opcional: null/"detalhado" (linha a linha, por dia/
-     *                   talhão) ou "insumo" (soma utilização/área/custo por
-     *                   insumo — use para "total aplicado de X")
+     * @param agrupar    opcional: null/"insumo" (padrão — soma utilização/
+     *                   área/custo por insumo) ou "detalhado" (linha a
+     *                   linha, por dia/talhão — só quando pedido
+     *                   explicitamente, ex.: "liste os dias")
      */
     public List<Map<String, Object>> buscar(String codSafra, Integer codFazenda,
                                             String dataIni, String dataFim, String insumo, String agrupar) {
@@ -408,8 +412,12 @@ public class AgricolaInsumoDAO {
             params.add(insumo.trim());
         }
 
-        String template = "insumo".equalsIgnoreCase(agrupar == null ? "" : agrupar.trim())
-                ? SQL_POR_INSUMO : SQL_DETALHADO;
+        // Agrupado por insumo é o padrão (mais útil para "quais insumos foram
+        // aplicados" — uma amostra linha a linha por dia/talhão não responde
+        // bem a essa pergunta). O detalhamento dia a dia só entra quando
+        // pedido explicitamente (agrupar=detalhado).
+        String template = "detalhado".equalsIgnoreCase(agrupar == null ? "" : agrupar.trim())
+                ? SQL_DETALHADO : SQL_POR_INSUMO;
         String sql = template.replace("/*FILTROS*/", filtros.toString());
 
         try (Connection conn = AgroOracleConnectionUtil.getConnection();
