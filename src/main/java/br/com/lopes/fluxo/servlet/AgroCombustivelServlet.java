@@ -36,9 +36,9 @@ import java.util.logging.Logger;
  * consulta) — o agente de IA às vezes manda um valor vazio/errado num filtro
  * opcional mesmo sem o usuário ter pedido esse filtro.
  *
- * Por padrão (sem agrupar, ou agrupar=combustivel), os litros vêm somados
- * direto do banco por combustível, do maior para o menor consumo — é o
- * formato certo para "quanto de combustível foi abastecido". Use
+ * Por padrão (sem agrupar, ou agrupar=combustivel), litros e valor (R$) vêm
+ * somados direto do banco por combustível, do maior para o menor consumo —
+ * é o formato certo para "quanto de combustível foi abastecido". Use
  * agrupar=equipamento para "top N por consumo" por equipamento.
  * agrupar=detalhado (linha a linha) só quando pedido explicitamente — nesse
  * modo o agente só vê uma amostra truncada (MAX_LINHAS) e não deve tentar
