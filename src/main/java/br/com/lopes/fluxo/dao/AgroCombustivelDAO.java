@@ -63,8 +63,8 @@ public class AgroCombustivelDAO {
         and tipocliente.cod_tipocliente                     = abastecimento.cod_tipocliente
         and equipamento.cod_equipamento                     = abastecimento.cod_equipamento
         and equipamento.cod_grupoempresa                    = abastecimento.cod_grupoempresa
-        and abastecimento.data                              >= to_date(?, 'YYYY-MM-DD')
-        and abastecimento.data                              <= to_date(?, 'YYYY-MM-DD')
+        and abastecimento.data                              >= ?
+        and abastecimento.data                              <= ?
         and abastecimento.cod_grupoempresa                  = 1
         and abastecimento.cod_empresa                       = 1
         and abastecimento.cod_filial                        = 1
@@ -86,8 +86,11 @@ public class AgroCombustivelDAO {
 
         StringBuilder filtros = new StringBuilder();
         List<Object> params = new ArrayList<>();
-        params.add(dataIni);
-        params.add(dataFim);
+        // abastecimento.data é armazenada como texto no formato DDMMYYYY (sem
+        // separadores) — não é coluna DATE. Comparar direto como string, sem
+        // to_date(), igual à consulta original validada no Oracle.
+        params.add(paraDDMMYYYY(dataIni));
+        params.add(paraDDMMYYYY(dataFim));
 
         if (codEquipamento != null) {
             filtros.append(" and abastecimento.cod_equipamento = ?\n");
@@ -119,5 +122,11 @@ public class AgroCombustivelDAO {
             LOG.log(Level.SEVERE, "Erro ao buscar abastecimentos: " + e.getMessage(), e);
             throw new RuntimeException("Falha na consulta de combustível: " + e.getMessage(), e);
         }
+    }
+
+    /** Converte yyyy-MM-dd para DDMMYYYY (formato usado em abastecimento.data). */
+    private static String paraDDMMYYYY(String isoDate) {
+        String[] partes = isoDate.split("-");
+        return partes[2] + partes[1] + partes[0];
     }
 }
