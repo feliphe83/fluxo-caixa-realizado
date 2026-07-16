@@ -26,16 +26,23 @@ import java.util.logging.Logger;
  *
  * GET /api/agricola/insumos?safra=NNNN
  *        [&fazenda=NN] [&dataIni=yyyy-MM-dd] [&dataFim=yyyy-MM-dd]
- *        [&insumo=trecho da descrição] [&sessionId=...]
+ *        [&insumo=trecho da descrição] [&agrupar=insumo] [&sessionId=...]
  *
  * Resposta: { "ok": true, "totalEncontrado": N, "truncado": bool,
  *             "data": [ { ...colunas da consulta... }, ... ] }
  *
  * Safra é obrigatória; os demais filtros são opcionais mas recomendados —
- * uma safra inteira tem dezenas de milhares de apontamentos de insumo. O
- * resultado devolvido ao agente é limitado a MAX_LINHAS registros (limite de
- * contexto do modelo de IA); o resultado completo fica no AgroConsultaCache
- * para exportação em Excel pelo front-end do chat.
+ * uma safra inteira tem dezenas de milhares de apontamentos de insumo.
+ *
+ * Com agrupar=insumo, a utilização/área/custo vêm somadas direto do banco
+ * por insumo — use para perguntas de "total aplicado de X" ou "quanto foi
+ * usado de cada insumo", já que o modo detalhado (padrão) só expõe uma
+ * amostra truncada linha a linha (por dia/talhão) e a IA não deve tentar
+ * somar essa amostra sozinha.
+ *
+ * O resultado devolvido ao agente é limitado a MAX_LINHAS registros (limite
+ * de contexto do modelo de IA); o resultado completo fica no
+ * AgroConsultaCache para exportação em Excel pelo front-end do chat.
  */
 @WebServlet("/api/agricola/insumos")
 public class AgricolaInsumoServlet extends HttpServlet {
@@ -87,12 +94,13 @@ public class AgricolaInsumoServlet extends HttpServlet {
             }
 
             String insumo = req.getParameter("insumo");
+            String agrupar = req.getParameter("agrupar");
 
-            List<Map<String, Object>> lista = dao.buscar(safra, fazenda, dataIni, dataFim, insumo);
+            List<Map<String, Object>> lista = dao.buscar(safra, fazenda, dataIni, dataFim, insumo, agrupar);
 
             // Guarda o resultado COMPLETO para exportação (Excel) pelo
             // front-end do chat — o agente de IA só recebe a versão truncada.
-            AgroConsultaCache.guardar(sessionId, montarTitulo(safra, fazenda, dataIni, dataFim, insumo), lista);
+            AgroConsultaCache.guardar(sessionId, montarTitulo(safra, fazenda, dataIni, dataFim, insumo, agrupar), lista);
 
             int total = lista.size();
             boolean truncado = total > MAX_LINHAS;
@@ -123,8 +131,10 @@ public class AgricolaInsumoServlet extends HttpServlet {
     }
 
     private static String montarTitulo(String safra, Integer fazenda,
-                                       String dataIni, String dataFim, String insumo) {
-        StringBuilder t = new StringBuilder("Insumos — Safra ").append(safra);
+                                       String dataIni, String dataFim, String insumo, String agrupar) {
+        StringBuilder t = new StringBuilder("Insumos");
+        if (agrupar != null && !agrupar.isBlank()) t.append(" por ").append(agrupar.trim());
+        t.append(" — Safra ").append(safra);
         if (fazenda != null) t.append(" · Fazenda ").append(fazenda);
         boolean temIni = dataIni != null && !dataIni.isBlank();
         boolean temFim = dataFim != null && !dataFim.isBlank();

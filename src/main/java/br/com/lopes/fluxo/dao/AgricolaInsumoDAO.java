@@ -22,6 +22,12 @@ import java.util.logging.Logger;
  * Filtro por safra é obrigatório. Fazenda, período e descrição do insumo são
  * opcionais, mas recomendados: a safra inteira pode ter dezenas de milhares
  * de linhas.
+ *
+ * Com agrupar=insumo, a utilização/área/custo vêm somadas direto no banco
+ * por insumo (ordenado do maior para o menor consumo), com custo ponderado
+ * (valor/utilização, não a média simples das linhas) — necessário para
+ * perguntas de "total por insumo", já que o modo detalhado só expõe uma
+ * amostra truncada (linha a linha, por dia/talhão) ao agente.
  */
 public class AgricolaInsumoDAO {
 
@@ -30,8 +36,11 @@ public class AgricolaInsumoDAO {
     /** Teto absoluto de linhas devolvidas (protege memória do Tomcat/export). */
     private static final int MAX_TOTAL = 20000;
 
-    private static final String SQL = """
-        select * from (
+    // Nível intermediário: mesma consulta original, agregada por dia/talhão/
+    // insumo/etc., com o acréscimo de sum(valor_realizado) — necessário para
+    // o modo agrupar=insumo poder somar o custo corretamente num segundo
+    // nível de agregação (média ponderada, não média das médias).
+    private static final String SUBQUERY_DETALHE = """
         SELECT ano
              , numero
              ,PROCESSO PROCESSO
@@ -62,6 +71,7 @@ public class AgricolaInsumoDAO {
               , decode(SUM(area),0,0,  SUM(UTILIZACAO) / SUM(area ) ) Media
             , decode(SUM(area),0,0,  SUM(valor_realizado) / SUM(area ) ) CustoHA
              , nvl(decode(SUM(utilizacao),0,0, SUM(valor_realizado) / SUM(utilizacao ) ), 0) CustoMedio
+             , sum(valor_realizado) valor_total
              ,ano_ordemservico , nr_ordemservico
         from   (
 
@@ -329,7 +339,12 @@ public class AgricolaInsumoDAO {
             ,COD_REGIAOAGRICOLA, DESC_REGIAOAGRICOLA1
             ,ano
             ,numero ,ano_ordemservico , nr_ordemservico
-         Order by PROCESSO
+        """;
+
+    private static final String SQL_DETALHADO = """
+        select * from (
+        %s
+        Order by PROCESSO
                , SUBPROCESSO
                , COD_ATIVIDADE
                , COD_OPERACAO1
@@ -341,7 +356,22 @@ public class AgricolaInsumoDAO {
                , COD_TALHAO
                , COD_INSUMO
         ) where rownum <= %d
-        """.formatted(MAX_TOTAL);
+        """.formatted(SUBQUERY_DETALHE, MAX_TOTAL);
+
+    /** Utilização/área/custo somados por insumo — custo ponderado (valor/utilização). */
+    private static final String SQL_POR_INSUMO = """
+        select * from (
+        select cod_insumo, desc_insumo, unidade_utilizacao
+             , round(sum(area), 2) area_total
+             , round(sum(utilizacao), 2) utilizacao_total
+             , round(sum(valor_total), 2) valor_total
+             , round(decode(sum(area),0,0,sum(valor_total)/sum(area)),2) custo_ha_medio
+             , round(decode(sum(utilizacao),0,0,sum(valor_total)/sum(utilizacao)),2) custo_medio
+        from ( %s )
+        group by cod_insumo, desc_insumo, unidade_utilizacao
+        order by utilizacao_total desc
+        ) where rownum <= %d
+        """.formatted(SUBQUERY_DETALHE, MAX_TOTAL);
 
     /**
      * @param codSafra   obrigatório
@@ -350,9 +380,12 @@ public class AgricolaInsumoDAO {
      * @param dataFim    opcional, formato yyyy-MM-dd (data do apontamento <=)
      * @param insumo     opcional, trecho da descrição do insumo (busca contém,
      *                   sem diferenciar maiúsculas)
+     * @param agrupar    opcional: null/"detalhado" (linha a linha, por dia/
+     *                   talhão) ou "insumo" (soma utilização/área/custo por
+     *                   insumo — use para "total aplicado de X")
      */
     public List<Map<String, Object>> buscar(String codSafra, Integer codFazenda,
-                                            String dataIni, String dataFim, String insumo) {
+                                            String dataIni, String dataFim, String insumo, String agrupar) {
 
         StringBuilder filtros = new StringBuilder();
         List<Object> params = new ArrayList<>();
@@ -375,7 +408,9 @@ public class AgricolaInsumoDAO {
             params.add(insumo.trim());
         }
 
-        String sql = SQL.replace("/*FILTROS*/", filtros.toString());
+        String template = "insumo".equalsIgnoreCase(agrupar == null ? "" : agrupar.trim())
+                ? SQL_POR_INSUMO : SQL_DETALHADO;
+        String sql = template.replace("/*FILTROS*/", filtros.toString());
 
         try (Connection conn = AgroOracleConnectionUtil.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
