@@ -179,6 +179,10 @@
       <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
       Módulos (Hub)
     </div>
+    <div class="sb-item" id="nav-depara" onclick="setSec('depara')">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
+      De-Para Serviços
+    </div>
   </nav>
   <div class="sb-foot">
     <div class="sb-user">
@@ -219,6 +223,7 @@
       <button class="tab on" id="tab-usuarios"   onclick="setSec('usuarios')">👥 Usuários</button>
       <button class="tab"    id="tab-permissoes" onclick="setSec('permissoes')">🔐 Permissões</button>
       <button class="tab"    id="tab-modulos"     onclick="setSec('modulos')">🧩 Módulos (Hub)</button>
+      <button class="tab"    id="tab-depara"      onclick="setSec('depara')">🔄 De-Para Serviços</button>
     </div>
 
     <div class="sec on" id="sec-usuarios">
@@ -291,6 +296,54 @@
       </div>
 
     </div>
+
+    <div class="sec" id="sec-depara">
+      <div class="panel" style="margin-bottom:20px">
+        <div class="ph">
+          <div class="ph-title">Importar De-Para (Tipo de Serviço → Objeto de Custo)</div>
+        </div>
+        <div style="padding:20px">
+          <div style="font-size:12.5px;color:var(--text2);margin-bottom:10px;line-height:1.6">
+            Classifica os lançamentos de mão de obra do Controle de Serviços Agrícola por Objeto de Custo,
+            usando o código de tipo de serviço (COD_TIPOSERVICO) do Oracle. Copie da sua planilha (Excel/Sheets)
+            as colunas nesta ordem — <b>Processo</b>, <b>Subprocesso</b>, <b>Objeto de Custo</b>,
+            <b>Cód. Tipo Serviço</b>, <b>Descrição</b> — e cole abaixo. A primeira linha pode ser o cabeçalho
+            (é detectada e ignorada automaticamente). Registros com o mesmo código são atualizados.
+          </div>
+          <textarea id="deparaColar" rows="8"
+            style="width:100%;background:var(--surf2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;font-family:monospace;padding:10px;outline:none;resize:vertical"
+            placeholder="Cole aqui as linhas copiadas do Excel (colunas separadas por TAB)…"></textarea>
+          <div style="display:flex;gap:10px;margin-top:12px;align-items:center">
+            <button class="btn-primary" onclick="importarDePara()">
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Importar
+            </button>
+            <span id="deparaImportMsg" style="font-size:12.5px;color:var(--text3)"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="ph">
+          <div class="ph-title">Registros do De-Para (<span id="deparaTotal">0</span>)</div>
+          <div class="search-wrap">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input class="search-inp" id="searchDepara" placeholder="Buscar…" oninput="renderDePara()">
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Cód.</th><th>Processo</th><th>Subprocesso</th><th>Objeto de Custo</th><th>Descrição</th><th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tbDepara">
+            <tr><td colspan="6" style="text-align:center;padding:28px;color:var(--text3)">Carregando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -497,6 +550,11 @@ function setSec(s) {
     document.getElementById('btnAcao').style.display='none';
     carregarCategoriasModulos();
     carregarSelectsModulos();
+  } else if(s==='depara'){
+    document.getElementById('ttitle').textContent='De-Para Serviços';
+    document.getElementById('tsub').textContent='Classificação de tipo de serviço por Objeto de Custo (Controle de Serviços Agrícola)';
+    document.getElementById('btnAcao').style.display='none';
+    carregarDePara();
   } else {
     document.getElementById('ttitle').textContent='Permissões';
     document.getElementById('tsub').textContent='Defina quais módulos cada usuário pode acessar';
@@ -999,6 +1057,92 @@ async function togglePermModulo(idModulo) {
   } catch(e) {
     permsMod[idModulo] = !permsMod[idModulo];
     renderPermsModulos();
+    toast('Erro: ' + e.message, 'red');
+  }
+}
+
+// ── De-Para Tipo de Serviço ──────────────────────────────────────
+let DEPARA = [];
+
+async function carregarDePara() {
+  try {
+    const r = await fetch('api/depara-tiposervico');
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro);
+    DEPARA = j.data;
+    renderDePara();
+  } catch(e) {
+    document.getElementById('tbDepara').innerHTML =
+      `<tr><td colspan="6" style="text-align:center;padding:28px;color:var(--red)">Erro: ${esc(e.message)}</td></tr>`;
+  }
+}
+
+function renderDePara() {
+  const termo = (document.getElementById('searchDepara').value || '').toLowerCase().trim();
+  const lista = !termo ? DEPARA : DEPARA.filter(d =>
+    String(d.codTipoServico).includes(termo) ||
+    (d.processo||'').toLowerCase().includes(termo) ||
+    (d.subprocesso||'').toLowerCase().includes(termo) ||
+    (d.objetoCusto||'').toLowerCase().includes(termo) ||
+    (d.descricao||'').toLowerCase().includes(termo)
+  );
+
+  document.getElementById('deparaTotal').textContent = DEPARA.length;
+
+  if (lista.length === 0) {
+    document.getElementById('tbDepara').innerHTML =
+      `<tr><td colspan="6" style="text-align:center;padding:28px;color:var(--text3)">${DEPARA.length===0 ? 'Nenhum registro importado ainda.' : 'Nada encontrado.'}</td></tr>`;
+    return;
+  }
+
+  document.getElementById('tbDepara').innerHTML = lista.map(d => `
+    <tr>
+      <td>${esc(d.codTipoServico)}</td>
+      <td>${esc(d.processo)}</td>
+      <td>${esc(d.subprocesso)}</td>
+      <td>${esc(d.objetoCusto)}</td>
+      <td>${esc(d.descricao)}</td>
+      <td class="acts">
+        <button class="bico del" title="Excluir" onclick="excluirDePara(${d.codTipoServico})">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+        </button>
+      </td>
+    </tr>`).join('');
+}
+
+async function importarDePara() {
+  const texto = document.getElementById('deparaColar').value;
+  if (!texto || !texto.trim()) { toast('Cole os dados antes de importar', 'yellow'); return; }
+
+  const msgEl = document.getElementById('deparaImportMsg');
+  msgEl.textContent = 'Importando…';
+  try {
+    const r = await fetch('api/depara-tiposervico/importar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+      body: texto
+    });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro);
+    msgEl.textContent = `${j.importadas} registro(s) importado(s)${j.ignoradas ? ', ' + j.ignoradas + ' linha(s) ignorada(s)' : ''}.`;
+    toast('De-Para importado com sucesso!', 'green');
+    document.getElementById('deparaColar').value = '';
+    carregarDePara();
+  } catch(e) {
+    msgEl.textContent = '';
+    toast('Erro ao importar: ' + e.message, 'red');
+  }
+}
+
+async function excluirDePara(cod) {
+  if (!confirm('Excluir o registro do código ' + cod + '?')) return;
+  try {
+    const r = await fetch('api/depara-tiposervico?cod=' + cod, { method: 'DELETE' });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro);
+    toast('Registro excluído', 'yellow');
+    carregarDePara();
+  } catch(e) {
     toast('Erro: ' + e.message, 'red');
   }
 }

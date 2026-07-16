@@ -1,5 +1,6 @@
 package br.com.lopes.fluxo.servlet;
 
+import br.com.lopes.fluxo.util.DeParaTipoServicoCache;
 import br.com.lopes.fluxo.util.OracleConnectionUtil;
 import com.google.gson.*;
 
@@ -217,14 +218,35 @@ public class ServicosFornecedorServlet extends HttpServlet {
 
             JsonArray arr = new JsonArray();
             while (rs.next()) {
+                String tipo = rs.getString(2);
+                String origem = rs.getString(3);
+                String codServico = rs.getString(7);
+                String descObjeto = rs.getString(16);
+
+                // De-para Tipo de Serviço -> Objeto de Custo (MySQL, mantido
+                // pelo admin): enriquece descObjeto quando o Oracle não traz
+                // essa classificação, usando cod_tiposervico. Só se aplica a
+                // blocos de MÃO DE OBRA cujo codServico É de fato
+                // cod_tiposervico — não ao bloco TRANSPORTE DE PESSOAL, que
+                // usa cod_operacaoagricola (domínio de código diferente), nem
+                // a ENCARGOS SOCIAIS, que não entra na quebra por Objeto.
+                if ("MÃO DE OBRA".equals(tipo) && origem != null
+                        && !origem.trim().equals("TRANSPORTE DE PESSOAL")
+                        && !origem.trim().equals("ENCARGOS SOCIAIS")) {
+                    DeParaTipoServicoCache.Registro reg = DeParaTipoServicoCache.buscar(codServico);
+                    if (reg != null && reg.objetoCusto != null && !reg.objetoCusto.isBlank()) {
+                        descObjeto = reg.objetoCusto;
+                    }
+                }
+
                 JsonObject o = new JsonObject();
                 o.addProperty("empresa",          rs.getString(1));
-                o.addProperty("tipo",             rs.getString(2));
-                o.addProperty("origem",           rs.getString(3));
+                o.addProperty("tipo",             tipo);
+                o.addProperty("origem",           origem);
                 o.addProperty("codFuncionario",   rs.getString(4));
                 o.addProperty("nomeFuncionario",  rs.getString(5));
                 o.addProperty("codFazendaOrigem", rs.getString(6));
-                o.addProperty("codServico",       rs.getString(7));
+                o.addProperty("codServico",       codServico);
                 o.addProperty("descServico",      rs.getString(8));
                 o.addProperty("descFazenda",      rs.getString(9));
                 o.addProperty("descFornecedor",   rs.getString(10));
@@ -236,7 +258,7 @@ public class ServicosFornecedorServlet extends HttpServlet {
 
                 o.addProperty("valorTotal",       rs.getBigDecimal(14));
                 o.addProperty("unidade",          rs.getString(15));
-                o.addProperty("descObjeto",       rs.getString(16));
+                o.addProperty("descObjeto",       descObjeto);
                 arr.add(o);
             }
 
