@@ -114,7 +114,10 @@ public class AgroChatServlet extends HttpServlet {
                     + ". Converta períodos relativos como 'esta semana', 'próxima semana' ou 'este mês' "
                     + "em datas concretas ao usar as ferramentas. A semana da usina começa no SÁBADO e "
                     + "termina na sexta-feira: 'esta semana' = do último sábado (inclusive hoje, se for sábado) "
-                    + "até a próxima sexta-feira; 'próxima semana' = do próximo sábado até a sexta seguinte.]";
+                    + "até a próxima sexta-feira; 'próxima semana' = do próximo sábado até a sexta seguinte. "
+                    + "Ao escrever números na resposta (valores em R$, litros, toneladas, quantidades etc.), "
+                    + "use SEMPRE o formato brasileiro: ponto como separador de milhar e vírgula como separador "
+                    + "decimal (ex.: 60.686,92 — nunca 60,686.92).]";
 
             JsonObject payload = new JsonObject();
             payload.addProperty("pergunta", pergunta + contextoData);
