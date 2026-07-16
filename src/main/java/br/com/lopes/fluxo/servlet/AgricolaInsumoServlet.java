@@ -71,17 +71,11 @@ public class AgricolaInsumoServlet extends HttpServlet {
             }
             safra = safra.trim();
 
-            Integer fazenda = null;
-            String fazendaParam = req.getParameter("fazenda");
-            if (fazendaParam != null && !fazendaParam.isBlank()) {
-                try {
-                    fazenda = Integer.valueOf(fazendaParam.trim());
-                } catch (NumberFormatException e) {
-                    resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                    out.print("{\"ok\":false,\"erro\":\"Parâmetro fazenda deve ser o código numérico da fazenda\"}");
-                    return;
-                }
-            }
+            // Filtro opcional: valor ausente/vazio/não-numérico é tratado como
+            // "sem filtro" em vez de erro — a IA às vezes manda o NOME da
+            // fazenda (ex.: "Mundaú") em vez do código, e travar a consulta
+            // inteira por isso é pior do que só ignorar o filtro.
+            Integer fazenda = lerInteiro(req.getParameter("fazenda"));
 
             String dataIni = DataParamUtil.normalizar(req.getParameter("dataIni"));
             String dataFim = DataParamUtil.normalizar(req.getParameter("dataFim"));
@@ -121,6 +115,11 @@ public class AgricolaInsumoServlet extends HttpServlet {
         } finally {
             out.flush();
         }
+    }
+
+    private static Integer lerInteiro(String v) {
+        if (v == null || v.isBlank() || !v.trim().matches("\\d+")) return null;
+        return Integer.valueOf(v.trim());
     }
 
     private static String montarTitulo(String safra, Integer fazenda,
