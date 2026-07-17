@@ -153,6 +153,7 @@ public class FluxoARealizarServlet extends HttpServlet {
                 o.addProperty("descricaoTipoConta", rs.getString("desc_contas_pagar"));
                 o.addProperty("documento",          rs.getString("documento"));
                 o.addProperty("parcela",            rs.getString("parcela"));
+                o.addProperty("codTipoContasPagar", rs.getString("cod_tipocontaspagar"));
                 o.addProperty("provisao",           rs.getString("provisao"));
                 o.addProperty("usuario",            rs.getString("usuario"));
                 o.addProperty("valor",              rs.getBigDecimal("valor"));
