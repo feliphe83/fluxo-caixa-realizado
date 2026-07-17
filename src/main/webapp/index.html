@@ -510,6 +510,7 @@
       Parâmetro: <span id="pautaFechadaData" style="color:#1a3a7c">—</span>
     </span>
     <button id="btnLimparDesconsiderados" class="btn-limpar-desc" style="display:none" onclick="limparTodosDesconsiderados()">Limpar Desconsiderados</button>
+    <span id="somaDesconsiderados" style="margin-left:8px;font-size:13px;color:var(--vermelho);font-weight:700;display:none"></span>
   </div>
 </div>
 
@@ -1255,11 +1256,21 @@ async function limparTodosDesconsiderados() {
 // Mostra/esconde e atualiza a contagem do botão "Limpar Desconsiderados" no topo.
 function atualizarBotaoLimparGlobal() {
   const btn = document.getElementById('btnLimparDesconsiderados');
+  const soma = document.getElementById('somaDesconsiderados');
   if (!btn) return;
-  const qtde = modoAtual === 'arealizar' ? DADOS_RAW.filter(d => DESCONSIDERADOS.has(chaveParcela(d))).length : 0;
-  if (qtde === 0) { btn.style.display = 'none'; return; }
+  const marcados = modoAtual === 'arealizar' ? DADOS_RAW.filter(d => DESCONSIDERADOS.has(chaveParcela(d))) : [];
+  if (marcados.length === 0) {
+    btn.style.display = 'none';
+    if (soma) soma.style.display = 'none';
+    return;
+  }
   btn.style.display = 'inline-flex';
-  btn.textContent = 'Limpar Desconsiderados (' + qtde + ')';
+  btn.textContent = 'Limpar Desconsiderados (' + marcados.length + ')';
+  if (soma) {
+    const total = marcados.reduce((s, d) => s + (d.realizado || 0), 0);
+    soma.style.display = 'inline';
+    soma.textContent = total.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  }
 }
 
 // Se o modal de parcelas estiver aberto, refaz os checkboxes/total dele
