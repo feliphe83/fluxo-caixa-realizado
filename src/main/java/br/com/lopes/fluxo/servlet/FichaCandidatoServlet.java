@@ -58,6 +58,7 @@ public class FichaCandidatoServlet extends HttpServlet {
                         and CandidatoCargo.COD_CARGO        = c.cod_cargo
                          and CandidatoCargo.nivel             = c.nivel
                          and CandidatoCargo.nivel             = '1'
+                         and rownum = 1
         ) cargo_desejado
 
          , FICHACANDIDATO.COD_GRUPOEMPRESA
