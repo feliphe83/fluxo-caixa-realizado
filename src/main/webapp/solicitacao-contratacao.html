@@ -282,6 +282,7 @@ function renderizarTabela() {
     return `
       <tr class="${classeLinha}">
         <td>${escapeHtml(d.descDepartamento || '—')}</td>
+        <td>${escapeHtml(d.codCargo || '—')}</td>
         <td>${escapeHtml(d.descCargo || '—')}</td>
         <td class="num">${fmtNum(d.qtdeSolicitada)}</td>
         <td class="num">${fmtNum(d.qtdeCandidato)}</td>
@@ -296,7 +297,7 @@ function renderizarTabela() {
       <table>
         <thead>
           <tr>
-            <th>Departamento</th><th>Cargo</th>
+            <th>Departamento</th><th>Cód. Cargo</th><th>Cargo</th>
             <th class="num">Qtd. Solicitada</th><th class="num">Qtd. Candidatos</th>
             <th class="num">Qtd. Contratada</th><th>Situação</th>
           </tr>
@@ -312,9 +313,10 @@ function renderizarTabela() {
 function exportarExcel() {
   if (!DADOS_RAW || DADOS_RAW.length === 0) { alert('Gere o relatório antes de exportar.'); return; }
 
-  const cabecalho = ['Departamento', 'Cargo', 'Qtd. Solicitada', 'Qtd. Candidatos', 'Qtd. Contratada'];
+  const cabecalho = ['Departamento', 'Cód. Cargo', 'Cargo', 'Qtd. Solicitada', 'Qtd. Candidatos', 'Qtd. Contratada'];
   const linhas = DADOS_RAW.map(d => [
     d.descDepartamento || '',
+    d.codCargo || '',
     d.descCargo || '',
     d.qtdeSolicitada != null ? Number(d.qtdeSolicitada) : '',
     d.qtdeCandidato != null ? Number(d.qtdeCandidato) : '',
@@ -325,12 +327,12 @@ function exportarExcel() {
   const ws = XLSX.utils.aoa_to_sheet(wsData);
 
   ws['!cols'] = [
-    { wch: 26 }, { wch: 30 }, { wch: 14 }, { wch: 14 }, { wch: 14 }
+    { wch: 26 }, { wch: 12 }, { wch: 30 }, { wch: 14 }, { wch: 14 }, { wch: 14 }
   ];
 
   const range = XLSX.utils.decode_range(ws['!ref']);
   for (let row = 1; row <= range.e.r; row++) {
-    for (let col = 2; col <= 4; col++) {
+    for (let col = 3; col <= 5; col++) {
       const ref = XLSX.utils.encode_cell({ r: row, c: col });
       if (ws[ref] && typeof ws[ref].v === 'number') ws[ref].z = '0';
     }
