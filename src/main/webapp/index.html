@@ -220,13 +220,19 @@
   .detalhe-inner table tbody tr:hover td:first-child { background: #e8eef8; }
 
   .modal-totais {
-    display: flex; gap: 22px; flex-wrap: wrap; justify-content: flex-end;
+    display: flex; gap: 22px; flex-wrap: wrap; align-items: center; justify-content: flex-end;
     padding: 10px 4px 2px; margin-top: 8px; border-top: 1.5px solid var(--border);
     font-size: 12px; color: var(--cinza);
   }
   .modal-totais strong { color: var(--text); font-variant-numeric: tabular-nums; }
   .modal-totais .destaque { color: var(--verde-escuro); font-weight: 600; }
   .modal-totais .destaque strong { color: var(--verde-escuro); }
+  .btn-limpar-desc {
+    margin-right: auto; padding: 6px 12px; border-radius: 6px;
+    border: 1.5px solid var(--vermelho); background: white; color: var(--vermelho);
+    font-size: 11.5px; font-weight: 600; cursor: pointer; transition: all .15s;
+  }
+  .btn-limpar-desc:hover { background: var(--vermelho); color: white; }
 
   tr.total-topo td { color: #111827; font-weight: 700; font-size: 12px; padding: 10px 12px; background: #e5e7eb; }
 
@@ -773,24 +779,19 @@ function toggleChip(tipo) {
 }
 
 function getDadosFiltrados() {
-  let dados = filtrosAtivos.size === 0 ? DADOS_RAW
-    : DADOS_RAW.filter(d => filtrosAtivos.has(d.pagarReceber === 'P' && !d.provisao ? 'N' : d.provisao));
+  if (filtrosAtivos.size === 0) return DADOS_RAW;
+  return DADOS_RAW.filter(d => filtrosAtivos.has(d.pagarReceber === 'P' && !d.provisao ? 'N' : d.provisao));
+}
 
-  // Em A Realizar, a tela (e o total por Item/Descrição e o TOTAL DO
-  // PERÍODO) sempre mostram o valor líquido de desconsiderados — é para
-  // isso que a marcação serve. O PDF "Pauta Completa" é a única exceção:
-  // ali entra tudo, incluindo os desconsiderados.
-  if (modoAtual === 'arealizar') {
-    if (MODO_PDF === 'completo') {
-      // pauta completa: não filtra — mostra tudo
-    } else if (MODO_PDF === 'desconsiderados') {
-      dados = dados.filter(d => DESCONSIDERADOS.has(chaveParcela(d)));
-    } else {
-      // tela normal e PDF "apenas o que vai pagar"
-      dados = dados.filter(d => !DESCONSIDERADOS.has(chaveParcela(d)));
-    }
-  }
-  return dados;
+// Decide se um item entra no total (colunas/total do grupo) conforme o modo
+// atual — tela normal e PDF "apenas o que vai pagar" excluem desconsiderados;
+// PDF "completo" inclui tudo; PDF "desconsiderados" só eles. Fora de A
+// Realizar, desconsiderar não existe: tudo entra.
+function itemEntraNoTotal(d, desconsiderado) {
+  if (modoAtual !== 'arealizar') return true;
+  if (MODO_PDF === 'completo') return true;
+  if (MODO_PDF === 'desconsiderados') return desconsiderado;
+  return !desconsiderado;
 }
 
 function chaveParcela(d) {
@@ -931,22 +932,33 @@ function renderizar() {
 
   const dados = getDadosFiltrados();
 
-  // Agrupar
+  // Agrupar. "itens" sempre guarda TODOS os itens do grupo (mesmo os
+  // desconsiderados) — o modal de parcelas precisa deles para listar/
+  // desmarcar. "colunas"/"total" só somam o que entra no modo atual
+  // (itemEntraNoTotal) — por padrão, sem os desconsiderados.
   const mapa = {};
   dados.forEach(d => {
     const chave = getChave(d, agrupar);
     const label = getLabel(d, agrupar);
-    if (!mapa[chave]) mapa[chave] = { label, colunas: {}, total: 0, itens: [] };
+    if (!mapa[chave]) mapa[chave] = { chave, label, colunas: {}, total: 0, itens: [], temDesconsiderado: false };
+
+    mapa[chave].itens.push(d);
+    const desconsiderado = modoAtual === 'arealizar' && DESCONSIDERADOS.has(chaveParcela(d));
+    if (desconsiderado) mapa[chave].temDesconsiderado = true;
+    if (!itemEntraNoTotal(d, desconsiderado)) return;
+
     const dataPgto = d.dataPgto;
     if (!dataPgto) return;
     const col = encontrarPeriodo(dataPgto);
     if (col === null) return;
     mapa[chave].colunas[col] = (mapa[chave].colunas[col] || 0) + (d.realizado || 0);
     mapa[chave].total += (d.realizado || 0);
-    mapa[chave].itens.push(d);
   });
 
-  GRUPOS = Object.values(mapa).filter(g => g.total > 0).sort((a, b) => b.total - a.total);
+  // Uma linha some quando o total zera SEM ter desconsiderado (nada a
+  // mostrar) — com desconsiderado, a linha fica mesmo com total zerado, para
+  // o usuário continuar vendo/desmarcando.
+  GRUPOS = Object.values(mapa).filter(g => g.total > 0 || g.temDesconsiderado).sort((a, b) => b.total - a.total);
 
   // Totais
   const totaisCols = {};
@@ -964,16 +976,17 @@ function renderizar() {
     `<td><strong>${totaisCols[p.id] ? fmtR(totaisCols[p.id]) : '<span class="zero">—</span>'}</strong></td>`
   ).join('');
 
-  // Linhas
+  // Linhas — valor em vermelho quando o grupo tem alguma parcela desconsiderada
   const rows = GRUPOS.map((g, idx) => {
+    const corValor = g.temDesconsiderado ? `color:var(--vermelho)` : '';
     const tdCols = PERIODOS.map(p => {
       const v = g.colunas[p.id];
-      return `<td class="valor-clicavel" onclick="abrirModalFornecedores(${idx}, '${p.id}')">${v ? fmtR(v) : '<span class="zero">—</span>'}</td>`;
+      return `<td class="valor-clicavel" style="${corValor}" onclick="abrirModalFornecedores(${idx}, '${p.id}')">${v ? fmtR(v) : '<span class="zero">—</span>'}</td>`;
     }).join('');
     return `
       <tr class="item-row" id="row-${idx}">
         <td class="item-nome valor-clicavel" onclick="abrirModalFornecedores(${idx})">${esc(g.label)}</td>${tdCols}
-        <td class="valor-clicavel" style="font-weight:700" onclick="abrirModalFornecedores(${idx})">${fmtR(g.total)}</td>
+        <td class="valor-clicavel" style="font-weight:700;${corValor}" onclick="abrirModalFornecedores(${idx})">${fmtR(g.total)}</td>
       </tr>`;
   }).join('');
 
@@ -1143,16 +1156,55 @@ function abrirModalParcelas(g, periodoId, periodoLabel) {
 function atualizarTotalModal() {
   const el = document.getElementById('modalParcelasTotal');
   if (!el) return;
-  let totalPauta = 0, totalPagar = 0;
+  let totalPauta = 0, totalPagar = 0, qtdeMarcadas = 0;
   MODAL_ITENS_ATUAIS.forEach(it => {
     const v = it.realizado || 0;
     totalPauta += v;
-    if (!DESCONSIDERADOS.has(chaveParcela(it))) totalPagar += v;
+    if (DESCONSIDERADOS.has(chaveParcela(it))) qtdeMarcadas++;
+    else totalPagar += v;
   });
   el.innerHTML = `
+    ${qtdeMarcadas > 0 ? `<button class="btn-limpar-desc" onclick="limparMarcacoesModal()">Limpar (${qtdeMarcadas})</button>` : ''}
     <span>Total da Pauta: <strong>${fmtR(totalPauta)}</strong></span>
     <span>Desconsiderado: <strong>${fmtR(totalPauta - totalPagar)}</strong></span>
     <span class="destaque">Total a Pagar: <strong>${fmtR(totalPagar)}</strong></span>`;
+}
+
+// Remove a marcação de "desconsiderar" de todas as parcelas exibidas no
+// modal aberto (respeitando o período clicado, se houver).
+async function limparMarcacoesModal() {
+  const marcadas = MODAL_ITENS_ATUAIS.filter(it => DESCONSIDERADOS.has(chaveParcela(it)));
+  if (marcadas.length === 0) return;
+  if (!confirm('Remover a marcação de ' + marcadas.length + ' parcela(s) desconsiderada(s)?')) return;
+
+  // Otimista: já desmarca tudo na tela antes de esperar o servidor
+  marcadas.forEach(it => DESCONSIDERADOS.delete(chaveParcela(it)));
+  document.querySelectorAll('#modalFornecedoresBody .chk-desconsiderar').forEach(cb => {
+    cb.checked = false;
+    cb.closest('tr').classList.remove('linha-desconsiderada');
+  });
+  atualizarTotalModal();
+  renderizar();
+
+  try {
+    const respostas = await Promise.all(marcadas.map(it => fetch('api/parcela-desconsiderada', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ documento: it.documento, parcela: it.parcela, codTipoContasPagar: it.codTipoContasPagar, desconsiderar: false })
+    }).then(r => r.json())));
+    const comErro = respostas.find(j => !j.ok);
+    if (comErro) throw new Error(comErro.erro || 'Falha ao limpar algumas marcações');
+  } catch (e) {
+    alert('Erro ao limpar: ' + e.message + ' — recarregando o estado real.');
+    await carregarDesconsiderados();
+    atualizarTotalModal();
+    renderizar();
+    document.querySelectorAll('#modalFornecedoresBody .chk-desconsiderar').forEach(cb => {
+      const marcado = DESCONSIDERADOS.has(cb.dataset.chave);
+      cb.checked = marcado;
+      cb.closest('tr').classList.toggle('linha-desconsiderada', marcado);
+    });
+  }
 }
 
 function fecharModalFornecedores() {
