@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fichas de Candidatos · USC</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f4f6fb;
+    color: #1a1a2e;
+  }
+
+  .header {
+    background: linear-gradient(135deg, #0f2460 0%, #1a3a7c 100%);
+    color: white;
+    padding: 16px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .header-logo { width: 38px; height: 38px; border-radius: 8px; background: rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; }
+  .header-title { font-size: 16px; font-weight: 700; }
+  .header-sub { font-size: 11px; opacity: .75; margin-top: 2px; }
+  .btn-voltar {
+    display: flex; align-items: center; gap: 7px;
+    padding: 8px 16px; border-radius: 8px;
+    border: 1.5px solid rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.9);
+    font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .btn-voltar:hover { background: rgba(255,255,255,0.18); }
+
+  .conteudo { max-width: 900px; margin: 0 auto; padding: 28px 24px; }
+
+  .filtros-card {
+    background: white; border: 1.5px solid #e3e8f5; border-radius: 14px;
+    padding: 22px 24px; margin-bottom: 22px;
+  }
+  .filtros-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 140px auto;
+    gap: 14px;
+    align-items: end;
+  }
+  .campo label { display: block; font-size: 11.5px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 6px; }
+  .campo input {
+    width: 100%; padding: 9px 12px; border: 1.5px solid #d8dfee; border-radius: 8px;
+    font-size: 13.5px; color: #1a1a2e; outline: none; height: 40px;
+  }
+  .campo input:focus { border-color: #1a3a7c; }
+  .campo .hint { font-size: 10.5px; color: #94a0b8; margin-top: 4px; }
+
+  .btn-gerar {
+    padding: 11px 22px; border-radius: 9px; border: none;
+    background: #1a3a7c; color: white; font-size: 14px; font-weight: 700;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+    height: 40px; white-space: nowrap;
+  }
+  .btn-gerar:hover { background: #0f2460; }
+  .btn-gerar:disabled { background: #9ca3af; cursor: not-allowed; }
+
+  .export-bar { display: flex; gap: 10px; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .export-bar .contagem { font-size: 12.5px; color: #475569; font-weight: 600; }
+  .export-bar .botoes { display: flex; gap: 10px; }
+  .btn-export {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 14px; border-radius: 8px; border: 1.5px solid #d8dfee;
+    background: white; color: #475569; font-size: 12.5px; font-weight: 600; cursor: pointer;
+  }
+  .btn-export:hover { border-color: #1a3a7c; color: #1a3a7c; }
+
+  .loading-state, .erro-state, .vazio-state { text-align: center; padding: 60px 20px; color: #94a0b8; }
+  .spinner { width: 30px; height: 30px; border: 3px solid #e3e8f5; border-top-color: #1a3a7c; border-radius: 50%; margin: 0 auto 12px; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .erro-state { color: #ef4444; }
+
+  /* ─── Ficha do candidato ─── */
+  .ficha {
+    background: white; border: 1.5px solid #1a1a2e; border-radius: 4px;
+    padding: 14px 16px; margin-bottom: 22px; font-size: 12px;
+  }
+  .ficha-topo {
+    display: flex; align-items: center; gap: 14px;
+    border-bottom: 2px solid #1a1a2e; padding-bottom: 10px; margin-bottom: 10px;
+  }
+  .ficha-logo {
+    width: 42px; height: 42px; border-radius: 6px; background: #0f2460; color: white;
+    display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; flex-shrink: 0;
+  }
+  .ficha-titulo { flex: 1; text-align: center; font-size: 16px; font-weight: 800; }
+  .ficha-meta { text-align: right; font-size: 10px; color: #475569; line-height: 1.5; white-space: nowrap; }
+  .ficha-resumo { display: flex; gap: 26px; font-size: 12px; margin-bottom: 12px; }
+  .ficha-resumo b { font-weight: 700; }
+
+  .fc-box { border: 1.2px solid #1a1a2e; border-radius: 3px; padding: 7px 10px; margin-bottom: 8px; }
+  .fc-box-titulo { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; color: #0f2460; margin-bottom: 5px; }
+  .fc-row { display: flex; flex-wrap: wrap; gap: 4px 22px; margin-bottom: 3px; }
+  .fc-row:last-child { margin-bottom: 0; }
+  .fc-field { white-space: nowrap; }
+  .fc-field.grow { flex: 1; min-width: 160px; white-space: normal; }
+  .fc-field .lbl { font-weight: 700; }
+  .fc-field .val { font-weight: 400; }
+  .fc-texto { font-size: 11.5px; line-height: 1.5; white-space: pre-wrap; }
+
+  @media print {
+    .header, .filtros-card, .export-bar, .btn-voltar { display: none !important; }
+    body { background: white; margin: 0; }
+    .conteudo { padding: 0; max-width: 100%; }
+
+    .ficha {
+      border: 1.2px solid #1a1a2e; border-radius: 0; margin-bottom: 0;
+      page-break-after: always; break-after: page;
+    }
+    .ficha:last-child { page-break-after: auto; break-after: auto; }
+    .fc-box { page-break-inside: avoid; break-inside: avoid; }
+
+    @page { margin: 12mm; size: portrait; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="header-logo">USC</div>
+    <div>
+      <div class="header-title">Fichas de Candidatos</div>
+      <div class="header-sub">Cadastro de candidatos por período e cargo desejado</div>
+    </div>
+  </div>
+  <button class="btn-voltar" onclick="window.location.href='hub.html'">
+    <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+    Voltar ao Hub
+  </button>
+</div>
+
+<div class="conteudo">
+
+  <div class="filtros-card">
+    <div class="filtros-grid">
+      <div class="campo">
+        <label>Data Início</label>
+        <input type="date" id="dataIni">
+      </div>
+      <div class="campo">
+        <label>Data Fim</label>
+        <input type="date" id="dataFim">
+      </div>
+      <div class="campo">
+        <label>Cód. Cargo</label>
+        <input type="number" id="codCargo" min="0" step="1" value="0">
+        <div class="hint">0 = todos</div>
+      </div>
+      <div class="campo">
+        <button class="btn-gerar" id="btnGerar" onclick="gerarRelatorio()">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Gerar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="export-area" style="display:none">
+    <div class="export-bar">
+      <div class="contagem" id="contagemTexto"></div>
+      <div class="botoes">
+        <button class="btn-export" onclick="window.print()">
+          <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          Gerar PDF
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="resultado">
+    <div class="vazio-state">
+      <p>Informe o período (e opcionalmente o código do cargo) para gerar as fichas.</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let DADOS_RAW = [];
+
+(function initDatas() {
+  const hoje = new Date();
+  const ini = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+  document.getElementById('dataIni').value = fmt8(ini);
+  document.getElementById('dataFim').value = fmt8(hoje);
+})();
+
+function fmt8(d) {
+  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), dd = String(d.getDate()).padStart(2,'0');
+  return y + '-' + m + '-' + dd;
+}
+
+async function gerarRelatorio() {
+  const dataIni = document.getElementById('dataIni').value;
+  const dataFim = document.getElementById('dataFim').value;
+  const codCargo = document.getElementById('codCargo').value || '0';
+
+  if (!dataIni || !dataFim) { alert('Informe o período completo.'); return; }
+  if (dataFim < dataIni) { alert('Data Fim não pode ser anterior à Data Início.'); return; }
+
+  const btn = document.getElementById('btnGerar');
+  btn.disabled = true;
+  btn.textContent = 'Consultando…';
+  document.getElementById('export-area').style.display = 'none';
+  document.getElementById('resultado').innerHTML =
+    '<div class="loading-state"><div class="spinner"></div><p>Consultando Oracle…</p></div>';
+
+  try {
+    const url = `api/ficha-candidatos?dataIni=${dataIni}&dataFim=${dataFim}&codCargo=${encodeURIComponent(codCargo)}`;
+    const r = await fetch(url);
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro);
+
+    DADOS_RAW = j.data;
+    renderizarFichas(dataIni, dataFim, codCargo);
+
+  } catch(e) {
+    document.getElementById('resultado').innerHTML =
+      '<div class="erro-state"><p>❌ ' + e.message + '</p></div>';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Gerar`;
+  }
+}
+
+function renderizarFichas(dataIni, dataFim, codCargo) {
+  const el = document.getElementById('resultado');
+
+  if (DADOS_RAW.length === 0) {
+    el.innerHTML = '<div class="vazio-state"><p>Nenhum candidato encontrado para o período/cargo informado.</p></div>';
+    document.getElementById('export-area').style.display = 'none';
+    return;
+  }
+
+  const periodo = formatarData(dataIni) + ' até ' + formatarData(dataFim);
+  const cargoTxt = (codCargo && codCargo !== '0') ? ('Código ' + codCargo) : 'Todos os Cargos';
+  const agora = new Date();
+  const dataGeracao = agora.toLocaleDateString('pt-BR');
+  const horaGeracao = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+  el.innerHTML = DADOS_RAW.map((d, i) => montarFicha(d, i + 1, DADOS_RAW.length, periodo, cargoTxt, dataGeracao, horaGeracao)).join('');
+
+  document.getElementById('contagemTexto').textContent =
+    DADOS_RAW.length + (DADOS_RAW.length === 1 ? ' candidato encontrado' : ' candidatos encontrados');
+  document.getElementById('export-area').style.display = 'block';
+}
+
+function montarFicha(d, indice, total, periodo, cargoTxt, dataGeracao, horaGeracao) {
+  return `
+    <div class="ficha">
+      <div class="ficha-topo">
+        <div class="ficha-logo">USC</div>
+        <div class="ficha-titulo">Ficha Candidato</div>
+        <div class="ficha-meta">
+          Data: ${esc(dataGeracao)}<br>
+          Hora: ${esc(horaGeracao)}<br>
+          Pág.: ${indice} de ${total}
+        </div>
+      </div>
+      <div class="ficha-resumo">
+        <span><b>Período:</b> ${esc(periodo)}</span>
+        <span><b>Cargo:</b> ${esc(cargoTxt)}</span>
+      </div>
+
+      <div class="fc-box">
+        ${linha([['Nome', d.nome], ['Nacionalidade', d.nacionalidade]])}
+        ${linha([['Sexo', d.sexo], ['Data Nasc', fmtData(d.data_nascimento)], ['Est. Civil', d.descricao]])}
+        ${linha([['Cat.CNH', d.categoria_habilitacao]])}
+        ${linha([['Endereço', d.endereco], ['Bairro', d.bairro]])}
+        ${linha([['Cidade', d.desc_cidade], ['CEP', d.cep]])}
+        ${linha([['Estado', d.uf]])}
+      </div>
+
+      <div class="fc-box">
+        ${linha([['Cargo Desejado', d.cargo_desejado], ['Exp.Cargo', d.experienciacargo]])}
+      </div>
+
+      <div class="fc-box">
+        ${linha([['Estuda', d.estudo_atual], ['Escolaridade', d.desc_escolaridade]])}
+        ${linha([['Escola', d.nomeescola]])}
+        ${linha([['Formação', d.descestudoatual]])}
+      </div>
+
+      <div class="fc-box">
+        ${linha([['Exp. Profissional', d.experienciasetor]])}
+        ${linha([['Último Emprego', d.ultima_exp]])}
+        ${linha([['Penúltimo', d.penultima_exp]])}
+        ${linha([['Trabalhou na empresa', d.trabalhou_empresa], ['Possui atividade Remunerada', d.atividade_remunerada]])}
+        ${linha([['Concor. Trab. Externo', d.executar_servico_externo], ['Concor. Fazer Hora Extra', d.hora_extra], ['Concor. Fazer Trab. Noturno', d.horario_noturno]])}
+        ${linha([['Tem Indicação', d.tem_indicacao], ['Quem Indicou', d.nome_quem_indicou]])}
+      </div>
+
+      <div class="fc-box">
+        <div class="fc-box-titulo">Documentos</div>
+        ${linha([['RG', d.rg], ['PIS', d.pis], ['CTPS', d.ctps], ['Série', d.serie]])}
+        ${linha([['Título Eleitor', d.titulo], ['Zona', d.zona], ['Seção', d.secao]])}
+        ${linha([['Cert. Militar', d.cert_militar], ['Cart. Habilitação', d.cart_habilitacao], ['Cartão SUS', d.num_cartao_sus]])}
+      </div>
+
+      <div class="fc-box">
+        <div class="fc-box-titulo">Dados Complementares</div>
+        ${linha([['Cor', d.desc_cor], ['Naturalidade', d.naturalidade], ['Nº Calçado', d.num_calcado]])}
+        ${linha([['Vínculo', d.desc_vinculo], ['Possui Filhos', d.possui_filhos], ['Qtde Filhos', d.qtde_filhos]])}
+        ${linha([['Idiomas', d.idiomas]])}
+        ${linha([['Deficiência', d.tipo_deficiencia]])}
+      </div>
+
+      <div class="fc-box">
+        <div class="fc-box-titulo">Origem da Candidatura</div>
+        ${linha([['Placa/Aviso', d.placa_aviso], ['Agência Emprego', d.agencia_emp]])}
+        ${linha([['Recomendação', d.recomendacao], ['Anúncio Jornal', d.anuncio_jornal]])}
+        ${linha([['Espontâneo', d.espontaneo], ['Outros', d.outros_vaga]])}
+        ${linha([['Parentes na Empresa', d.associacao], ['Exp. Setor Sucroalcooleiro', d.experienciasetor]])}
+      </div>
+
+      ${(d.turmadesc || d.numero_convocacao) ? `
+      <div class="fc-box">
+        <div class="fc-box-titulo">Turma / Convocação / Lotação</div>
+        ${linha([['Turma', d.turmadesc], ['Local', d.local_turm], ['Data Turma', fmtData(d.dataturma)]])}
+        ${linha([['Nº Convocação', d.numero_convocacao], ['Objeto de Custo', d.objetocusto]])}
+        ${linha([['Cargo (Convocação)', d.cargo], ['Departamento', d.depart_func], ['Setor', d.setor_func]])}
+        ${linha([['Nº Ficha', d.numero_ficha]])}
+      </div>` : ''}
+
+      ${(d.experiencia || d.curriculum) ? `
+      <div class="fc-box">
+        <div class="fc-box-titulo">Experiência / Currículo</div>
+        <div class="fc-texto">${esc(d.experiencia || d.curriculum || '')}</div>
+      </div>` : ''}
+    </div>
+  `;
+}
+
+function linha(pares) {
+  const campos = pares
+    .filter(p => p[1] !== null && p[1] !== undefined && p[1] !== '')
+    .map(p => `<span class="fc-field"><span class="lbl">${esc(p[0])}:</span> <span class="val">${esc(p[1])}</span></span>`)
+    .join('');
+  return campos ? `<div class="fc-row">${campos}</div>` : '';
+}
+
+function fmtData(iso) {
+  if (!iso) return '';
+  // Aceita 'YYYY-MM-DD' ou 'YYYY-MM-DDTHH:mm:ss'
+  const parte = String(iso).split('T')[0];
+  const partes = parte.split('-');
+  if (partes.length !== 3) return iso;
+  return partes[2] + '/' + partes[1] + '/' + partes[0];
+}
+
+function formatarData(iso) {
+  if (!iso) return '—';
+  const [y, m, d] = iso.split('-');
+  return d + '/' + m + '/' + y;
+}
+
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+
+<script src="js/agro-chat-widget.js" defer></script>
+</body>
+</html>
