@@ -1,10 +1,12 @@
 package br.com.lopes.fluxo.util;
 
+import java.sql.Blob;
 import java.sql.Clob;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,6 +49,12 @@ public class RowMapperUtil {
         }
         if (valor instanceof Clob clob) {
             return clob.getSubString(1, (int) clob.length());
+        }
+        if (valor instanceof Blob blob) {
+            // Colunas de foto/imagem (ex.: rh.pessoa_foto.foto) — devolvidas
+            // já como base64, prontas para virar data URI no front-end.
+            byte[] bytes = blob.getBytes(1, (int) blob.length());
+            return Base64.getEncoder().encodeToString(bytes);
         }
         return valor;
     }

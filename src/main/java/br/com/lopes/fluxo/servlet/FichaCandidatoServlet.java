@@ -101,6 +101,10 @@ public class FichaCandidatoServlet extends HttpServlet {
          , decode(FICHACANDIDATO.EXPERIENCIASETOR,'T','Sim','Não')"EXPERIENCIASETOR"
          , decode(FICHACANDIDATO.TRABALHOU_EMPRESA,'T','Sim','Não') "TRABALHOU_EMPRESA"
          , PESSOA.COD_PESSOA
+         , (select pessoa_foto.foto
+            from   rh.pessoa_foto
+            where  pessoa_foto.cod_pessoa = pessoa.cod_pessoa
+            and    rownum = 1) foto
          , PESSOA.NOME
          , PESSOA.ENDERECO
          , PESSOA.BAIRRO
