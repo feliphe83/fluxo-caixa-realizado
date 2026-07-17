@@ -103,7 +103,6 @@
   .ficha-resumo b { font-weight: 700; }
 
   .fc-box { border: 1.2px solid #1a1a2e; border-radius: 3px; padding: 7px 10px; margin-bottom: 8px; }
-  .fc-box.sem-borda { border: none; padding: 0 0 6px 0; }
   .fc-box-titulo { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; color: #0f2460; margin-bottom: 5px; }
   .fc-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 4px 20px; margin-bottom: 3px; }
   .fc-row:last-child { margin-bottom: 0; }
@@ -364,13 +363,6 @@ function montarFicha(d, indice, total, periodo, cargoTxt, dataGeracao, horaGerac
         ${linha([['Trabalhou na empresa', d.trabalhou_empresa], ['Possui atividade Remunerada', d.atividade_remunerada]])}
         ${linha([['Concor. Trab. Externo', d.executar_servico_externo], ['Concor. Fazer Hora Extra', d.hora_extra], ['Concor. Fazer Trab. Noturno', d.horario_noturno]])}
         ${linha([['Tem Indicação', d.tem_indicacao], ['Quem Indicou', d.nome_quem_indicou]])}
-      </div>
-
-      <div class="fc-box sem-borda">
-        <div class="fc-box-titulo">Documentos</div>
-        ${linha([['RG', d.rg], ['PIS', d.pis], ['CTPS', d.ctps], ['Série', d.serie]])}
-        ${linha([['Título Eleitor', d.titulo], ['Zona', d.zona], ['Seção', d.secao]])}
-        ${linha([['Cert. Militar', d.cert_militar], ['Cart. Habilitação', d.cart_habilitacao], ['Cartão SUS', d.num_cartao_sus]])}
       </div>
 
       <div class="fc-box">
