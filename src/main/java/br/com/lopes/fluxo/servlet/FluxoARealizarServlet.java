@@ -40,7 +40,7 @@ public class FluxoARealizarServlet extends HttpServlet {
         "    SELECT conta_fluxo, desc_fluxo, cod_grupoempenho, desc_grupoempenho, cod_empenho, " +
         "           Descricao_empenho, cod_fornecedor, nome, documento, cod_tipocontaspagar, " +
         "           desc_contas_pagar, dataentrada, datavcto, " +
-        "           (valorparcela_calculada - vlr_baixa + acrescimos - descontos) valor, " +
+        "           (vlrparcela - vlr_baixa) valor, " +
         "           provisao, usuario, data_criacao, datavcto_orig, parcela, cod_indicefinanceiro " +
         "    FROM ( " +
         "        SELECT " +
@@ -54,11 +54,10 @@ public class FluxoARealizarServlet extends HttpServlet {
         "            tabela.cod_empresa, tabela.cod_filial, tabela.documento, tabela.parcela, " +
         "            tabela.usuariopgto, tabela.cod_situacao, tabela.num_lancamentobancario, " +
         "            DECODE(tabela.datapgto, NULL, " +
-        "                (tabela.valorparcela * financeiro.busca_indicefinanceiro(tabela.cod_indicefinanceiro, NVL(NULL,tabela.datavcto))), " +
-        "                financeiro.Busca_BaixaParcelaVr_Liquido(tabela.COD_GRUPOEMPRESA, tabela.COD_TIPOCONTASPAGAR, tabela.DOCUMENTO, tabela.PARCELA)) valorparcela_calculada, " +
+        "                ((financeiro.busca_valoratualparcela(tabela.cod_grupoempresa, tabela.cod_tipocontaspagar, tabela.documento, tabela.parcela, tabela.cod_indicefinanceiro, DECODE(tabela.data_indicefinanceiro,null,nvl(NULL,tabela.datavcto),tabela.data_indicefinanceiro), tabela.datapgto, tabela.valorparcela, tabela.valorindexado, 'T') + " +
+        "                  financeiro.consulta_jurosdescontoparcela(tabela.cod_grupoempresa, tabela.cod_tipocontaspagar, tabela.documento, tabela.parcela, DECODE(tabela.data_indicefinanceiro,null,nvl(NULL,tabela.datavcto),tabela.data_indicefinanceiro), 'A'))), " +
+        "                financeiro.Busca_BaixaParcelaVr_Liquido(tabela.COD_GRUPOEMPRESA, tabela.COD_TIPOCONTASPAGAR, tabela.DOCUMENTO, tabela.PARCELA)) vlrparcela, " +
         "            financeiro.busca_baixaparcelavr_liquido(tabela.cod_grupoempresa, tabela.cod_tipocontaspagar, tabela.documento, tabela.parcela) vlr_baixa, " +
-        "            financeiro.consulta_jurosdescontoparcela(tabela.cod_grupoempresa, tabela.cod_tipocontaspagar, tabela.documento, tabela.parcela, DECODE(tabela.data_indicefinanceiro,null,nvl(NULL,tabela.datavcto),tabela.data_indicefinanceiro), 'C') acrescimos, " +
-        "            financeiro.consulta_jurosdescontoparcela(tabela.cod_grupoempresa, tabela.cod_tipocontaspagar, tabela.documento, tabela.parcela, DECODE(tabela.data_indicefinanceiro,null,nvl(NULL,tabela.datavcto),tabela.data_indicefinanceiro), 'D') descontos, " +
         "            tabela.datavcto, tabela.datapgto, tabela.cod_indicefinanceiro, tabela.provisao, " +
         "            geral.fn_obtem_nome(tabela.cod_fornecedor, tabela.cpf) nome, " +
         "            tabela.cod_fornecedor, tabela.cod_empenho, " +
