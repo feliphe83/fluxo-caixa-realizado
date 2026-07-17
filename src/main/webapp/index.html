@@ -776,11 +776,19 @@ function getDadosFiltrados() {
   let dados = filtrosAtivos.size === 0 ? DADOS_RAW
     : DADOS_RAW.filter(d => filtrosAtivos.has(d.pagarReceber === 'P' && !d.provisao ? 'N' : d.provisao));
 
-  // Aplicado só durante a geração do PDF (ver gerarPdfComModo) — não afeta a tela normal.
-  if (MODO_PDF === 'apagar') {
-    dados = dados.filter(d => !DESCONSIDERADOS.has(chaveParcela(d)));
-  } else if (MODO_PDF === 'desconsiderados') {
-    dados = dados.filter(d => DESCONSIDERADOS.has(chaveParcela(d)));
+  // Em A Realizar, a tela (e o total por Item/Descrição e o TOTAL DO
+  // PERÍODO) sempre mostram o valor líquido de desconsiderados — é para
+  // isso que a marcação serve. O PDF "Pauta Completa" é a única exceção:
+  // ali entra tudo, incluindo os desconsiderados.
+  if (modoAtual === 'arealizar') {
+    if (MODO_PDF === 'completo') {
+      // pauta completa: não filtra — mostra tudo
+    } else if (MODO_PDF === 'desconsiderados') {
+      dados = dados.filter(d => DESCONSIDERADOS.has(chaveParcela(d)));
+    } else {
+      // tela normal e PDF "apenas o que vai pagar"
+      dados = dados.filter(d => !DESCONSIDERADOS.has(chaveParcela(d)));
+    }
   }
   return dados;
 }
@@ -806,6 +814,7 @@ async function toggleDesconsiderar(chave, documento, parcela, codTipoContasPagar
   const tr = checkboxEl.closest('tr');
   if (tr) tr.classList.toggle('linha-desconsiderada', marcar);
   atualizarTotalModal();
+  renderizar(); // total por Item/Descrição e TOTAL DO PERÍODO, na hora
 
   try {
     const r = await fetch('api/parcela-desconsiderada', {
@@ -820,6 +829,7 @@ async function toggleDesconsiderar(chave, documento, parcela, codTipoContasPagar
     checkboxEl.checked = !marcar;
     if (marcar) DESCONSIDERADOS.delete(chave); else DESCONSIDERADOS.add(chave);
     if (tr) tr.classList.toggle('linha-desconsiderada', !marcar);
+    renderizar();
     atualizarTotalModal();
   }
 }
