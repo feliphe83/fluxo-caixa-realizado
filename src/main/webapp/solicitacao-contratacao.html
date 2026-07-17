@@ -266,7 +266,8 @@ function renderizarTabela() {
   }
 
   const linhas = DADOS_RAW.map(d => {
-    const diferenca = d.diferenca || 0;
+    // Situação = Qtd. Solicitada - Qtd. Contratada (não usa Qtd. Candidatos)
+    const diferenca = (d.qtdeSolicitada || 0) - (d.qtdeContratada || 0);
     let classeLinha = '', badge = '';
 
     if (diferenca > 0) {
