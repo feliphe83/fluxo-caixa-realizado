@@ -219,6 +219,15 @@
   .detalhe-inner table tbody tr:hover { background: #e8eef8; }
   .detalhe-inner table tbody tr:hover td:first-child { background: #e8eef8; }
 
+  .modal-totais {
+    display: flex; gap: 22px; flex-wrap: wrap; justify-content: flex-end;
+    padding: 10px 4px 2px; margin-top: 8px; border-top: 1.5px solid var(--border);
+    font-size: 12px; color: var(--cinza);
+  }
+  .modal-totais strong { color: var(--text); font-variant-numeric: tabular-nums; }
+  .modal-totais .destaque { color: var(--verde-escuro); font-weight: 600; }
+  .modal-totais .destaque strong { color: var(--verde-escuro); }
+
   tr.total-topo td { color: #111827; font-weight: 700; font-size: 12px; padding: 10px 12px; background: #e5e7eb; }
 
   .empty-state { text-align: center; padding: 60px 24px; color: var(--cinza); }
@@ -636,6 +645,7 @@ let compPeriodos = [];
 // e modo de filtro aplicado só durante a geração do PDF em A Realizar.
 let DESCONSIDERADOS = new Set();
 let MODO_PDF = null; // null | 'completo' | 'apagar' | 'desconsiderados'
+let MODAL_ITENS_ATUAIS = []; // itens exibidos no modal de parcelas aberto (para recalcular o total)
 
 // ─── Init ──────────────────────────────────────────────────────────────────
 (function init() {
@@ -790,6 +800,13 @@ async function carregarDesconsiderados() {
 }
 
 async function toggleDesconsiderar(chave, documento, parcela, codTipoContasPagar, marcar, checkboxEl) {
+  // Atualização otimista: linha e totais do modal já refletem a marcação
+  // antes de esperar o servidor responder — só reverte se der erro.
+  if (marcar) DESCONSIDERADOS.add(chave); else DESCONSIDERADOS.delete(chave);
+  const tr = checkboxEl.closest('tr');
+  if (tr) tr.classList.toggle('linha-desconsiderada', marcar);
+  atualizarTotalModal();
+
   try {
     const r = await fetch('api/parcela-desconsiderada', {
       method: 'POST',
@@ -798,12 +815,12 @@ async function toggleDesconsiderar(chave, documento, parcela, codTipoContasPagar
     });
     const j = await r.json();
     if (!j.ok) throw new Error(j.erro);
-    if (marcar) DESCONSIDERADOS.add(chave); else DESCONSIDERADOS.delete(chave);
-    const tr = checkboxEl.closest('tr');
-    if (tr) tr.classList.toggle('linha-desconsiderada', marcar);
   } catch (e) {
     alert('Erro ao salvar: ' + e.message);
     checkboxEl.checked = !marcar;
+    if (marcar) DESCONSIDERADOS.delete(chave); else DESCONSIDERADOS.add(chave);
+    if (tr) tr.classList.toggle('linha-desconsiderada', !marcar);
+    atualizarTotalModal();
   }
 }
 
@@ -1064,6 +1081,7 @@ function abrirModalParcelas(g, periodoId, periodoLabel) {
     (a.nome || '').localeCompare(b.nome || '', 'pt-BR') ||
     (a.dataVcto || '').localeCompare(b.dataVcto || '')
   );
+  MODAL_ITENS_ATUAIS = itensFiltrados;
 
   const linhas = itensFiltrados.map(it => {
     const chave = chaveParcela(it);
@@ -1096,8 +1114,10 @@ function abrirModalParcelas(g, periodoId, periodoLabel) {
         </tr></thead>
         <tbody>${linhas || '<tr><td colspan="6" style="text-align:center;color:var(--cinza)">Nenhuma parcela neste período.</td></tr>'}</tbody>
       </table>
+      <div class="modal-totais" id="modalParcelasTotal"></div>
     </div>`;
   document.getElementById('modalFornecedores').classList.add('aberto');
+  atualizarTotalModal();
 
   document.querySelectorAll('#modalFornecedoresBody .chk-desconsiderar').forEach(cb => {
     cb.addEventListener('change', () => {
@@ -1105,6 +1125,24 @@ function abrirModalParcelas(g, periodoId, periodoLabel) {
       toggleDesconsiderar(chave, documento, parcela, codtipo, cb.checked, cb);
     });
   });
+}
+
+// Recalcula e mostra o total da pauta / desconsiderado / a pagar do modal
+// aberto — chamado ao abrir e imediatamente a cada clique em Desconsiderar,
+// sem esperar a resposta do servidor.
+function atualizarTotalModal() {
+  const el = document.getElementById('modalParcelasTotal');
+  if (!el) return;
+  let totalPauta = 0, totalPagar = 0;
+  MODAL_ITENS_ATUAIS.forEach(it => {
+    const v = it.realizado || 0;
+    totalPauta += v;
+    if (!DESCONSIDERADOS.has(chaveParcela(it))) totalPagar += v;
+  });
+  el.innerHTML = `
+    <span>Total da Pauta: <strong>${fmtR(totalPauta)}</strong></span>
+    <span>Desconsiderado: <strong>${fmtR(totalPauta - totalPagar)}</strong></span>
+    <span class="destaque">Total a Pagar: <strong>${fmtR(totalPagar)}</strong></span>`;
 }
 
 function fecharModalFornecedores() {
