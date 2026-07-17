@@ -21,7 +21,8 @@
     justify-content: space-between;
   }
   .header-left { display: flex; align-items: center; gap: 12px; }
-  .header-logo { width: 38px; height: 38px; border-radius: 8px; background: rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; }
+  .header-logo { width: 38px; height: 38px; border-radius: 8px; background: white; display: flex; align-items: center; justify-content: center; padding: 5px; }
+  .header-logo img { width: 100%; height: 100%; object-fit: contain; }
   .header-title { font-size: 16px; font-weight: 700; }
   .header-sub { font-size: 11px; opacity: .75; margin-top: 2px; }
   .btn-voltar {
@@ -95,10 +96,7 @@
     display: flex; align-items: center; gap: 14px;
     border-bottom: 2px solid #1a1a2e; padding-bottom: 10px; margin-bottom: 10px;
   }
-  .ficha-logo {
-    width: 42px; height: 42px; border-radius: 6px; background: #0f2460; color: white;
-    display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; flex-shrink: 0;
-  }
+  .ficha-logo { width: 46px; height: 46px; flex-shrink: 0; object-fit: contain; }
   .ficha-titulo { flex: 1; text-align: center; font-size: 16px; font-weight: 800; }
   .ficha-meta { text-align: right; font-size: 10px; color: #475569; line-height: 1.5; white-space: nowrap; }
   .ficha-resumo { display: flex; gap: 26px; font-size: 12px; margin-bottom: 12px; }
@@ -107,10 +105,9 @@
   .fc-box { border: 1.2px solid #1a1a2e; border-radius: 3px; padding: 7px 10px; margin-bottom: 8px; }
   .fc-box.sem-borda { border: none; padding: 0 0 6px 0; }
   .fc-box-titulo { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; color: #0f2460; margin-bottom: 5px; }
-  .fc-row { display: flex; flex-wrap: wrap; gap: 4px 22px; margin-bottom: 3px; }
+  .fc-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 4px 20px; margin-bottom: 3px; }
   .fc-row:last-child { margin-bottom: 0; }
-  .fc-field { white-space: nowrap; }
-  .fc-field.grow { flex: 1; min-width: 160px; white-space: normal; }
+  .fc-field { white-space: normal; overflow-wrap: break-word; }
   .fc-field .lbl { font-weight: 700; }
   .fc-field .val { font-weight: 400; }
   .fc-texto { font-size: 11.5px; line-height: 1.5; white-space: pre-wrap; }
@@ -137,7 +134,7 @@
 
 <div class="header">
   <div class="header-left">
-    <div class="header-logo">USC</div>
+    <div class="header-logo"><img src="img/logo.png" alt="USC"></div>
     <div>
       <div class="header-title">Fichas de Candidatos</div>
       <div class="header-sub">Cadastro de candidatos por período e cargo desejado</div>
@@ -229,42 +226,106 @@ async function gerarRelatorio() {
       return;
     }
 
-    montarPrintAreaEImprimir(dataIni, dataFim, codCargo);
+    const periodo = formatarData(dataIni) + ' até ' + formatarData(dataFim);
 
-    document.getElementById('resultado').innerHTML =
-      '<div class="sucesso-state"><p>✅ ' + DADOS_RAW.length +
-      (DADOS_RAW.length === 1 ? ' candidato encontrado' : ' candidatos encontrados') +
-      ' — o PDF foi aberto para impressão/salvar.</p>' +
-      '<button onclick="window.print()">Abrir impressão novamente</button></div>';
+    // "Todos os cargos" (0): gera em lotes, um PDF por cargo desejado — o
+    // diálogo de impressão abre um cargo de cada vez (o navegador não
+    // permite gerar vários PDFs de uma vez sem interação do usuário).
+    // Filtrando um cargo específico, sai tudo num PDF só, como antes.
+    if (!codCargo || codCargo === '0') {
+      iniciarImpressaoEmLotes(agruparPorCargo(DADOS_RAW), periodo);
+    } else {
+      iniciarImpressaoEmLotes([{ cargo: 'Código ' + codCargo, candidatos: DADOS_RAW }], periodo);
+    }
 
   } catch(e) {
     document.getElementById('resultado').innerHTML =
       '<div class="erro-state"><p>❌ ' + e.message + '</p></div>';
-  } finally {
     btn.disabled = false;
     btn.innerHTML = `<svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Gerar`;
   }
 }
 
-function montarPrintAreaEImprimir(dataIni, dataFim, codCargo) {
-  const periodo = formatarData(dataIni) + ' até ' + formatarData(dataFim);
-  const cargoTxt = (codCargo && codCargo !== '0') ? ('Código ' + codCargo) : 'Todos os Cargos';
+function agruparPorCargo(dados) {
+  const mapa = new Map();
+  for (const d of dados) {
+    const chave = d.cargo_desejado || 'Sem Cargo Desejado';
+    if (!mapa.has(chave)) mapa.set(chave, []);
+    mapa.get(chave).push(d);
+  }
+  return [...mapa.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0], 'pt-BR'))
+    .map(([cargo, candidatos]) => ({ cargo, candidatos }));
+}
+
+// ─── Impressão em lotes (um PDF por vez) ───────────────────────────────
+const LOTE = { fila: [], indice: 0, periodo: '', dataGeracao: '', horaGeracao: '' };
+
+function iniciarImpressaoEmLotes(grupos, periodo) {
   const agora = new Date();
-  const dataGeracao = agora.toLocaleDateString('pt-BR');
-  const horaGeracao = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  LOTE.fila = grupos;
+  LOTE.indice = 0;
+  LOTE.periodo = periodo;
+  LOTE.dataGeracao = agora.toLocaleDateString('pt-BR');
+  LOTE.horaGeracao = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
+  window.addEventListener('afterprint', aoTerminarImpressaoDoLote);
+  imprimirLoteAtual();
+}
+
+function imprimirLoteAtual() {
+  const btn = document.getElementById('btnGerar');
+  const grupo = LOTE.fila[LOTE.indice];
+  const restante = LOTE.fila.length - LOTE.indice;
+
+  document.title = 'Ficha Candidato - ' + grupo.cargo;
   document.getElementById('printArea').innerHTML =
-    DADOS_RAW.map((d, i) => montarFicha(d, i + 1, DADOS_RAW.length, periodo, cargoTxt, dataGeracao, horaGeracao)).join('');
+    grupo.candidatos.map((d, i) => montarFicha(d, i + 1, grupo.candidatos.length, LOTE.periodo, grupo.cargo, LOTE.dataGeracao, LOTE.horaGeracao)).join('');
 
-  // Pequeno atraso para o navegador terminar de renderizar antes de abrir o diálogo de impressão
-  setTimeout(() => window.print(), 150);
+  document.getElementById('resultado').innerHTML =
+    '<div class="loading-state"><div class="spinner"></div><p>' +
+    (LOTE.fila.length > 1 ? 'Lote ' + (LOTE.indice + 1) + ' de ' + LOTE.fila.length + ' — ' : '') +
+    esc(grupo.cargo) + ' (' + grupo.candidatos.length + (grupo.candidatos.length === 1 ? ' candidato' : ' candidatos') + ')' +
+    (restante > 1 ? '<br><small>Depois de salvar/fechar, o próximo cargo abre automaticamente.</small>' : '') +
+    '</p></div>';
+
+  btn.disabled = true;
+  setTimeout(() => window.print(), 200);
+}
+
+function aoTerminarImpressaoDoLote() {
+  LOTE.indice++;
+  if (LOTE.indice < LOTE.fila.length) {
+    imprimirLoteAtual();
+    return;
+  }
+
+  window.removeEventListener('afterprint', aoTerminarImpressaoDoLote);
+  document.title = 'Fichas de Candidatos · USC';
+  const btn = document.getElementById('btnGerar');
+  btn.disabled = false;
+  btn.innerHTML = `<svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Gerar`;
+
+  const totalCandidatos = LOTE.fila.reduce((s, g) => s + g.candidatos.length, 0);
+  document.getElementById('resultado').innerHTML =
+    '<div class="sucesso-state"><p>✅ ' + totalCandidatos +
+    (totalCandidatos === 1 ? ' candidato' : ' candidatos') +
+    (LOTE.fila.length > 1 ? ' em ' + LOTE.fila.length + ' lotes (cargos)' : '') +
+    ' — impressão concluída.</p>' +
+    '<button id="btnReimprimirTudo">Imprimir tudo de novo</button></div>';
+
+  document.getElementById('btnReimprimirTudo').addEventListener('click', () => {
+    LOTE.indice = 0;
+    window.addEventListener('afterprint', aoTerminarImpressaoDoLote);
+    imprimirLoteAtual();
+  });
 }
 
 function montarFicha(d, indice, total, periodo, cargoTxt, dataGeracao, horaGeracao) {
   return `
     <div class="ficha">
       <div class="ficha-topo">
-        <div class="ficha-logo">USC</div>
+        <img class="ficha-logo" src="img/logo.png" alt="USC">
         <div class="ficha-titulo">Ficha Candidato</div>
         <div class="ficha-meta">
           Data: ${esc(dataGeracao)}<br>
