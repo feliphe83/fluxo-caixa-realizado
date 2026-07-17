@@ -936,6 +936,13 @@ function renderizar() {
 
   const dados = getDadosFiltrados();
 
+  // PDF "Desconsiderados": não faz sentido na matriz por período/item — o
+  // pedido é uma lista simples das parcelas marcadas, uma linha por parcela.
+  if (MODO_PDF === 'desconsiderados') {
+    renderizarListaDesconsiderados(dados);
+    return;
+  }
+
   // Agrupar. "itens" sempre guarda TODOS os itens do grupo (mesmo os
   // desconsiderados) — o modal de parcelas precisa deles para listar/
   // desmarcar. "colunas"/"total" só somam o que entra no modo atual
@@ -1009,6 +1016,45 @@ function renderizar() {
           <td>${fmtR(totalGeral)}</td>
         </tr>
         ${rows}
+      </tbody>
+    </table>`;
+  ajustarStickyTotal();
+}
+
+// PDF "Desconsiderados": lista plana (Fornecedor, Documento, Parcela,
+// Vencimento, Valor), uma linha por parcela marcada — sem agrupar por
+// item/período, diferente da pauta completa/a pagar.
+function renderizarListaDesconsiderados(dados) {
+  const itens = dados
+    .filter(d => DESCONSIDERADOS.has(chaveParcela(d)))
+    .sort((a, b) =>
+      (a.nome || '').localeCompare(b.nome || '', 'pt-BR') ||
+      (a.dataVcto || '').localeCompare(b.dataVcto || ''));
+
+  const totalGeral = itens.reduce((s, it) => s + (it.realizado || 0), 0);
+
+  const rows = itens.map(it => `
+    <tr>
+      <td>${esc(it.nome || '—')}</td>
+      <td>${esc(it.documento || '—')}</td>
+      <td>${esc(it.parcela || '—')}</td>
+      <td>${formatarDataBR(it.dataVcto)}</td>
+      <td>${fmtR(it.realizado)}</td>
+    </tr>`).join('');
+
+  document.getElementById('resultado').innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Fornecedor</th><th>Documento</th><th>Parcela</th><th>Vencimento</th><th>Valor</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows || '<tr><td colspan="5" style="text-align:center;color:var(--cinza)">Nenhuma parcela desconsiderada neste período.</td></tr>'}
+        <tr class="total-topo">
+          <td colspan="4">TOTAL DESCONSIDERADO</td>
+          <td>${fmtR(totalGeral)}</td>
+        </tr>
       </tbody>
     </table>`;
   ajustarStickyTotal();
