@@ -279,7 +279,13 @@
     #grupo-tiporel { border-right: none; padding-right: 0; }
     .filtros { padding: 12px; }
     .resumo { padding: 12px 12px 0; }
-    .tabela-wrap { padding: 12px 12px 16px; }
+
+    /* A tabela rola na horizontal DENTRO do próprio quadro (a página não
+       ganha rolagem lateral — antes o resto do layout parecia "cortado" e a
+       coluna Total sumia da vista). O custo é o cabeçalho não congelar mais
+       na vertical dentro do scroll — no celular compensa; a coluna
+       Item/Descrição continua fixa à esquerda durante a rolagem. */
+    .tabela-wrap { padding: 12px 12px 16px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
     /* Grade de filtros em 2 colunas e campo de data sem o estilo nativo do
        iOS — a altura própria dele desalinhava a linha inteira da grade. */
