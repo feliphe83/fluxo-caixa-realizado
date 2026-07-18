@@ -280,7 +280,24 @@
     .filtros { padding: 12px; }
     .resumo { padding: 12px 12px 0; }
     .tabela-wrap { padding: 12px 12px 16px; }
+
+    /* Grade de filtros em 2 colunas e campo de data sem o estilo nativo do
+       iOS — a altura própria dele desalinhava a linha inteira da grade. */
+    .filtros-grid { grid-template-columns: 1fr 1fr; }
+    .filtros-grid > div:last-child { grid-column: 1/-1; }
+    .campo input[type="date"] {
+      -webkit-appearance: none; appearance: none;
+      display: flex; align-items: center;
+    }
+
+    /* Modal de parcelas cabendo no quadro: nome do fornecedor quebra linha
+       em vez de alargar a tabela e empurrar Valor/Desconsiderar pra fora. */
     .modal-overlay { padding: 10px; }
+    .modal-box { max-width: none; max-height: 92vh; }
+    .modal-body { padding: 4px 6px 12px; }
+    .modal-body .detalhe-inner { padding: 6px 2px 2px; }
+    .detalhe-inner table thead th:first-child,
+    .detalhe-inner table tbody td:first-child { white-space: normal; word-break: break-word; }
 
     /* Com o chrome rolando junto, o cabeçalho da tabela congela direto no
        topo da viewport (a var --chrome-h medida via JS deixa de valer). */
