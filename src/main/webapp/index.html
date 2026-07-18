@@ -1149,6 +1149,7 @@ function abrirModalFornecedores(idx, periodoId) {
 // valor) do grupo clicado, com checkbox "Desconsiderar" por linha.
 function abrirModalParcelas(g, periodoId, periodoLabel) {
   const itensFiltrados = g.itens.filter(it => {
+    if (!(it.realizado || 0)) return false; // valor zero não aparece
     const dataRef = it.dataPgto || it.dataVcto;
     const colPeriodo = dataRef ? encontrarPeriodo(dataRef) : null;
     return !periodoId || colPeriodo === periodoId;
@@ -1164,9 +1165,7 @@ function abrirModalParcelas(g, periodoId, periodoLabel) {
     return `
       <tr class="${marcado ? 'linha-desconsiderada' : ''}">
         <td>${esc(it.nome || '—')}</td>
-        <td>${esc(it.documento || '—')}</td>
         <td>${esc(it.parcela || '—')}</td>
-        <td>${formatarDataBR(it.dataVcto)}</td>
         <td>${fmtR(it.realizado)}</td>
         <td style="text-align:center">
           <input type="checkbox" class="chk-desconsiderar"
@@ -1185,9 +1184,9 @@ function abrirModalParcelas(g, periodoId, periodoLabel) {
     <div class="detalhe-inner">
       <table>
         <thead><tr>
-          <th>Fornecedor</th><th>Documento</th><th>Parcela</th><th>Vencimento</th><th>Valor</th><th>Desconsiderar</th>
+          <th>Fornecedor</th><th>Parcela</th><th>Valor</th><th>Desconsiderar</th>
         </tr></thead>
-        <tbody>${linhas || '<tr><td colspan="6" style="text-align:center;color:var(--cinza)">Nenhuma parcela neste período.</td></tr>'}</tbody>
+        <tbody>${linhas || '<tr><td colspan="4" style="text-align:center;color:var(--cinza)">Nenhuma parcela neste período.</td></tr>'}</tbody>
       </table>
       <div class="modal-totais" id="modalParcelasTotal"></div>
     </div>`;
