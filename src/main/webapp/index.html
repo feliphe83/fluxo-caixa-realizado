@@ -258,8 +258,10 @@
   /* iPhone / telas estreitas: header empilhado e compacto, sem relógio, e o
      bloco fixo do topo rola junto com a página — sem isso, header + filtros
      congelados ocupam a tela inteira do celular e não sobra espaço pra
-     tabela. */
-  @media (max-width: 700px) {
+     tabela. O max-height pega o celular deitado (na horizontal a largura
+     passa de 700px, mas a altura ~400px continua de celular) sem afetar
+     monitor de desktop. */
+  @media (max-width: 700px), (max-height: 500px) {
     #chrome-fixo { position: static; }
 
     .header { flex-wrap: wrap; padding: 10px 12px; gap: 10px; }
