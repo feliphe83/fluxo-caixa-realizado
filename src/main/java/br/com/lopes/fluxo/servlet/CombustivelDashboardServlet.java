@@ -78,8 +78,8 @@ public class CombustivelDashboardServlet extends HttpServlet {
             resultado.put("kpis", montarKpis(linhas));
             resultado.put("porDia", agregar(linhas, l -> dia(l), true));
             resultado.put("porCombustivel", agregar(linhas, l -> rotulo(l, "cod_combustivel", "des_combustivel"), false));
-            resultado.put("porEquipamento", limitar(agregar(linhas, l -> rotulo(l, "cod_equipamento", "des_equipamento"), false)));
-            resultado.put("porFazenda", limitar(agregar(linhas, l -> rotulo(l, "cod_fazenda", "des_fazenda"), false)));
+            resultado.put("porEquipamento", limitar(agregar(linhas, CombustivelDashboardServlet::rotuloEquipamento, false)));
+            resultado.put("porTipoCliente", agregar(linhas, l -> rotulo(l, "cod_tipocliente", "tipocliente"), false));
             resultado.put("opcoes", montarOpcoes(linhas));
             resultado.put("truncadoDetalhe", linhas.size() > MAX_DETALHE);
             resultado.put("detalhe", montarDetalhe(linhas));
@@ -161,9 +161,34 @@ public class CombustivelDashboardServlet extends HttpServlet {
 
     private static String rotulo(Map<String, Object> l, String colCod, String colDesc) {
         Object desc = l.get(colDesc);
-        if (desc != null && !String.valueOf(desc).isBlank()) return String.valueOf(desc);
+        if (preenchido(desc)) return String.valueOf(desc);
         Object cod = l.get(colCod);
         return cod == null ? null : String.valueOf(cod);
+    }
+
+    /**
+     * Identificação do "equipamento" no ranking: boa parte dos abastecimentos
+     * não tem equipamento vinculado (veículos de terceiros, abastecimento por
+     * placa/pessoa) — nesses casos a placa ou a pessoa/terceiro do
+     * abastecimento identifica quem consumiu, em vez de cair tudo num único
+     * "Não informado".
+     */
+    private static String rotuloEquipamento(Map<String, Object> l) {
+        Object v = l.get("des_equipamento");
+        if (preenchido(v)) return String.valueOf(v);
+        v = l.get("prefixo");
+        if (preenchido(v)) return "Prefixo " + String.valueOf(v).trim();
+        v = l.get("placa");
+        if (preenchido(v)) return "Placa " + String.valueOf(v).trim();
+        v = l.get("des_terceiro");
+        if (preenchido(v)) return String.valueOf(v);
+        v = l.get("des_pessoa");
+        if (preenchido(v)) return String.valueOf(v);
+        return "Sem identificação";
+    }
+
+    private static boolean preenchido(Object v) {
+        return v != null && !String.valueOf(v).isBlank();
     }
 
     // ── Opções de filtro (derivadas do resultado do período) ────────────
@@ -196,7 +221,8 @@ public class CombustivelDashboardServlet extends HttpServlet {
     // ── Detalhe para tabela/export ──────────────────────────────────────
 
     private static final String[] COLUNAS_DETALHE = {
-            "data", "hora_ini", "prefixo", "des_equipamento", "des_combustivel",
+            "data", "hora_ini", "prefixo", "des_equipamento", "placa",
+            "des_pessoa", "des_terceiro", "des_combustivel",
             "qtde_litros", "valor_unitario", "valor_total", "des_fazenda",
             "tipocliente", "des_frentista", "des_funcionario", "desc_negocio",
             "des_almoxarifado", "km_ho", "kmhs_rodados"

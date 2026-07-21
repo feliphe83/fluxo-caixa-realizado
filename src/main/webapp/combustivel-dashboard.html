@@ -412,11 +412,11 @@ function renderizar() {
       <div class="grafico-card">
         <div class="grafico-header">
           <div>
-            <div class="grafico-titulo">Fazendas com maior consumo</div>
-            <div class="grafico-sub">litros no período · top ${Math.min(10, j.porFazenda.length)}</div>
+            <div class="grafico-titulo">Consumo por tipo de cliente</div>
+            <div class="grafico-sub">litros no período · top ${Math.min(5, j.porTipoCliente.length)}</div>
           </div>
         </div>
-        <div class="grafico-area"><canvas id="chFazenda"></canvas></div>
+        <div class="grafico-area"><canvas id="chTipoCliente"></canvas></div>
       </div>
 
       <div class="grafico-card largo">
@@ -444,7 +444,7 @@ function renderizar() {
 
   desenharEvolucao();
   desenharDonut();
-  desenharFazendas();
+  desenharTiposCliente();
   desenharEquipamentos();
   desenharTabela();
 }
@@ -659,7 +659,7 @@ function barrasHorizontais(idCanvas, dados) {
   });
 }
 
-function desenharFazendas()     { barrasHorizontais('chFazenda', DADOS.porFazenda.slice(0, 10)); }
+function desenharTiposCliente() { barrasHorizontais('chTipoCliente', DADOS.porTipoCliente.slice(0, 5)); }
 function desenharEquipamentos() { barrasHorizontais('chEquipamento', DADOS.porEquipamento.slice(0, 15)); }
 
 // ── Tabela de detalhamento ──────────────────────────────────────────────
@@ -673,7 +673,7 @@ function desenharTabela() {
       <thead><tr>
         <th>Data</th><th>Hora</th><th>Equipamento</th><th>Combustível</th>
         <th class="num">Litros</th><th class="num">R$/L</th><th class="num">Valor</th>
-        <th>Fazenda</th><th>Tipo Cliente</th><th>Frentista</th>
+        <th>Tipo Cliente</th><th>Frentista</th>
       </tr></thead>
       <tbody>
         ${visiveis.map(d => `
@@ -685,7 +685,6 @@ function desenharTabela() {
           <td class="num">${fmtDec.format(d.qtde_litros || 0)}</td>
           <td class="num">${fmtDec.format(d.valor_unitario || 0)}</td>
           <td class="num">${fmtDec.format(d.valor_total || 0)}</td>
-          <td>${escapeHtml(d.des_fazenda || '')}</td>
           <td>${escapeHtml(d.tipocliente || '')}</td>
           <td>${escapeHtml(d.des_frentista || '')}</td>
         </tr>`).join('')}
@@ -700,7 +699,10 @@ function desenharTabela() {
 function nomeEquip(d) {
   const p = d.prefixo ? String(d.prefixo).trim() : '';
   const n = d.des_equipamento || '';
-  return p && p !== n ? p + ' · ' + n : (n || p);
+  if (n || p) return p && p !== n ? p + ' · ' + n : (n || p);
+  // Sem equipamento vinculado: identifica pela placa ou pessoa/terceiro
+  if (d.placa) return 'Placa ' + String(d.placa).trim();
+  return d.des_terceiro || d.des_pessoa || 'Sem identificação';
 }
 
 function dataBr(iso) {
@@ -717,7 +719,9 @@ function exportarExcel() {
 
   const detalhe = DADOS.detalhe.map(d => ({
     'Data': dataBr(d.data), 'Hora': d.hora_ini || '', 'Prefixo': d.prefixo || '',
-    'Equipamento': d.des_equipamento || '', 'Combustível': d.des_combustivel || '',
+    'Equipamento': d.des_equipamento || '', 'Placa': d.placa || '',
+    'Pessoa/Terceiro': d.des_terceiro || d.des_pessoa || '',
+    'Combustível': d.des_combustivel || '',
     'Litros': d.qtde_litros || 0, 'R$/Litro': d.valor_unitario || 0, 'Valor Total': d.valor_total || 0,
     'Fazenda': d.des_fazenda || '', 'Tipo Cliente': d.tipocliente || '',
     'Frentista': d.des_frentista || '', 'Funcionário': d.des_funcionario || '',
@@ -731,7 +735,7 @@ function exportarExcel() {
   }));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumo(DADOS.porCombustivel, 'Combustível')), 'Por Combustível');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumo(DADOS.porEquipamento, 'Equipamento')), 'Por Equipamento');
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumo(DADOS.porFazenda, 'Fazenda')), 'Por Fazenda');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumo(DADOS.porTipoCliente, 'Tipo de Cliente')), 'Por Tipo de Cliente');
 
   const ini = document.getElementById('dataIni').value, fim = document.getElementById('dataFim').value;
   XLSX.writeFile(wb, `consumo-combustivel_${ini}_a_${fim}.xlsx`);
