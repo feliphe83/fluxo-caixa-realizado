@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Consumo de Combustível · USC</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    /* Paleta de dados (validada p/ daltonismo — ordem fixa, nunca reordenar) */
+    --serie-1: #2a78d6;
+    --serie-2: #eb6834;
+    --serie-3: #1baf7a;
+    --serie-4: #eda100;
+    --serie-5: #e87ba4;
+    --serie-6: #008300;
+    --serie-outros: #98a2b3;
+    --grade: #e9edf6;
+    --ink-2: #52514e;
+    --ink-3: #898781;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f4f6fb;
+    color: #1a1a2e;
+  }
+
+  .header {
+    background: linear-gradient(135deg, #0f2460 0%, #1a3a7c 100%);
+    color: white;
+    padding: 16px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .header-logo { width: 38px; height: 38px; border-radius: 8px; background: rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; }
+  .header-title { font-size: 16px; font-weight: 700; }
+  .header-sub { font-size: 11px; opacity: .75; margin-top: 2px; }
+  .btn-voltar {
+    display: flex; align-items: center; gap: 7px;
+    padding: 8px 16px; border-radius: 8px;
+    border: 1.5px solid rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.9);
+    font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .btn-voltar:hover { background: rgba(255,255,255,0.18); }
+
+  .conteudo { max-width: 1280px; margin: 0 auto; padding: 24px; }
+
+  /* ── Filtros (uma faixa acima de tudo que ela controla) ── */
+  .filtros-card {
+    background: white; border: 1.5px solid #e3e8f5; border-radius: 14px;
+    padding: 18px 22px; margin-bottom: 20px;
+  }
+  .filtros-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1.3fr 1.3fr 1.1fr 1.5fr auto;
+    gap: 12px;
+    align-items: end;
+  }
+  .campo label { display: block; font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 6px; }
+  .campo input, .campo select {
+    width: 100%; padding: 8px 10px; border: 1.5px solid #d8dfee; border-radius: 8px;
+    font-size: 13px; color: #1a1a2e; outline: none; height: 38px; background: white;
+  }
+  .campo input:focus, .campo select:focus { border-color: #1a3a7c; }
+  .presets { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .preset {
+    padding: 5px 12px; border-radius: 999px; border: 1.5px solid #d8dfee;
+    background: white; color: #475569; font-size: 12px; font-weight: 600; cursor: pointer;
+  }
+  .preset:hover { border-color: #1a3a7c; color: #1a3a7c; }
+  .btn-gerar {
+    padding: 0 20px; border-radius: 9px; border: none;
+    background: #1a3a7c; color: white; font-size: 13.5px; font-weight: 700;
+    cursor: pointer; height: 38px; display: flex; align-items: center; gap: 8px;
+  }
+  .btn-gerar:hover { background: #0f2460; }
+  .btn-gerar:disabled { background: #9ca3af; cursor: not-allowed; }
+
+  /* ── KPIs ── */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  .kpi {
+    background: white; border: 1.5px solid #e3e8f5; border-radius: 14px;
+    padding: 16px 18px;
+  }
+  .kpi .rotulo { font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 6px; }
+  .kpi .valor { font-size: 26px; font-weight: 700; color: #0f2460; line-height: 1.1; }
+  .kpi .unidade { font-size: 12px; color: var(--ink-3); margin-top: 4px; }
+
+  /* ── Gráficos ── */
+  .graficos-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .grafico-card {
+    background: white; border: 1.5px solid #e3e8f5; border-radius: 14px;
+    padding: 18px 20px;
+    min-width: 0;
+  }
+  .grafico-card.largo { grid-column: 1 / -1; }
+  .grafico-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 10px; }
+  .grafico-titulo { font-size: 14px; font-weight: 700; color: #0f2460; }
+  .grafico-sub { font-size: 11.5px; color: var(--ink-3); margin-top: 2px; }
+  .toggle-medida { display: flex; border: 1.5px solid #d8dfee; border-radius: 8px; overflow: hidden; }
+  .toggle-medida button {
+    padding: 5px 12px; border: none; background: white; color: #475569;
+    font-size: 12px; font-weight: 600; cursor: pointer;
+  }
+  .toggle-medida button.ativo { background: #1a3a7c; color: white; }
+  .grafico-area { position: relative; height: 280px; }
+  .grafico-card.largo .grafico-area { height: 260px; }
+
+  .donut-linha { display: flex; align-items: center; gap: 18px; }
+  .donut-linha .grafico-area { height: 220px; flex: 0 0 220px; }
+  .donut-legenda { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+  .donut-legenda .item { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
+  .donut-legenda .swatch { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+  .donut-legenda .nome { color: #1a1a2e; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .donut-legenda .num { margin-left: auto; color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* ── Tabela ── */
+  .export-bar { display: flex; gap: 10px; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .export-nota { font-size: 12px; color: var(--ink-3); }
+  .btn-export {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 14px; border-radius: 8px; border: 1.5px solid #d8dfee;
+    background: white; color: #475569; font-size: 12.5px; font-weight: 600; cursor: pointer;
+  }
+  .btn-export:hover { border-color: #1a3a7c; color: #1a3a7c; }
+
+  .resultado-card { background: white; border: 1.5px solid #e3e8f5; border-radius: 14px; overflow: hidden; }
+  .tabela-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  thead th {
+    background: #0f2460; color: white; text-align: left;
+    padding: 10px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: .4px;
+    white-space: nowrap;
+  }
+  thead th.num { text-align: right; }
+  tbody td { padding: 8px 12px; border-bottom: 1px solid #eef1f8; white-space: nowrap; }
+  tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tbody tr:hover { background: #f8faff; }
+  .tabela-mais { text-align: center; padding: 12px; }
+  .tabela-mais button {
+    padding: 7px 16px; border-radius: 8px; border: 1.5px solid #d8dfee;
+    background: white; color: #1a3a7c; font-size: 12.5px; font-weight: 600; cursor: pointer;
+  }
+
+  .loading-state, .erro-state, .vazio-state { text-align: center; padding: 60px 20px; color: #94a0b8; }
+  .spinner { width: 30px; height: 30px; border: 3px solid #e3e8f5; border-top-color: #1a3a7c; border-radius: 50%; margin: 0 auto 12px; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .erro-state { color: #ef4444; }
+
+  /* Recarregando: mantém o desenho anterior esmaecido (sem "piscar" skeleton) */
+  #painel.atualizando { opacity: .5; pointer-events: none; transition: opacity .15s; }
+
+  @media (max-width: 1000px) {
+    .filtros-grid { grid-template-columns: 1fr 1fr; }
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .graficos-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 560px) {
+    .conteudo { padding: 14px; }
+    .kpi-row { grid-template-columns: 1fr 1fr; }
+    .donut-linha { flex-direction: column; }
+    .donut-legenda { width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="header-logo">USC</div>
+    <div>
+      <div class="header-title">Consumo de Combustível</div>
+      <div class="header-sub">Abastecimentos do posto · Usina Santa Clotilde</div>
+    </div>
+  </div>
+  <button class="btn-voltar" onclick="window.location.href='hub.html'">
+    <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    Voltar
+  </button>
+</div>
+
+<div class="conteudo">
+
+  <div class="filtros-card">
+    <div class="filtros-grid">
+      <div class="campo">
+        <label>Data Início</label>
+        <input type="date" id="dataIni">
+      </div>
+      <div class="campo">
+        <label>Data Fim</label>
+        <input type="date" id="dataFim">
+      </div>
+      <div class="campo">
+        <label>Combustível</label>
+        <select id="fCombustivel"><option value="">Todos</option></select>
+      </div>
+      <div class="campo">
+        <label>Fazenda</label>
+        <select id="fFazenda"><option value="">Todas</option></select>
+      </div>
+      <div class="campo">
+        <label>Tipo de Cliente</label>
+        <select id="fTipoCliente"><option value="">Todos</option></select>
+      </div>
+      <div class="campo">
+        <label>Equipamento</label>
+        <input type="text" id="fEquipamento" list="listaEquip" placeholder="Todos — digite p/ buscar" autocomplete="off">
+        <datalist id="listaEquip"></datalist>
+      </div>
+      <button class="btn-gerar" id="btnGerar" onclick="carregar()">
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+        Atualizar
+      </button>
+    </div>
+    <div class="presets">
+      <button class="preset" onclick="preset('mes')">Mês atual</button>
+      <button class="preset" onclick="preset('mesAnterior')">Mês anterior</button>
+      <button class="preset" onclick="preset('30d')">Últimos 30 dias</button>
+      <button class="preset" onclick="preset('90d')">Últimos 90 dias</button>
+      <button class="preset" onclick="preset('ano')">Ano atual</button>
+    </div>
+  </div>
+
+  <div id="painel">
+    <div class="loading-state"><div class="spinner"></div><p>Consultando abastecimentos…</p></div>
+  </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+const CORES = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300'];
+const COR_OUTROS = '#98a2b3';
+const AZUL = '#2a78d6';
+const GRADE = '#e9edf6';
+const INK2 = '#52514e', INK3 = '#898781';
+
+let DADOS = null;              // última resposta da API
+let charts = {};               // instâncias Chart.js por id de canvas
+let medidaSerie = 'litros';    // toggle do gráfico de evolução
+let linhasTabela = 200;        // paginação simples da tabela
+// Opções de filtro acumuladas entre consultas (a resposta só traz as opções
+// presentes no recorte atual — acumular evita que os selects "encolham"
+// depois de filtrar).
+const OPCOES = { combustiveis: new Map(), fazendas: new Map(), tiposCliente: new Map(), equipamentos: new Map() };
+
+const fmtInt  = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 });
+const fmtDec  = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtBRL  = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+const fmtBRL0 = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+
+function fmt8(d) {
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+function preset(tipo) {
+  const hoje = new Date();
+  let ini, fim = hoje;
+  if (tipo === 'mes')          ini = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+  else if (tipo === 'mesAnterior') {
+    ini = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1);
+    fim = new Date(hoje.getFullYear(), hoje.getMonth(), 0);
+  }
+  else if (tipo === '30d')     ini = new Date(hoje.getTime() - 29 * 864e5);
+  else if (tipo === '90d')     ini = new Date(hoje.getTime() - 89 * 864e5);
+  else if (tipo === 'ano')     ini = new Date(hoje.getFullYear(), 0, 1);
+  document.getElementById('dataIni').value = fmt8(ini);
+  document.getElementById('dataFim').value = fmt8(fim);
+  carregar();
+}
+
+(function initDatas() {
+  const hoje = new Date();
+  document.getElementById('dataIni').value = fmt8(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
+  document.getElementById('dataFim').value = fmt8(hoje);
+})();
+
+// ── Consulta ────────────────────────────────────────────────────────────
+
+async function carregar() {
+  const dataIni = document.getElementById('dataIni').value;
+  const dataFim = document.getElementById('dataFim').value;
+  if (!dataIni || !dataFim) { alert('Informe o período completo.'); return; }
+  if (dataFim < dataIni) { alert('Data Fim não pode ser anterior à Data Início.'); return; }
+
+  const painel = document.getElementById('painel');
+  const btn = document.getElementById('btnGerar');
+  btn.disabled = true;
+  if (DADOS) painel.classList.add('atualizando');   // mantém o desenho anterior esmaecido
+
+  const p = new URLSearchParams({ dataIni, dataFim });
+  const comb = document.getElementById('fCombustivel').value;
+  const faz  = document.getElementById('fFazenda').value;
+  const tc   = document.getElementById('fTipoCliente').value;
+  const eq   = (document.getElementById('fEquipamento').value.match(/^\d+/) || [''])[0];
+  if (comb) p.set('combustivel', comb);
+  if (faz)  p.set('codFazenda', faz);
+  if (tc)   p.set('codTipoCliente', tc);
+  if (eq)   p.set('codEquipamento', eq);
+
+  try {
+    const r = await fetch('api/combustivel-dashboard?' + p.toString(), { headers: { 'Accept': 'application/json' } });
+    const j = await r.json();
+    if (j.redirect) { window.location.href = 'login.html'; return; }
+    if (!j.ok) throw new Error(j.erro || 'Erro na consulta');
+
+    DADOS = j;
+    linhasTabela = 200;
+    acumularOpcoes(j.opcoes);
+    renderizar();
+
+  } catch (e) {
+    Object.values(charts).forEach(c => c.destroy());
+    charts = {};
+    DADOS = null;
+    painel.innerHTML = '<div class="erro-state"><p>❌ ' + escapeHtml(e.message) + '</p></div>';
+  } finally {
+    btn.disabled = false;
+    painel.classList.remove('atualizando');
+  }
+}
+
+function acumularOpcoes(op) {
+  if (!op) return;
+  const alvos = [
+    ['combustiveis', 'fCombustivel', o => o.descricao],   // filtro por trecho da descrição
+    ['fazendas', 'fFazenda', o => String(o.cod)],
+    ['tiposCliente', 'fTipoCliente', o => String(o.cod)],
+  ];
+  alvos.forEach(([chave, idSelect, valorDe]) => {
+    (op[chave] || []).forEach(o => OPCOES[chave].set(String(o.cod), o));
+    const sel = document.getElementById(idSelect);
+    const atual = sel.value;
+    const itens = [...OPCOES[chave].values()].sort((a, b) => a.descricao.localeCompare(b.descricao));
+    sel.innerHTML = '<option value="">' + (chave === 'fazendas' ? 'Todas' : 'Todos') + '</option>' +
+      itens.map(o => `<option value="${escapeHtml(valorDe(o))}">${escapeHtml(o.descricao)}</option>`).join('');
+    sel.value = atual;
+  });
+
+  (op.equipamentos || []).forEach(o => OPCOES.equipamentos.set(String(o.cod), o));
+  const dl = document.getElementById('listaEquip');
+  dl.innerHTML = [...OPCOES.equipamentos.values()]
+    .sort((a, b) => a.descricao.localeCompare(b.descricao))
+    .map(o => `<option value="${o.cod} — ${escapeHtml(o.descricao)}"></option>`).join('');
+}
+
+// ── Renderização ────────────────────────────────────────────────────────
+
+function renderizar() {
+  const j = DADOS;
+  const painel = document.getElementById('painel');
+  Object.values(charts).forEach(c => c.destroy());   // os canvases serão recriados
+  charts = {};
+
+  if (!j.totalLinhas) {
+    painel.innerHTML = '<div class="vazio-state"><p>Nenhum abastecimento encontrado no período com os filtros escolhidos.</p></div>';
+    return;
+  }
+
+  painel.innerHTML = `
+    <div class="kpi-row">
+      ${kpi('Litros abastecidos', fmtInt.format(j.kpis.totalLitros), 'litros')}
+      ${kpi('Valor total', fmtBRL0.format(j.kpis.valorTotal), 'no período')}
+      ${kpi('Abastecimentos', fmtInt.format(j.kpis.qtdeAbastecimentos), 'registros')}
+      ${kpi('Preço médio', fmtBRL.format(j.kpis.precoMedio), 'por litro')}
+      ${kpi('Equipamentos', fmtInt.format(j.kpis.qtdeEquipamentos), 'abastecidos')}
+    </div>
+
+    <div class="graficos-grid">
+      <div class="grafico-card largo">
+        <div class="grafico-header">
+          <div>
+            <div class="grafico-titulo">Evolução no período</div>
+            <div class="grafico-sub" id="subEvolucao"></div>
+          </div>
+          <div class="toggle-medida">
+            <button id="tgLitros" class="${medidaSerie==='litros'?'ativo':''}" onclick="trocarMedida('litros')">Litros</button>
+            <button id="tgValor" class="${medidaSerie==='valor'?'ativo':''}" onclick="trocarMedida('valor')">Valor (R$)</button>
+          </div>
+        </div>
+        <div class="grafico-area"><canvas id="chEvolucao"></canvas></div>
+      </div>
+
+      <div class="grafico-card">
+        <div class="grafico-header">
+          <div>
+            <div class="grafico-titulo">Por combustível</div>
+            <div class="grafico-sub">participação em litros</div>
+          </div>
+        </div>
+        <div class="donut-linha">
+          <div class="grafico-area"><canvas id="chCombustivel"></canvas></div>
+          <div class="donut-legenda" id="legCombustivel"></div>
+        </div>
+      </div>
+
+      <div class="grafico-card">
+        <div class="grafico-header">
+          <div>
+            <div class="grafico-titulo">Fazendas com maior consumo</div>
+            <div class="grafico-sub">litros no período · top ${Math.min(10, j.porFazenda.length)}</div>
+          </div>
+        </div>
+        <div class="grafico-area"><canvas id="chFazenda"></canvas></div>
+      </div>
+
+      <div class="grafico-card largo">
+        <div class="grafico-header">
+          <div>
+            <div class="grafico-titulo">Equipamentos com maior consumo</div>
+            <div class="grafico-sub">litros no período · top ${Math.min(15, j.porEquipamento.length)}</div>
+          </div>
+        </div>
+        <div class="grafico-area" style="height:${Math.max(160, Math.min(15, j.porEquipamento.length) * 28 + 40)}px"><canvas id="chEquipamento"></canvas></div>
+      </div>
+    </div>
+
+    <div class="export-bar">
+      <div class="export-nota">${j.truncadoDetalhe
+        ? 'Detalhamento limitado aos ' + fmtInt.format(j.detalhe.length) + ' abastecimentos mais recentes (de ' + fmtInt.format(j.totalLinhas) + ' no período).'
+        : fmtInt.format(j.totalLinhas) + ' abastecimentos no período.'}</div>
+      <button class="btn-export" onclick="exportarExcel()">
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        Exportar Excel
+      </button>
+    </div>
+    <div class="resultado-card"><div class="tabela-scroll" id="areaTabela"></div></div>
+  `;
+
+  desenharEvolucao();
+  desenharDonut();
+  desenharFazendas();
+  desenharEquipamentos();
+  desenharTabela();
+}
+
+function kpi(rotulo, valor, unidade) {
+  return `<div class="kpi"><div class="rotulo">${rotulo}</div><div class="valor">${valor}</div><div class="unidade">${unidade}</div></div>`;
+}
+
+function trocarMedida(m) {
+  medidaSerie = m;
+  document.getElementById('tgLitros').classList.toggle('ativo', m === 'litros');
+  document.getElementById('tgValor').classList.toggle('ativo', m === 'valor');
+  desenharEvolucao();
+}
+
+// ── Gráficos ────────────────────────────────────────────────────────────
+
+const eixoBase = {
+  grid: { color: GRADE, drawTicks: false },
+  border: { display: false },
+  ticks: { color: INK3, font: { size: 11 } },
+};
+
+// Rótulo de valor na ponta da barra horizontal (rótulo direto seletivo —
+// dispensa eixo x carregado; o texto usa cor de texto, nunca a cor da série)
+const rotuloPontaBarra = {
+  id: 'rotuloPontaBarra',
+  afterDatasetsDraw(chart, args, opts) {
+    if (!opts.formatter) return;
+    const ctx = chart.ctx;
+    const meta = chart.getDatasetMeta(0);
+    ctx.save();
+    ctx.font = '600 11px -apple-system, "Segoe UI", sans-serif';
+    ctx.fillStyle = INK2;
+    ctx.textBaseline = 'middle';
+    meta.data.forEach((barra, i) => {
+      ctx.fillText(opts.formatter(chart.data.datasets[0].data[i]), barra.x + 6, barra.y);
+    });
+    ctx.restore();
+  }
+};
+
+function novoChart(id, config) {
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id), config);
+}
+
+// Série temporal: por dia até ~3 meses; acima disso, agrupado por mês
+function serieTemporal() {
+  const porDia = DADOS.porDia;
+  if (!porDia.length) return { rotulos: [], valores: [], porMes: false };
+  const primeiro = porDia[0].chave, ultimo = porDia[porDia.length - 1].chave;
+  const dias = Math.round((new Date(ultimo) - new Date(primeiro)) / 864e5) + 1;
+
+  if (dias > 92) {
+    const meses = new Map();
+    porDia.forEach(d => {
+      const m = d.chave.substring(0, 7);
+      const acc = meses.get(m) || { litros: 0, valor: 0 };
+      acc.litros += d.litros; acc.valor += d.valor;
+      meses.set(m, acc);
+    });
+    const chaves = [...meses.keys()].sort();
+    return {
+      rotulos: chaves.map(m => {
+        const [a, me] = m.split('-');
+        return ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'][+me - 1] + '/' + a.substring(2);
+      }),
+      valores: chaves.map(m => meses.get(m)[medidaSerie]),
+      porMes: true
+    };
+  }
+
+  // Dia a dia, preenchendo os dias sem abastecimento com zero
+  const mapa = new Map(porDia.map(d => [d.chave, d]));
+  const rotulos = [], valores = [];
+  for (let dt = new Date(primeiro + 'T12:00:00'); ; dt.setDate(dt.getDate() + 1)) {
+    const chave = fmt8(dt);
+    rotulos.push(chave.substring(8) + '/' + chave.substring(5, 7));
+    const d = mapa.get(chave);
+    valores.push(d ? d[medidaSerie] : 0);
+    if (chave >= ultimo) break;
+  }
+  return { rotulos, valores, porMes: false };
+}
+
+function desenharEvolucao() {
+  const s = serieTemporal();
+  const emValor = medidaSerie === 'valor';
+  document.getElementById('subEvolucao').textContent =
+    (emValor ? 'valor abastecido (R$)' : 'litros abastecidos') + (s.porMes ? ' · por mês' : ' · por dia');
+
+  novoChart('chEvolucao', {
+    type: 'line',
+    data: {
+      labels: s.rotulos,
+      datasets: [{
+        data: s.valores,
+        borderColor: AZUL,
+        backgroundColor: 'rgba(42,120,214,0.10)',
+        fill: true,
+        borderWidth: 2,
+        pointRadius: s.rotulos.length > 45 ? 0 : 3,
+        pointHoverRadius: 5,
+        pointBackgroundColor: AZUL,
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        tension: 0.25,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: c => emValor ? fmtBRL.format(c.parsed.y) : fmtInt.format(c.parsed.y) + ' L' } }
+      },
+      scales: {
+        x: { ...eixoBase, grid: { display: false }, ticks: { ...eixoBase.ticks, maxTicksLimit: 16, maxRotation: 0 } },
+        y: { ...eixoBase, beginAtZero: true,
+             ticks: { ...eixoBase.ticks, callback: v => emValor ? fmtBRL0.format(v) : fmtInt.format(v) } }
+      }
+    }
+  });
+}
+
+function desenharDonut() {
+  const dados = DADOS.porCombustivel;
+  const topo = dados.slice(0, 5);
+  const resto = dados.slice(5);
+  const itens = [...topo];
+  if (resto.length) {
+    itens.push({
+      chave: 'Outros',
+      litros: resto.reduce((s, d) => s + d.litros, 0),
+      valor: resto.reduce((s, d) => s + d.valor, 0),
+    });
+  }
+  const totalL = itens.reduce((s, d) => s + d.litros, 0) || 1;
+  const cores = itens.map((d, i) => d.chave === 'Outros' ? COR_OUTROS : CORES[i]);
+
+  novoChart('chCombustivel', {
+    type: 'doughnut',
+    data: {
+      labels: itens.map(d => d.chave),
+      datasets: [{
+        data: itens.map(d => d.litros),
+        backgroundColor: cores,
+        borderColor: '#ffffff',
+        borderWidth: 2,          // vão na cor da superfície entre as fatias
+        hoverOffset: 6,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      cutout: '62%',
+      plugins: {
+        legend: { display: false },   // legenda própria em HTML, com valores
+        tooltip: { callbacks: {
+          label: c => {
+            const d = itens[c.dataIndex];
+            return ` ${fmtInt.format(d.litros)} L · ${fmtBRL0.format(d.valor)} · ${(d.litros / totalL * 100).toFixed(1)}%`;
+          }
+        } }
+      }
+    }
+  });
+
+  document.getElementById('legCombustivel').innerHTML = itens.map((d, i) => `
+    <div class="item">
+      <span class="swatch" style="background:${cores[i]}"></span>
+      <span class="nome" title="${escapeHtml(d.chave)}">${escapeHtml(d.chave)}</span>
+      <span class="num">${fmtInt.format(d.litros)} L · ${(d.litros / totalL * 100).toFixed(1)}%</span>
+    </div>`).join('');
+}
+
+function barrasHorizontais(idCanvas, dados) {
+  novoChart(idCanvas, {
+    type: 'bar',
+    data: {
+      labels: dados.map(d => d.chave),
+      datasets: [{
+        data: dados.map(d => d.litros),
+        backgroundColor: AZUL,
+        maxBarThickness: 18,
+        borderRadius: 4,
+        borderSkipped: 'start',   // ponta arredondada só no lado do dado
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      layout: { padding: { right: 64 } },   // espaço p/ rótulo na ponta
+      plugins: {
+        legend: { display: false },
+        rotuloPontaBarra: { formatter: v => fmtInt.format(v) + ' L' },
+        tooltip: { callbacks: {
+          label: c => {
+            const d = dados[c.dataIndex];
+            return ` ${fmtInt.format(d.litros)} L · ${fmtBRL0.format(d.valor)} · ${fmtInt.format(d.qtde)} abastec.`;
+          }
+        } }
+      },
+      scales: {
+        x: { ...eixoBase, beginAtZero: true, ticks: { ...eixoBase.ticks, maxTicksLimit: 6, callback: v => fmtInt.format(v) } },
+        y: { ...eixoBase, grid: { display: false },
+             ticks: { ...eixoBase.ticks, autoSkip: false,
+                      callback: function(v) { const l = this.getLabelForValue(v); return l.length > 26 ? l.substring(0, 25) + '…' : l; } } }
+      }
+    },
+    plugins: [rotuloPontaBarra]
+  });
+}
+
+function desenharFazendas()     { barrasHorizontais('chFazenda', DADOS.porFazenda.slice(0, 10)); }
+function desenharEquipamentos() { barrasHorizontais('chEquipamento', DADOS.porEquipamento.slice(0, 15)); }
+
+// ── Tabela de detalhamento ──────────────────────────────────────────────
+
+function desenharTabela() {
+  const det = DADOS.detalhe;
+  const visiveis = det.slice(0, linhasTabela);
+
+  document.getElementById('areaTabela').innerHTML = `
+    <table>
+      <thead><tr>
+        <th>Data</th><th>Hora</th><th>Equipamento</th><th>Combustível</th>
+        <th class="num">Litros</th><th class="num">R$/L</th><th class="num">Valor</th>
+        <th>Fazenda</th><th>Tipo Cliente</th><th>Frentista</th>
+      </tr></thead>
+      <tbody>
+        ${visiveis.map(d => `
+        <tr>
+          <td>${dataBr(d.data)}</td>
+          <td>${escapeHtml(d.hora_ini || '')}</td>
+          <td>${escapeHtml(nomeEquip(d))}</td>
+          <td>${escapeHtml(d.des_combustivel || '')}</td>
+          <td class="num">${fmtDec.format(d.qtde_litros || 0)}</td>
+          <td class="num">${fmtDec.format(d.valor_unitario || 0)}</td>
+          <td class="num">${fmtDec.format(d.valor_total || 0)}</td>
+          <td>${escapeHtml(d.des_fazenda || '')}</td>
+          <td>${escapeHtml(d.tipocliente || '')}</td>
+          <td>${escapeHtml(d.des_frentista || '')}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    ${det.length > linhasTabela
+      ? `<div class="tabela-mais"><button onclick="linhasTabela += 300; desenharTabela()">Mostrar mais (${fmtInt.format(det.length - linhasTabela)} restantes)</button></div>`
+      : ''}
+  `;
+}
+
+function nomeEquip(d) {
+  const p = d.prefixo ? String(d.prefixo).trim() : '';
+  const n = d.des_equipamento || '';
+  return p && p !== n ? p + ' · ' + n : (n || p);
+}
+
+function dataBr(iso) {
+  if (!iso) return '';
+  const s = String(iso).substring(0, 10);
+  return s.substring(8) + '/' + s.substring(5, 7) + '/' + s.substring(0, 4);
+}
+
+// ── Export Excel ────────────────────────────────────────────────────────
+
+function exportarExcel() {
+  if (!DADOS) return;
+  const wb = XLSX.utils.book_new();
+
+  const detalhe = DADOS.detalhe.map(d => ({
+    'Data': dataBr(d.data), 'Hora': d.hora_ini || '', 'Prefixo': d.prefixo || '',
+    'Equipamento': d.des_equipamento || '', 'Combustível': d.des_combustivel || '',
+    'Litros': d.qtde_litros || 0, 'R$/Litro': d.valor_unitario || 0, 'Valor Total': d.valor_total || 0,
+    'Fazenda': d.des_fazenda || '', 'Tipo Cliente': d.tipocliente || '',
+    'Frentista': d.des_frentista || '', 'Funcionário': d.des_funcionario || '',
+    'Negócio': d.desc_negocio || '', 'Almoxarifado': d.des_almoxarifado || '',
+    'KM/Hor.': d.km_ho || '', 'KM/Hs Rodados': d.kmhs_rodados || '',
+  }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(detalhe), 'Detalhamento');
+
+  const resumo = (lista, rotulo) => lista.map(d => ({
+    [rotulo]: d.chave, 'Litros': d.litros, 'Valor (R$)': d.valor, 'Abastecimentos': d.qtde
+  }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumo(DADOS.porCombustivel, 'Combustível')), 'Por Combustível');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumo(DADOS.porEquipamento, 'Equipamento')), 'Por Equipamento');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumo(DADOS.porFazenda, 'Fazenda')), 'Por Fazenda');
+
+  const ini = document.getElementById('dataIni').value, fim = document.getElementById('dataFim').value;
+  XLSX.writeFile(wb, `consumo-combustivel_${ini}_a_${fim}.xlsx`);
+}
+
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+carregar();
+</script>
+
+<script src="js/agro-chat-widget.js" defer></script>
+</body>
+</html>

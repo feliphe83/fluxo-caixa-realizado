@@ -302,8 +302,44 @@ public class AgroCombustivelDAO {
             case "equipamento" -> SQL_POR_EQUIPAMENTO;
             default -> SQL_POR_COMBUSTIVEL;
         };
-        String sql = template.replace("/*FILTROS*/", filtros.toString());
+        return executar(template.replace("/*FILTROS*/", filtros.toString()), params);
+    }
 
+    /**
+     * Detalhe linha a linha para o dashboard de consumo de combustível
+     * (tela combustivel-dashboard.html) — mesma consulta do Dr. Alfredo,
+     * com o filtro adicional de fazenda. A agregação (KPIs, séries,
+     * rankings) é feita no servlet, sobre este resultado.
+     */
+    public List<Map<String, Object>> buscarDetalhadoDashboard(String dataIni, String dataFim,
+                                                              Integer codEquipamento, Integer codTipoCliente,
+                                                              String combustivel, Integer codFazenda) {
+        StringBuilder filtros = new StringBuilder();
+        List<Object> params = new ArrayList<>();
+        params.add(paraDDMMYYYY(dataIni));
+        params.add(paraDDMMYYYY(dataFim));
+
+        if (codEquipamento != null) {
+            filtros.append(" and abastecimento.cod_equipamento = ?\n");
+            params.add(codEquipamento);
+        }
+        if (codTipoCliente != null) {
+            filtros.append(" and abastecimento.cod_tipocliente = ?\n");
+            params.add(codTipoCliente);
+        }
+        if (combustivel != null && !combustivel.isBlank()) {
+            filtros.append(" and upper(material.descricao) like '%'||upper(?)||'%'\n");
+            params.add(combustivel.trim());
+        }
+        if (codFazenda != null) {
+            filtros.append(" and abastecimento.cod_fazenda = ?\n");
+            params.add(codFazenda);
+        }
+
+        return executar(SQL_DETALHADO.replace("/*FILTROS*/", filtros.toString()), params);
+    }
+
+    private List<Map<String, Object>> executar(String sql, List<Object> params) {
         try (Connection conn = OracleConnectionUtil.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
