@@ -361,7 +361,7 @@ function montarFicha(d, indice, total, periodo, cargoTxt, dataGeracao, horaGerac
       <div class="fc-box">
         ${linha([['Exp. Profissional', d.experienciasetor]])}
         ${linha([['Último Emprego', d.ultima_exp]])}
-        ${linha([['Penúltimo', d.penultima_exp]])}
+        ${linha([['Penúltimo', d.penultima_exp], ['Antepenúltimo', d.antepenultima_exp]])}
         ${linha([['Trabalhou na empresa', d.trabalhou_empresa], ['Possui atividade Remunerada', d.atividade_remunerada]])}
         ${linha([['Concor. Trab. Externo', d.executar_servico_externo], ['Concor. Fazer Hora Extra', d.hora_extra], ['Concor. Fazer Trab. Noturno', d.horario_noturno]])}
         ${linha([['Tem Indicação', d.tem_indicacao], ['Quem Indicou', d.nome_quem_indicou]])}
