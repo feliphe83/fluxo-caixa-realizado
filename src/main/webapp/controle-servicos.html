@@ -869,7 +869,7 @@ function tabelaTransporte(grupos) {
     </tr>`).join('');
   return `
     <table class="resumo-table">
-      <thead><tr><th>Dias Apontamentos</th><th class="num">Valor Total</th><th class="num">Nº Funcionários</th><th class="num">Km Total</th><th class="num">R$/Pessoa</th><th class="num">R$/Km</th></tr></thead>
+      <thead><tr><th>Dias Apontamentos</th><th class="num">Valor Total</th><th class="num">Nº de Diária</th><th class="num">Km Total</th><th class="num">R$/Diária</th><th class="num">R$/Km</th></tr></thead>
       <tbody>
         ${linhas}
         <tr class="linha-total"><td>TOTAL</td><td class="num">${fmtMoeda(total.valor)}</td><td class="num">${fmtNum(total.qtd)}</td><td class="num">—</td><td class="num">${total.qtd ? fmtMoeda(total.valor / total.qtd) : '—'}</td><td class="num">—</td></tr>
