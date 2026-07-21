@@ -215,6 +215,11 @@ public class AgroCombustivelDAO {
 
                   and material.cod_material                    = abastecimento.cod_material
                   and tipocliente.cod_tipocliente              = abastecimento.cod_tipocliente
+
+                  -- Transferências entre tanques/almoxarifados não são consumo:
+                  -- fora de todas as consultas de combustível (com e sem acento)
+                  and upper(tipocliente.descricao)             not like 'TRANSFER%'
+
                   and palm.codigo                           (+)= abastecimento.idpalm
 
                   and abastecimento.cod_componente is null
