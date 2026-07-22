@@ -59,6 +59,12 @@ import java.util.stream.Collectors;
  * até definir o critério certo, esses lançamentos ficam na Atividade
  * Principal normal, como qualquer outro.)
  *
+ *  - Diárias: quantidade de trabalhadores-dia, não a soma de qtde_apontada.
+ *    Se a mesma matrícula (cod_funcionario) aparecer mais de uma vez no
+ *    mesmo dia dentro do mesmo bucket (mesma Atividade Principal, mesmo
+ *    grupo Própria/Terceiro), conta 1 — daí a contagem por matrícula+dia em
+ *    vez de somar as linhas de apontamento.
+ *
  * Salário Mínimo Rural, o % sobre o Sub-Total e o cálculo de R$/Dia são
  * feitos no front-end (o salário é só digitado na tela, não é parâmetro do
  * servidor).
@@ -84,11 +90,23 @@ public class AnaliseFolhaRuralServlet extends HttpServlet {
     private final Gson gson = new Gson();
     private final AnaliseFolhaRuralDAO dao = new AnaliseFolhaRuralDAO();
 
+    /**
+     * Diárias = quantidade de trabalhadores-dia, não a soma de qtde_apontada:
+     * se a mesma matrícula (cod_funcionario) aparecer mais de uma vez no
+     * mesmo dia dentro do mesmo grupo (mesma Atividade Principal, mesma
+     * Fazenda Própria/Terceiro), conta 1 — daí o Set em vez de uma soma.
+     */
     private static final class Acc {
-        double diarias = 0;
+        final Set<String> diasTrabalhados = new HashSet<>();
         double valor = 0;
-        void add(double d, double v) { diarias += d; valor += v; }
+        void add(String chaveDia, double v) {
+            if (chaveDia != null) diasTrabalhados.add(chaveDia);
+            valor += v;
+        }
+        double diarias() { return diasTrabalhados.size(); }
     }
+
+    private record Totais(double diarias, double valor) {}
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
@@ -118,8 +136,8 @@ public class AnaliseFolhaRuralServlet extends HttpServlet {
 
             for (Map<String, Object> l : linhas) {
                 boolean ehPropria = "1".equals(strOf(l.get("tipo_fundo_agricola")));
-                double diarias = num(l.get("qtde_apontada"));
                 double valor = num(l.get("valortotal"));
+                String chaveDia = chaveDiaTrabalhado(l);
 
                 String labelBruto;
                 if (ehPropria) {
@@ -136,10 +154,10 @@ public class AnaliseFolhaRuralServlet extends HttpServlet {
 
                 Map<String, Acc> mapaAlvo = ehPropria ? propriaAtiv : terceiroAtiv;
                 if (feriado) {
-                    (ehPropria ? propriaFeriado : terceiroFeriado).add(diarias, valor);
+                    (ehPropria ? propriaFeriado : terceiroFeriado).add(chaveDia, valor);
                 } else {
                     String bucket = normalizarAtividade(labelBruto);
-                    mapaAlvo.computeIfAbsent(bucket, k -> new Acc()).add(diarias, valor);
+                    mapaAlvo.computeIfAbsent(bucket, k -> new Acc()).add(chaveDia, valor);
                 }
             }
 
@@ -165,23 +183,21 @@ public class AnaliseFolhaRuralServlet extends HttpServlet {
                 atividades.add(linhaAtividade(extra, propriaAtiv.get(extra), terceiroAtiv.get(extra)));
             }
 
-            Acc subTotalPropria = somaTodas(propriaAtiv);
-            Acc subTotalTerceiro = somaTodas(terceiroAtiv);
+            Totais subTotalPropria = somaTodas(propriaAtiv);
+            Totais subTotalTerceiro = somaTodas(terceiroAtiv);
 
-            Acc totalPropria = new Acc();
-            totalPropria.add(subTotalPropria.diarias + propriaFeriado.diarias,
-                              subTotalPropria.valor + propriaFeriado.valor);
-            Acc totalTerceiro = new Acc();
-            totalTerceiro.add(subTotalTerceiro.diarias + terceiroFeriado.diarias,
-                               subTotalTerceiro.valor + terceiroFeriado.valor);
+            Totais totalPropria = new Totais(subTotalPropria.diarias() + propriaFeriado.diarias(),
+                                              subTotalPropria.valor() + propriaFeriado.valor);
+            Totais totalTerceiro = new Totais(subTotalTerceiro.diarias() + terceiroFeriado.diarias(),
+                                               subTotalTerceiro.valor() + terceiroFeriado.valor);
 
             JsonObject resultado = new JsonObject();
             resultado.addProperty("ok", true);
             resultado.addProperty("totalLinhas", linhas.size());
             resultado.add("atividades", gson.toJsonTree(atividades));
-            resultado.add("subTotal", blocoAcc(subTotalPropria, subTotalTerceiro));
+            resultado.add("subTotal", blocoTotais(subTotalPropria, subTotalTerceiro));
             resultado.add("feriado", blocoAcc(propriaFeriado, terceiroFeriado));
-            resultado.add("totalGeral", blocoAcc(totalPropria, totalTerceiro));
+            resultado.add("totalGeral", blocoTotais(totalPropria, totalTerceiro));
 
             out.print(gson.toJson(resultado));
 
@@ -212,10 +228,25 @@ public class AnaliseFolhaRuralServlet extends HttpServlet {
         return o;
     }
 
-    private JsonObject accJson(Acc acc) {
+    private JsonObject blocoTotais(Totais propria, Totais terceiro) {
         JsonObject o = new JsonObject();
-        o.addProperty("diarias", arred(acc == null ? 0 : acc.diarias));
-        o.addProperty("valor", arred(acc == null ? 0 : acc.valor));
+        o.add("propria", totaisJson(propria));
+        o.add("terceiro", totaisJson(terceiro));
+        return o;
+    }
+
+    private JsonObject accJson(Acc acc) {
+        return numJson(acc == null ? 0 : acc.diarias(), acc == null ? 0 : acc.valor);
+    }
+
+    private JsonObject totaisJson(Totais t) {
+        return numJson(t.diarias(), t.valor());
+    }
+
+    private JsonObject numJson(double diarias, double valor) {
+        JsonObject o = new JsonObject();
+        o.addProperty("diarias", arred(diarias));
+        o.addProperty("valor", arred(valor));
         return o;
     }
 
@@ -228,10 +259,26 @@ public class AnaliseFolhaRuralServlet extends HttpServlet {
         return v;
     }
 
-    private static Acc somaTodas(Map<String, Acc> mapa) {
-        Acc soma = new Acc();
-        for (Acc a : mapa.values()) soma.add(a.diarias, a.valor);
-        return soma;
+    /** Soma os buckets de um mapa (própria ou terceiro) num total simples — cada bucket já contou sua própria diária uma vez por matrícula/dia. */
+    private static Totais somaTodas(Map<String, Acc> mapa) {
+        double diarias = 0, valor = 0;
+        for (Acc a : mapa.values()) { diarias += a.diarias(); valor += a.valor; }
+        return new Totais(diarias, valor);
+    }
+
+    /** Chave matrícula+dia usada para não contar a mesma matrícula duas vezes no mesmo dia dentro do mesmo bucket. */
+    private static String chaveDiaTrabalhado(Map<String, Object> l) {
+        String matricula = strOf(l.get("cod_funcionario"));
+        String dia = diaApontamento(l);
+        if (matricula.isBlank() || dia == null) return null;
+        return matricula + "|" + dia;
+    }
+
+    private static String diaApontamento(Map<String, Object> l) {
+        Object d = l.get("data_apontamento");
+        if (d == null) return null;
+        String s = String.valueOf(d);
+        return s.length() >= 10 ? s.substring(0, 10) : s;
     }
 
     private static boolean contemFeriado(String s) {

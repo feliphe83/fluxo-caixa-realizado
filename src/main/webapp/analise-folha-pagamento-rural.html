@@ -41,7 +41,7 @@
   }
   .filtros-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr 1.6fr 1.2fr auto;
+    grid-template-columns: 1fr 1fr 1.4fr auto;
     gap: 14px;
     align-items: end;
   }
@@ -153,11 +153,6 @@
       <div class="campo">
         <label>Data Fim</label>
         <input type="date" id="dataFim">
-      </div>
-      <div class="campo">
-        <label>Período da Safra</label>
-        <input type="text" id="periodoSafra" placeholder="Ex.: Entressafra 2026" value="Entressafra 2026">
-        <div class="hint">Texto livre — aparece no título do relatório e na impressão.</div>
       </div>
       <div class="campo">
         <label>Salário Mínimo Rural (R$/Mês)</label>
@@ -334,12 +329,10 @@ function renderizar() {
 function atualizarCabecalhoImpressao() {
   const dataIni = document.getElementById('dataIni').value;
   const dataFim = document.getElementById('dataFim').value;
-  const periodoSafra = document.getElementById('periodoSafra').value.trim() || 'Acompanhamento';
   const mesRef = MESES[new Date(dataFim + 'T12:00:00').getMonth()];
   const anoRef = dataFim.substring(0, 4);
 
-  document.getElementById('tituloAcompanhamento').textContent =
-    'Acompanhamento ' + escapeHtml(periodoSafra) + ' - Fazendas Próprias, Terceiros e Geral';
+  document.getElementById('tituloAcompanhamento').textContent = 'Fazendas Próprias, Terceiros e Geral';
   document.getElementById('tituloComparativo').textContent =
     'Comparativo : ' + mesRef + '/' + anoRef + ' - Período : ' + dataBr(dataIni) + ' à ' + dataBr(dataFim);
 }
