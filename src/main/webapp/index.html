@@ -249,6 +249,39 @@
   .badge-S      { background: #e0d4f7; color: #1a3a7c; }
   .badge-Manual { background: #fef3c7; color: #92400e; }
 
+  .btn-add-manual {
+    display: flex; align-items: center; gap: 6px; margin-left: auto;
+    padding: 6px 14px; border-radius: 6px; border: 1.5px solid var(--verde);
+    background: white; color: var(--verde); font-size: 12px; font-weight: 700; cursor: pointer;
+    transition: all .15s;
+  }
+  .btn-add-manual:hover { background: var(--verde); color: white; }
+
+  .btn-excluir-manual {
+    background: none; border: none; cursor: pointer; font-size: 11px;
+    margin-left: 6px; opacity: .55; vertical-align: middle;
+  }
+  .btn-excluir-manual:hover { opacity: 1; }
+
+  /* MODAL: Lançamento Manual */
+  .lm-campo { display: flex; flex-direction: column; gap: 5px; }
+  .lm-campo label { font-size: 11px; font-weight: 600; color: var(--cinza); text-transform: uppercase; letter-spacing: 0.4px; }
+  .lm-campo input, .lm-campo select {
+    width: 100%; padding: 8px 10px; height: 38px; border: 1.5px solid var(--border);
+    border-radius: 6px; font-size: 13px; background: var(--cinza-claro); color: var(--text);
+  }
+  .lm-campo input:focus, .lm-campo select:focus { outline: none; border-color: var(--verde); background: white; }
+  .lm-erro { color: var(--vermelho); font-size: 12px; display: none; }
+  .lm-footer {
+    display: flex; gap: 10px; justify-content: flex-end;
+    padding: 14px 20px; border-top: 1px solid var(--border);
+  }
+  .btn-cancelar {
+    padding: 8px 18px; border-radius: 6px; border: 1.5px solid var(--border);
+    background: white; color: var(--cinza); font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .btn-cancelar:hover { border-color: var(--cinza); color: var(--text); }
+
   @media (max-width: 760px) {
     .filtros-grid { grid-template-columns: 1fr 1fr; }
     .filtros-grid > div:last-child { grid-column: 1/-1; }
@@ -567,6 +600,10 @@
     </span>
     <button id="btnLimparDesconsiderados" class="btn-limpar-desc" style="display:none" onclick="limparTodosDesconsiderados()">Limpar Desconsiderados</button>
     <span id="somaDesconsiderados" style="margin-left:8px;font-size:13px;color:var(--vermelho);font-weight:700;display:none"></span>
+    <button id="btnLancamentoManual" class="btn-add-manual" style="display:none" onclick="abrirModalLancamentoManual()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Lançamento Manual
+    </button>
   </div>
 </div>
 
@@ -694,6 +731,51 @@
   </div>
 </div>
 
+<!-- MODAL: novo lançamento manual (A Realizar) -->
+<div class="modal-overlay" id="modalLancamentoManual" onclick="if(event.target===this) fecharModalLancamentoManual()">
+  <div class="modal-box" style="max-width:520px">
+    <div class="modal-header">
+      <span>Novo Lançamento Manual</span>
+      <button class="modal-fechar" onclick="fecharModalLancamentoManual()" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body" style="padding:18px 20px">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="lm-campo">
+          <label>Descrição do Item</label>
+          <select id="lmDescricaoItem"><option value="">Carregando…</option></select>
+        </div>
+        <div class="lm-campo">
+          <label>Grupo de Empenho</label>
+          <select id="lmGrupoEmpenho" onchange="aoTrocarGrupoEmpenho()"><option value="">Carregando…</option></select>
+        </div>
+        <div class="lm-campo">
+          <label>Empenho</label>
+          <select id="lmEmpenho" disabled><option value="">Selecione o Grupo de Empenho primeiro</option></select>
+        </div>
+        <div class="lm-campo">
+          <label>Fornecedor</label>
+          <input type="text" id="lmFornecedor" placeholder="Digite o nome do fornecedor" maxlength="200">
+        </div>
+        <div style="display:flex;gap:14px">
+          <div class="lm-campo" style="flex:1">
+            <label>Data de Vencimento</label>
+            <input type="date" id="lmDataVencimento">
+          </div>
+          <div class="lm-campo" style="flex:1">
+            <label>Valor (R$)</label>
+            <input type="number" id="lmValor" min="0.01" step="0.01" placeholder="0,00">
+          </div>
+        </div>
+        <div id="lmErro" class="lm-erro"></div>
+      </div>
+    </div>
+    <div class="lm-footer">
+      <button class="btn-cancelar" onclick="fecharModalLancamentoManual()">Cancelar</button>
+      <button class="btn-gerar" id="btnSalvarLancamentoManual" onclick="salvarLancamentoManual()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ─── Estado global ─────────────────────────────────────────────────────────
 let DADOS_RAW    = [];
@@ -768,6 +850,7 @@ function setModo(modo) {
   // Grupo Simples/Comparativo só aparece no Realizado (a barra em si fica
   // sempre visível por causa dos chips de Tipo de Lançamento)
   document.getElementById('grupo-tiporel').style.display = modo === 'realizado' ? '' : 'none';
+  document.getElementById('btnLancamentoManual').style.display = modo === 'arealizar' ? 'flex' : 'none';
 
   // Resetar para Simples ao trocar de aba
   if (modo === 'arealizar') {
@@ -895,6 +978,141 @@ async function toggleDesconsiderar(chave, documento, parcela, codTipoContasPagar
   }
 }
 
+// ─── Lançamento Manual (A Realizar) ─────────────────────────────────────────
+let OPCOES_LANCAMENTO_MANUAL = null; // cache de {gruposEmpenho, contasFluxo}
+
+async function buscarLancamentosManuais(dataIni, dataFim) {
+  try {
+    const r = await fetch('api/lancamento-manual?dataIni=' + dataIni + '&dataFim=' + dataFim);
+    const j = await r.json();
+    return j.ok ? j.data : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function mostrarErroLM(msg) {
+  const el = document.getElementById('lmErro');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+async function abrirModalLancamentoManual() {
+  document.getElementById('lmErro').style.display = 'none';
+  document.getElementById('lmFornecedor').value = '';
+  document.getElementById('lmDataVencimento').value = document.getElementById('dataInicio').value || fmt8(new Date());
+  document.getElementById('lmValor').value = '';
+  document.getElementById('lmEmpenho').innerHTML = '<option value="">Selecione o Grupo de Empenho primeiro</option>';
+  document.getElementById('lmEmpenho').disabled = true;
+  document.getElementById('modalLancamentoManual').classList.add('aberto');
+
+  if (OPCOES_LANCAMENTO_MANUAL) return;
+
+  const selDesc = document.getElementById('lmDescricaoItem');
+  const selGrupo = document.getElementById('lmGrupoEmpenho');
+  try {
+    const r = await fetch('api/lancamento-manual/opcoes');
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro);
+    OPCOES_LANCAMENTO_MANUAL = j;
+    selDesc.innerHTML = '<option value="">Selecione…</option>' +
+      j.contasFluxo.map(o => `<option value="${esc(o.cod)}">${esc(o.descricao)}</option>`).join('');
+    selGrupo.innerHTML = '<option value="">Selecione…</option>' +
+      j.gruposEmpenho.map(o => `<option value="${esc(o.cod)}">${esc(o.descricao)}</option>`).join('');
+  } catch (e) {
+    selDesc.innerHTML = '<option value="">Erro ao carregar</option>';
+    selGrupo.innerHTML = '<option value="">Erro ao carregar</option>';
+    mostrarErroLM('Erro ao carregar opções do Oracle: ' + e.message);
+  }
+}
+
+function fecharModalLancamentoManual() {
+  document.getElementById('modalLancamentoManual').classList.remove('aberto');
+}
+
+async function aoTrocarGrupoEmpenho() {
+  const cod = document.getElementById('lmGrupoEmpenho').value;
+  const selEmpenho = document.getElementById('lmEmpenho');
+  if (!cod) {
+    selEmpenho.innerHTML = '<option value="">Selecione o Grupo de Empenho primeiro</option>';
+    selEmpenho.disabled = true;
+    return;
+  }
+  selEmpenho.innerHTML = '<option value="">Carregando…</option>';
+  selEmpenho.disabled = true;
+  try {
+    const r = await fetch('api/lancamento-manual/empenhos?codGrupoEmpenho=' + encodeURIComponent(cod));
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro);
+    selEmpenho.innerHTML = '<option value="">Selecione…</option>' +
+      j.data.map(o => `<option value="${esc(o.cod)}">${esc(o.descricao)}</option>`).join('');
+    selEmpenho.disabled = false;
+  } catch (e) {
+    selEmpenho.innerHTML = '<option value="">Erro ao carregar</option>';
+    mostrarErroLM('Erro ao carregar empenhos: ' + e.message);
+  }
+}
+
+async function salvarLancamentoManual() {
+  const selDesc = document.getElementById('lmDescricaoItem');
+  const selGrupo = document.getElementById('lmGrupoEmpenho');
+  const selEmpenho = document.getElementById('lmEmpenho');
+  const fornecedor = document.getElementById('lmFornecedor').value.trim();
+  const dataVencimento = document.getElementById('lmDataVencimento').value;
+  const valor = parseFloat(document.getElementById('lmValor').value);
+
+  document.getElementById('lmErro').style.display = 'none';
+  if (!selDesc.value || !selGrupo.value || !selEmpenho.value || !fornecedor || !dataVencimento || !valor || valor <= 0) {
+    mostrarErroLM('Preencha Descrição do Item, Grupo de Empenho, Empenho, Fornecedor, Vencimento e Valor.');
+    return;
+  }
+
+  const btn = document.getElementById('btnSalvarLancamentoManual');
+  btn.disabled = true;
+  btn.textContent = 'Salvando…';
+
+  try {
+    const r = await fetch('api/lancamento-manual', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        descricaoItem: selDesc.options[selDesc.selectedIndex].text,
+        codContaFluxo: selDesc.value,
+        codGrupoEmpenho: selGrupo.value,
+        descGrupoEmpenho: selGrupo.options[selGrupo.selectedIndex].text,
+        codEmpenho: selEmpenho.value,
+        descEmpenho: selEmpenho.options[selEmpenho.selectedIndex].text,
+        fornecedor,
+        dataVencimento,
+        valor
+      })
+    });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro);
+
+    fecharModalLancamentoManual();
+    await gerarRelatorio();
+  } catch (e) {
+    mostrarErroLM('Erro ao salvar: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Salvar';
+  }
+}
+
+async function excluirLancamentoManual(id) {
+  if (!confirm('Excluir este lançamento manual?')) return;
+  try {
+    const r = await fetch('api/lancamento-manual?id=' + id, { method: 'DELETE' });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro);
+    fecharModalFornecedores();
+    await gerarRelatorio();
+  } catch (e) {
+    alert('Erro ao excluir: ' + e.message);
+  }
+}
+
 // ─── PDF em 3 modos (A Realizar) ───────────────────────────────────────────
 function onClickPdf() {
   if (modoAtual === 'arealizar') {
@@ -954,8 +1172,17 @@ async function gerarRelatorio() {
     const resp = await fetch('/fluxo-caixa/' + endpoint + '?dataIni=' + dataIni + '&dataFim=' + dataFim);
     const json = await resp.json();
     if (!json.ok) throw new Error(json.erro || 'Erro desconhecido');
+
+    // Em A Realizar, mistura os lançamentos manuais (MySQL) com os dados do
+    // Oracle — mesma forma de linha, provisao="Manual" já aciona sozinho o
+    // chip/badge "Lançamento Manual".
+    let dadosBrutos = json.data;
+    if (modoAtual === 'arealizar') {
+      dadosBrutos = dadosBrutos.concat(await buscarLancamentosManuais(dataIni, dataFim));
+    }
+
     // Normalizar campo valor: A Realizar usa "valor", Realizado usa "realizado"
-    DADOS_RAW = json.data.map(d => ({
+    DADOS_RAW = dadosBrutos.map(d => ({
       ...d,
       realizado: d.realizado != null ? d.realizado : (d.valor != null ? d.valor : 0),
       dataPgto:  modoAtual === 'arealizar' ? d.dataVcto : (d.dataPgto != null ? d.dataPgto : d.dataVcto)
@@ -1218,9 +1445,15 @@ function abrirModalParcelas(g, periodoId, periodoLabel) {
   const linhas = itensFiltrados.map(it => {
     const chave = chaveParcela(it);
     const marcado = DESCONSIDERADOS.has(chave);
+    const ehManual = it.provisao === 'Manual';
+    const labelBadge = { N: 'Título', S: 'Provisão', Manual: 'Manual' }[it.provisao] || '';
+    const badge = labelBadge ? `<span class="badge badge-${it.provisao}">${labelBadge}</span>` : '';
+    const excluir = ehManual
+      ? `<button class="btn-excluir-manual" title="Excluir lançamento manual" onclick="excluirLancamentoManual(${it.idLancamentoManual})">🗑</button>`
+      : '';
     return `
       <tr class="${marcado ? 'linha-desconsiderada' : ''}">
-        <td>${esc(it.nome || '—')}</td>
+        <td>${esc(it.nome || '—')}${badge}${excluir}</td>
         <td>${esc(it.parcela || '—')}</td>
         <td>${fmtR(it.realizado)}</td>
         <td style="text-align:center">
