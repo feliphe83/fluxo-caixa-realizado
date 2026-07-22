@@ -107,6 +107,19 @@
     border-top: 1.5px solid #e3e8f5;
   }
 
+  tbody tr.item-row { cursor: pointer; }
+  tbody tr.item-row:hover td.rotulo { color: #1a3a7c; }
+  tbody tr.item-row .seta { display: inline-block; font-size: 9px; margin-right: 6px; transition: transform .15s; color: #94a0b8; }
+  tbody tr.item-row.aberto .seta { transform: rotate(90deg); }
+
+  .detalhe-row td { padding: 0; background: #f5f7fb; }
+  .detalhe-inner { padding: 10px 16px 14px 30px; }
+  .detalhe-inner table { min-width: unset; font-size: 11px; }
+  .detalhe-inner thead th { background: #c7d4ef; color: #0f2460; font-size: 9.5px; padding: 6px 8px; }
+  .detalhe-inner thead th.grupo-propria, .detalhe-inner thead th.grupo-terceiro, .detalhe-inner thead th.grupo-total { background: #c7d4ef; }
+  .detalhe-inner tbody td { padding: 5px 8px; background: transparent; }
+  .detalhe-inner tbody tr:hover { background: #e8eef8; }
+
   .loading-state, .erro-state, .vazio-state { text-align: center; padding: 60px 20px; color: #94a0b8; }
   .spinner { width: 30px; height: 30px; border: 3px solid #e3e8f5; border-top-color: #1a3a7c; border-radius: 50%; margin: 0 auto 12px; animation: spin .8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
@@ -308,14 +321,85 @@ function linhaHtml(nome, propria, terceiro, opts) {
   return `<tr class="${opts.classe || ''}"><td class="rotulo">${escapeHtml(nome)}</td>${cels}</tr>`;
 }
 
+// Linhas por Atividade Principal (e Feriado) podem "explodir" e mostrar o
+// detalhamento por Tipo de Serviço — LINHAS_EXPANSIVEIS guarda, na mesma
+// ordem em que foram desenhadas, o item {nome, propria, terceiro, servicos}
+// de cada uma, para toggleDetalheServico(idx) encontrar de volta.
+let LINHAS_EXPANSIVEIS = [];
+
+function registrarLinhaExpansivel(item, opts) {
+  const idx = LINHAS_EXPANSIVEIS.length;
+  LINHAS_EXPANSIVEIS.push(item);
+
+  const temServicos = item.servicos && item.servicos.length > 0;
+  opts = opts || {};
+  const p = item.propria || { diarias: 0, valor: 0 };
+  const t = item.terceiro || { diarias: 0, valor: 0 };
+  const total = { diarias: p.diarias + t.diarias, valor: p.valor + t.valor };
+  const salarioDia = salarioDiaAtual();
+  const cels = celulasBloco(p, DADOS.subTotal.propria.valor, salarioDia, opts.mostrarPct)
+             + celulasBloco(t, DADOS.subTotal.terceiro.valor, salarioDia, opts.mostrarPct)
+             + celulasBloco(total, DADOS.subTotal.propria.valor + DADOS.subTotal.terceiro.valor, salarioDia, opts.mostrarPct);
+
+  const classes = [opts.classe || '', temServicos ? 'item-row' : ''].filter(Boolean).join(' ');
+  const seta = temServicos ? '<span class="seta">▶</span>' : '';
+  const onclick = temServicos ? ` onclick="toggleDetalheServico(${idx})"` : '';
+  const linhaPrincipal = `<tr class="${classes}"${onclick}><td class="rotulo">${seta}${escapeHtml(item.nome)}</td>${cels}</tr>`;
+
+  const linhaDetalhe = temServicos
+    ? `<tr class="detalhe-row" id="detalhe-${idx}" style="display:none"><td colspan="16"><div class="detalhe-inner">${tabelaServicos(item.servicos)}</div></td></tr>`
+    : '';
+
+  return linhaPrincipal + linhaDetalhe;
+}
+
+function tabelaServicos(servicos) {
+  const linhas = servicos.map(s => linhaHtml(s.nome, s.propria, s.terceiro, { mostrarPct: false })).join('');
+  return `
+    <table>
+      <thead>
+        <tr>
+          <th></th>
+          <th class="grupo-propria" colspan="5">Fazendas Próprias</th>
+          <th class="grupo-terceiro" colspan="5">Fazendas Terceiros</th>
+          <th class="grupo-total" colspan="5">Total Geral</th>
+        </tr>
+        <tr>
+          <th>Tipo de Serviço</th>
+          <th>Diárias</th><th>R$/Dia</th><th>% Diária x Salário</th><th>Valor R$</th><th>%</th>
+          <th>Diárias</th><th>R$/Dia</th><th>% Diária x Salário</th><th>Valor R$</th><th>%</th>
+          <th>Diárias</th><th>R$/Dia</th><th>% Diária x Salário</th><th>Valor R$</th><th>%</th>
+        </tr>
+      </thead>
+      <tbody>${linhas}</tbody>
+    </table>`;
+}
+
+function toggleDetalheServico(idx) {
+  const detalhe = document.getElementById('detalhe-' + idx);
+  const linhaPrincipal = detalhe.previousElementSibling;
+  const abrindo = detalhe.style.display === 'none';
+  detalhe.style.display = abrindo ? 'table-row' : 'none';
+  linhaPrincipal.classList.toggle('aberto', abrindo);
+}
+
 function renderizar() {
   if (!DADOS) return;
+  LINHAS_EXPANSIVEIS = [];
 
   const atividadesComValor = DADOS.atividades.filter(a =>
     ((a.propria && a.propria.valor) || 0) + ((a.terceiro && a.terceiro.valor) || 0) > 0);
-  const linhasAtividades = atividadesComValor.map(a => linhaHtml(a.nome, a.propria, a.terceiro, { mostrarPct: true })).join('');
+  const linhasAtividades = atividadesComValor
+    .map(a => registrarLinhaExpansivel(a, { mostrarPct: true }))
+    .join('');
+
   const linhaSubTotal = linhaHtml('Sub-Total Apontamento', DADOS.subTotal.propria, DADOS.subTotal.terceiro, { mostrarPct: true, classe: 'subtotal' });
-  const linhaFeriado = linhaHtml('Feriado', DADOS.feriado.propria, DADOS.feriado.terceiro, { classe: 'feriado' });
+
+  const linhaFeriado = registrarLinhaExpansivel(
+    { nome: 'Feriado', propria: DADOS.feriado.propria, terceiro: DADOS.feriado.terceiro, servicos: DADOS.feriado.servicos || [] },
+    { classe: 'feriado' }
+  );
+
   const linhaTotalGeral = linhaHtml('Total Geral -:', DADOS.totalGeral.propria, DADOS.totalGeral.terceiro, { classe: 'total-geral' });
 
   document.getElementById('corpoTabela').innerHTML =

@@ -134,10 +134,19 @@ public class AnaliseFolhaRuralServlet extends HttpServlet {
             Map<String, Acc> terceiroAtiv = new HashMap<>();
             Acc propriaFeriado = new Acc(), terceiroFeriado = new Acc();
 
+            // Detalhamento por Tipo de Serviço dentro de cada Atividade Principal
+            // (bucket -> serviço -> Acc), usado para "explodir" a linha ao clicar.
+            Map<String, Map<String, Acc>> propriaServicos = new HashMap<>();
+            Map<String, Map<String, Acc>> terceiroServicos = new HashMap<>();
+            Map<String, Acc> propriaFeriadoServicos = new HashMap<>();
+            Map<String, Acc> terceiroFeriadoServicos = new HashMap<>();
+
             for (Map<String, Object> l : linhas) {
                 boolean ehPropria = "1".equals(strOf(l.get("tipo_fundo_agricola")));
                 double valor = num(l.get("valortotal"));
                 String chaveDia = chaveDiaTrabalhado(l);
+                String servico = strOf(l.get("descricaotiposervico"));
+                if (servico.isBlank()) servico = "Não informado";
 
                 String labelBruto;
                 if (ehPropria) {
@@ -152,19 +161,27 @@ public class AnaliseFolhaRuralServlet extends HttpServlet {
 
                 boolean feriado = contemFeriado(labelBruto) || contemFeriado(strOf(l.get("descricaotiposervico")));
 
-                Map<String, Acc> mapaAlvo = ehPropria ? propriaAtiv : terceiroAtiv;
                 if (feriado) {
                     (ehPropria ? propriaFeriado : terceiroFeriado).add(chaveDia, valor);
+                    Map<String, Acc> mapaFeriadoServ = ehPropria ? propriaFeriadoServicos : terceiroFeriadoServicos;
+                    mapaFeriadoServ.computeIfAbsent(servico, k -> new Acc()).add(chaveDia, valor);
                 } else {
                     String bucket = normalizarAtividade(labelBruto);
+                    Map<String, Acc> mapaAlvo = ehPropria ? propriaAtiv : terceiroAtiv;
                     mapaAlvo.computeIfAbsent(bucket, k -> new Acc()).add(chaveDia, valor);
+
+                    Map<String, Map<String, Acc>> mapaServicosAlvo = ehPropria ? propriaServicos : terceiroServicos;
+                    mapaServicosAlvo.computeIfAbsent(bucket, k -> new HashMap<>())
+                                    .computeIfAbsent(servico, k -> new Acc())
+                                    .add(chaveDia, valor);
                 }
             }
 
             List<JsonObject> atividades = new ArrayList<>();
             Set<String> usadas = new HashSet<>();
             for (String canon : ATIVIDADES_CANONICAS) {
-                atividades.add(linhaAtividade(canon, propriaAtiv.get(canon), terceiroAtiv.get(canon)));
+                List<JsonObject> servicos = listaServicos(propriaServicos.get(canon), terceiroServicos.get(canon));
+                atividades.add(linhaAtividadeComServicos(canon, propriaAtiv.get(canon), terceiroAtiv.get(canon), servicos));
                 usadas.add(canon);
             }
 
@@ -180,7 +197,8 @@ public class AnaliseFolhaRuralServlet extends HttpServlet {
                                                       valorCombinado(a, propriaAtivFinal, terceiroAtivFinal)))
                     .collect(Collectors.toList());
             for (String extra : extrasOrdenadas) {
-                atividades.add(linhaAtividade(extra, propriaAtiv.get(extra), terceiroAtiv.get(extra)));
+                List<JsonObject> servicos = listaServicos(propriaServicos.get(extra), terceiroServicos.get(extra));
+                atividades.add(linhaAtividadeComServicos(extra, propriaAtiv.get(extra), terceiroAtiv.get(extra), servicos));
             }
 
             Totais subTotalPropria = somaTodas(propriaAtiv);
@@ -196,7 +214,9 @@ public class AnaliseFolhaRuralServlet extends HttpServlet {
             resultado.addProperty("totalLinhas", linhas.size());
             resultado.add("atividades", gson.toJsonTree(atividades));
             resultado.add("subTotal", blocoTotais(subTotalPropria, subTotalTerceiro));
-            resultado.add("feriado", blocoAcc(propriaFeriado, terceiroFeriado));
+            JsonObject feriadoJson = blocoAcc(propriaFeriado, terceiroFeriado);
+            feriadoJson.add("servicos", gson.toJsonTree(listaServicos(propriaFeriadoServicos, terceiroFeriadoServicos)));
+            resultado.add("feriado", feriadoJson);
             resultado.add("totalGeral", blocoTotais(totalPropria, totalTerceiro));
 
             out.print(gson.toJson(resultado));
@@ -219,6 +239,33 @@ public class AnaliseFolhaRuralServlet extends HttpServlet {
         o.add("propria", accJson(propria));
         o.add("terceiro", accJson(terceiro));
         return o;
+    }
+
+    /** Linha de atividade com o detalhamento por Tipo de Serviço embutido, para o front-end "explodir" ao clicar. */
+    private JsonObject linhaAtividadeComServicos(String nome, Acc propria, Acc terceiro, List<JsonObject> servicos) {
+        JsonObject o = linhaAtividade(nome, propria, terceiro);
+        o.add("servicos", gson.toJsonTree(servicos));
+        return o;
+    }
+
+    /** Lista de linhas {nome, propria, terceiro} por Tipo de Serviço, maior valor combinado primeiro. */
+    private List<JsonObject> listaServicos(Map<String, Acc> servicosPropria, Map<String, Acc> servicosTerceiro) {
+        Map<String, Acc> sp = servicosPropria != null ? servicosPropria : Map.of();
+        Map<String, Acc> st = servicosTerceiro != null ? servicosTerceiro : Map.of();
+
+        Set<String> chaves = new TreeSet<>();
+        chaves.addAll(sp.keySet());
+        chaves.addAll(st.keySet());
+
+        List<String> ordenadas = chaves.stream()
+                .sorted((a, b) -> Double.compare(valorCombinado(b, sp, st), valorCombinado(a, sp, st)))
+                .collect(Collectors.toList());
+
+        List<JsonObject> lista = new ArrayList<>();
+        for (String s : ordenadas) {
+            lista.add(linhaAtividade(s, sp.get(s), st.get(s)));
+        }
+        return lista;
     }
 
     private JsonObject blocoAcc(Acc propria, Acc terceiro) {
