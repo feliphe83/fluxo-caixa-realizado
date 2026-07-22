@@ -287,7 +287,7 @@ function celulasBloco(bloco, subtotalValor, salarioDia, mostrarPct) {
   const valor = (bloco && bloco.valor) || 0;
   const rsDia = diarias > 0 ? valor / diarias : null;
   const pctSalario = (rsDia != null && salarioDia > 0) ? (rsDia / salarioDia * 100) : null;
-  const pct = (mostrarPct && subtotalValor > 0) ? (valor / subtotalValor * 100) : null;
+  const pct = (mostrarPct && valor > 0 && subtotalValor > 0) ? (valor / subtotalValor * 100) : null;
   return `
     <td>${diarias ? fmtDia.format(diarias) : '-'}</td>
     <td>${rsDia != null ? fmtDec.format(rsDia) : '-'}</td>
@@ -311,7 +311,9 @@ function linhaHtml(nome, propria, terceiro, opts) {
 function renderizar() {
   if (!DADOS) return;
 
-  const linhasAtividades = DADOS.atividades.map(a => linhaHtml(a.nome, a.propria, a.terceiro, { mostrarPct: true })).join('');
+  const atividadesComValor = DADOS.atividades.filter(a =>
+    ((a.propria && a.propria.valor) || 0) + ((a.terceiro && a.terceiro.valor) || 0) > 0);
+  const linhasAtividades = atividadesComValor.map(a => linhaHtml(a.nome, a.propria, a.terceiro, { mostrarPct: true })).join('');
   const linhaSubTotal = linhaHtml('Sub-Total Apontamento', DADOS.subTotal.propria, DADOS.subTotal.terceiro, { mostrarPct: true, classe: 'subtotal' });
   const linhaFeriado = linhaHtml('Feriado', DADOS.feriado.propria, DADOS.feriado.terceiro, { classe: 'feriado' });
   const linhaTotalGeral = linhaHtml('Total Geral -:', DADOS.totalGeral.propria, DADOS.totalGeral.terceiro, { classe: 'total-geral' });
@@ -353,19 +355,22 @@ function exportarExcel() {
     const bloco = (b, subtotal) => {
       const rsDia = b.diarias > 0 ? b.valor / b.diarias : 0;
       const pctSal = (rsDia > 0 && salarioDia > 0) ? (rsDia / salarioDia * 100) : 0;
-      const pct = (mostrarPct && subtotal > 0) ? (b.valor / subtotal * 100) : null;
+      const pct = (mostrarPct && b.valor > 0 && subtotal > 0) ? (b.valor / subtotal * 100) : null;
       return [b.diarias, rsDia, pctSal, b.valor, pct];
     };
     const subP = DADOS.subTotal.propria.valor, subT = DADOS.subTotal.terceiro.valor;
     return [nome, ...bloco(p, subP), ...bloco(t, subT), ...bloco(total, subP + subT)];
   };
 
+  const atividadesComValor = DADOS.atividades.filter(a =>
+    ((a.propria && a.propria.valor) || 0) + ((a.terceiro && a.terceiro.valor) || 0) > 0);
+
   const linhas = [
     ['', 'Fazendas Próprias','','','','', 'Fazendas Terceiros','','','','', 'Total Geral','','','',''],
     ['Atividades Principais', 'Diárias','R$/Dia','% Diária x Salário','Valor R$','%',
                               'Diárias','R$/Dia','% Diária x Salário','Valor R$','%',
                               'Diárias','R$/Dia','% Diária x Salário','Valor R$','%'],
-    ...DADOS.atividades.map(a => linha(a.nome, a.propria, a.terceiro, true)),
+    ...atividadesComValor.map(a => linha(a.nome, a.propria, a.terceiro, true)),
     linha('Sub-Total Apontamento', DADOS.subTotal.propria, DADOS.subTotal.terceiro, true),
     linha('Feriado', DADOS.feriado.propria, DADOS.feriado.terceiro, false),
     linha('Total Geral', DADOS.totalGeral.propria, DADOS.totalGeral.terceiro, false),
