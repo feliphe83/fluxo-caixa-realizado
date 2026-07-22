@@ -95,7 +95,7 @@
   tbody tr:hover { background: #f8faff; }
 
   tbody tr.subtotal td { background: #eef2fb; font-weight: 700; border-top: 2px solid #1a3a7c; }
-  tbody tr.complemento td, tbody tr.feriado td { background: #fafbfd; font-style: italic; color: #64748b; }
+  tbody tr.feriado td { background: #fafbfd; font-style: italic; color: #64748b; }
   tbody tr.total-geral td { background: #0f2460; color: white; font-weight: 800; }
 
   /* separadores visuais entre os 3 blocos de colunas */
@@ -318,12 +318,11 @@ function renderizar() {
 
   const linhasAtividades = DADOS.atividades.map(a => linhaHtml(a.nome, a.propria, a.terceiro, { mostrarPct: true })).join('');
   const linhaSubTotal = linhaHtml('Sub-Total Apontamento', DADOS.subTotal.propria, DADOS.subTotal.terceiro, { mostrarPct: true, classe: 'subtotal' });
-  const linhaComplemento = linhaHtml('Complemento de Diária', DADOS.complementoDiaria.propria, DADOS.complementoDiaria.terceiro, { classe: 'complemento' });
   const linhaFeriado = linhaHtml('Feriado', DADOS.feriado.propria, DADOS.feriado.terceiro, { classe: 'feriado' });
   const linhaTotalGeral = linhaHtml('Total Geral -:', DADOS.totalGeral.propria, DADOS.totalGeral.terceiro, { classe: 'total-geral' });
 
   document.getElementById('corpoTabela').innerHTML =
-    linhasAtividades + linhaSubTotal + linhaComplemento + linhaFeriado + linhaTotalGeral;
+    linhasAtividades + linhaSubTotal + linhaFeriado + linhaTotalGeral;
 
   const salarioMes = parseFloat(document.getElementById('salarioMes').value) || 0;
   document.getElementById('salarioMesTxt').textContent = fmtDec.format(salarioMes);
@@ -375,7 +374,6 @@ function exportarExcel() {
                               'Diárias','R$/Dia','% Diária x Salário','Valor R$','%'],
     ...DADOS.atividades.map(a => linha(a.nome, a.propria, a.terceiro, true)),
     linha('Sub-Total Apontamento', DADOS.subTotal.propria, DADOS.subTotal.terceiro, true),
-    linha('Complemento de Diária', DADOS.complementoDiaria.propria, DADOS.complementoDiaria.terceiro, false),
     linha('Feriado', DADOS.feriado.propria, DADOS.feriado.terceiro, false),
     linha('Total Geral', DADOS.totalGeral.propria, DADOS.totalGeral.terceiro, false),
     [],

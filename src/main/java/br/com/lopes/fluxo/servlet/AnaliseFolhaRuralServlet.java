@@ -54,8 +54,10 @@ import java.util.stream.Collectors;
  *    nome, para qualquer um dos dois grupos — vira sua própria linha, fora
  *    das 8 atividades principais.
  *
- *  - Complemento de Diária: apontamento com complementa_diaria = 'S' —
- *    idem, linha própria fora das atividades principais.
+ * (Complemento de Diária ainda não entra separado — complementa_diaria vem
+ * 'S' na maioria dos apontamentos, não só nos que são de fato complemento;
+ * até definir o critério certo, esses lançamentos ficam na Atividade
+ * Principal normal, como qualquer outro.)
  *
  * Salário Mínimo Rural, o % sobre o Sub-Total e o cálculo de R$/Dia são
  * feitos no front-end (o salário é só digitado na tela, não é parâmetro do
@@ -112,14 +114,12 @@ public class AnaliseFolhaRuralServlet extends HttpServlet {
 
             Map<String, Acc> propriaAtiv = new HashMap<>();
             Map<String, Acc> terceiroAtiv = new HashMap<>();
-            Acc propriaComplemento = new Acc(), terceiroComplemento = new Acc();
             Acc propriaFeriado = new Acc(), terceiroFeriado = new Acc();
 
             for (Map<String, Object> l : linhas) {
                 boolean ehPropria = "1".equals(strOf(l.get("tipo_fundo_agricola")));
                 double diarias = num(l.get("qtde_apontada"));
                 double valor = num(l.get("valortotal"));
-                boolean complementoDiaria = "S".equalsIgnoreCase(strOf(l.get("complementa_diaria")));
 
                 String labelBruto;
                 if (ehPropria) {
@@ -135,9 +135,7 @@ public class AnaliseFolhaRuralServlet extends HttpServlet {
                 boolean feriado = contemFeriado(labelBruto) || contemFeriado(strOf(l.get("descricaotiposervico")));
 
                 Map<String, Acc> mapaAlvo = ehPropria ? propriaAtiv : terceiroAtiv;
-                if (complementoDiaria) {
-                    (ehPropria ? propriaComplemento : terceiroComplemento).add(diarias, valor);
-                } else if (feriado) {
+                if (feriado) {
                     (ehPropria ? propriaFeriado : terceiroFeriado).add(diarias, valor);
                 } else {
                     String bucket = normalizarAtividade(labelBruto);
@@ -171,18 +169,17 @@ public class AnaliseFolhaRuralServlet extends HttpServlet {
             Acc subTotalTerceiro = somaTodas(terceiroAtiv);
 
             Acc totalPropria = new Acc();
-            totalPropria.add(subTotalPropria.diarias + propriaComplemento.diarias + propriaFeriado.diarias,
-                              subTotalPropria.valor + propriaComplemento.valor + propriaFeriado.valor);
+            totalPropria.add(subTotalPropria.diarias + propriaFeriado.diarias,
+                              subTotalPropria.valor + propriaFeriado.valor);
             Acc totalTerceiro = new Acc();
-            totalTerceiro.add(subTotalTerceiro.diarias + terceiroComplemento.diarias + terceiroFeriado.diarias,
-                               subTotalTerceiro.valor + terceiroComplemento.valor + terceiroFeriado.valor);
+            totalTerceiro.add(subTotalTerceiro.diarias + terceiroFeriado.diarias,
+                               subTotalTerceiro.valor + terceiroFeriado.valor);
 
             JsonObject resultado = new JsonObject();
             resultado.addProperty("ok", true);
             resultado.addProperty("totalLinhas", linhas.size());
             resultado.add("atividades", gson.toJsonTree(atividades));
             resultado.add("subTotal", blocoAcc(subTotalPropria, subTotalTerceiro));
-            resultado.add("complementoDiaria", blocoAcc(propriaComplemento, terceiroComplemento));
             resultado.add("feriado", blocoAcc(propriaFeriado, terceiroFeriado));
             resultado.add("totalGeral", blocoAcc(totalPropria, totalTerceiro));
 
