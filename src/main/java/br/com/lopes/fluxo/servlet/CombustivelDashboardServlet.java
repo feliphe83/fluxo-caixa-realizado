@@ -47,7 +47,9 @@ import java.util.logging.Logger;
  * (automotivo.histproprietarioequip, já presente na consulta como
  * cod_proprietario) — sem registro de proprietário (LEFT JOIN nulo) é
  * equipamento sempre da usina (Próprio); com um fornecedor registrado como
- * dono naquele período, é Terceiro.
+ * dono naquele período, é Terceiro — exceto quando esse "dono" é a própria
+ * "USINA SANTA CLOTILDE S/A" (às vezes registrada em
+ * histproprietarioequip), que conta como Próprio em todo o dashboard.
  *
  * Classe Operativa: de-para administrado (fc_depara_classeoperativa, tela
  * "De-Para Classe Operativa") de cod_modelo → categoria ampla (Trator,
@@ -260,9 +262,16 @@ public class CombustivelDashboardServlet extends HttpServlet {
         return o;
     }
 
-    /** Terceiro = existe proprietário histórico registrado para o equipamento (cod_proprietario preenchido). */
+    /**
+     * Terceiro = existe proprietário histórico registrado para o equipamento
+     * (cod_proprietario preenchido) E esse proprietário não é a própria
+     * usina — alguns equipamentos têm "USINA SANTA CLOTILDE S/A" registrada
+     * em automotivo.histproprietarioequip, o que não é um terceiro de
+     * verdade; esses contam como Próprio em todo o dashboard.
+     */
     private static boolean ehTerceiro(Map<String, Object> l) {
-        return preenchido(l.get("cod_proprietario"));
+        if (!preenchido(l.get("cod_proprietario"))) return false;
+        return !ehAPropriaUsina(strOf(l.get("nome_proprietario")));
     }
 
     // ── Por Área de Negócio (totais + série semanal, p/ o gráfico empilhado) ──
@@ -493,12 +502,7 @@ public class CombustivelDashboardServlet extends HttpServlet {
 
     // ── Top 10 Terceiros (por proprietário do equipamento) ───────────────
 
-    /**
-     * Alguns equipamentos têm a própria usina registrada como "proprietário"
-     * no histórico (automotivo.histproprietarioequip) — não é um terceiro de
-     * verdade, então essa linha some deste ranking (mas continua contando
-     * como Terceiro nos KPIs gerais e na Classe Operativa, a pedido).
-     */
+    /** "USINA SANTA CLOTILDE S/A" às vezes aparece como proprietário histórico do equipamento — não é terceiro de verdade. */
     private static boolean ehAPropriaUsina(String proprietario) {
         return proprietario.toUpperCase(Locale.forLanguageTag("pt-BR")).contains("USINA SANTA CLOTILDE");
     }
@@ -512,7 +516,6 @@ public class CombustivelDashboardServlet extends HttpServlet {
             if (!ehTerceiro(l)) continue;
             String proprietario = strOf(l.get("nome_proprietario"));
             if (proprietario.isBlank()) proprietario = "Proprietário Não Identificado";
-            if (ehAPropriaUsina(proprietario)) continue;
             double litros = num(l.get("qtde_litros"));
             double valor = num(l.get("valor_total"));
             mapa.computeIfAbsent(proprietario, k -> new double[2]);
