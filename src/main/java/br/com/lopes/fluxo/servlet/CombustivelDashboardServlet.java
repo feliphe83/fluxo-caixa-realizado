@@ -125,6 +125,11 @@ public class CombustivelDashboardServlet extends HttpServlet {
             List<Map<String, Object>> linhas = dao.buscarDetalhadoDashboard(
                     dataIni, dataFim, codEquipamento, codTipoCliente, combustivel, codFazenda);
 
+            // Abastecimento sem equipamento vinculado (retirada por placa/pessoa,
+            // sem veículo) não entra no dashboard — desconsiderado de tudo:
+            // KPIs, séries, rankings e detalhamento.
+            linhas.removeIf(l -> !preenchido(l.get("cod_equipamento")));
+
             List<LocalDate[]> semanas = montarSemanas(LocalDate.parse(dataIni), LocalDate.parse(dataFim));
             double[] precoHistoricoPorSemana = buscarPrecoHistoricoPorSemana(linhas, dataIni, dataFim, semanas);
 
@@ -474,16 +479,12 @@ public class CombustivelDashboardServlet extends HttpServlet {
      *
      * Já distingue próprio de terceiro no próprio nome da classe quando é o
      * caso (ex.: "Trator" x "Trator Terceiro", "Ônibus Terceiro") — sem
-     * sufixo automático somado por cima daqui.
-     *
-     * Sem cod_equipamento (abastecimento por placa/pessoa, sem veículo
-     * vinculado) não é "sem classificar" — é "Limpeza de Equipamento",
-     * categoria própria, igual ao relatório de referência (não entra no
-     * aviso de completar o de-para, já que não há equipamento pra mapear).
+     * sufixo automático somado por cima daqui. Toda linha aqui já tem
+     * cod_equipamento (abastecimento sem equipamento é descartado antes,
+     * em doGet).
      */
     private static String classeOperativaDe(Map<String, Object> l) {
         String codEquipamento = strOf(l.get("cod_equipamento"));
-        if (codEquipamento.isBlank()) return "Limpeza de Equipamento";
         String base = ClasseOperativaCache.buscar(codEquipamento);
         return (base == null || base.isBlank()) ? "Não Classificado" : base;
     }
