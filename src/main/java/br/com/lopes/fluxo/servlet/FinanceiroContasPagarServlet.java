@@ -14,6 +14,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
@@ -29,11 +31,24 @@ import java.util.logging.Logger;
  *        [&fornecedor=trecho do nome] [&sessionId=...]
  *
  * Resposta: { "ok": true, "totalEncontrado": N, "truncado": bool,
+ *             "valorTotal": soma de TODAS as parcelas do período (não só as
+ *             que o agente recebe em "data" — usar este campo, não somar
+ *             "data", pra não errar quando truncado=true),
+ *             "porConta": [ { "conta": desc_fluxo, "valor": soma } , ... ]
+ *             ordenado do maior pro menor valor — já pronto pra "separar por
+ *             conta e valor",
  *             "data": [ { ...colunas da consulta... }, ... ] }
  *
  * Período de vencimento é obrigatório. As linhas são largas (inclui até 10
  * alterações de vencimento), então o agente recebe no máximo MAX_LINHAS; o
  * resultado completo fica no AgroConsultaCache para exportação em Excel.
+ *
+ * "Próxima semana": pergunta recorrente do Dr. Alfredo ("qual o valor total
+ * que tenho a pagar na próxima semana?") — nesta empresa a semana operacional
+ * começa no SÁBADO e termina na SEXTA-FEIRA seguinte (não domingo-sábado).
+ * O agente deve calcular dataIniVcto/dataFimVcto de acordo antes de chamar
+ * esta rota, e a resposta deve trazer o valor total (valorTotal) com o
+ * detalhamento por conta (porConta) e um totalizador ao final.
  */
 @WebServlet("/api/financeiro/contas-apagar")
 public class FinanceiroContasPagarServlet extends HttpServlet {
@@ -103,6 +118,8 @@ public class FinanceiroContasPagarServlet extends HttpServlet {
             resultado.addProperty("ok", true);
             resultado.addProperty("totalEncontrado", total);
             resultado.addProperty("truncado", truncado);
+            resultado.addProperty("valorTotal", arred(somaValor(lista)));
+            resultado.add("porConta", gson.toJsonTree(agruparPorConta(lista)));
             resultado.add("data", gson.toJsonTree(listaLimitada));
             out.print(gson.toJson(resultado));
 
@@ -124,5 +141,43 @@ public class FinanceiroContasPagarServlet extends HttpServlet {
         if (ei != null && !ei.isBlank()) t.append(" · Entrada ").append(ei.trim()).append(" a ").append(ef.trim());
         if (fornecedor != null && !fornecedor.isBlank()) t.append(" · ").append(fornecedor.trim());
         return t.toString();
+    }
+
+    /** Soma "valor" sobre TODA a lista (não só a amostra truncada enviada ao agente). */
+    private static double somaValor(List<Map<String, Object>> lista) {
+        double soma = 0;
+        for (Map<String, Object> l : lista) {
+            Object v = l.get("valor");
+            if (v instanceof Number n) soma += n.doubleValue();
+        }
+        return soma;
+    }
+
+    /** Agrupa por conta de fluxo (desc_fluxo, com fallback pro código) somando valor — maior primeiro. */
+    private static List<Map<String, Object>> agruparPorConta(List<Map<String, Object>> lista) {
+        Map<String, Double> mapa = new LinkedHashMap<>();
+        for (Map<String, Object> l : lista) {
+            Object desc = l.get("desc_fluxo");
+            Object cod = l.get("conta_fluxo");
+            String conta = (desc != null && !String.valueOf(desc).isBlank())
+                    ? String.valueOf(desc)
+                    : (cod != null ? String.valueOf(cod) : "Não informado");
+            Object v = l.get("valor");
+            double valor = v instanceof Number n ? n.doubleValue() : 0;
+            mapa.merge(conta, valor, Double::sum);
+        }
+        List<Map<String, Object>> ordenado = new ArrayList<>();
+        mapa.forEach((conta, valor) -> {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("conta", conta);
+            item.put("valor", arred(valor));
+            ordenado.add(item);
+        });
+        ordenado.sort((a, b) -> Double.compare((Double) b.get("valor"), (Double) a.get("valor")));
+        return ordenado;
+    }
+
+    private static double arred(double v) {
+        return Math.round(v * 100.0) / 100.0;
     }
 }
