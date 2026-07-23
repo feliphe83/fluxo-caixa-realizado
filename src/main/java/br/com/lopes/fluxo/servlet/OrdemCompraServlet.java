@@ -32,14 +32,19 @@ import java.util.logging.Logger;
  *
  * Resposta: { "ok": true, "totalEncontrado": N, "truncado": bool,
  *             "ordens": [ { "nroc", "dataoc", "fornecedor", "valorTotal",
- *             "datavcto", "valorparcela" }, ... ] — uma linha por ordem de
- *             compra (não por item), até MAX_ORDENS, pronta pra "listar
- *             todas as ordens" sem esbarrar no limite de "data",
+ *             "datavcto", "valorparcela", "statusParcela": "Paga"|"Pendente" },
+ *             ... ] — uma linha por ordem de compra (não por item), até
+ *             MAX_ORDENS, pronta pra "listar todas as ordens" sem esbarrar
+ *             no limite de "data",
  *             "ordensTruncado": bool,
  *             "pdfUrl": link direto pro PDF formatado da ordem (só quando
  *             "nroc" é informado — não faz sentido pra uma lista de várias
  *             ordens),
- *             "data": [ { ...colunas da consulta, uma por item... }, ... ] }
+ *             "data": [ { ...colunas da consulta, uma por item, incluindo
+ *             "status_parcela": "Paga"|"Pendente"... }, ... ] }
+ *
+ * A busca traz ordens com parcela paga OU pendente (sem exigir parcela em
+ * aberto) — o campo status_parcela/statusParcela diz qual é o caso.
  *
  * Período de vencimento é obrigatório para consultas por período/fornecedor
  * — MAS quando "nroc" é informado (uma ordem específica), o período fica
@@ -161,6 +166,7 @@ public class OrdemCompraServlet extends HttpServlet {
                 ordem.put("valorTotal", 0.0);
                 ordem.put("datavcto", l.get("datavcto"));
                 ordem.put("valorparcela", l.get("valorparcela"));
+                ordem.put("statusParcela", l.get("status_parcela"));
                 porNroc.put(nroc, ordem);
             }
             Object total = l.get("total");

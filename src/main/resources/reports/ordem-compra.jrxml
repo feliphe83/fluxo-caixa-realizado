@@ -11,7 +11,7 @@
 		<![CDATA[select nroc,dataoc, cod_funcionario,cod_fornecedor,nome nome_fornecedor,observacao,  cod_material,desc_material, qtde_aprovada qtde
 , preco ,qtde_aprovada*preco-desconto1 total,qtde_aprovada*preco total2, null cod_objetocusto, endereco, bairro, cep, null fone, desc_cidade,cod_funcionario, dataaprovacao, nomeaprovador nome
 , cgc_cpf cgc, descontototal,desconto1,desconto1*-1 desconto2 , cod_objeto,cod_unidade, custo.fn_busca_descricao_oc(cod_objeto) desc_objeto, max(documento)
-, descricaoplano , observacao ,datavcto, valorparcela from (with vw_parcelas as (select parcelascontaspagar.cod_grupoempresa
+, descricaoplano , observacao ,datavcto, valorparcela, case when datapgto is null then 'Pendente' else 'Paga' end status_parcela from (with vw_parcelas as (select parcelascontaspagar.cod_grupoempresa
                           , parcelascontaspagar.cod_tipocontaspagar
                           , parcelascontaspagar.documento
                           , parcelascontaspagar.parcela
@@ -22,6 +22,7 @@
                           , ordemcompra.nroc
                           , parcelascontaspagar.datavcto
                           , parcelascontaspagar.valorparcela
+                          , parcelascontaspagar.datapgto
                      from   material.ordemcompra ordemcompra
                           , material.itensentrada itensentrada
                           , material.notafiscal notafiscal
@@ -35,7 +36,6 @@
                      and    itensentrada.nrnf                    = notafiscal.nrnf
                      and    itensentrada.sequencia_nf            = notafiscal.sequencia_nf
                      and    notafiscal.cod_documento             = parcelascontaspagar.documento
-                     and    parcelascontaspagar.datapgto is null
                      and    parcelascontaspagar.origem           = 10
                      and    parcelascontaspagar.datavcto   between to_date($P{DATAINICIO}, 'YYYY-MM-DD') and to_date($P{DATAFIM}, 'YYYY-MM-DD')
                      and    parcelascontaspagar.cod_filial       = 1
@@ -50,7 +50,7 @@
                             , notafiscal.nrnf
                             , notafiscal.serie
                             , itensentrada.dataentrada_seq, ordemcompra.nroc , parcelascontaspagar.datavcto
-                          , parcelascontaspagar.valorparcela
+                          , parcelascontaspagar.valorparcela, parcelascontaspagar.datapgto
                     )
 
 
@@ -128,6 +128,7 @@ select tmp1.nroc
      , tmp1.documento
      , tmp1.datavcto
      ,tmp1.valorparcela
+     ,tmp1.datapgto
 
     , material.fn_busca_descontos_oc(tmp1.nr_cotacao, tmp1.cod_plano , tmp1.cod_material,tmp1.nr_solicitacao) desconto1
     , (select cod_unidade from material.material
@@ -221,6 +222,7 @@ from   (select  ordemcompra.nroc
              , vw_parcelas.documento
              , vw_parcelas.datavcto
              , vw_parcelas.valorparcela
+             , vw_parcelas.datapgto
 
         from   faturamento.parametro_item parametro_item
              , geral.pessoatelefone_empresa
@@ -291,14 +293,14 @@ order  by nroc
         )
 group by nroc,dataoc, cod_funcionario,cod_fornecedor,nome,observacao,  cod_material,desc_material, qtde_aprovada
 , preco, endereco, bairro, cep, desc_cidade,cod_funcionario, dataaprovacao, nomeaprovador, cgc_cpf,descontototal, desconto1, cod_objeto, cod_unidade, descricaoplano, observacao
- ,datavcto, valorparcela
+ ,datavcto, valorparcela, datapgto
 
 union all
 
 select nroc,dataoc, cod_funcionario,cod_fornecedor,nome nome_fornecedor,observacao,  cod_material,desc_material, qtde_aprovada qtde
 , preco ,qtde_aprovada*preco-desconto1 total,qtde_aprovada*preco total2, null cod_objetocusto, endereco, bairro, cep, null fone, desc_cidade,cod_funcionario, dataaprovacao, nomeaprovador nome
 , cgc_cpf cgc, descontototal,desconto1,desconto1*-1 desconto2 , cod_objeto,cod_unidade, custo.fn_busca_descricao_oc(cod_objeto) desc_objeto, max(documento)
-, descricaoplano , observacao  , datavcto,valorparcela from (with vw_parcelas as (select parcelascontaspagar.cod_grupoempresa
+, descricaoplano , observacao  , datavcto,valorparcela, case when datapgto is null then 'Pendente' else 'Paga' end status_parcela from (with vw_parcelas as (select parcelascontaspagar.cod_grupoempresa
                           , parcelascontaspagar.cod_tipocontaspagar
                           , parcelascontaspagar.documento
                          , parcelascontaspagar.parcela
@@ -309,11 +311,11 @@ select nroc,dataoc, cod_funcionario,cod_fornecedor,nome nome_fornecedor,observac
                           , ordemcompra.nroc
                             , parcelascontaspagar.datavcto
                           , parcelascontaspagar.valorparcela
+                          , parcelascontaspagar.datapgto
                      from   material.ordemcompra ordemcompra
                           , financeiro.parcelascontaspagar parcelascontaspagar
 
                      where  ordemcompra.dataoc             between '01011900' and '01012050'
-and    parcelascontaspagar.datapgto is null
                      and  ordemcompra.nroc = parcelascontaspagar.documento
                      and  ordemcompra.nroc = $P{NROC}
                      and parcelascontaspagar.cod_tipocontaspagar = 262
@@ -328,7 +330,7 @@ and    parcelascontaspagar.datapgto is null
                             , parcelascontaspagar.cod_tipocontaspagar
                             , parcelascontaspagar.documento
                             , parcelascontaspagar.parcela , ordemcompra.nroc , parcelascontaspagar.datavcto
-                          , parcelascontaspagar.valorparcela
+                          , parcelascontaspagar.valorparcela, parcelascontaspagar.datapgto
 
 
                     )
@@ -408,6 +410,7 @@ select tmp1.nroc
      , tmp1.documento
       , tmp1.datavcto
      ,tmp1.valorparcela
+     ,tmp1.datapgto
 
 
     , material.fn_busca_descontos_oc(tmp1.nr_cotacao, tmp1.cod_plano , tmp1.cod_material,tmp1.nr_solicitacao) desconto1
@@ -503,6 +506,7 @@ from   (select  ordemcompra.nroc
 
              , vw_parcelas.datavcto
              , vw_parcelas.valorparcela
+             , vw_parcelas.datapgto
         from   faturamento.parametro_item parametro_item
              , geral.pessoatelefone_empresa
              , rh.pessoa pessoa_fun
@@ -573,7 +577,7 @@ order  by nroc
 group by nroc,dataoc, cod_funcionario,cod_fornecedor,nome,observacao,  cod_material,desc_material, qtde_aprovada
 , preco, endereco, bairro, cep, desc_cidade,cod_funcionario, dataaprovacao, nomeaprovador
 , cgc_cpf,descontototal, desconto1, cod_objeto, cod_unidade, descricaoplano, observacao ,datavcto
-     ,valorparcela
+     ,valorparcela, datapgto
 order by nroc]]>
 	</queryString>
 	<field name="NROC" class="java.math.BigDecimal"/>
@@ -607,6 +611,7 @@ order by nroc]]>
 	<field name="DESCRICAOPLANO" class="java.lang.String"/>
 	<field name="DATAVCTO" class="java.sql.Timestamp"/>
 	<field name="VALORPARCELA" class="java.math.BigDecimal"/>
+	<field name="STATUS_PARCELA" class="java.lang.String"/>
 	<variable name="TOTAL_1" class="java.math.BigDecimal" resetType="Group" resetGroup="nroc" calculation="Sum">
 		<variableExpression><![CDATA[$F{TOTAL}]]></variableExpression>
 	</variable>
@@ -902,7 +907,7 @@ order by nroc]]>
 		<groupFooter>
 			<band height="157">
 				<rectangle>
-					<reportElement x="12" y="83" width="223" height="49" uuid="40d739fb-0d57-4210-b7c2-f41bd28ab2f7"/>
+					<reportElement x="12" y="83" width="280" height="49" uuid="40d739fb-0d57-4210-b7c2-f41bd28ab2f7"/>
 				</rectangle>
 				<staticText>
 					<reportElement x="300" y="131" width="60" height="12" isRemoveLineWhenBlank="true" uuid="a030bc19-15f9-44da-b10b-b364e3b731d2"/>
@@ -1026,15 +1031,29 @@ order by nroc]]>
 					<text><![CDATA[Valor]]></text>
 				</staticText>
 				<rectangle>
-					<reportElement x="12" y="83" width="224" height="12" backcolor="#CCCCCC" uuid="3e7559fb-d28a-4be7-ade4-11fbea217d00"/>
+					<reportElement x="12" y="83" width="280" height="12" backcolor="#CCCCCC" uuid="3e7559fb-d28a-4be7-ade4-11fbea217d00"/>
 				</rectangle>
 				<staticText>
-					<reportElement x="12" y="83" width="222" height="12" isRemoveLineWhenBlank="true" uuid="56679e7b-7ed3-4132-badb-14462085a49e"/>
+					<reportElement x="12" y="83" width="278" height="12" isRemoveLineWhenBlank="true" uuid="56679e7b-7ed3-4132-badb-14462085a49e"/>
 					<textElement textAlignment="Center">
 						<font size="9" isBold="true"/>
 					</textElement>
 					<text><![CDATA[Pagamento]]></text>
 				</staticText>
+				<staticText>
+					<reportElement x="230" y="97" width="60" height="12" isRemoveLineWhenBlank="true" uuid="a1b2c3d4-e5f6-4789-a012-3456789abcde"/>
+					<textElement>
+						<font size="9" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Status]]></text>
+				</staticText>
+				<textField>
+					<reportElement x="230" y="109" width="60" height="22" uuid="b2c3d4e5-f6a7-4890-b123-456789abcdef"/>
+					<textElement>
+						<font size="9" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$F{STATUS_PARCELA}]]></textFieldExpression>
+				</textField>
 			</band>
 		</groupFooter>
 	</group>

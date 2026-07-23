@@ -40,6 +40,11 @@ import java.util.logging.Logger;
  * nome_fornecedor são colunas de COLUNAS_FINAIS, comuns aos dois blocos do
  * UNION ALL), então não precisam ser duplicados dentro de cada branch — o
  * período de vencimento continua obrigatório mesmo quando informados.
+ *
+ * A consulta NÃO exige mais que a parcela esteja em aberto (removido o
+ * filtro original "parcelascontaspagar.datapgto is null") — ordens já pagas
+ * também aparecem, com "status_parcela" = 'Paga' ou 'Pendente' (calculado a
+ * partir de datapgto ser nulo ou não).
  */
 public class OrdemCompraDAO {
 
@@ -57,14 +62,16 @@ public class OrdemCompraDAO {
         dataaprovacao, nomeaprovador, cgc_cpf cgc, descontototal, desconto1,
         desconto1*-1 desconto2, cod_objeto, cod_unidade,
         custo.fn_busca_descricao_oc(cod_objeto) desc_objeto, documento,
-        descricaoplano, datavcto, valorparcela
+        descricaoplano, datavcto, valorparcela,
+        case when datapgto is null then 'Pendente' else 'Paga' end status_parcela
         """;
 
     private static final String GROUP_BY_FINAL = """
         group by nroc, dataoc, cod_funcionario, cod_fornecedor, nome, observacao,
                  cod_material, desc_material, qtde_aprovada, preco, endereco, bairro, cep,
                  desc_cidade, dataaprovacao, nomeaprovador, cgc_cpf, descontototal, desconto1,
-                 cod_objeto, cod_unidade, descricaoplano, documento, datavcto, valorparcela
+                 cod_objeto, cod_unidade, descricaoplano, documento, datavcto, valorparcela,
+                 datapgto
         """;
 
     // Corpo comum aos dois blocos (só muda o CTE vw_parcelas antes dele) —
@@ -89,7 +96,7 @@ public class OrdemCompraDAO {
              , tmp1.dataaprovacao, tmp1.nomeaprovador, tmp1.valor_icms_st
              , geral.fn_inf_colaborador(pn_cod_colaborador => tmp1.cod_fornecedor, pv_palavra_chave => 'RUC') RUC
              , (select estado.estado from material.estado estado where estado.sigla = tmp1.estado) departamentoPY
-             , count(tmp1.nroc) over () qtdregistros, tmp1.documento, tmp1.datavcto, tmp1.valorparcela
+             , count(tmp1.nroc) over () qtdregistros, tmp1.documento, tmp1.datavcto, tmp1.valorparcela, tmp1.datapgto
              , material.fn_busca_descontos_oc(tmp1.nr_cotacao, tmp1.cod_plano, tmp1.cod_material, tmp1.nr_solicitacao) desconto1
              , (select cod_unidade from material.material where material.cod_material = tmp1.cod_material) cod_unidade
         from (
@@ -151,7 +158,7 @@ public class OrdemCompraDAO {
                  , ordemcompra.dataoc database, aprovacaoparacompra.dataaprovacao
                  , rh.fn_nomefuncionario(aprovacaoparacompra.cod_grupoempresa, aprovacaoparacompra.cod_funcionario) nomeaprovador
                  , resultadocotacaoitem.valor_icms_st
-                 , vw_parcelas.documento, vw_parcelas.datavcto, vw_parcelas.valorparcela
+                 , vw_parcelas.documento, vw_parcelas.datavcto, vw_parcelas.valorparcela, vw_parcelas.datapgto
             from faturamento.parametro_item parametro_item
                , geral.pessoatelefone_empresa
                , rh.pessoa pessoa_fun
@@ -213,6 +220,7 @@ public class OrdemCompraDAO {
                  , parcelascontaspagar.documento, parcelascontaspagar.parcela
                  , notafiscal.sequencia_nf, notafiscal.nrnf, notafiscal.serie, itensentrada.dataentrada_seq
                  , ordemcompra.nroc, parcelascontaspagar.datavcto, parcelascontaspagar.valorparcela
+                 , parcelascontaspagar.datapgto
             from material.ordemcompra ordemcompra
                , material.itensentrada itensentrada
                , material.notafiscal notafiscal
@@ -224,7 +232,6 @@ public class OrdemCompraDAO {
             and   itensentrada.nrnf = notafiscal.nrnf
             and   itensentrada.sequencia_nf = notafiscal.sequencia_nf
             and   notafiscal.cod_documento = parcelascontaspagar.documento
-            and   parcelascontaspagar.datapgto is null
             and   parcelascontaspagar.origem = 10
             and   parcelascontaspagar.datavcto between to_date(?, 'YYYY-MM-DD') and to_date(?, 'YYYY-MM-DD')
             and   parcelascontaspagar.cod_filial = 1
@@ -234,6 +241,7 @@ public class OrdemCompraDAO {
                  , parcelascontaspagar.documento, parcelascontaspagar.parcela
                  , notafiscal.sequencia_nf, notafiscal.nrnf, notafiscal.serie, itensentrada.dataentrada_seq
                  , ordemcompra.nroc, parcelascontaspagar.datavcto, parcelascontaspagar.valorparcela
+                 , parcelascontaspagar.datapgto
         )
         """;
 
@@ -242,10 +250,10 @@ public class OrdemCompraDAO {
             select parcelascontaspagar.cod_grupoempresa, parcelascontaspagar.cod_tipocontaspagar
                  , parcelascontaspagar.documento, parcelascontaspagar.parcela
                  , ordemcompra.nroc, parcelascontaspagar.datavcto, parcelascontaspagar.valorparcela
+                 , parcelascontaspagar.datapgto
             from material.ordemcompra ordemcompra
                , financeiro.parcelascontaspagar parcelascontaspagar
             where ordemcompra.dataoc between '01011900' and '01012050'
-            and   parcelascontaspagar.datapgto is null
             and   ordemcompra.nroc = parcelascontaspagar.documento
             and   parcelascontaspagar.cod_tipocontaspagar = 262
             and   parcelascontaspagar.datavcto between to_date(?, 'YYYY-MM-DD') and to_date(?, 'YYYY-MM-DD')
@@ -255,6 +263,7 @@ public class OrdemCompraDAO {
             group by parcelascontaspagar.cod_grupoempresa, parcelascontaspagar.cod_tipocontaspagar
                  , parcelascontaspagar.documento, parcelascontaspagar.parcela
                  , ordemcompra.nroc, parcelascontaspagar.datavcto, parcelascontaspagar.valorparcela
+                 , parcelascontaspagar.datapgto
         )
         """;
 
