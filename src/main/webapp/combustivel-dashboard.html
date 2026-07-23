@@ -733,7 +733,7 @@ function secaoClasseOperativa(j) {
         </tbody>
       </table>
     </div>
-    ${co.linhas.some(l => l.nome === 'Não Classificado' || l.nome === 'Não Classificado Terceiro')
+    ${co.linhas.some(l => l.nome === 'Não Classificado')
       ? '<div class="insight-box"><span class="insight-icone">!</span><div>Há modelos de equipamento sem Classe Operativa cadastrada — complete o de-para em <b>Administração → De-Para Classe Operativa</b> para refinar esta visão.</div></div>'
       : ''}
   </div>`;

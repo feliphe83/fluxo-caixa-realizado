@@ -54,7 +54,9 @@ import java.util.logging.Logger;
  * Classe Operativa (só na matriz semanal, seção 4): de-para administrado
  * (fc_depara_classeoperativa, tela "De-Para Classe Operativa") de cod_modelo
  * → categoria ampla (Trator, Caminhão Apoio, Ônibus…) — modelo sem de-para
- * cadastrado cai em "Não Classificado".
+ * cadastrado cai em "Não Classificado". O de-para já distingue próprio de
+ * terceiro no nome da própria classe quando é o caso (ex.: "Trator" x
+ * "Trator Terceiro"); não há sufixo automático somado por cima.
  *
  * "Grupo Equipamento" (Top 10 Próprios) e "Atividade Principal" (Top 10
  * Terceiros): direto de desc_atividade (Objeto de Custo do Oracle, mesmo
@@ -462,11 +464,16 @@ public class CombustivelDashboardServlet extends HttpServlet {
     }
 
     /** Classe Operativa: de-para por modelo de equipamento; terceiro ganha o sufixo " Terceiro". */
+    /**
+     * O de-para (fc_depara_classeoperativa) já distingue próprio de terceiro
+     * no próprio nome da classe quando é o caso (ex.: "Trator" x "Trator
+     * Terceiro", "Ônibus Terceiro") — cada cod_modelo cai numa única classe,
+     * sem sufixo automático somado por cima daqui.
+     */
     private static String classeOperativaDe(Map<String, Object> l) {
         String codModelo = strOf(l.get("cod_modelo"));
         String base = codModelo.isBlank() ? null : ClasseOperativaCache.buscar(codModelo);
-        if (base == null || base.isBlank()) base = "Não Classificado";
-        return ehTerceiro(l) ? base + " Terceiro" : base;
+        return (base == null || base.isBlank()) ? "Não Classificado" : base;
     }
 
     // ── Top 10 Equipamentos Próprios ─────────────────────────────────────
