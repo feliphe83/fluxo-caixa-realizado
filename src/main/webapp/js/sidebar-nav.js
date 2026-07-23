@@ -3,8 +3,12 @@
  * admin.html, que já tem seu próprio painel lateral, e as telas públicas de
  * login/recuperação de senha). Busca os módulos liberados para o usuário em
  * api/hub (mesma rota do hub.html) e a sessão em api/sessao, destaca a tela
- * atual e não exige nenhuma mudança de layout na página que o inclui — só
- * empurra o <body> para a direita via margin-left.
+ * atual e não exige nenhuma mudança de layout na página que o inclui.
+ *
+ * Fica recolhido por padrão (só o botão de "3 riscos" no canto superior
+ * esquerdo) — a tela do módulo continua com a largura inteira. Abre como uma
+ * camada por cima do conteúdo (overlay + fundo escurecido), nunca fixo
+ * empurrando a página.
  *
  * Uso: <script src="js/sidebar-nav.js" defer></script> antes do fechamento
  * do <body>, igual ao padrão já usado para js/agro-chat-widget.js.
@@ -35,15 +39,25 @@
   const style = document.createElement('style');
   style.textContent = `
     :root { --snav-w: 232px; }
-    body { margin-left: var(--snav-w); }
 
+    /* Recolhido por padrão — só o botão de "3 riscos" fica visível, a tela
+       do módulo continua com a largura inteira. O menu abre por cima do
+       conteúdo (overlay), não empurra nada. */
     .snav-sidebar {
       position: fixed; top: 0; left: 0; height: 100vh; width: var(--snav-w);
       background: #0f1e36; border-right: 1px solid rgba(26,58,124,0.35);
-      display: flex; flex-direction: column; z-index: 40;
+      display: flex; flex-direction: column; z-index: 1040;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      transition: transform .25s ease;
+      transform: translateX(-100%); transition: transform .22s ease;
+      box-shadow: 0 0 40px rgba(0,0,0,.35);
     }
+    .snav-sidebar.aberto { transform: translateX(0); }
+
+    .snav-backdrop {
+      display: none; position: fixed; inset: 0; background: rgba(10,22,40,.35);
+      z-index: 1030;
+    }
+    .snav-backdrop.aberto { display: block; }
     .snav-logo {
       padding: 18px 16px; border-bottom: 1px solid rgba(26,58,124,0.35);
       display: flex; align-items: center; gap: 10px; flex-shrink: 0;
@@ -82,31 +96,31 @@
     .snav-btn-sair:hover { color: #ef4444; }
 
     .snav-toggle {
-      display: none; position: fixed; top: 14px; left: 14px; z-index: 41;
+      display: flex; position: fixed; top: 14px; left: 14px; z-index: 1020;
       width: 38px; height: 38px; border-radius: 9px; border: none;
       background: #0f2460; color: white; cursor: pointer;
       align-items: center; justify-content: center; box-shadow: 0 2px 10px rgba(0,0,0,.25);
+      transition: background .15s;
     }
+    .snav-toggle:hover { background: #1a3a7c; }
 
-    @media (max-width: 900px) {
-      body { margin-left: 0; }
-      .snav-sidebar { transform: translateX(-100%); box-shadow: 0 0 40px rgba(0,0,0,.4); }
-      .snav-sidebar.aberto { transform: translateX(0); }
-      .snav-toggle { display: flex; }
-    }
     @media print {
-      .snav-sidebar, .snav-toggle { display: none !important; }
-      body { margin-left: 0 !important; }
+      .snav-sidebar, .snav-toggle, .snav-backdrop { display: none !important; }
     }
   `;
   document.head.appendChild(style);
 
-  // ── Botão de abrir/fechar (só aparece em telas estreitas) ───────────────
+  // ── Botão de abrir/fechar — sempre visível, recolhido por padrão ────────
   const toggle = document.createElement('button');
   toggle.className = 'snav-toggle';
   toggle.setAttribute('aria-label', 'Abrir menu');
   toggle.innerHTML = '<svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>';
   document.body.appendChild(toggle);
+
+  // Fundo escurecido atrás do menu quando aberto — clicar nele fecha.
+  const backdrop = document.createElement('div');
+  backdrop.className = 'snav-backdrop';
+  document.body.appendChild(backdrop);
 
   // ── Sidebar ──────────────────────────────────────────────────────────────
   const sidebar = document.createElement('nav');
@@ -124,10 +138,22 @@
   `;
   document.body.prepend(sidebar);
 
-  toggle.addEventListener('click', () => sidebar.classList.toggle('aberto'));
+  function abrirMenu() {
+    sidebar.classList.add('aberto');
+    backdrop.classList.add('aberto');
+  }
+  function fecharMenu() {
+    sidebar.classList.remove('aberto');
+    backdrop.classList.remove('aberto');
+  }
+
+  toggle.addEventListener('click', () => {
+    sidebar.classList.contains('aberto') ? fecharMenu() : abrirMenu();
+  });
+  backdrop.addEventListener('click', fecharMenu);
   sidebar.querySelectorAll('.snav-nav, .snav-foot').forEach(el => {
     el.addEventListener('click', e => {
-      if (e.target.closest('a, .snav-item')) sidebar.classList.remove('aberto');
+      if (e.target.closest('a, .snav-item')) fecharMenu();
     });
   });
 
