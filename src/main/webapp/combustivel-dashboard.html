@@ -3,21 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Consumo de Combustível · USC</title>
+<title>Relatório Executivo · Consumo de Combustível</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    /* Paleta de dados (validada p/ daltonismo — ordem fixa, nunca reordenar) */
-    --serie-1: #2a78d6;
-    --serie-2: #eb6834;
-    --serie-3: #1baf7a;
-    --serie-4: #eda100;
-    --serie-5: #e87ba4;
-    --serie-6: #008300;
+    --serie-1: #2a78d6;   /* azul — base */
+    --serie-2: #eb6834;   /* laranja */
+    --serie-3: #1baf7a;   /* água — maior/destaque positivo */
+    --serie-4: #eda100;   /* amarelo */
+    --serie-5: #e87ba4;   /* magenta */
+    --serie-6: #008300;   /* verde — última semana */
+    --serie-8: #e34948;   /* vermelho — menor/alerta */
     --serie-outros: #98a2b3;
-    --grade: #e9edf6;
+    --ink: #0f2460;
     --ink-2: #52514e;
     --ink-3: #898781;
+    --grade: #e9edf6;
   }
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -29,9 +30,7 @@
     background: linear-gradient(135deg, #0f2460 0%, #1a3a7c 100%);
     color: white;
     padding: 16px 28px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    display: flex; align-items: center; justify-content: space-between;
   }
   .header-left { display: flex; align-items: center; gap: 12px; }
   .header-logo { width: 38px; height: 38px; border-radius: 8px; background: rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; }
@@ -46,31 +45,17 @@
   }
   .btn-voltar:hover { background: rgba(255,255,255,0.18); }
 
-  .conteudo { max-width: 1280px; margin: 0 auto; padding: 24px; }
+  .conteudo { max-width: 1360px; margin: 0 auto; padding: 24px; }
 
-  /* ── Filtros (uma faixa acima de tudo que ela controla) ── */
+  /* ── Filtros ── */
   .filtros-card {
     background: white; border: 1.5px solid #e3e8f5; border-radius: 14px;
     padding: 18px 22px; margin-bottom: 20px;
   }
-  .filtros-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1.3fr 1.3fr 1.1fr 1.5fr auto;
-    gap: 12px;
-    align-items: end;
-  }
+  .filtros-grid { display: grid; grid-template-columns: 1fr 1fr 1.2fr auto; gap: 14px; align-items: end; }
   .campo label { display: block; font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 6px; }
-  .campo input, .campo select {
-    width: 100%; padding: 8px 10px; border: 1.5px solid #d8dfee; border-radius: 8px;
-    font-size: 13px; color: #1a1a2e; outline: none; height: 38px; background: white;
-  }
-  .campo input:focus, .campo select:focus { border-color: #1a3a7c; }
-  .presets { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-  .preset {
-    padding: 5px 12px; border-radius: 999px; border: 1.5px solid #d8dfee;
-    background: white; color: #475569; font-size: 12px; font-weight: 600; cursor: pointer;
-  }
-  .preset:hover { border-color: #1a3a7c; color: #1a3a7c; }
+  .campo input { width: 100%; padding: 8px 10px; border: 1.5px solid #d8dfee; border-radius: 8px; font-size: 13px; color: #1a1a2e; outline: none; height: 38px; background: white; }
+  .campo input:focus { border-color: #1a3a7c; }
   .btn-gerar {
     padding: 0 20px; border-radius: 9px; border: none;
     background: #1a3a7c; color: white; font-size: 13.5px; font-weight: 700;
@@ -78,58 +63,11 @@
   }
   .btn-gerar:hover { background: #0f2460; }
   .btn-gerar:disabled { background: #9ca3af; cursor: not-allowed; }
+  .presets { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .preset { padding: 5px 12px; border-radius: 999px; border: 1.5px solid #d8dfee; background: white; color: #475569; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .preset:hover { border-color: #1a3a7c; color: #1a3a7c; }
 
-  /* ── KPIs ── */
-  .kpi-row {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 14px;
-    margin-bottom: 20px;
-  }
-  .kpi {
-    background: white; border: 1.5px solid #e3e8f5; border-radius: 14px;
-    padding: 16px 18px;
-  }
-  .kpi .rotulo { font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 6px; }
-  .kpi .valor { font-size: 26px; font-weight: 700; color: #0f2460; line-height: 1.1; }
-  .kpi .unidade { font-size: 12px; color: var(--ink-3); margin-top: 4px; }
-
-  /* ── Gráficos ── */
-  .graficos-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    margin-bottom: 20px;
-  }
-  .grafico-card {
-    background: white; border: 1.5px solid #e3e8f5; border-radius: 14px;
-    padding: 18px 20px;
-    min-width: 0;
-  }
-  .grafico-card.largo { grid-column: 1 / -1; }
-  .grafico-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 10px; }
-  .grafico-titulo { font-size: 14px; font-weight: 700; color: #0f2460; }
-  .grafico-sub { font-size: 11.5px; color: var(--ink-3); margin-top: 2px; }
-  .toggle-medida { display: flex; border: 1.5px solid #d8dfee; border-radius: 8px; overflow: hidden; }
-  .toggle-medida button {
-    padding: 5px 12px; border: none; background: white; color: #475569;
-    font-size: 12px; font-weight: 600; cursor: pointer;
-  }
-  .toggle-medida button.ativo { background: #1a3a7c; color: white; }
-  .grafico-area { position: relative; height: 280px; }
-  .grafico-card.largo .grafico-area { height: 260px; }
-
-  .donut-linha { display: flex; align-items: center; gap: 18px; }
-  .donut-linha .grafico-area { height: 220px; flex: 0 0 220px; }
-  .donut-legenda { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
-  .donut-legenda .item { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
-  .donut-legenda .swatch { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
-  .donut-legenda .nome { color: #1a1a2e; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .donut-legenda .num { margin-left: auto; color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
-
-  /* ── Tabela ── */
-  .export-bar { display: flex; gap: 10px; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-  .export-nota { font-size: 12px; color: var(--ink-3); }
+  .export-bar { display: flex; gap: 10px; justify-content: flex-end; margin-bottom: 16px; }
   .btn-export {
     display: flex; align-items: center; gap: 6px;
     padding: 8px 14px; border-radius: 8px; border: 1.5px solid #d8dfee;
@@ -137,42 +75,91 @@
   }
   .btn-export:hover { border-color: #1a3a7c; color: #1a3a7c; }
 
-  .resultado-card { background: white; border: 1.5px solid #e3e8f5; border-radius: 14px; overflow: hidden; }
-  .tabela-scroll { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-  thead th {
-    background: #0f2460; color: white; text-align: left;
-    padding: 10px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: .4px;
-    white-space: nowrap;
+  /* ── Seções ── */
+  .secao { background: white; border: 1.5px solid #e3e8f5; border-radius: 14px; padding: 22px 24px; margin-bottom: 20px; }
+  .secao-header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+  .secao-num {
+    width: 22px; height: 22px; border-radius: 6px; background: var(--ink); color: white;
+    font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   }
-  thead th.num { text-align: right; }
-  tbody td { padding: 8px 12px; border-bottom: 1px solid #eef1f8; white-space: nowrap; }
-  tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
-  tbody tr:hover { background: #f8faff; }
-  .tabela-mais { text-align: center; padding: 12px; }
-  .tabela-mais button {
-    padding: 7px 16px; border-radius: 8px; border: 1.5px solid #d8dfee;
-    background: white; color: #1a3a7c; font-size: 12.5px; font-weight: 600; cursor: pointer;
+  .secao-titulo { font-size: 16px; font-weight: 800; color: var(--ink); }
+  .secao-sub { font-size: 12px; color: var(--ink-3); margin: 2px 0 16px 32px; }
+
+  .insight-box {
+    display: flex; gap: 12px; background: #f5f7fb; border-left: 3px solid var(--serie-3);
+    border-radius: 8px; padding: 12px 16px; margin-top: 16px; font-size: 12.5px; color: var(--ink-2); line-height: 1.55;
   }
+  .insight-box b { color: var(--ink); }
+  .insight-icone { flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; background: var(--serie-3); color: white; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; }
+
+  /* ── KPIs ── */
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
+  .kpi { background: #f8faff; border: 1px solid #e3e8f5; border-radius: 12px; padding: 14px 16px; }
+  .kpi .rotulo { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .3px; margin-bottom: 6px; }
+  .kpi .valor { font-size: 22px; font-weight: 800; color: var(--ink); line-height: 1.1; }
+  .kpi .sub { font-size: 11px; color: var(--ink-3); margin-top: 4px; }
+
+  .split-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 4px; }
+  .split-card { border-radius: 12px; padding: 14px 16px; color: white; }
+  .split-card.propria { background: linear-gradient(135deg, #1a3a7c, #0f2460); }
+  .split-card.terceiro { background: linear-gradient(135deg, #2a4f9c, #1a3a7c); }
+  .split-card .rotulo { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; opacity: .85; }
+  .split-card .valor { font-size: 22px; font-weight: 800; margin: 4px 0 8px; }
+  .split-card .linhas { font-size: 11.5px; opacity: .9; display: flex; flex-direction: column; gap: 3px; }
+
+  /* ── Gráficos ── */
+  .grafico-area { position: relative; height: 300px; margin-top: 6px; }
+  .toggle-medida { display: flex; border: 1.5px solid #d8dfee; border-radius: 8px; overflow: hidden; margin-left: auto; }
+  .toggle-medida button { padding: 5px 12px; border: none; background: white; color: #475569; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .toggle-medida button.ativo { background: #1a3a7c; color: white; }
+  .legenda-manual { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px; font-size: 11.5px; color: var(--ink-2); }
+  .legenda-manual .item { display: flex; align-items: center; gap: 6px; }
+  .legenda-manual .dot { width: 9px; height: 9px; border-radius: 3px; }
+
+  /* ── Distribuição ── */
+  .distrib-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 20px; }
+  table.tabela-simples { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.tabela-simples thead th { background: #eef2fb; color: var(--ink); text-align: left; padding: 8px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: .3px; }
+  table.tabela-simples thead th.num { text-align: right; }
+  table.tabela-simples tbody td { padding: 8px 10px; border-bottom: 1px solid #eef1f8; }
+  table.tabela-simples tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.tabela-simples tbody tr:last-child td { border-bottom: none; font-weight: 700; background: #f5f7fb; }
+  .barra-participacao { display: inline-block; width: 60px; height: 6px; border-radius: 3px; background: #e3e8f5; overflow: hidden; vertical-align: middle; margin-right: 8px; }
+  .barra-participacao .fill { height: 100%; background: var(--serie-1); border-radius: 3px; }
+
+  /* ── Classe Operativa (matriz/heatmap) ── */
+  .matriz-scroll { overflow-x: auto; }
+  table.matriz { width: 100%; border-collapse: collapse; font-size: 11px; min-width: 900px; }
+  table.matriz thead th { background: var(--ink); color: white; padding: 7px 8px; font-size: 9.5px; text-transform: uppercase; text-align: right; white-space: nowrap; }
+  table.matriz thead th:first-child { text-align: left; min-width: 160px; }
+  table.matriz tbody td { padding: 6px 8px; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--ink); }
+  table.matriz tbody td:first-child { text-align: left; font-weight: 600; background: white !important; }
+  table.matriz tbody tr.total td { background: #eef2fb !important; font-weight: 800; border-top: 2px solid var(--ink); color: var(--ink) !important; }
+
+  /* ── Rankings ── */
+  table.ranking { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.ranking thead th { background: var(--ink); color: white; text-align: left; padding: 9px 12px; font-size: 10.5px; text-transform: uppercase; letter-spacing: .3px; white-space: nowrap; }
+  table.ranking thead th.num { text-align: right; }
+  table.ranking tbody td { padding: 8px 12px; border-bottom: 1px solid #eef1f8; white-space: nowrap; }
+  table.ranking tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.ranking tbody tr:hover { background: #f8faff; }
+  .posicao-badge { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: #eef2fb; color: var(--ink); font-size: 10.5px; font-weight: 800; }
+  .posicao-badge.top1 { background: var(--ink); color: white; }
 
   .loading-state, .erro-state, .vazio-state { text-align: center; padding: 60px 20px; color: #94a0b8; }
   .spinner { width: 30px; height: 30px; border: 3px solid #e3e8f5; border-top-color: #1a3a7c; border-radius: 50%; margin: 0 auto 12px; animation: spin .8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   .erro-state { color: #ef4444; }
-
-  /* Recarregando: mantém o desenho anterior esmaecido (sem "piscar" skeleton) */
   #painel.atualizando { opacity: .5; pointer-events: none; transition: opacity .15s; }
 
+  .detalhe-toggle { text-align: center; margin-top: 4px; }
+  .detalhe-toggle button { background: none; border: none; color: var(--serie-1); font-size: 12.5px; font-weight: 600; cursor: pointer; padding: 8px; }
+
   @media (max-width: 1000px) {
-    .filtros-grid { grid-template-columns: 1fr 1fr; }
     .kpi-row { grid-template-columns: repeat(2, 1fr); }
-    .graficos-grid { grid-template-columns: 1fr; }
-  }
-  @media (max-width: 560px) {
-    .conteudo { padding: 14px; }
-    .kpi-row { grid-template-columns: 1fr 1fr; }
-    .donut-linha { flex-direction: column; }
-    .donut-legenda { width: 100%; }
+    .split-row { grid-template-columns: 1fr; }
+    .distrib-grid { grid-template-columns: 1fr; }
+    .filtros-grid { grid-template-columns: 1fr 1fr; }
   }
 </style>
 </head>
@@ -182,8 +169,8 @@
   <div class="header-left">
     <div class="header-logo">USC</div>
     <div>
-      <div class="header-title">Consumo de Combustível</div>
-      <div class="header-sub">Abastecimentos do posto · Usina Santa Clotilde</div>
+      <div class="header-title">Relatório Executivo · Consumo de Combustível</div>
+      <div class="header-sub">Visão consolidada por combustível · Usina Santa Clotilde</div>
     </div>
   </div>
   <button class="btn-voltar" onclick="window.location.href='hub.html'">
@@ -196,42 +183,23 @@
 
   <div class="filtros-card">
     <div class="filtros-grid">
-      <div class="campo">
-        <label>Data Início</label>
-        <input type="date" id="dataIni">
-      </div>
-      <div class="campo">
-        <label>Data Fim</label>
-        <input type="date" id="dataFim">
-      </div>
+      <div class="campo"><label>Data Início</label><input type="date" id="dataIni"></div>
+      <div class="campo"><label>Data Fim</label><input type="date" id="dataFim"></div>
       <div class="campo">
         <label>Combustível</label>
-        <select id="fCombustivel"><option value="">Todos</option></select>
-      </div>
-      <div class="campo">
-        <label>Fazenda</label>
-        <select id="fFazenda"><option value="">Todas</option></select>
-      </div>
-      <div class="campo">
-        <label>Tipo de Cliente</label>
-        <select id="fTipoCliente"><option value="">Todos</option></select>
-      </div>
-      <div class="campo">
-        <label>Equipamento</label>
-        <input type="text" id="fEquipamento" list="listaEquip" placeholder="Todos — digite p/ buscar" autocomplete="off">
-        <datalist id="listaEquip"></datalist>
+        <input type="text" id="fCombustivel" list="listaCombustivel" value="Diesel" placeholder="Ex.: Diesel, Gasolina, Etanol">
+        <datalist id="listaCombustivel"></datalist>
       </div>
       <button class="btn-gerar" id="btnGerar" onclick="carregar()">
         <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
-        Atualizar
+        Gerar Relatório
       </button>
     </div>
     <div class="presets">
-      <button class="preset" onclick="preset('mes')">Mês atual</button>
-      <button class="preset" onclick="preset('mesAnterior')">Mês anterior</button>
-      <button class="preset" onclick="preset('30d')">Últimos 30 dias</button>
-      <button class="preset" onclick="preset('90d')">Últimos 90 dias</button>
-      <button class="preset" onclick="preset('ano')">Ano atual</button>
+      <button class="preset" onclick="preset(4)">Últimas 4 semanas</button>
+      <button class="preset" onclick="preset(8)">Últimas 8 semanas</button>
+      <button class="preset" onclick="preset(17)">Últimas 17 semanas</button>
+      <button class="preset" onclick="preset(26)">Últimas 26 semanas</button>
     </div>
   </div>
 
@@ -244,53 +212,33 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-const CORES = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300'];
-const COR_OUTROS = '#98a2b3';
-const AZUL = '#2a78d6';
-const GRADE = '#e9edf6';
-const INK2 = '#52514e', INK3 = '#898781';
-
-let DADOS = null;              // última resposta da API
-let charts = {};               // instâncias Chart.js por id de canvas
-let medidaSerie = 'litros';    // toggle do gráfico de evolução
-let linhasTabela = 200;        // paginação simples da tabela
-// Opções de filtro acumuladas entre consultas (a resposta só traz as opções
-// presentes no recorte atual — acumular evita que os selects "encolham"
-// depois de filtrar).
-const OPCOES = { combustiveis: new Map(), fazendas: new Map(), tiposCliente: new Map(), equipamentos: new Map() };
+let DADOS = null;
+let charts = {};
+let medidaSemanal = 'volume'; // 'volume' | 'custo'
+let detalheAberto = false;
 
 const fmtInt  = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 });
 const fmtDec  = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtBRL  = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const fmtBRL0 = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+const fmtPct  = v => fmtDec.format(v) + '%';
 
-function fmt8(d) {
-  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-}
+function fmt8(d) { return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
 
-function preset(tipo) {
+function preset(semanas) {
   const hoje = new Date();
-  let ini, fim = hoje;
-  if (tipo === 'mes')          ini = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-  else if (tipo === 'mesAnterior') {
-    ini = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1);
-    fim = new Date(hoje.getFullYear(), hoje.getMonth(), 0);
-  }
-  else if (tipo === '30d')     ini = new Date(hoje.getTime() - 29 * 864e5);
-  else if (tipo === '90d')     ini = new Date(hoje.getTime() - 89 * 864e5);
-  else if (tipo === 'ano')     ini = new Date(hoje.getFullYear(), 0, 1);
+  const ini = new Date(hoje.getTime() - (semanas * 7 - 1) * 864e5);
   document.getElementById('dataIni').value = fmt8(ini);
-  document.getElementById('dataFim').value = fmt8(fim);
+  document.getElementById('dataFim').value = fmt8(hoje);
   carregar();
 }
 
 (function initDatas() {
   const hoje = new Date();
-  document.getElementById('dataIni').value = fmt8(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
+  const ini = new Date(hoje.getTime() - 118 * 864e5); // ~17 semanas
+  document.getElementById('dataIni').value = fmt8(ini);
   document.getElementById('dataFim').value = fmt8(hoje);
 })();
-
-// ── Consulta ────────────────────────────────────────────────────────────
 
 async function carregar() {
   const dataIni = document.getElementById('dataIni').value;
@@ -301,17 +249,11 @@ async function carregar() {
   const painel = document.getElementById('painel');
   const btn = document.getElementById('btnGerar');
   btn.disabled = true;
-  if (DADOS) painel.classList.add('atualizando');   // mantém o desenho anterior esmaecido
+  if (DADOS) painel.classList.add('atualizando');
 
   const p = new URLSearchParams({ dataIni, dataFim });
-  const comb = document.getElementById('fCombustivel').value;
-  const faz  = document.getElementById('fFazenda').value;
-  const tc   = document.getElementById('fTipoCliente').value;
-  const eq   = (document.getElementById('fEquipamento').value.match(/^\d+/) || [''])[0];
-  if (comb) p.set('combustivel', comb);
-  if (faz)  p.set('codFazenda', faz);
-  if (tc)   p.set('codTipoCliente', tc);
-  if (eq)   p.set('codEquipamento', eq);
+  const combustivel = document.getElementById('fCombustivel').value.trim();
+  if (combustivel) p.set('combustivel', combustivel);
 
   try {
     const r = await fetch('api/combustivel-dashboard?' + p.toString(), { headers: { 'Accept': 'application/json' } });
@@ -320,8 +262,7 @@ async function carregar() {
     if (!j.ok) throw new Error(j.erro || 'Erro na consulta');
 
     DADOS = j;
-    linhasTabela = 200;
-    acumularOpcoes(j.opcoes);
+    atualizarListaCombustiveis(j.opcoes);
     renderizar();
 
   } catch (e) {
@@ -335,36 +276,18 @@ async function carregar() {
   }
 }
 
-function acumularOpcoes(op) {
-  if (!op) return;
-  const alvos = [
-    ['combustiveis', 'fCombustivel', o => o.descricao],   // filtro por trecho da descrição
-    ['fazendas', 'fFazenda', o => String(o.cod)],
-    ['tiposCliente', 'fTipoCliente', o => String(o.cod)],
-  ];
-  alvos.forEach(([chave, idSelect, valorDe]) => {
-    (op[chave] || []).forEach(o => OPCOES[chave].set(String(o.cod), o));
-    const sel = document.getElementById(idSelect);
-    const atual = sel.value;
-    const itens = [...OPCOES[chave].values()].sort((a, b) => a.descricao.localeCompare(b.descricao));
-    sel.innerHTML = '<option value="">' + (chave === 'fazendas' ? 'Todas' : 'Todos') + '</option>' +
-      itens.map(o => `<option value="${escapeHtml(valorDe(o))}">${escapeHtml(o.descricao)}</option>`).join('');
-    sel.value = atual;
-  });
-
-  (op.equipamentos || []).forEach(o => OPCOES.equipamentos.set(String(o.cod), o));
-  const dl = document.getElementById('listaEquip');
-  dl.innerHTML = [...OPCOES.equipamentos.values()]
-    .sort((a, b) => a.descricao.localeCompare(b.descricao))
-    .map(o => `<option value="${o.cod} — ${escapeHtml(o.descricao)}"></option>`).join('');
+function atualizarListaCombustiveis(opcoes) {
+  const dl = document.getElementById('listaCombustivel');
+  dl.innerHTML = (opcoes.combustiveis || [])
+    .map(o => `<option value="${escapeHtml(o.descricao)}"></option>`).join('');
 }
 
-// ── Renderização ────────────────────────────────────────────────────────
+// ── Renderização geral ───────────────────────────────────────────────────
 
 function renderizar() {
   const j = DADOS;
   const painel = document.getElementById('painel');
-  Object.values(charts).forEach(c => c.destroy());   // os canvases serão recriados
+  Object.values(charts).forEach(c => c.destroy());
   charts = {};
 
   if (!j.totalLinhas) {
@@ -373,104 +296,348 @@ function renderizar() {
   }
 
   painel.innerHTML = `
-    <div class="kpi-row">
-      ${kpi('Litros abastecidos', fmtInt.format(j.kpis.totalLitros), 'litros')}
-      ${kpi('Valor total', fmtBRL0.format(j.kpis.valorTotal), 'no período')}
-      ${kpi('Abastecimentos', fmtInt.format(j.kpis.qtdeAbastecimentos), 'registros')}
-      ${kpi('Preço médio', fmtBRL.format(j.kpis.precoMedio), 'por litro')}
-      ${kpi('Equipamentos', fmtInt.format(j.kpis.qtdeEquipamentos), 'abastecidos')}
-    </div>
-
-    <div class="graficos-grid">
-      <div class="grafico-card largo">
-        <div class="grafico-header">
-          <div>
-            <div class="grafico-titulo">Evolução no período</div>
-            <div class="grafico-sub" id="subEvolucao"></div>
-          </div>
-          <div class="toggle-medida">
-            <button id="tgLitros" class="${medidaSerie==='litros'?'ativo':''}" onclick="trocarMedida('litros')">Litros</button>
-            <button id="tgValor" class="${medidaSerie==='valor'?'ativo':''}" onclick="trocarMedida('valor')">Valor (R$)</button>
-          </div>
-        </div>
-        <div class="grafico-area"><canvas id="chEvolucao"></canvas></div>
+    ${secaoResumoExecutivo(j)}
+    ${secaoEvolucaoPreco(j)}
+    ${secaoDistribuicao(j)}
+    ${secaoClasseOperativa(j)}
+    ${secaoRanking('5', 'Top 10 Equipamentos Próprios', 'Ranking por volume consumido · frota própria', j.topProprios, 'proprios', kpisProprios(j))}
+    ${secaoRanking('6', 'Top 10 Terceiros', 'Ranking por proprietário de equipamento', j.topTerceiros, 'terceiros', kpisTerceiros(j))}
+    <div class="export-bar" style="margin-top:0">
+      <div style="flex:1;font-size:12px;color:var(--ink-3);align-self:center">
+        ${j.truncadoDetalhe ? 'Detalhamento limitado aos ' + fmtInt.format(j.detalhe.length) + ' abastecimentos mais recentes (de ' + fmtInt.format(j.totalLinhas) + ' no período).' : fmtInt.format(j.totalLinhas) + ' abastecimentos no período.'}
       </div>
-
-      <div class="grafico-card">
-        <div class="grafico-header">
-          <div>
-            <div class="grafico-titulo">Por combustível</div>
-            <div class="grafico-sub">participação em litros</div>
-          </div>
-        </div>
-        <div class="donut-linha">
-          <div class="grafico-area"><canvas id="chCombustivel"></canvas></div>
-          <div class="donut-legenda" id="legCombustivel"></div>
-        </div>
-      </div>
-
-      <div class="grafico-card">
-        <div class="grafico-header">
-          <div>
-            <div class="grafico-titulo">Consumo por tipo de cliente</div>
-            <div class="grafico-sub">litros no período · top ${Math.min(5, j.porTipoCliente.length)}</div>
-          </div>
-        </div>
-        <div class="grafico-area"><canvas id="chTipoCliente"></canvas></div>
-      </div>
-
-      <div class="grafico-card largo">
-        <div class="grafico-header">
-          <div>
-            <div class="grafico-titulo">Equipamentos com maior consumo</div>
-            <div class="grafico-sub">litros no período · top ${Math.min(15, j.porEquipamento.length)}</div>
-          </div>
-        </div>
-        <div class="grafico-area" style="height:${Math.max(160, Math.min(15, j.porEquipamento.length) * 28 + 40)}px"><canvas id="chEquipamento"></canvas></div>
-      </div>
-    </div>
-
-    <div class="export-bar">
-      <div class="export-nota">${j.truncadoDetalhe
-        ? 'Detalhamento limitado aos ' + fmtInt.format(j.detalhe.length) + ' abastecimentos mais recentes (de ' + fmtInt.format(j.totalLinhas) + ' no período).'
-        : fmtInt.format(j.totalLinhas) + ' abastecimentos no período.'}</div>
       <button class="btn-export" onclick="exportarExcel()">
         <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
         Exportar Excel
       </button>
+      <button class="btn-export" onclick="window.print()">
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Imprimir
+      </button>
     </div>
-    <div class="resultado-card"><div class="tabela-scroll" id="areaTabela"></div></div>
   `;
 
-  desenharEvolucao();
-  desenharDonut();
-  desenharTiposCliente();
-  desenharEquipamentos();
-  desenharTabela();
+  desenharConsumoSemanal();
+  desenharPreco();
+  desenharAtividades();
+  desenharDistribuicaoSemanal();
 }
 
-function kpi(rotulo, valor, unidade) {
-  return `<div class="kpi"><div class="rotulo">${rotulo}</div><div class="valor">${valor}</div><div class="unidade">${unidade}</div></div>`;
+// ── 1. Resumo Executivo ──────────────────────────────────────────────────
+
+function secaoResumoExecutivo(j) {
+  const k = j.kpis;
+  return `
+  <div class="secao">
+    <div class="secao-header"><span class="secao-num">1</span><span class="secao-titulo">Resumo Executivo</span></div>
+    <div class="secao-sub">Visão consolidada do consumo · ${j.semanas.length} semanas operacionais</div>
+
+    <div class="kpi-row">
+      ${kpi('Volume Total Consumido', fmtInt.format(k.volumeTotal) + ' L', 'Média semanal: ' + fmtInt.format(k.mediaSemanalVolume) + ' L')}
+      ${kpi('Custo Total no Período', fmtBRL0.format(k.custoTotal), 'Média semanal: ' + fmtBRL0.format(k.mediaSemanalCusto))}
+      ${kpi('Preço Médio Ponderado', fmtBRL.format(k.precoMedioPonderado) + '/L', '')}
+      ${kpi('Equipamentos Monitorados', fmtInt.format(k.equipamentosMonitorados) + ' unid.', k.propria.equipamentos + ' próprios + ' + k.terceiro.equipamentos + ' terceiros')}
+    </div>
+
+    <div class="split-row">
+      ${splitCard('propria', 'Equipamentos Próprios', k.propria)}
+      ${splitCard('terceiro', 'Equipamentos Terceiros', k.terceiro)}
+    </div>
+
+    <div style="display:flex;align-items:center;gap:10px;margin-top:18px">
+      <div style="font-size:13px;font-weight:700;color:var(--ink)">Consumo Semanal</div>
+      <div class="toggle-medida">
+        <button id="tgVolume" class="${medidaSemanal==='volume'?'ativo':''}" onclick="trocarMedidaSemanal('volume')">Volume (L)</button>
+        <button id="tgCusto" class="${medidaSemanal==='custo'?'ativo':''}" onclick="trocarMedidaSemanal('custo')">Custo (R$)</button>
+      </div>
+    </div>
+    <div class="grafico-area"><canvas id="chConsumoSemanal"></canvas></div>
+    <div class="legenda-manual">
+      <span class="item"><span class="dot" style="background:var(--serie-1)"></span>Semana comum</span>
+      <span class="item"><span class="dot" style="background:var(--serie-3)"></span>Maior volume</span>
+      <span class="item"><span class="dot" style="background:var(--serie-8)"></span>Menor volume</span>
+      <span class="item"><span class="dot" style="background:var(--serie-6)"></span>Última semana</span>
+      <span class="item">- - - Tendência (média móvel)</span>
+    </div>
+    <div class="insight-box"><span class="insight-icone">i</span><div>${insightResumo(j)}</div></div>
+  </div>`;
 }
 
-function trocarMedida(m) {
-  medidaSerie = m;
-  document.getElementById('tgLitros').classList.toggle('ativo', m === 'litros');
-  document.getElementById('tgValor').classList.toggle('ativo', m === 'valor');
-  desenharEvolucao();
+function kpi(rotulo, valor, sub) {
+  return `<div class="kpi"><div class="rotulo">${rotulo}</div><div class="valor">${valor}</div>${sub?`<div class="sub">${sub}</div>`:''}</div>`;
 }
 
-// ── Gráficos ────────────────────────────────────────────────────────────
+function splitCard(classe, titulo, k) {
+  return `
+    <div class="split-card ${classe}">
+      <div class="rotulo">${titulo}</div>
+      <div class="valor">${fmtInt.format(k.equipamentos)} unid.</div>
+      <div class="linhas">
+        <span>Volume: ${fmtInt.format(k.volume)} L · ${fmtDec.format(k.participacaoVolume)}% do total</span>
+        <span>Custo: ${fmtBRL0.format(k.custo)} · Preço médio: ${fmtBRL.format(k.precoMedio)}/L</span>
+        <span>Média semanal: ${fmtInt.format(k.mediaSemanalVolume)} L${k.proprietariosAtivos ? ' · ' + k.proprietariosAtivos + ' fornecedores ativos' : ''}</span>
+      </div>
+    </div>`;
+}
+
+function insightResumo(j) {
+  const serie = j.serieSemanal;
+  const maxS = serie.reduce((a,b) => b.volume > a.volume ? b : a);
+  const minS = serie.reduce((a,b) => b.volume < a.volume ? b : a);
+  const ultima = serie[serie.length - 1];
+  return `O consumo semanal variou entre <b>${fmtInt.format(minS.volume)} L</b> (semana de ${minS.label}) e ` +
+    `<b>${fmtInt.format(maxS.volume)} L</b> (semana de ${maxS.label}). Na última semana registrada (${ultima.label}), ` +
+    `o volume foi de <b>${fmtInt.format(ultima.volume)} L</b>, ao custo de <b>${fmtBRL0.format(ultima.custo)}</b>.`;
+}
+
+function trocarMedidaSemanal(m) {
+  medidaSemanal = m;
+  document.getElementById('tgVolume').classList.toggle('ativo', m === 'volume');
+  document.getElementById('tgCusto').classList.toggle('ativo', m === 'custo');
+  desenharConsumoSemanal();
+}
 
 const eixoBase = {
-  grid: { color: GRADE, drawTicks: false },
+  grid: { color: '#e9edf6', drawTicks: false },
   border: { display: false },
-  ticks: { color: INK3, font: { size: 11 } },
+  ticks: { color: '#898781', font: { size: 11 } },
 };
 
-// Rótulo de valor na ponta da barra horizontal (rótulo direto seletivo —
-// dispensa eixo x carregado; o texto usa cor de texto, nunca a cor da série)
-const rotuloPontaBarra = {
+function mediaMovel(valores, janela) {
+  const meio = Math.floor(janela / 2);
+  return valores.map((_, i) => {
+    const ini = Math.max(0, i - meio), fim = Math.min(valores.length, i + meio + 1);
+    const fatia = valores.slice(ini, fim);
+    return fatia.reduce((a,b) => a+b, 0) / fatia.length;
+  });
+}
+
+function desenharConsumoSemanal() {
+  const serie = DADOS.serieSemanal;
+  const valores = serie.map(s => medidaSemanal === 'volume' ? s.volume : s.custo);
+  const emVolume = medidaSemanal === 'volume';
+
+  let idxMax = 0, idxMin = 0;
+  serie.forEach((s, i) => {
+    if (s.volume > serie[idxMax].volume) idxMax = i;
+    if (s.volume < serie[idxMin].volume) idxMin = i;
+  });
+  const idxUltima = serie.length - 1;
+
+  const cores = serie.map((s, i) => {
+    if (i === idxUltima) return getCss('--serie-6');
+    if (i === idxMax) return getCss('--serie-3');
+    if (i === idxMin) return getCss('--serie-8');
+    return getCss('--serie-1');
+  });
+
+  novoChart('chConsumoSemanal', {
+    type: 'bar',
+    data: {
+      labels: serie.map(s => s.label),
+      datasets: [
+        {
+          type: 'bar', label: emVolume ? 'Volume (L)' : 'Custo (R$)',
+          data: valores, backgroundColor: cores, maxBarThickness: 22, borderRadius: 4, borderSkipped: 'bottom',
+          order: 2,
+        },
+        {
+          type: 'line', label: 'Tendência', data: mediaMovel(valores, 3),
+          borderColor: '#52514e', borderDash: [5,4], borderWidth: 2, pointRadius: 0, fill: false, order: 1,
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: c => c.dataset.label + ': ' + (emVolume ? fmtInt.format(c.parsed.y) + ' L' : fmtBRL.format(c.parsed.y)) } }
+      },
+      scales: {
+        x: { ...eixoBase, grid: { display: false }, ticks: { ...eixoBase.ticks, maxTicksLimit: 20, maxRotation: 0 } },
+        y: { ...eixoBase, beginAtZero: true, ticks: { ...eixoBase.ticks, callback: v => emVolume ? fmtInt.format(v) : fmtBRL0.format(v) } }
+      }
+    }
+  });
+}
+
+function getCss(varName) {
+  return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+}
+
+// ── 2. Evolução do Preço ─────────────────────────────────────────────────
+
+function secaoEvolucaoPreco(j) {
+  const serie = j.serieSemanal;
+  const precos = serie.map(s => s.precoMedio).filter(v => v > 0);
+  const media = precos.reduce((a,b)=>a+b,0) / (precos.length || 1);
+  const min = Math.min(...precos), max = Math.max(...precos);
+  const variacao = precos.length > 1 ? ((precos[precos.length-1] - precos[0]) / precos[0] * 100) : 0;
+
+  return `
+  <div class="secao">
+    <div class="secao-header"><span class="secao-num">2</span><span class="secao-titulo">Evolução do Preço do Combustível</span></div>
+    <div class="secao-sub">Preço médio ponderado semanal (R$/L)</div>
+
+    <div class="kpi-row">
+      ${kpi('Preço Médio do Período', fmtBRL.format(media) + '/L', 'Base: ' + j.semanas.length + ' semanas operacionais')}
+      ${kpi('Menor Preço Semanal', fmtBRL.format(min) + '/L', '')}
+      ${kpi('Maior Preço Semanal', fmtBRL.format(max) + '/L', '')}
+      ${kpi('Variação no Período', (variacao>=0?'+':'') + fmtDec.format(variacao) + '%', 'De ' + fmtBRL.format(precos[0]||0) + ' para ' + fmtBRL.format(precos[precos.length-1]||0))}
+    </div>
+
+    <div class="grafico-area"><canvas id="chPreco"></canvas></div>
+    <div class="legenda-manual">
+      <span class="item"><span class="dot" style="background:var(--serie-1)"></span>Preço médio semanal</span>
+      <span class="item"><span class="dot" style="background:var(--serie-3)"></span>Menor preço</span>
+      <span class="item"><span class="dot" style="background:var(--serie-8)"></span>Maior preço</span>
+      <span class="item">- - - Média do período</span>
+    </div>
+    <div class="insight-box"><span class="insight-icone">i</span><div>${insightPreco(precos, media, variacao)}</div></div>
+  </div>`;
+}
+
+function insightPreco(precos, media, variacao) {
+  if (!precos.length) return 'Sem dados de preço suficientes no período.';
+  const sentido = variacao >= 0 ? 'alta' : 'queda';
+  return `O preço médio fechou em <b>${sentido} de ${fmtDec.format(Math.abs(variacao))}%</b> no período, ` +
+    `de <b>${fmtBRL.format(precos[0])}/L</b> para <b>${fmtBRL.format(precos[precos.length-1])}/L</b>, com média de <b>${fmtBRL.format(media)}/L</b>.`;
+}
+
+function desenharPreco() {
+  const serie = DADOS.serieSemanal;
+  const precos = serie.map(s => s.precoMedio);
+  const validos = precos.map((v,i) => ({v,i})).filter(x => x.v > 0);
+  const media = validos.reduce((a,b)=>a+b.v,0) / (validos.length || 1);
+  let idxMax = validos[0]?.i || 0, idxMin = validos[0]?.i || 0;
+  validos.forEach(x => { if (x.v > precos[idxMax]) idxMax = x.i; if (x.v < precos[idxMin]) idxMin = x.i; });
+
+  const pointColors = precos.map((v, i) => {
+    if (v === 0) return 'transparent';
+    if (i === idxMax) return getCss('--serie-8');
+    if (i === idxMin) return getCss('--serie-3');
+    return getCss('--serie-1');
+  });
+  const pointRadius = precos.map((v, i) => (i === idxMax || i === idxMin) ? 6 : 3);
+
+  novoChart('chPreco', {
+    type: 'line',
+    data: {
+      labels: serie.map(s => s.label),
+      datasets: [
+        {
+          label: 'Preço médio (R$/L)', data: precos,
+          borderColor: getCss('--serie-1'), backgroundColor: 'rgba(42,120,214,0.08)', fill: true,
+          borderWidth: 2, pointRadius, pointBackgroundColor: pointColors, pointBorderColor: '#fff', pointBorderWidth: 2,
+          tension: 0.2, spanGaps: true,
+        },
+        {
+          label: 'Média do período', data: precos.map(() => media),
+          borderColor: '#94a0b8', borderDash: [5,4], borderWidth: 1.5, pointRadius: 0, fill: false,
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: c => c.dataset.label + ': ' + fmtBRL.format(c.parsed.y) + '/L' } }
+      },
+      scales: {
+        x: { ...eixoBase, grid: { display: false }, ticks: { ...eixoBase.ticks, maxTicksLimit: 20, maxRotation: 0 } },
+        y: { ...eixoBase, ticks: { ...eixoBase.ticks, callback: v => fmtBRL.format(v) } }
+      }
+    }
+  });
+}
+
+// ── 3. Distribuição do Consumo ───────────────────────────────────────────
+
+function secaoDistribuicao(j) {
+  const areas = j.porAreaNegocio;
+  const totalVolume = areas.reduce((s,a)=>s+a.volume,0);
+  const totalCusto = areas.reduce((s,a)=>s+a.custo,0);
+  const linhasArea = areas.map(a => `
+    <tr>
+      <td>${escapeHtml(a.nome)}</td>
+      <td class="num">${fmtInt.format(a.volume)} L</td>
+      <td class="num">${fmtBRL0.format(a.custo)}</td>
+      <td class="num"><span class="barra-participacao"><span class="fill" style="width:${Math.min(100,a.participacao)}%"></span></span>${fmtPct(a.participacao)}</td>
+    </tr>`).join('');
+
+  const top6 = j.porAtividade;
+  const somaTop6 = top6.reduce((s,a)=>s+a.participacao,0);
+  const liderArea = areas[0];
+
+  return `
+  <div class="secao">
+    <div class="secao-header"><span class="secao-num">3</span><span class="secao-titulo">Distribuição do Consumo</span></div>
+    <div class="secao-sub">Leitura por área de negócio e por atividade operacional</div>
+
+    <div class="distrib-grid">
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:10px">Consumo por Área de Negócio</div>
+        <table class="tabela-simples">
+          <thead><tr><th>Área de Negócio</th><th class="num">Volume</th><th class="num">Custo</th><th class="num">Participação</th></tr></thead>
+          <tbody>
+            ${linhasArea}
+            <tr><td>Total Geral</td><td class="num">${fmtInt.format(totalVolume)} L</td><td class="num">${fmtBRL0.format(totalCusto)}</td><td class="num">100,00%</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:10px">Top 6 Atividades — Maior Consumo</div>
+        <div class="grafico-area" style="height:260px"><canvas id="chAtividades"></canvas></div>
+      </div>
+    </div>
+
+    <div style="margin-top:18px">
+      <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:10px">Participação Semanal por Área de Negócio</div>
+      <div class="grafico-area" style="height:220px"><canvas id="chDistribSemanal"></canvas></div>
+    </div>
+
+    <div class="insight-box"><span class="insight-icone">i</span><div>
+      A <b>${escapeHtml(liderArea?.nome || '')}</b> concentra <b>${fmtPct(liderArea?.participacao || 0)}</b> do combustível consumido
+      (${fmtInt.format(liderArea?.volume || 0)} L). As seis atividades de maior consumo somam <b>${fmtPct(somaTop6)}</b> do total,
+      lideradas por <b>${escapeHtml(top6[0]?.nome || '')}</b> (${fmtPct(top6[0]?.participacao || 0)}).
+    </div></div>
+  </div>`;
+}
+
+function desenharAtividades() {
+  const top6 = DADOS.porAtividade;
+  novoChart('chAtividades', {
+    type: 'bar',
+    data: {
+      labels: top6.map(a => a.nome),
+      datasets: [{
+        data: top6.map(a => a.volume),
+        backgroundColor: top6.map((a,i) => i === 0 ? getCss('--ink') : getCss('--serie-1')),
+        maxBarThickness: 20, borderRadius: 4, borderSkipped: 'start',
+      }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      layout: { padding: { right: 56 } },
+      plugins: {
+        legend: { display: false },
+        rotuloPontaBarra: { formatter: v => fmtInt.format(v) + ' L' },
+        tooltip: { callbacks: { label: c => fmtInt.format(c.parsed.x) + ' L' } }
+      },
+      scales: {
+        x: { ...eixoBase, beginAtZero: true, ticks: { ...eixoBase.ticks, maxTicksLimit: 5, callback: v => fmtInt.format(v) } },
+        y: { ...eixoBase, grid: { display: false },
+             ticks: { ...eixoBase.ticks, autoSkip: false,
+                      callback: function(v) { const l = this.getLabelForValue(v); return l.length > 24 ? l.substring(0,23) + '…' : l; } } }
+      }
+    },
+    plugins: [rotuloPontaBarraPlugin]
+  });
+}
+
+const rotuloPontaBarraPlugin = {
   id: 'rotuloPontaBarra',
   afterDatasetsDraw(chart, args, opts) {
     if (!opts.formatter) return;
@@ -478,7 +645,7 @@ const rotuloPontaBarra = {
     const meta = chart.getDatasetMeta(0);
     ctx.save();
     ctx.font = '600 11px -apple-system, "Segoe UI", sans-serif';
-    ctx.fillStyle = INK2;
+    ctx.fillStyle = '#52514e';
     ctx.textBaseline = 'middle';
     meta.data.forEach((barra, i) => {
       ctx.fillText(opts.formatter(chart.data.datasets[0].data[i]), barra.x + 6, barra.y);
@@ -487,228 +654,151 @@ const rotuloPontaBarra = {
   }
 };
 
-function novoChart(id, config) {
-  if (charts[id]) charts[id].destroy();
-  charts[id] = new Chart(document.getElementById(id), config);
-}
+function desenharDistribuicaoSemanal() {
+  const todasAreas = DADOS.porAreaNegocio;
+  const labels = DADOS.semanas.map(s => s.label);
+  const n = labels.length;
+  const cores = [getCss('--serie-1'), getCss('--serie-3'), getCss('--serie-4'), getCss('--serie-2'), getCss('--serie-5')];
 
-// Série temporal: por dia até ~3 meses; acima disso, agrupado por mês
-function serieTemporal() {
-  const porDia = DADOS.porDia;
-  if (!porDia.length) return { rotulos: [], valores: [], porMes: false };
-  const primeiro = porDia[0].chave, ultimo = porDia[porDia.length - 1].chave;
-  const dias = Math.round((new Date(ultimo) - new Date(primeiro)) / 864e5) + 1;
+  const top5 = todasAreas.slice(0, 5);
+  const resto = todasAreas.slice(5);
 
-  if (dias > 92) {
-    const meses = new Map();
-    porDia.forEach(d => {
-      const m = d.chave.substring(0, 7);
-      const acc = meses.get(m) || { litros: 0, valor: 0 };
-      acc.litros += d.litros; acc.valor += d.valor;
-      meses.set(m, acc);
-    });
-    const chaves = [...meses.keys()].sort();
-    return {
-      rotulos: chaves.map(m => {
-        const [a, me] = m.split('-');
-        return ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'][+me - 1] + '/' + a.substring(2);
-      }),
-      valores: chaves.map(m => meses.get(m)[medidaSerie]),
-      porMes: true
-    };
-  }
-
-  // Dia a dia, preenchendo os dias sem abastecimento com zero
-  const mapa = new Map(porDia.map(d => [d.chave, d]));
-  const rotulos = [], valores = [];
-  for (let dt = new Date(primeiro + 'T12:00:00'); ; dt.setDate(dt.getDate() + 1)) {
-    const chave = fmt8(dt);
-    rotulos.push(chave.substring(8) + '/' + chave.substring(5, 7));
-    const d = mapa.get(chave);
-    valores.push(d ? d[medidaSerie] : 0);
-    if (chave >= ultimo) break;
-  }
-  return { rotulos, valores, porMes: false };
-}
-
-function desenharEvolucao() {
-  const s = serieTemporal();
-  const emValor = medidaSerie === 'valor';
-  document.getElementById('subEvolucao').textContent =
-    (emValor ? 'valor abastecido (R$)' : 'litros abastecidos') + (s.porMes ? ' · por mês' : ' · por dia');
-
-  novoChart('chEvolucao', {
-    type: 'line',
-    data: {
-      labels: s.rotulos,
-      datasets: [{
-        data: s.valores,
-        borderColor: AZUL,
-        backgroundColor: 'rgba(42,120,214,0.10)',
-        fill: true,
-        borderWidth: 2,
-        pointRadius: s.rotulos.length > 45 ? 0 : 3,
-        pointHoverRadius: 5,
-        pointBackgroundColor: AZUL,
-        pointBorderColor: '#fff',
-        pointBorderWidth: 2,
-        tension: 0.25,
-      }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: c => emValor ? fmtBRL.format(c.parsed.y) : fmtInt.format(c.parsed.y) + ' L' } }
-      },
-      scales: {
-        x: { ...eixoBase, grid: { display: false }, ticks: { ...eixoBase.ticks, maxTicksLimit: 16, maxRotation: 0 } },
-        y: { ...eixoBase, beginAtZero: true,
-             ticks: { ...eixoBase.ticks, callback: v => emValor ? fmtBRL0.format(v) : fmtInt.format(v) } }
-      }
-    }
-  });
-}
-
-function desenharDonut() {
-  const dados = DADOS.porCombustivel;
-  const topo = dados.slice(0, 5);
-  const resto = dados.slice(5);
-  const itens = [...topo];
+  const series = top5.map((a, i) => ({ nome: a.nome, cor: cores[i], litros: a.porSemana }));
   if (resto.length) {
-    itens.push({
-      chave: 'Outros',
-      litros: resto.reduce((s, d) => s + d.litros, 0),
-      valor: resto.reduce((s, d) => s + d.valor, 0),
-    });
+    const litrosOutras = Array(n).fill(0);
+    resto.forEach(a => a.porSemana.forEach((v, i) => litrosOutras[i] += v));
+    series.push({ nome: 'Outras', cor: getCss('--serie-outros'), litros: litrosOutras });
   }
-  const totalL = itens.reduce((s, d) => s + d.litros, 0) || 1;
-  const cores = itens.map((d, i) => d.chave === 'Outros' ? COR_OUTROS : CORES[i]);
 
-  novoChart('chCombustivel', {
-    type: 'doughnut',
-    data: {
-      labels: itens.map(d => d.chave),
-      datasets: [{
-        data: itens.map(d => d.litros),
-        backgroundColor: cores,
-        borderColor: '#ffffff',
-        borderWidth: 2,          // vão na cor da superfície entre as fatias
-        hoverOffset: 6,
-      }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      cutout: '62%',
-      plugins: {
-        legend: { display: false },   // legenda própria em HTML, com valores
-        tooltip: { callbacks: {
-          label: c => {
-            const d = itens[c.dataIndex];
-            return ` ${fmtInt.format(d.litros)} L · ${fmtBRL0.format(d.valor)} · ${(d.litros / totalL * 100).toFixed(1)}%`;
-          }
-        } }
-      }
-    }
-  });
+  // Participação (%) de cada área dentro do total DAQUELA semana (todas as áreas).
+  const totalPorSemana = Array(n).fill(0);
+  todasAreas.forEach(a => a.porSemana.forEach((v, i) => totalPorSemana[i] += v));
 
-  document.getElementById('legCombustivel').innerHTML = itens.map((d, i) => `
-    <div class="item">
-      <span class="swatch" style="background:${cores[i]}"></span>
-      <span class="nome" title="${escapeHtml(d.chave)}">${escapeHtml(d.chave)}</span>
-      <span class="num">${fmtInt.format(d.litros)} L · ${(d.litros / totalL * 100).toFixed(1)}%</span>
-    </div>`).join('');
-}
-
-function barrasHorizontais(idCanvas, dados) {
-  novoChart(idCanvas, {
+  novoChart('chDistribSemanal', {
     type: 'bar',
     data: {
-      labels: dados.map(d => d.chave),
-      datasets: [{
-        data: dados.map(d => d.litros),
-        backgroundColor: AZUL,
-        maxBarThickness: 18,
-        borderRadius: 4,
-        borderSkipped: 'start',   // ponta arredondada só no lado do dado
-      }]
+      labels,
+      datasets: series.map(s => ({
+        label: s.nome,
+        data: s.litros.map((v, i) => totalPorSemana[i] > 0 ? arred2(v / totalPorSemana[i] * 100) : 0),
+        backgroundColor: s.cor,
+        maxBarThickness: 22,
+      }))
     },
     options: {
-      indexAxis: 'y',
       responsive: true, maintainAspectRatio: false,
-      layout: { padding: { right: 64 } },   // espaço p/ rótulo na ponta
       plugins: {
-        legend: { display: false },
-        rotuloPontaBarra: { formatter: v => fmtInt.format(v) + ' L' },
-        tooltip: { callbacks: {
-          label: c => {
-            const d = dados[c.dataIndex];
-            return ` ${fmtInt.format(d.litros)} L · ${fmtBRL0.format(d.valor)} · ${fmtInt.format(d.qtde)} abastec.`;
-          }
-        } }
+        legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 }, color: '#52514e' } },
+        tooltip: { callbacks: { label: c => c.dataset.label + ': ' + fmtPct(c.parsed.y) } }
       },
       scales: {
-        x: { ...eixoBase, beginAtZero: true, ticks: { ...eixoBase.ticks, maxTicksLimit: 6, callback: v => fmtInt.format(v) } },
-        y: { ...eixoBase, grid: { display: false },
-             ticks: { ...eixoBase.ticks, autoSkip: false,
-                      callback: function(v) { const l = this.getLabelForValue(v); return l.length > 26 ? l.substring(0, 25) + '…' : l; } } }
+        x: { ...eixoBase, stacked: true, grid: { display: false }, ticks: { ...eixoBase.ticks, maxTicksLimit: 20, maxRotation: 0 } },
+        y: { ...eixoBase, stacked: true, max: 100, ticks: { ...eixoBase.ticks, callback: v => v + '%' } }
       }
-    },
-    plugins: [rotuloPontaBarra]
+    }
   });
 }
 
-function desenharTiposCliente() { barrasHorizontais('chTipoCliente', DADOS.porTipoCliente.slice(0, 5)); }
-function desenharEquipamentos() { barrasHorizontais('chEquipamento', DADOS.porEquipamento.slice(0, 15)); }
+function arred2(v) { return Math.round(v * 100) / 100; }
 
-// ── Tabela de detalhamento ──────────────────────────────────────────────
+// ── 4. Classe Operativa (matriz) ─────────────────────────────────────────
 
-function desenharTabela() {
-  const det = DADOS.detalhe;
-  const visiveis = det.slice(0, linhasTabela);
+function secaoClasseOperativa(j) {
+  const co = j.porClasseOperativa;
+  const semanas = j.semanas;
+  const theadCols = semanas.map(s => `<th>${s.label}</th>`).join('');
 
-  document.getElementById('areaTabela').innerHTML = `
-    <table>
-      <thead><tr>
-        <th>Data</th><th>Hora</th><th>Equipamento</th><th>Combustível</th>
-        <th class="num">Litros</th><th class="num">R$/L</th><th class="num">Valor</th>
-        <th>Tipo Cliente</th><th>Frentista</th>
-      </tr></thead>
-      <tbody>
-        ${visiveis.map(d => `
-        <tr>
-          <td>${dataBr(d.data)}</td>
-          <td>${escapeHtml(d.hora_ini || '')}</td>
-          <td>${escapeHtml(nomeEquip(d))}</td>
-          <td>${escapeHtml(d.des_combustivel || '')}</td>
-          <td class="num">${fmtDec.format(d.qtde_litros || 0)}</td>
-          <td class="num">${fmtDec.format(d.valor_unitario || 0)}</td>
-          <td class="num">${fmtDec.format(d.valor_total || 0)}</td>
-          <td>${escapeHtml(d.tipocliente || '')}</td>
-          <td>${escapeHtml(d.des_frentista || '')}</td>
-        </tr>`).join('')}
-      </tbody>
-    </table>
-    ${det.length > linhasTabela
-      ? `<div class="tabela-mais"><button onclick="linhasTabela += 300; desenharTabela()">Mostrar mais (${fmtInt.format(det.length - linhasTabela)} restantes)</button></div>`
+  const linhas = co.linhas.map(l => {
+    const maxLinha = Math.max(...l.porSemana, 1);
+    const cols = l.porSemana.map(v => {
+      const intensidade = v / maxLinha;
+      const bg = v === 0 ? 'transparent' : `rgba(42,120,214,${0.12 + intensidade*0.55})`;
+      const cor = intensidade > 0.6 ? '#fff' : 'var(--ink)';
+      return `<td style="background:${bg};color:${cor}">${v ? fmtInt.format(v) : '-'}</td>`;
+    }).join('');
+    return `<tr><td>${escapeHtml(l.nome)}</td>${cols}<td class="num" style="font-weight:700">${fmtInt.format(l.total)}</td></tr>`;
+  }).join('');
+
+  const totalCols = co.totalPorSemana.map(v => `<td>${fmtInt.format(v)}</td>`).join('');
+
+  return `
+  <div class="secao">
+    <div class="secao-header"><span class="secao-num">4</span><span class="secao-titulo">Consumo Semanal por Classe Operativa</span></div>
+    <div class="secao-sub">Volume em litros (L) · linhas = classe operativa · colunas = semana operacional · intensidade da cor = peso na linha</div>
+
+    <div class="matriz-scroll">
+      <table class="matriz">
+        <thead><tr><th>Classe Operativa</th>${theadCols}<th>Total</th></tr></thead>
+        <tbody>
+          ${linhas}
+          <tr class="total"><td>Total Geral</td>${totalCols}<td>${fmtInt.format(co.totalGeral)}</td></tr>
+        </tbody>
+      </table>
+    </div>
+    ${co.linhas.some(l => l.nome === 'Não Classificado' || l.nome === 'Não Classificado Terceiro')
+      ? '<div class="insight-box"><span class="insight-icone">!</span><div>Há modelos de equipamento sem Classe Operativa cadastrada — complete o de-para em <b>Administração → De-Para Classe Operativa</b> para refinar esta visão.</div></div>'
       : ''}
+  </div>`;
+}
+
+// ── 5/6. Rankings (Próprios / Terceiros) ─────────────────────────────────
+
+function kpisProprios(j) {
+  const top = j.topProprios[0];
+  const somaTop10 = j.topProprios.reduce((s,r)=>s+r.participacao,0);
+  return `
+    ${kpi('Equipamento Líder', fmtPct(top?.participacao || 0), escapeHtml(top?.equipamento || ''))}
+    ${kpi('Concentração Top 10', fmtPct(somaTop10), 'do volume consumido pela frota própria')}
+    ${kpi('Volume da Frota Própria', fmtInt.format(j.kpis.propria.volume) + ' L', j.kpis.propria.equipamentos + ' equipamentos monitorados')}
   `;
 }
 
-function nomeEquip(d) {
-  const p = d.prefixo ? String(d.prefixo).trim() : '';
-  const n = d.des_equipamento || '';
-  if (n || p) return p && p !== n ? p + ' · ' + n : (n || p);
-  // Sem equipamento vinculado: identifica pela placa ou pessoa/terceiro
-  if (d.placa) return 'Placa ' + String(d.placa).trim();
-  return d.des_terceiro || d.des_pessoa || 'Sem identificação';
+function kpisTerceiros(j) {
+  const top = j.topTerceiros[0];
+  const somaTop10 = j.topTerceiros.reduce((s,r)=>s+r.participacao,0);
+  return `
+    ${kpi('Maior Fornecedor', fmtPct(top?.participacao || 0), escapeHtml(top?.proprietario || ''))}
+    ${kpi('Concentração Top 10', fmtPct(somaTop10), 'do volume consumido por terceiros')}
+    ${kpi('Fornecedores Ativos', fmtInt.format(j.kpis.terceiro.proprietariosAtivos || 0), 'proprietários distintos no período')}
+  `;
 }
 
-function dataBr(iso) {
-  if (!iso) return '';
-  const s = String(iso).substring(0, 10);
-  return s.substring(8) + '/' + s.substring(5, 7) + '/' + s.substring(0, 4);
+function secaoRanking(num, titulo, subtitulo, lista, tipo, kpisHtml) {
+  const ehProprio = tipo === 'proprios';
+  const linhas = lista.map(r => `
+    <tr>
+      <td><span class="posicao-badge ${r.posicao===1?'top1':''}">${r.posicao}</span></td>
+      <td><b>${escapeHtml(ehProprio ? r.equipamento : r.proprietario)}</b>${ehProprio && r.modelo ? '<br><span style="color:var(--ink-3);font-size:11px">'+escapeHtml(r.modelo)+'</span>' : ''}</td>
+      <td>${escapeHtml(ehProprio ? r.grupo : r.atividade)}</td>
+      <td class="num">${fmtInt.format(r.volume)} L</td>
+      <td class="num">${fmtBRL0.format(r.custo)}</td>
+      <td class="num"><span class="barra-participacao"><span class="fill" style="width:${Math.min(100,r.participacao)}%"></span></span>${fmtPct(r.participacao)}</td>
+    </tr>`).join('');
+
+  return `
+  <div class="secao">
+    <div class="secao-header"><span class="secao-num">${num}</span><span class="secao-titulo">${titulo}</span></div>
+    <div class="secao-sub">${subtitulo} · ordenado do maior para o menor consumo</div>
+    <div class="kpi-row" style="grid-template-columns:repeat(3,1fr)">${kpisHtml}</div>
+    <div class="tabela-scroll" style="overflow-x:auto">
+      <table class="ranking">
+        <thead><tr>
+          <th>#</th><th>${ehProprio?'Equipamento':'Proprietário do Equipamento'}</th><th>${ehProprio?'Grupo Equipamento':'Atividade Principal'}</th>
+          <th class="num">Volume</th><th class="num">Custo</th><th class="num">Participação</th>
+        </tr></thead>
+        <tbody>${linhas || '<tr><td colspan="6" style="text-align:center;color:var(--ink-3);padding:20px">Sem dados no período.</td></tr>'}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+// ── Chart helper ──────────────────────────────────────────────────────────
+
+function novoChart(id, config) {
+  if (charts[id]) charts[id].destroy();
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  charts[id] = new Chart(canvas, config);
 }
 
 // ── Export Excel ────────────────────────────────────────────────────────
@@ -717,28 +807,50 @@ function exportarExcel() {
   if (!DADOS) return;
   const wb = XLSX.utils.book_new();
 
+  const resumo = [
+    ['Volume Total (L)', DADOS.kpis.volumeTotal],
+    ['Custo Total (R$)', DADOS.kpis.custoTotal],
+    ['Preço Médio Ponderado (R$/L)', DADOS.kpis.precoMedioPonderado],
+    ['Equipamentos Monitorados', DADOS.kpis.equipamentosMonitorados],
+    ['Volume Próprios (L)', DADOS.kpis.propria.volume],
+    ['Volume Terceiros (L)', DADOS.kpis.terceiro.volume],
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumo), 'Resumo');
+
+  const semanal = [['Semana','Volume (L)','Custo (R$)','Preço Médio (R$/L)'],
+    ...DADOS.serieSemanal.map(s => [s.label, s.volume, s.custo, s.precoMedio])];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(semanal), 'Consumo Semanal');
+
+  const areas = [['Área de Negócio','Volume (L)','Custo (R$)','Participação (%)'],
+    ...DADOS.porAreaNegocio.map(a => [a.nome, a.volume, a.custo, a.participacao])];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(areas), 'Por Área de Negócio');
+
+  const ativ = [['Atividade','Volume (L)','Custo (R$)','Participação (%)'],
+    ...DADOS.porAtividade.map(a => [a.nome, a.volume, a.custo, a.participacao])];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ativ), 'Top Atividades');
+
+  const classeHeader = ['Classe Operativa', ...DADOS.semanas.map(s => s.label), 'Total'];
+  const classeLinhas = DADOS.porClasseOperativa.linhas.map(l => [l.nome, ...l.porSemana, l.total]);
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([classeHeader, ...classeLinhas]), 'Classe Operativa');
+
+  const proprios = [['#','Equipamento','Modelo','Grupo','Volume (L)','Custo (R$)','Participação (%)'],
+    ...DADOS.topProprios.map(r => [r.posicao, r.equipamento, r.modelo, r.grupo, r.volume, r.custo, r.participacao])];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(proprios), 'Top Próprios');
+
+  const terceiros = [['#','Proprietário','Atividade Principal','Volume (L)','Custo (R$)','Participação (%)'],
+    ...DADOS.topTerceiros.map(r => [r.posicao, r.proprietario, r.atividade, r.volume, r.custo, r.participacao])];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(terceiros), 'Top Terceiros');
+
   const detalhe = DADOS.detalhe.map(d => ({
-    'Data': dataBr(d.data), 'Hora': d.hora_ini || '', 'Prefixo': d.prefixo || '',
-    'Equipamento': d.des_equipamento || '', 'Placa': d.placa || '',
-    'Pessoa/Terceiro': d.des_terceiro || d.des_pessoa || '',
-    'Combustível': d.des_combustivel || '',
+    'Data': d.data ? String(d.data).substring(0,10) : '', 'Hora': d.hora_ini || '',
+    'Equipamento': d.des_equipamento || d.prefixo || '', 'Combustível': d.des_combustivel || '',
     'Litros': d.qtde_litros || 0, 'R$/Litro': d.valor_unitario || 0, 'Valor Total': d.valor_total || 0,
-    'Fazenda': d.des_fazenda || '', 'Tipo Cliente': d.tipocliente || '',
-    'Frentista': d.des_frentista || '', 'Funcionário': d.des_funcionario || '',
-    'Negócio': d.desc_negocio || '', 'Almoxarifado': d.des_almoxarifado || '',
-    'KM/Hor.': d.km_ho || '', 'KM/Hs Rodados': d.kmhs_rodados || '',
+    'Fazenda': d.des_fazenda || '', 'Tipo Cliente': d.tipocliente || '', 'Área de Negócio': d.desc_negocio || '',
   }));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(detalhe), 'Detalhamento');
 
-  const resumo = (lista, rotulo) => lista.map(d => ({
-    [rotulo]: d.chave, 'Litros': d.litros, 'Valor (R$)': d.valor, 'Abastecimentos': d.qtde
-  }));
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumo(DADOS.porCombustivel, 'Combustível')), 'Por Combustível');
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumo(DADOS.porEquipamento, 'Equipamento')), 'Por Equipamento');
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumo(DADOS.porTipoCliente, 'Tipo de Cliente')), 'Por Tipo de Cliente');
-
   const ini = document.getElementById('dataIni').value, fim = document.getElementById('dataFim').value;
-  XLSX.writeFile(wb, `consumo-combustivel_${ini}_a_${fim}.xlsx`);
+  XLSX.writeFile(wb, `relatorio_combustivel_${ini}_a_${fim}.xlsx`);
 }
 
 function escapeHtml(s) {

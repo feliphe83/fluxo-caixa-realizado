@@ -1,8 +1,11 @@
 package br.com.lopes.fluxo.servlet;
 
 import br.com.lopes.fluxo.dao.AgroCombustivelDAO;
+import br.com.lopes.fluxo.util.ClasseOperativaCache;
 import br.com.lopes.fluxo.util.DataParamUtil;
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -11,11 +14,16 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -27,25 +35,55 @@ import java.util.logging.Logger;
  * API. Ambas usam a mesma consulta base (AgroCombustivelDAO).
  *
  * GET /api/combustivel-dashboard?dataIni=yyyy-MM-dd&dataFim=yyyy-MM-dd
- *        [&codEquipamento=N] [&codTipoCliente=N] [&combustivel=trecho]
- *        [&codFazenda=N]
+ *        [&combustivel=trecho] [&codEquipamento=N] [&codTipoCliente=N] [&codFazenda=N]
+ *
+ * Layout no formato do "Relatório Executivo · Consumo de Diesel" do
+ * Departamento Agrícola: resumo executivo, evolução semanal do preço,
+ * distribuição por área de negócio/atividade, consumo semanal por classe
+ * operativa e rankings de equipamentos próprios/terceiros.
+ *
+ * Próprio x Terceiro: pelo proprietário histórico do equipamento
+ * (automotivo.histproprietarioequip, já presente na consulta como
+ * cod_proprietario) — sem registro de proprietário (LEFT JOIN nulo) é
+ * equipamento sempre da usina (Próprio); com um fornecedor registrado como
+ * dono naquele período, é Terceiro.
+ *
+ * Classe Operativa: de-para administrado (fc_depara_classeoperativa, tela
+ * "De-Para Classe Operativa") de cod_modelo → categoria ampla (Trator,
+ * Caminhão Apoio, Ônibus…) — modelo sem de-para cadastrado cai em "Não
+ * Classificado". A mesma categoria também nomeia o "Grupo Equipamento" dos
+ * rankings de Top 10 Próprios/Terceiros.
+ *
+ * "Semana operacional": blocos de 7 dias a partir de dataIni (S1, S2, …),
+ * a última podendo ser parcial se o período não fechar em múltiplo de 7.
  *
  * A agregação é feita aqui (e não no Oracle) porque o dashboard precisa de
- * vários cortes do mesmo resultado (KPIs, série diária, por combustível,
- * por equipamento, por fazenda, opções de filtro) — uma única execução da
- * consulta pesada alimenta todos.
+ * vários cortes do mesmo resultado — uma única execução da consulta pesada
+ * alimenta todos.
  */
 @WebServlet("/api/combustivel-dashboard")
 public class CombustivelDashboardServlet extends HttpServlet {
 
     private static final Logger LOG = Logger.getLogger(CombustivelDashboardServlet.class.getName());
+    private static final DateTimeFormatter FMT_CURTO = DateTimeFormatter.ofPattern("dd/MM");
 
     /** Máximo de linhas de detalhe devolvidas para a tabela/export da tela. */
     private static final int MAX_DETALHE = 2000;
-    private static final int MAX_RANKING = 15;
+    private static final int TOP_ATIVIDADES = 6;
+    private static final int TOP_RANKING = 10;
 
     private final Gson gson = new Gson();
     private final AgroCombustivelDAO dao = new AgroCombustivelDAO();
+
+    private static final class Acc {
+        double litros = 0;
+        double valor = 0;
+        Set<Object> equipamentos = new HashSet<>();
+        void add(double l, double v, Object equip) {
+            litros += l; valor += v;
+            if (equip != null) equipamentos.add(equip);
+        }
+    }
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
@@ -72,17 +110,22 @@ public class CombustivelDashboardServlet extends HttpServlet {
             List<Map<String, Object>> linhas = dao.buscarDetalhadoDashboard(
                     dataIni, dataFim, codEquipamento, codTipoCliente, combustivel, codFazenda);
 
-            Map<String, Object> resultado = new LinkedHashMap<>();
-            resultado.put("ok", true);
-            resultado.put("totalLinhas", linhas.size());
-            resultado.put("kpis", montarKpis(linhas));
-            resultado.put("porDia", agregar(linhas, l -> dia(l), true));
-            resultado.put("porCombustivel", agregar(linhas, l -> rotulo(l, "cod_combustivel", "des_combustivel"), false));
-            resultado.put("porEquipamento", limitar(agregar(linhas, CombustivelDashboardServlet::rotuloEquipamento, false)));
-            resultado.put("porTipoCliente", agregar(linhas, l -> rotulo(l, "cod_tipocliente", "tipocliente"), false));
-            resultado.put("opcoes", montarOpcoes(linhas));
-            resultado.put("truncadoDetalhe", linhas.size() > MAX_DETALHE);
-            resultado.put("detalhe", montarDetalhe(linhas));
+            List<LocalDate[]> semanas = montarSemanas(LocalDate.parse(dataIni), LocalDate.parse(dataFim));
+
+            JsonObject resultado = new JsonObject();
+            resultado.addProperty("ok", true);
+            resultado.addProperty("totalLinhas", linhas.size());
+            resultado.add("semanas", jsonSemanas(semanas));
+            resultado.add("serieSemanal", montarSerieSemanal(linhas, semanas));
+            resultado.add("kpis", montarKpis(linhas, semanas));
+            resultado.add("porAreaNegocio", montarPorAreaNegocio(linhas, semanas));
+            resultado.add("porAtividade", montarPorAtividade(linhas));
+            resultado.add("porClasseOperativa", montarPorClasseOperativa(linhas, semanas));
+            resultado.add("topProprios", montarTopProprios(linhas));
+            resultado.add("topTerceiros", montarTopTerceiros(linhas));
+            resultado.add("opcoes", montarOpcoes(linhas));
+            resultado.addProperty("truncadoDetalhe", linhas.size() > MAX_DETALHE);
+            resultado.add("detalhe", gson.toJsonTree(montarDetalhe(linhas)));
 
             out.print(gson.toJson(resultado));
 
@@ -98,81 +141,368 @@ public class CombustivelDashboardServlet extends HttpServlet {
         }
     }
 
-    // ── KPIs ────────────────────────────────────────────────────────────
+    // ── Semanas operacionais ─────────────────────────────────────────────
 
-    private Map<String, Object> montarKpis(List<Map<String, Object>> linhas) {
-        double litros = 0, valor = 0;
-        java.util.Set<Object> equipamentos = new java.util.HashSet<>();
-        for (Map<String, Object> l : linhas) {
-            litros += num(l.get("qtde_litros"));
-            valor += num(l.get("valor_total"));
-            Object eq = l.get("cod_equipamento");
-            if (eq != null) equipamentos.add(eq);
+    private static List<LocalDate[]> montarSemanas(LocalDate ini, LocalDate fim) {
+        List<LocalDate[]> semanas = new ArrayList<>();
+        LocalDate cursor = ini;
+        while (!cursor.isAfter(fim)) {
+            LocalDate fimSemana = cursor.plusDays(6);
+            if (fimSemana.isAfter(fim)) fimSemana = fim;
+            semanas.add(new LocalDate[]{cursor, fimSemana});
+            cursor = cursor.plusDays(7);
         }
-        Map<String, Object> kpis = new LinkedHashMap<>();
-        kpis.put("totalLitros", arred(litros));
-        kpis.put("valorTotal", arred(valor));
-        kpis.put("qtdeAbastecimentos", linhas.size());
-        kpis.put("precoMedio", litros == 0 ? 0 : arred(valor / litros));
-        kpis.put("qtdeEquipamentos", equipamentos.size());
+        if (semanas.isEmpty()) semanas.add(new LocalDate[]{ini, fim});
+        return semanas;
+    }
+
+    private static int semanaDe(String dataStr, LocalDate ini, int totalSemanas) {
+        if (dataStr == null || dataStr.length() < 10) return -1;
+        LocalDate data;
+        try {
+            data = LocalDate.parse(dataStr.substring(0, 10));
+        } catch (Exception e) {
+            return -1;
+        }
+        long dias = ChronoUnit.DAYS.between(ini, data);
+        if (dias < 0) return 0;
+        int idx = (int) (dias / 7);
+        return Math.min(idx, totalSemanas - 1);
+    }
+
+    private JsonArray jsonSemanas(List<LocalDate[]> semanas) {
+        JsonArray arr = new JsonArray();
+        for (int i = 0; i < semanas.size(); i++) {
+            JsonObject o = new JsonObject();
+            o.addProperty("numero", i + 1);
+            o.addProperty("inicio", semanas.get(i)[0].toString());
+            o.addProperty("fim", semanas.get(i)[1].toString());
+            o.addProperty("label", semanas.get(i)[0].format(FMT_CURTO));
+            arr.add(o);
+        }
+        return arr;
+    }
+
+    // ── Série semanal (volume, custo, preço médio) ──────────────────────
+
+    private JsonArray montarSerieSemanal(List<Map<String, Object>> linhas, List<LocalDate[]> semanas) {
+        LocalDate ini = semanas.get(0)[0];
+        int n = semanas.size();
+        double[] litrosPorSemana = new double[n];
+        double[] valorPorSemana = new double[n];
+
+        for (Map<String, Object> l : linhas) {
+            int idx = semanaDe(strOf(l.get("data")), ini, n);
+            if (idx < 0) continue;
+            litrosPorSemana[idx] += num(l.get("qtde_litros"));
+            valorPorSemana[idx] += num(l.get("valor_total"));
+        }
+
+        JsonArray arr = new JsonArray();
+        for (int i = 0; i < n; i++) {
+            JsonObject o = new JsonObject();
+            o.addProperty("numero", i + 1);
+            o.addProperty("label", semanas.get(i)[0].format(FMT_CURTO));
+            o.addProperty("volume", arred(litrosPorSemana[i]));
+            o.addProperty("custo", arred(valorPorSemana[i]));
+            o.addProperty("precoMedio", litrosPorSemana[i] == 0 ? 0 : arred(valorPorSemana[i] / litrosPorSemana[i]));
+            arr.add(o);
+        }
+        return arr;
+    }
+
+    // ── KPIs (geral + Próprio x Terceiro) ────────────────────────────────
+
+    private JsonObject montarKpis(List<Map<String, Object>> linhas, List<LocalDate[]> semanas) {
+        Acc geral = new Acc(), propria = new Acc(), terceiro = new Acc();
+
+        Set<String> proprietariosTerceiro = new HashSet<>();
+        for (Map<String, Object> l : linhas) {
+            double litros = num(l.get("qtde_litros"));
+            double valor = num(l.get("valor_total"));
+            Object equip = l.get("cod_equipamento");
+            geral.add(litros, valor, equip);
+            if (ehTerceiro(l)) {
+                terceiro.add(litros, valor, equip);
+                String prop = strOf(l.get("nome_proprietario"));
+                if (!prop.isBlank()) proprietariosTerceiro.add(prop);
+            } else {
+                propria.add(litros, valor, equip);
+            }
+        }
+
+        int numSemanas = semanas.size();
+
+        JsonObject kpis = new JsonObject();
+        kpis.addProperty("volumeTotal", arred(geral.litros));
+        kpis.addProperty("custoTotal", arred(geral.valor));
+        kpis.addProperty("precoMedioPonderado", geral.litros == 0 ? 0 : arred(geral.valor / geral.litros));
+        kpis.addProperty("mediaSemanalVolume", arred(geral.litros / numSemanas));
+        kpis.addProperty("mediaSemanalCusto", arred(geral.valor / numSemanas));
+        kpis.addProperty("equipamentosMonitorados", propria.equipamentos.size() + terceiro.equipamentos.size());
+        kpis.add("propria", blocoKpi(propria, geral.litros, numSemanas));
+        JsonObject terceiroJson = blocoKpi(terceiro, geral.litros, numSemanas);
+        terceiroJson.addProperty("proprietariosAtivos", proprietariosTerceiro.size());
+        kpis.add("terceiro", terceiroJson);
         return kpis;
     }
 
-    // ── Agregações genéricas (litros, valor, qtde por chave) ────────────
+    private JsonObject blocoKpi(Acc a, double volumeGeral, int numSemanas) {
+        JsonObject o = new JsonObject();
+        o.addProperty("equipamentos", a.equipamentos.size());
+        o.addProperty("volume", arred(a.litros));
+        o.addProperty("custo", arred(a.valor));
+        o.addProperty("precoMedio", a.litros == 0 ? 0 : arred(a.valor / a.litros));
+        o.addProperty("mediaSemanalVolume", arred(a.litros / numSemanas));
+        o.addProperty("participacaoVolume", volumeGeral == 0 ? 0 : arred(a.litros / volumeGeral * 100));
+        return o;
+    }
 
-    private interface Chave { String de(Map<String, Object> linha); }
+    /** Terceiro = existe proprietário histórico registrado para o equipamento (cod_proprietario preenchido). */
+    private static boolean ehTerceiro(Map<String, Object> l) {
+        return preenchido(l.get("cod_proprietario"));
+    }
 
-    private List<Map<String, Object>> agregar(List<Map<String, Object>> linhas, Chave chave, boolean ordenarPorChave) {
-        Map<String, double[]> mapa = ordenarPorChave ? new TreeMap<>() : new LinkedHashMap<>();
+    // ── Por Área de Negócio (totais + série semanal, p/ o gráfico empilhado) ──
+
+    private JsonArray montarPorAreaNegocio(List<Map<String, Object>> linhas, List<LocalDate[]> semanas) {
+        LocalDate ini = semanas.get(0)[0];
+        int n = semanas.size();
+
+        Map<String, double[]> litrosPorSemana = new LinkedHashMap<>(); // área -> litros[semana]
+        Map<String, Double> valorTotal = new LinkedHashMap<>();
+        double totalLitros = 0;
+
         for (Map<String, Object> l : linhas) {
-            String k = chave.de(l);
-            if (k == null) k = "Não informado";
-            double[] acc = mapa.computeIfAbsent(k, x -> new double[3]);
-            acc[0] += num(l.get("qtde_litros"));
-            acc[1] += num(l.get("valor_total"));
-            acc[2] += 1;
+            String area = rotulo(l, "cod_negocio", "desc_negocio");
+            if (area == null) area = "Não Classificado";
+            double litros = num(l.get("qtde_litros"));
+            double valor = num(l.get("valor_total"));
+            int idx = semanaDe(strOf(l.get("data")), ini, n);
+
+            double[] serie = litrosPorSemana.computeIfAbsent(area, k -> new double[n]);
+            if (idx >= 0) serie[idx] += litros;
+            valorTotal.merge(area, valor, Double::sum);
+            totalLitros += litros;
         }
-        List<Map<String, Object>> lista = new ArrayList<>();
-        mapa.forEach((k, acc) -> {
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("chave", k);
-            item.put("litros", arred(acc[0]));
-            item.put("valor", arred(acc[1]));
-            item.put("qtde", (int) acc[2]);
-            lista.add(item);
-        });
-        if (!ordenarPorChave) {
-            lista.sort(Comparator.comparingDouble((Map<String, Object> m) -> (Double) m.get("litros")).reversed());
+
+        double totalLitrosFinal = totalLitros;
+        List<Map.Entry<String, double[]>> ordenado = new ArrayList<>(litrosPorSemana.entrySet());
+        ordenado.sort((a, b) -> Double.compare(soma(b.getValue()), soma(a.getValue())));
+
+        JsonArray arr = new JsonArray();
+        for (Map.Entry<String, double[]> e : ordenado) {
+            double volume = soma(e.getValue());
+            JsonObject o = new JsonObject();
+            o.addProperty("nome", e.getKey());
+            o.addProperty("volume", arred(volume));
+            o.addProperty("custo", arred(valorTotal.getOrDefault(e.getKey(), 0.0)));
+            o.addProperty("participacao", totalLitrosFinal == 0 ? 0 : arred(volume / totalLitrosFinal * 100));
+            JsonArray serieArr = new JsonArray();
+            for (double v : e.getValue()) serieArr.add(arred(v));
+            o.add("porSemana", serieArr);
+            arr.add(o);
         }
-        return lista;
+        return arr;
     }
 
-    private List<Map<String, Object>> limitar(List<Map<String, Object>> lista) {
-        return lista.size() > MAX_RANKING ? new ArrayList<>(lista.subList(0, MAX_RANKING)) : lista;
+    // ── Top Atividades ────────────────────────────────────────────────────
+
+    private JsonArray montarPorAtividade(List<Map<String, Object>> linhas) {
+        Map<String, double[]> mapa = new LinkedHashMap<>();
+        double totalLitros = 0;
+        for (Map<String, Object> l : linhas) {
+            String atividade = atividadeDe(l);
+            double litros = num(l.get("qtde_litros"));
+            double valor = num(l.get("valor_total"));
+            mapa.computeIfAbsent(atividade, k -> new double[2]);
+            mapa.get(atividade)[0] += litros;
+            mapa.get(atividade)[1] += valor;
+            totalLitros += litros;
+        }
+
+        double totalLitrosFinal = totalLitros;
+        List<Map.Entry<String, double[]>> ordenado = new ArrayList<>(mapa.entrySet());
+        ordenado.sort((a, b) -> Double.compare(b.getValue()[0], a.getValue()[0]));
+
+        JsonArray arr = new JsonArray();
+        int limite = Math.min(TOP_ATIVIDADES, ordenado.size());
+        for (int i = 0; i < limite; i++) {
+            Map.Entry<String, double[]> e = ordenado.get(i);
+            JsonObject o = new JsonObject();
+            o.addProperty("nome", e.getKey());
+            o.addProperty("volume", arred(e.getValue()[0]));
+            o.addProperty("custo", arred(e.getValue()[1]));
+            o.addProperty("participacao", totalLitrosFinal == 0 ? 0 : arred(e.getValue()[0] / totalLitrosFinal * 100));
+            arr.add(o);
+        }
+        return arr;
     }
 
-    /** Data do abastecimento como yyyy-MM-dd (a coluna vem como LocalDateTime.toString()). */
-    private static String dia(Map<String, Object> l) {
-        Object d = l.get("data");
-        if (d == null) return null;
-        String s = String.valueOf(d);
-        return s.length() >= 10 ? s.substring(0, 10) : s;
+    /** Atividade Principal: desc_atividade (mais fina); sem atividade, cai no subprocesso. */
+    private static String atividadeDe(Map<String, Object> l) {
+        String at = strOf(l.get("desc_atividade"));
+        if (!at.isBlank() && !"Não possui".equalsIgnoreCase(at)) return at;
+        String sp = strOf(l.get("desc_subprocesso"));
+        if (!sp.isBlank() && !"Não possui".equalsIgnoreCase(sp)) return sp;
+        return "Não Classificado";
     }
 
-    private static String rotulo(Map<String, Object> l, String colCod, String colDesc) {
-        Object desc = l.get(colDesc);
-        if (preenchido(desc)) return String.valueOf(desc);
-        Object cod = l.get(colCod);
-        return cod == null ? null : String.valueOf(cod);
+    // ── Classe Operativa (matriz semanal) ────────────────────────────────
+
+    private JsonObject montarPorClasseOperativa(List<Map<String, Object>> linhas, List<LocalDate[]> semanas) {
+        LocalDate ini = semanas.get(0)[0];
+        int n = semanas.size();
+
+        Map<String, double[]> porClasse = new LinkedHashMap<>(); // classe -> litros[semana]
+        double[] totalPorSemana = new double[n];
+        double totalGeral = 0;
+
+        for (Map<String, Object> l : linhas) {
+            String classe = classeOperativaDe(l);
+            int idx = semanaDe(strOf(l.get("data")), ini, n);
+            double litros = num(l.get("qtde_litros"));
+
+            double[] serie = porClasse.computeIfAbsent(classe, k -> new double[n]);
+            if (idx >= 0) {
+                serie[idx] += litros;
+                totalPorSemana[idx] += litros;
+            }
+            totalGeral += litros;
+        }
+
+        List<Map.Entry<String, double[]>> ordenado = new ArrayList<>(porClasse.entrySet());
+        ordenado.sort((a, b) -> Double.compare(soma(b.getValue()), soma(a.getValue())));
+
+        JsonArray linhasJson = new JsonArray();
+        for (Map.Entry<String, double[]> e : ordenado) {
+            JsonObject o = new JsonObject();
+            o.addProperty("nome", e.getKey());
+            JsonArray serieArr = new JsonArray();
+            for (double v : e.getValue()) serieArr.add(arred(v));
+            o.add("porSemana", serieArr);
+            o.addProperty("total", arred(soma(e.getValue())));
+            linhasJson.add(o);
+        }
+
+        JsonArray totalSemanaArr = new JsonArray();
+        for (double v : totalPorSemana) totalSemanaArr.add(arred(v));
+
+        JsonObject resultado = new JsonObject();
+        resultado.add("linhas", linhasJson);
+        resultado.add("totalPorSemana", totalSemanaArr);
+        resultado.addProperty("totalGeral", arred(totalGeral));
+        return resultado;
     }
 
-    /**
-     * Identificação do "equipamento" no ranking: boa parte dos abastecimentos
-     * não tem equipamento vinculado (veículos de terceiros, abastecimento por
-     * placa/pessoa) — nesses casos a placa ou a pessoa/terceiro do
-     * abastecimento identifica quem consumiu, em vez de cair tudo num único
-     * "Não informado".
-     */
+    private static double soma(double[] v) {
+        double s = 0;
+        for (double x : v) s += x;
+        return s;
+    }
+
+    /** Classe Operativa: de-para por modelo de equipamento; terceiro ganha o sufixo " Terceiro". */
+    private static String classeOperativaDe(Map<String, Object> l) {
+        String codModelo = strOf(l.get("cod_modelo"));
+        String base = codModelo.isBlank() ? null : ClasseOperativaCache.buscar(codModelo);
+        if (base == null || base.isBlank()) base = "Não Classificado";
+        return ehTerceiro(l) ? base + " Terceiro" : base;
+    }
+
+    // ── Top 10 Equipamentos Próprios ─────────────────────────────────────
+
+    private JsonArray montarTopProprios(List<Map<String, Object>> linhas) {
+        Map<String, double[]> mapa = new LinkedHashMap<>(); // chave equipamento -> [litros, valor]
+        Map<String, String> nomes = new LinkedHashMap<>();
+        Map<String, String> modelos = new LinkedHashMap<>();
+        Map<String, String> grupos = new LinkedHashMap<>();
+        double totalLitros = 0;
+
+        for (Map<String, Object> l : linhas) {
+            if (ehTerceiro(l)) continue;
+            String chave = rotuloEquipamento(l);
+            double litros = num(l.get("qtde_litros"));
+            double valor = num(l.get("valor_total"));
+            mapa.computeIfAbsent(chave, k -> new double[2]);
+            mapa.get(chave)[0] += litros;
+            mapa.get(chave)[1] += valor;
+            nomes.putIfAbsent(chave, chave);
+            modelos.putIfAbsent(chave, strOf(l.get("descricaomodelo")));
+            String classeBase = classeOperativaBase(l);
+            grupos.putIfAbsent(chave, classeBase);
+            totalLitros += litros;
+        }
+
+        double totalLitrosFinal = totalLitros;
+        List<Map.Entry<String, double[]>> ordenado = new ArrayList<>(mapa.entrySet());
+        ordenado.sort((a, b) -> Double.compare(b.getValue()[0], a.getValue()[0]));
+
+        JsonArray arr = new JsonArray();
+        int limite = Math.min(TOP_RANKING, ordenado.size());
+        for (int i = 0; i < limite; i++) {
+            Map.Entry<String, double[]> e = ordenado.get(i);
+            JsonObject o = new JsonObject();
+            o.addProperty("posicao", i + 1);
+            o.addProperty("equipamento", nomes.get(e.getKey()));
+            o.addProperty("modelo", modelos.get(e.getKey()));
+            o.addProperty("grupo", grupos.get(e.getKey()));
+            o.addProperty("volume", arred(e.getValue()[0]));
+            o.addProperty("custo", arred(e.getValue()[1]));
+            o.addProperty("participacao", totalLitrosFinal == 0 ? 0 : arred(e.getValue()[0] / totalLitrosFinal * 100));
+            arr.add(o);
+        }
+        return arr;
+    }
+
+    private static String classeOperativaBase(Map<String, Object> l) {
+        String codModelo = strOf(l.get("cod_modelo"));
+        String base = codModelo.isBlank() ? null : ClasseOperativaCache.buscar(codModelo);
+        return (base == null || base.isBlank()) ? "Não Classificado" : base;
+    }
+
+    // ── Top 10 Terceiros (por proprietário do equipamento) ───────────────
+
+    private JsonArray montarTopTerceiros(List<Map<String, Object>> linhas) {
+        Map<String, double[]> mapa = new LinkedHashMap<>();
+        Map<String, String> atividades = new LinkedHashMap<>();
+        double totalLitros = 0;
+
+        for (Map<String, Object> l : linhas) {
+            if (!ehTerceiro(l)) continue;
+            String proprietario = strOf(l.get("nome_proprietario"));
+            if (proprietario.isBlank()) proprietario = "Proprietário Não Identificado";
+            double litros = num(l.get("qtde_litros"));
+            double valor = num(l.get("valor_total"));
+            mapa.computeIfAbsent(proprietario, k -> new double[2]);
+            mapa.get(proprietario)[0] += litros;
+            mapa.get(proprietario)[1] += valor;
+            // Mantém a atividade de maior volume já vista para esse proprietário
+            atividades.putIfAbsent(proprietario, atividadeDe(l));
+            totalLitros += litros;
+        }
+
+        double totalLitrosFinal = totalLitros;
+        List<Map.Entry<String, double[]>> ordenado = new ArrayList<>(mapa.entrySet());
+        ordenado.sort((a, b) -> Double.compare(b.getValue()[0], a.getValue()[0]));
+
+        JsonArray arr = new JsonArray();
+        int limite = Math.min(TOP_RANKING, ordenado.size());
+        for (int i = 0; i < limite; i++) {
+            Map.Entry<String, double[]> e = ordenado.get(i);
+            JsonObject o = new JsonObject();
+            o.addProperty("posicao", i + 1);
+            o.addProperty("proprietario", e.getKey());
+            o.addProperty("atividade", atividades.get(e.getKey()));
+            o.addProperty("volume", arred(e.getValue()[0]));
+            o.addProperty("custo", arred(e.getValue()[1]));
+            o.addProperty("participacao", totalLitrosFinal == 0 ? 0 : arred(e.getValue()[0] / totalLitrosFinal * 100));
+            arr.add(o);
+        }
+        return arr;
+    }
+
+    // ── Identificação do equipamento (reaproveitada do dashboard anterior) ──
+
     private static String rotuloEquipamento(Map<String, Object> l) {
         Object v = l.get("des_equipamento");
         if (preenchido(v)) return String.valueOf(v);
@@ -191,18 +521,22 @@ public class CombustivelDashboardServlet extends HttpServlet {
         return v != null && !String.valueOf(v).isBlank();
     }
 
+    private static String rotulo(Map<String, Object> l, String colCod, String colDesc) {
+        Object desc = l.get(colDesc);
+        if (preenchido(desc)) return String.valueOf(desc);
+        Object cod = l.get(colCod);
+        return cod == null ? null : String.valueOf(cod);
+    }
+
     // ── Opções de filtro (derivadas do resultado do período) ────────────
 
-    private Map<String, Object> montarOpcoes(List<Map<String, Object>> linhas) {
-        Map<String, Object> opcoes = new LinkedHashMap<>();
-        opcoes.put("combustiveis", distintos(linhas, "cod_combustivel", "des_combustivel"));
-        opcoes.put("fazendas", distintos(linhas, "cod_fazenda", "des_fazenda"));
-        opcoes.put("tiposCliente", distintos(linhas, "cod_tipocliente", "tipocliente"));
-        opcoes.put("equipamentos", distintos(linhas, "cod_equipamento", "des_equipamento"));
+    private JsonObject montarOpcoes(List<Map<String, Object>> linhas) {
+        JsonObject opcoes = new JsonObject();
+        opcoes.add("combustiveis", distintos(linhas, "cod_combustivel", "des_combustivel"));
         return opcoes;
     }
 
-    private List<Map<String, Object>> distintos(List<Map<String, Object>> linhas, String colCod, String colDesc) {
+    private JsonArray distintos(List<Map<String, Object>> linhas, String colCod, String colDesc) {
         Map<String, Map<String, Object>> mapa = new TreeMap<>();
         for (Map<String, Object> l : linhas) {
             Object cod = l.get(colCod);
@@ -215,7 +549,9 @@ public class CombustivelDashboardServlet extends HttpServlet {
             item.put("descricao", descricao);
             mapa.put(descricao + "|" + cod, item);
         }
-        return new ArrayList<>(mapa.values());
+        JsonArray arr = new JsonArray();
+        mapa.values().forEach(v -> arr.add(gson.toJsonTree(v)));
+        return arr;
     }
 
     // ── Detalhe para tabela/export ──────────────────────────────────────
@@ -229,7 +565,6 @@ public class CombustivelDashboardServlet extends HttpServlet {
     };
 
     private List<Map<String, Object>> montarDetalhe(List<Map<String, Object>> linhas) {
-        // Mais recentes primeiro (a consulta vem ordenada por combustível/data).
         List<Map<String, Object>> ordenadas = new ArrayList<>(linhas);
         ordenadas.sort(Comparator.comparing(
                 (Map<String, Object> l) -> String.valueOf(l.get("datahora"))).reversed());
@@ -248,6 +583,10 @@ public class CombustivelDashboardServlet extends HttpServlet {
     }
 
     // ── Utilitários ─────────────────────────────────────────────────────
+
+    private static String strOf(Object v) {
+        return v == null ? "" : String.valueOf(v).trim();
+    }
 
     private static double num(Object v) {
         return v instanceof Number n ? n.doubleValue() : 0;
