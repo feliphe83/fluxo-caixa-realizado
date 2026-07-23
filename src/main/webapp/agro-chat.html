@@ -161,6 +161,10 @@
     <div class="header-sub">Assistente de talhões, insumos, chuvas e financeiro · Usina Santa Clotilde S/A</div>
   </div>
   <div class="nav-tabs">
+    <button class="nav-tab" onclick="limparConversa()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+      Limpar Conversa
+    </button>
     <button class="nav-tab" onclick="exportarExcel()">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
       Excel
@@ -254,6 +258,43 @@ function enviarExemplo(btn) {
 function removerVazio() {
   const vazio = document.getElementById('chatVazio');
   if (vazio) vazio.remove();
+}
+
+// HTML da tela inicial (mesmo conteúdo estático do <div id="chatVazio"> —
+// reconstruído aqui pra "Limpar Conversa" poder trazer ela de volta).
+const CHAT_VAZIO_HTML = `
+  <div class="chat-vazio" id="chatVazio">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.97-4.03 9-9 9a9.01 9.01 0 01-5.24-1.67L3 21l1.67-3.76A8.96 8.96 0 013 12c0-4.97 4.03-9 9-9s9 4.03 9 9z"/>
+    </svg>
+    <p>Pergunte sobre talhões, insumos, chuvas ou contas a pagar. Ex:</p>
+    <div class="exemplos">
+      <button class="exemplo-btn" onclick="enviarExemplo(this)">Quais talhões da safra 74 têm cana com mais de 12 meses?</button>
+      <button class="exemplo-btn" onclick="enviarExemplo(this)">Quais insumos foram aplicados na fazenda 2 (Mundaú) na safra 74?</button>
+      <button class="exemplo-btn" onclick="enviarExemplo(this)">Quanto choveu em cada ponto de coleta no primeiro semestre de 2026, mês a mês?</button>
+      <button class="exemplo-btn" onclick="enviarExemplo(this)">Quanto de combustível foi abastecido em junho de 2026?</button>
+      <button class="exemplo-btn" onclick="enviarExemplo(this)">Qual fazenda teve a maior produtividade (TCH) na safra 74?</button>
+      <button class="exemplo-btn" onclick="enviarExemplo(this)">Quais contas a pagar vencem em julho de 2026?</button>
+      <button class="exemplo-btn" onclick="enviarExemplo(this)">Gere um excel com os talhões da safra 74</button>
+    </div>
+  </div>`;
+
+// Limpa a conversa da tela e começa uma sessão nova — o agente (n8n) guarda
+// memória por sessionId, então só apagar as mensagens na tela não bastaria:
+// sem trocar o SESSION_ID, a próxima pergunta ainda viria com o contexto da
+// conversa antiga.
+function limparConversa() {
+  if (document.querySelector('.msg') && !confirm('Limpar esta conversa? O histórico na tela será apagado.')) return;
+
+  speechSynthesis.cancel();
+  chatMensagens.innerHTML = CHAT_VAZIO_HTML;
+
+  SESSION_ID = 'web-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
+  sessionStorage.setItem('agroChatSessionId', SESSION_ID);
+
+  chatInput.value = '';
+  chatInput.style.height = 'auto';
+  chatInput.focus();
 }
 
 function addMensagem(tipo, texto) {
