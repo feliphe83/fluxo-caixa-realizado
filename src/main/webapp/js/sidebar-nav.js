@@ -96,7 +96,7 @@
     .snav-btn-sair:hover { color: #ef4444; }
 
     .snav-toggle {
-      display: flex; position: fixed; top: 14px; left: 14px; z-index: 1020;
+      display: flex; position: fixed; top: 14px; right: 14px; z-index: 1020;
       width: 38px; height: 38px; border-radius: 9px; border: none;
       background: #0f2460; color: white; cursor: pointer;
       align-items: center; justify-content: center; box-shadow: 0 2px 10px rgba(0,0,0,.25);

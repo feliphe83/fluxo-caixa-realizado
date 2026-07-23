@@ -36,7 +36,9 @@
   .header-title { font-size: 18px; font-weight: 800; letter-spacing: -0.3px; }
   .header-sub   { font-size: 12px; opacity: .85; margin-top: 2px; }
 
-  .nav-tabs { display: flex; gap: 8px; }
+  /* margem à direita pra não ficar embaixo do botão de menu (3 riscos),
+     que agora fica fixo no canto superior direito da tela */
+  .nav-tabs { display: flex; gap: 8px; margin-right: 56px; }
   .nav-tab {
     display: flex; align-items: center; gap: 7px;
     padding: 8px 18px; border-radius: 8px;
@@ -123,7 +125,7 @@
     .logo-box { width: 36px; height: 36px; font-size: 13px; }
     .header-title { font-size: 15px; }
     .header-sub { display: none; }
-    .nav-tabs { width: 100%; gap: 6px; }
+    .nav-tabs { width: 100%; gap: 6px; margin-right: 0; }
     .nav-tab { flex: 1; justify-content: center; padding: 8px 6px; font-size: 12px; white-space: nowrap; }
     .chat-wrap { padding: 12px; }
     .msg { max-width: 95%; }
