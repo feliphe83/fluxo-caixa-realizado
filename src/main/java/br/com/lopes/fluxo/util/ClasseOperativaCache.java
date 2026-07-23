@@ -11,11 +11,11 @@ import java.util.logging.Logger;
 
 /**
  * Cache em memória do de-para de Classe Operativa (fc_depara_classeoperativa
- * no MySQL): cod_modelo (automotivo.modeloequipamento no Oracle) →
- * classificação de Classe Operativa (ex.: "Trator", "Caminhão Apoio",
- * "Ônibus"). Usado pelo Dashboard de Combustível na seção "Consumo Semanal
- * por Classe Operativa", que agrupa modelos de equipamento numa
- * classificação mais ampla do que o modelo em si.
+ * no MySQL): cod_equipamento (automotivo.equipamento no Oracle — a unidade
+ * física, não o modelo abstrato) → classificação de Classe Operativa (ex.:
+ * "Trator", "Caminhão Apoio", "Ônibus"). Usado pelo Dashboard de Combustível
+ * na seção "Consumo Semanal por Classe Operativa". A coluna no MySQL ainda
+ * se chama cod_modelo por compatibilidade com o de-para já importado.
  *
  * A tabela é gerenciada na tela de administração (aba "De-Para Classe
  * Operativa"), por importação em lote (colar do Excel). Recarrega sozinho a

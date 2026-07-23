@@ -352,13 +352,14 @@
     <div class="sec" id="sec-classeoperativa">
       <div class="panel" style="margin-bottom:20px">
         <div class="ph">
-          <div class="ph-title">Importar De-Para (Modelo de Equipamento → Classe Operativa)</div>
+          <div class="ph-title">Importar De-Para (Equipamento → Classe Operativa)</div>
         </div>
         <div style="padding:20px">
           <div style="font-size:12.5px;color:var(--text2);margin-bottom:10px;line-height:1.6">
-            Agrupa os modelos de equipamento (automotivo.modeloequipamento) numa classificação mais ampla —
+            Agrupa cada equipamento (automotivo.equipamento — a unidade física, não o modelo abstrato:
+            duas máquinas do mesmo modelo podem cair em classes diferentes) numa classificação mais ampla —
             usada no Dashboard de Combustível ("Consumo Semanal por Classe Operativa"). Copie da sua planilha
-            duas colunas nesta ordem — <b>Cód. Modelo</b>, <b>Classe Operativa</b> — e cole abaixo (ex.:
+            duas colunas nesta ordem — <b>Cód. Equipamento</b>, <b>Classe Operativa</b> — e cole abaixo (ex.:
             "Trator", "Caminhão Apoio", "Ônibus"). A primeira linha pode ser o cabeçalho (é detectada e
             ignorada automaticamente). Registros com o mesmo código são atualizados.
           </div>
@@ -386,7 +387,7 @@
         <table>
           <thead>
             <tr>
-              <th>Cód. Modelo</th><th>Classe Operativa</th><th>Ações</th>
+              <th>Cód. Equipamento</th><th>Classe Operativa</th><th>Ações</th>
             </tr>
           </thead>
           <tbody id="tbClasseOp">
@@ -609,7 +610,7 @@ function setSec(s) {
     carregarDePara();
   } else if(s==='classeoperativa'){
     document.getElementById('ttitle').textContent='De-Para Classe Operativa';
-    document.getElementById('tsub').textContent='Agrupa modelos de equipamento em Classe Operativa (Dashboard de Combustível)';
+    document.getElementById('tsub').textContent='Agrupa cada equipamento em Classe Operativa (Dashboard de Combustível)';
     document.getElementById('btnAcao').style.display='none';
     carregarClasseOp();
   } else {

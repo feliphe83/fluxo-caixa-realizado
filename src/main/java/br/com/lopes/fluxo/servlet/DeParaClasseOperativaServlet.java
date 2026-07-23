@@ -21,18 +21,21 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 /**
- * Administração do de-para Classe Operativa (automotivo.modeloequipamento no
- * Oracle) → Classe Operativa, usado para agrupar modelos de equipamento no
- * Dashboard de Combustível ("Consumo Semanal por Classe Operativa").
+ * Administração do de-para Classe Operativa (automotivo.equipamento no
+ * Oracle — a unidade física, não o modelo abstrato) → Classe Operativa,
+ * usado para agrupar equipamentos no Dashboard de Combustível ("Consumo
+ * Semanal por Classe Operativa").
  *
  * A tabela fc_depara_classeoperativa é criada automaticamente no MySQL na
- * primeira chamada (CREATE TABLE IF NOT EXISTS).
+ * primeira chamada (CREATE TABLE IF NOT EXISTS); a coluna chave ainda se
+ * chama cod_modelo por compatibilidade com o de-para já importado, mas
+ * guarda cod_equipamento.
  *
  * GET    /api/depara-classeoperativa           -> lista tudo
  * POST   /api/depara-classeoperativa/importar  -> importa em lote (upsert)
  *          Body: texto colado do Excel, 2 colunas separadas por TAB, uma
- *          linha por registro: COD_MODELO / CLASSE_OPERATIVA. Linhas sem um
- *          número válido na 1ª coluna (ex.: cabeçalho) são ignoradas.
+ *          linha por registro: COD_EQUIPAMENTO / CLASSE_OPERATIVA. Linhas
+ *          sem um número válido na 1ª coluna (ex.: cabeçalho) são ignoradas.
  * DELETE /api/depara-classeoperativa?cod=N     -> remove um registro
  *
  * Todas as rotas exigem sessão de administrador.
