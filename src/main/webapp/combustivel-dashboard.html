@@ -109,9 +109,6 @@
 
   /* ── Gráficos ── */
   .grafico-area { position: relative; height: 300px; margin-top: 6px; }
-  .toggle-medida { display: flex; border: 1.5px solid #d8dfee; border-radius: 8px; overflow: hidden; margin-left: auto; }
-  .toggle-medida button { padding: 5px 12px; border: none; background: white; color: #475569; font-size: 12px; font-weight: 600; cursor: pointer; }
-  .toggle-medida button.ativo { background: #1a3a7c; color: white; }
   .legenda-manual { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px; font-size: 11.5px; color: var(--ink-2); }
   .legenda-manual .item { display: flex; align-items: center; gap: 6px; }
   .legenda-manual .dot { width: 9px; height: 9px; border-radius: 3px; }
@@ -214,7 +211,6 @@
 <script>
 let DADOS = null;
 let charts = {};
-let medidaSemanal = 'volume'; // 'volume' | 'custo'
 let detalheAberto = false;
 
 const fmtInt  = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 });
@@ -342,20 +338,15 @@ function secaoResumoExecutivo(j) {
       ${splitCard('terceiro', 'Equipamentos Terceiros', k.terceiro)}
     </div>
 
-    <div style="display:flex;align-items:center;gap:10px;margin-top:18px">
-      <div style="font-size:13px;font-weight:700;color:var(--ink)">Consumo Semanal</div>
-      <div class="toggle-medida">
-        <button id="tgVolume" class="${medidaSemanal==='volume'?'ativo':''}" onclick="trocarMedidaSemanal('volume')">Volume (L)</button>
-        <button id="tgCusto" class="${medidaSemanal==='custo'?'ativo':''}" onclick="trocarMedidaSemanal('custo')">Custo (R$)</button>
-      </div>
-    </div>
-    <div class="grafico-area"><canvas id="chConsumoSemanal"></canvas></div>
+    <div style="font-size:13px;font-weight:700;color:var(--ink);margin-top:18px">Consumo Semanal — Volume (L) e Custo (R$)</div>
+    <div class="grafico-area" style="height:340px"><canvas id="chConsumoSemanal"></canvas></div>
     <div class="legenda-manual">
       <span class="item"><span class="dot" style="background:var(--serie-1)"></span>Semana comum</span>
       <span class="item"><span class="dot" style="background:var(--serie-3)"></span>Maior volume</span>
       <span class="item"><span class="dot" style="background:var(--serie-8)"></span>Menor volume</span>
       <span class="item"><span class="dot" style="background:var(--serie-6)"></span>Última semana</span>
       <span class="item">- - - Tendência (média móvel)</span>
+      <span class="item">Rótulo acima da barra = Volume · rótulo no meio = Custo</span>
     </div>
     <div class="insight-box"><span class="insight-icone">i</span><div>${insightResumo(j)}</div></div>
   </div>`;
@@ -388,13 +379,6 @@ function insightResumo(j) {
     `o volume foi de <b>${fmtInt.format(ultima.volume)} L</b>, ao custo de <b>${fmtBRL0.format(ultima.custo)}</b>.`;
 }
 
-function trocarMedidaSemanal(m) {
-  medidaSemanal = m;
-  document.getElementById('tgVolume').classList.toggle('ativo', m === 'volume');
-  document.getElementById('tgCusto').classList.toggle('ativo', m === 'custo');
-  desenharConsumoSemanal();
-}
-
 const eixoBase = {
   grid: { color: '#e9edf6', drawTicks: false },
   border: { display: false },
@@ -410,10 +394,39 @@ function mediaMovel(valores, janela) {
   });
 }
 
+// Desenha, por cima das barras de Volume: o valor de Volume acima da barra e
+// o Custo (R$) centralizado dentro dela (branco, só quando a barra é alta o
+// bastante pro texto caber sem estourar).
+const rotulosVolumeCustoPlugin = {
+  id: 'rotulosVolumeCusto',
+  afterDatasetsDraw(chart, args, opts) {
+    if (!opts.custos) return;
+    const ctx = chart.ctx;
+    const meta = chart.getDatasetMeta(0);
+    ctx.save();
+    ctx.textAlign = 'center';
+    meta.data.forEach((barra, i) => {
+      ctx.font = '700 10px -apple-system, "Segoe UI", sans-serif';
+      ctx.fillStyle = '#52514e';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(opts.volumes[i], barra.x, barra.y - 4);
+
+      const alturaBarra = barra.base - barra.y;
+      if (alturaBarra >= 18) {
+        ctx.font = '600 9.5px -apple-system, "Segoe UI", sans-serif';
+        ctx.fillStyle = '#ffffff';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(opts.custos[i], barra.x, (barra.y + barra.base) / 2);
+      }
+    });
+    ctx.restore();
+  }
+};
+
 function desenharConsumoSemanal() {
   const serie = DADOS.serieSemanal;
-  const valores = serie.map(s => medidaSemanal === 'volume' ? s.volume : s.custo);
-  const emVolume = medidaSemanal === 'volume';
+  const volumes = serie.map(s => s.volume);
+  const custos = serie.map(s => s.custo);
 
   let idxMax = 0, idxMin = 0;
   serie.forEach((s, i) => {
@@ -435,12 +448,12 @@ function desenharConsumoSemanal() {
       labels: serie.map(s => s.label),
       datasets: [
         {
-          type: 'bar', label: emVolume ? 'Volume (L)' : 'Custo (R$)',
-          data: valores, backgroundColor: cores, maxBarThickness: 22, borderRadius: 4, borderSkipped: 'bottom',
+          type: 'bar', label: 'Volume (L)',
+          data: volumes, backgroundColor: cores, maxBarThickness: 30, borderRadius: 4, borderSkipped: 'bottom',
           order: 2,
         },
         {
-          type: 'line', label: 'Tendência', data: mediaMovel(valores, 3),
+          type: 'line', label: 'Tendência', data: mediaMovel(volumes, 3),
           borderColor: '#52514e', borderDash: [5,4], borderWidth: 2, pointRadius: 0, fill: false, order: 1,
         }
       ]
@@ -448,15 +461,25 @@ function desenharConsumoSemanal() {
     options: {
       responsive: true, maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
+      layout: { padding: { top: 20 } },
       plugins: {
         legend: { display: false },
-        tooltip: { callbacks: { label: c => c.dataset.label + ': ' + (emVolume ? fmtInt.format(c.parsed.y) + ' L' : fmtBRL.format(c.parsed.y)) } }
+        rotulosVolumeCusto: {
+          volumes: volumes.map(v => fmtInt.format(v) + ' L'),
+          custos: custos.map(v => fmtBRL0.format(v)),
+        },
+        tooltip: { callbacks: {
+          label: c => c.datasetIndex === 0
+            ? ['Volume: ' + fmtInt.format(c.parsed.y) + ' L', 'Custo: ' + fmtBRL0.format(custos[c.dataIndex])]
+            : c.dataset.label + ': ' + fmtInt.format(c.parsed.y) + ' L'
+        } }
       },
       scales: {
         x: { ...eixoBase, grid: { display: false }, ticks: { ...eixoBase.ticks, maxTicksLimit: 20, maxRotation: 0 } },
-        y: { ...eixoBase, beginAtZero: true, ticks: { ...eixoBase.ticks, callback: v => emVolume ? fmtInt.format(v) : fmtBRL0.format(v) } }
+        y: { ...eixoBase, beginAtZero: true, ticks: { ...eixoBase.ticks, callback: v => fmtInt.format(v) } }
       }
-    }
+    },
+    plugins: [rotulosVolumeCustoPlugin]
   });
 }
 
@@ -503,6 +526,26 @@ function insightPreco(precos, media, variacao) {
     `de <b>${fmtBRL.format(precos[0])}/L</b> para <b>${fmtBRL.format(precos[precos.length-1])}/L</b>, com média de <b>${fmtBRL.format(media)}/L</b>.`;
 }
 
+// Valor (R$/L) acima de cada ponto da linha de preço.
+const rotulosPontoPlugin = {
+  id: 'rotulosPonto',
+  afterDatasetsDraw(chart, args, opts) {
+    if (!opts.valores) return;
+    const ctx = chart.ctx;
+    const meta = chart.getDatasetMeta(0);
+    ctx.save();
+    ctx.font = '700 10px -apple-system, "Segoe UI", sans-serif';
+    ctx.fillStyle = '#0f2460';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    meta.data.forEach((ponto, i) => {
+      if (!opts.valores[i]) return;
+      ctx.fillText(opts.valores[i], ponto.x, ponto.y - 8);
+    });
+    ctx.restore();
+  }
+};
+
 function desenharPreco() {
   const serie = DADOS.serieSemanal;
   const precos = serie.map(s => s.precoMedio);
@@ -539,15 +582,18 @@ function desenharPreco() {
     options: {
       responsive: true, maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
+      layout: { padding: { top: 20 } },
       plugins: {
         legend: { display: false },
+        rotulosPonto: { valores: precos.map(v => v > 0 ? fmtBRL.format(v) : '') },
         tooltip: { callbacks: { label: c => c.dataset.label + ': ' + fmtBRL.format(c.parsed.y) + '/L' } }
       },
       scales: {
         x: { ...eixoBase, grid: { display: false }, ticks: { ...eixoBase.ticks, maxTicksLimit: 20, maxRotation: 0 } },
         y: { ...eixoBase, ticks: { ...eixoBase.ticks, callback: v => fmtBRL.format(v) } }
       }
-    }
+    },
+    plugins: [rotulosPontoPlugin]
   });
 }
 
