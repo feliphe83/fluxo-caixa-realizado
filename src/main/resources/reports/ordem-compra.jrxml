@@ -1,0 +1,1314 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="oc" language="java" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="e5145262-db48-4175-9e9f-72fdbeb41703">
+	<property name="ireport.zoom" value="1.0"/>
+	<property name="ireport.x" value="0"/>
+	<property name="ireport.y" value="192"/>
+	<parameter name="DATAINICIO" class="java.lang.String"/>
+	<parameter name="DATAFIM" class="java.lang.String"/>
+	<parameter name="NROC" class="java.math.BigDecimal"/>
+	<parameter name="LOGO" class="java.io.InputStream"/>
+	<queryString>
+		<![CDATA[select nroc,dataoc, cod_funcionario,cod_fornecedor,nome nome_fornecedor,observacao,  cod_material,desc_material, qtde_aprovada qtde
+, preco ,qtde_aprovada*preco-desconto1 total,qtde_aprovada*preco total2, null cod_objetocusto, endereco, bairro, cep, null fone, desc_cidade,cod_funcionario, dataaprovacao, nomeaprovador nome
+, cgc_cpf cgc, descontototal,desconto1,desconto1*-1 desconto2 , cod_objeto,cod_unidade, custo.fn_busca_descricao_oc(cod_objeto) desc_objeto, max(documento)
+, descricaoplano , observacao ,datavcto, valorparcela from (with vw_parcelas as (select parcelascontaspagar.cod_grupoempresa
+                          , parcelascontaspagar.cod_tipocontaspagar
+                          , parcelascontaspagar.documento
+                          , parcelascontaspagar.parcela
+                          , notafiscal.sequencia_nf
+                          , notafiscal.nrnf
+                          , notafiscal.serie
+                          , itensentrada.dataentrada_seq
+                          , ordemcompra.nroc
+                          , parcelascontaspagar.datavcto
+                          , parcelascontaspagar.valorparcela
+                     from   material.ordemcompra ordemcompra
+                          , material.itensentrada itensentrada
+                          , material.notafiscal notafiscal
+                          , financeiro.parcelascontaspagar parcelascontaspagar
+
+                     where  ordemcompra.dataoc             between '01011900' and '01012050'
+                     and    ordemcompra.nroc                     = itensentrada.nroc
+                     and    ordemcompra.nroc                     = $P{NROC}
+                     and    itensentrada.dataentrada_seq   between '01011900' and '01012050'
+                     and    itensentrada.serie                   = notafiscal.serie
+                     and    itensentrada.nrnf                    = notafiscal.nrnf
+                     and    itensentrada.sequencia_nf            = notafiscal.sequencia_nf
+                     and    notafiscal.cod_documento             = parcelascontaspagar.documento
+                     and    parcelascontaspagar.datapgto is null
+                     and    parcelascontaspagar.origem           = 10
+                     and    parcelascontaspagar.datavcto   between to_date($P{DATAINICIO}, 'YYYY-MM-DD') and to_date($P{DATAFIM}, 'YYYY-MM-DD')
+                     and    parcelascontaspagar.cod_filial       = 1
+                     and    parcelascontaspagar.cod_empresa      = 1
+                     and    parcelascontaspagar.cod_grupoempresa = 1
+
+                     group by parcelascontaspagar.cod_grupoempresa
+                            , parcelascontaspagar.cod_tipocontaspagar
+                            , parcelascontaspagar.documento
+                            , parcelascontaspagar.parcela
+                            , notafiscal.sequencia_nf
+                            , notafiscal.nrnf
+                            , notafiscal.serie
+                            , itensentrada.dataentrada_seq, ordemcompra.nroc , parcelascontaspagar.datavcto
+                          , parcelascontaspagar.valorparcela
+                    )
+
+
+select tmp1.nroc
+     , tmp1.nr_cotacao
+     , tmp1.cod_plano
+     , tmp1.dataoc
+     , tmp1.cod_funcionario
+     , tmp1.cod_grupoempresa_dest cod_grupoempresa
+     , tmp1.cod_grupoempresa_dest
+     , tmp1.cod_empresa
+     , tmp1.cod_filial
+     , tmp1.cod_fornecedor
+     , tmp1.observacao
+     , tmp1.provisaopelaordemouentrega
+     , tmp1.cod_indicefinanceiro
+     , tmp1.indicefinanceiro
+     , tmp1.cod_material
+     , tmp1.cod_material_relatorio
+     ,  material.fn_buscadescmaterial(tmp1.cod_material) desc_material
+     ,  material.fn_obterobjcustosolicitacao( tmp1.nr_cotacao,tmp1.cod_material) cod_objeto
+     , tmp1.preco
+     , tmp1.sequencia
+     , tmp1.aliquota_icms
+     , tmp1.observacao obs_rci
+     , tmp1.nr_solicitacao
+     , tmp1.perc_ipi
+     , tmp1.Base_Icms_St     --> OS 43391 UJB 07/05/2010
+     , tmp1.Aliquota_Icms_St --> OS 43391 UJB 07/05/2010
+     , tmp1.descontoporunidade
+     , tmp1.descontoporcentagem
+     , tmp1.vrdesc_rateio_ind
+     , tmp1.descontototal
+     , tmp1.prazoentrega
+     , tmp1.dataentrega
+     , tmp1.entrega
+     , tmp1.precoparaxqtde
+     , tmp1.preco_indice
+     , tmp1.valor_indice_acordado
+     , tmp1.data_indicefinanceiro
+     , tmp1.quantidade_solic
+     , tmp1.quantidade
+     , tmp1.qtde_aprovada
+     , tmp1.nome
+     , tmp1.endereco
+     , tmp1.complemento_endereco
+     , tmp1.bairro
+     , tmp1.cep
+     , tmp1.cod_cidade
+     , tmp1.estado
+     , tmp1.nome_cidade desc_cidade
+     , tmp1.cod_pessoa
+     , tmp1.nomevendedor
+     , tmp1.cod_tipocobranca
+     , tmp1.cgc_cpf
+     , tmp1.descricaoplano
+     , tmp1.informarmanualmente
+     , tmp1.descricaotipofrete
+     , tmp1.cod_tipofrete
+     , tmp1.nome_comprador
+     , tmp1.email_comprador
+     , tmp1.cod_fornecedor_frete
+     , tmp1.telefone
+     , tmp1.ramal
+     , tmp1.database
+     , tmp1.dataaprovacao
+     , tmp1.nomeaprovador
+     , tmp1.valor_icms_st
+     , geral.fn_inf_colaborador(pn_cod_colaborador => tmp1.cod_fornecedor,
+                                pv_palavra_chave   => 'RUC') RUC
+     , (select estado.estado
+       from   material.estado estado
+       where  estado.sigla = tmp1.estado) departamentoPY
+     , count(tmp1.nroc) over () qtdregistros
+     , tmp1.documento
+     , tmp1.datavcto
+     ,tmp1.valorparcela
+
+    , material.fn_busca_descontos_oc(tmp1.nr_cotacao, tmp1.cod_plano , tmp1.cod_material,tmp1.nr_solicitacao) desconto1
+    , (select cod_unidade from material.material
+     where material.cod_material = tmp1.cod_material) cod_unidade
+from   (select  ordemcompra.nroc
+             , ordemcompra.nr_cotacao
+             , ordemcompra.cod_plano
+             , ordemcompra.dataoc
+             , ordemcompra.cod_funcionario
+             , ordemcompra.cod_grupoempresa_dest cod_grupoempresa
+             , ordemcompra.cod_grupoempresa_dest
+             , ordemcompra.cod_empresa
+             , ordemcompra.cod_filial
+             , ordemcompra.cod_fornecedor
+             , ordemcompra.observacao
+             , ordemcompra.provisaopelaordemouentrega
+             , ordemcompra.cod_indicefinanceiro
+             , case when ordemcompra.cod_indicefinanceiro is not null then (select ordemcompra.cod_indicefinanceiro || '-' || indicefinanceiro.descricao
+                                                                            from   financeiro.indicefinanceiro
+                                                                            where  indicefinanceiro.cod_indicefinanceiro = ordemcompra.cod_indicefinanceiro)
+                    else (select parametro_financeiro.cod_indicefinanceiropadrao || '-' || indicefinanceiro.descricao
+                          from   financeiro.parametro_financeiro
+                               , financeiro.indicefinanceiro
+                          where  indicefinanceiro.cod_indicefinanceiro = parametro_financeiro.cod_indicefinanceiropadrao
+                          and    parametro_financeiro.cod_filial       = ordemcompra.cod_filial
+                          and    parametro_financeiro.cod_empresa      = ordemcompra.cod_empresa
+                          and    parametro_financeiro.cod_grupoempresa = ordemcompra.cod_grupoempresa_dest)
+               end indicefinanceiro
+             , resultadocotacaoitem.cod_material
+             , case when (select parametrosmaterial.visualiza_codigopadrao
+                                  from   material.parametrosmaterial parametrosmaterial
+                                  where  parametrosmaterial.cod_filial       = ordemcompra.cod_filial
+                                  and    parametrosmaterial.cod_empresa      = ordemcompra.cod_empresa
+                                  and    parametrosmaterial.cod_grupoempresa = ordemcompra.cod_grupoempresa_dest) = 'N' then
+                         to_char(resultadocotacaoitem.cod_material)
+                    else to_char(nvl(parametro_item.cod_padrao_item, resultadocotacaoitem.cod_material))
+               end  cod_material_relatorio
+             , resultadocotacaoitem.preco
+             , resultadocotacaoitem.sequencia
+             , resultadocotacaoitem.aliquota_icms
+             , resultadocotacaoitem.observacao obs_rci
+             , decode('N','N',resultadocotacaoitem.nr_solicitacao,null) nr_solicitacao
+             , resultadocotacaoitem.perc_ipi
+             , resultadocotacaoitem.Base_Icms_St     --> OS 43391 UJB 07/05/2010
+             , resultadocotacaoitem.Aliquota_Icms_St --> OS 43391 UJB 07/05/2010
+             , resultadocotacaoitem.descontoporunidade
+             , resultadocotacaoitem.descontoporcentagem
+             , ((resultadocotacaoitem.vrdesc_rateio_ind / cotacaoitem.qtde_aprovada) * itensordemcompra.quantidade_solic) vrdesc_rateio_ind
+             , ((resultadocotacaoitem.descontototal / cotacaoitem.qtde_aprovada) * itensordemcompra.quantidade_solic) descontototal
+             , resultadocotacaoitem.prazoentrega
+             , resultadocotacaoitem.dataentrega
+             , case when (select count(*)
+                          from   material.itensordemcompraentrega
+                          where  itensordemcompraentrega.cod_material   = itensordemcompra.cod_material
+                          and    itensordemcompraentrega.nr_solicitacao = itensordemcompra.nr_solicitacao
+                          and    itensordemcompraentrega.nroc           = itensordemcompra.nroc) > 1 then ''
+              else decode(nvl(resultadocotacaoitem.prazoentrega, 0), 0, to_char(resultadocotacaoitem.dataentrega, 'DD/MM/YYYY'), resultadocotacaoitem.prazoentrega||' '||resultadocotacaoitem.tipoprazoentrega)
+              end  entrega
+             , resultadocotacaoitem.precoparaxqtde
+             , resultadocotacaoitem.preco_indice
+             , resultadocotacao.valor_indice_acordado
+             , resultadocotacao.data_indicefinanceiro
+             , itensordemcompra.quantidade_solic
+             , cotacaoitem.quantidade
+             , cotacaoitem.qtde_aprovada
+             , pessoa.nome
+             , pessoa.endereco||decode(pessoa.numero_endereco,null,null,' - '||pessoa.numero_endereco) endereco
+             , pessoa.complemento_endereco
+             , pessoa.bairro
+             , pessoa.cep
+             , cidade.cod_cidade
+             , cidade.estado
+             , ltrim(cidade.descricao) || '/' || cidade.estado nome_cidade
+             , fornecedor.cod_pessoa
+             , fornecedor.nomevendedor
+             , nvl(resultadocotacao.cod_tipocobranca,fornecedor.cod_tipocobranca)  cod_tipocobranca
+             , decode(fornecedor.cgc, '', fornecedor.cpf, fornecedor.cgc) cgc_cpf
+             , planopagamento.descricaoplano
+             , planopagamento.informarmanualmente
+             , tipofrete.descricaotipofrete
+             , tipofrete.cod_tipofrete
+             , pessoa_fun.nome nome_comprador
+             , nvl(pessoa_fun.email,pessoa_fun.email_alternativo) email_comprador
+             , resultadocotacaoitem_finaliz.cod_fornecedor_frete
+             , pessoatelefone_empresa.telefone
+             , pessoatelefone_empresa.ramal
+             , ordemcompra.dataoc database
+             , aprovacaoparacompra.dataaprovacao
+             , rh.fn_nomefuncionario(aprovacaoparacompra.cod_grupoempresa, aprovacaoparacompra.cod_funcionario) nomeaprovador
+             , resultadocotacaoitem.valor_icms_st
+             , vw_parcelas.documento
+             , vw_parcelas.datavcto
+             , vw_parcelas.valorparcela
+
+        from   faturamento.parametro_item parametro_item
+             , geral.pessoatelefone_empresa
+             , rh.pessoa pessoa_fun
+             , rh.funcionario
+             , rh.fisica
+             , rh.cidade
+             , rh.pessoa
+             , material.fornecedor
+             , material.planopagamento
+             , material.tipofrete
+             , material.cotacao
+             , material.cotacaoitem
+             , material.aprovacaoparacompra
+             , material.resultadocotacao
+             , material.resultadocotacaoitem_finaliz
+             , material.resultadocotacaoitem resultadocotacaoitem
+             , material.itensordemcompra itensordemcompra
+             , material.ordemcompra
+             , vw_parcelas vw_parcelas
+
+        where
+        ordemcompra.dataoc             between '01011900' and '01012050'
+        and  ordemcompra.nroc =    vw_parcelas.nroc
+
+
+
+        AND parametro_item.cod_material                 (+) = resultadocotacaoitem.cod_material
+        and    pessoatelefone_empresa.cod_pessoa           (+) = fisica.cod_pessoa
+        and    pessoa_fun.cod_pessoa                           = fisica.cod_pessoa
+        and    fisica.cpf                                      = funcionario.cpf
+        and    funcionario.cod_grupoempresa                    = cotacao.cod_grupoempresa
+        and    funcionario.cod_funcionario                     = cotacao.cod_funcionario
+        and    cidade.cod_cidade                               = pessoa.cod_cidade
+        and    pessoa.cod_pessoa                               = fornecedor.cod_pessoa
+        and    fornecedor.cod_fornecedor                       = ordemcompra.cod_fornecedor
+        and    planopagamento.cod_plano                        = ordemcompra.cod_plano
+        and    tipofrete.cod_tipofrete                     (+) = resultadocotacao.cod_tipofrete
+        and    cotacaoitem.nr_cotacao                          = ordemcompra.nr_cotacao
+        and    cotacaoitem.nr_solicitacao                      = itensordemcompra.nr_solicitacao --acrescentado pela erica
+        and    cotacaoitem.cod_material                        = itensordemcompra.cod_material
+        and    cotacao.nr_cotacao                              = ordemcompra.nr_cotacao
+        and    aprovacaoparacompra.nr_cotacao                  = resultadocotacaoitem.nr_cotacao
+        and    aprovacaoparacompra.cod_plano                   = resultadocotacaoitem.cod_plano
+        and    aprovacaoparacompra.cod_material                = resultadocotacaoitem.cod_material
+        and    aprovacaoparacompra.nr_solicitacao              = resultadocotacaoitem.nr_solicitacao
+        and    resultadocotacao.nr_cotacao                     = ordemcompra.nr_cotacao
+        and    resultadocotacao.cod_plano                      = ordemcompra.cod_plano
+        and    resultadocotacaoitem_finaliz.nr_cotacao     (+) = resultadocotacaoitem.nr_cotacao
+        and    resultadocotacaoitem_finaliz.cod_plano      (+) = resultadocotacaoitem.cod_plano
+        and    resultadocotacaoitem_finaliz.cod_material   (+) = resultadocotacaoitem.cod_material
+        and    resultadocotacaoitem_finaliz.nr_solicitacao (+) = resultadocotacaoitem.nr_solicitacao
+        and    resultadocotacaoitem.nr_solicitacao             = itensordemcompra.nr_solicitacao
+        and    resultadocotacaoitem.cod_material               = itensordemcompra.cod_material
+        and    resultadocotacaoitem.cod_plano                  = ordemcompra.cod_plano
+        and    resultadocotacaoitem.nr_cotacao                 = ordemcompra.nr_cotacao
+        and    itensordemcompra.nroc                           = ordemcompra.nroc
+         and ORDEMCOMPRA.Data_Envio is not null
+
+        /*order  by ordemcompra.nroc
+                , resultadocotacaoitem_finaliz.cod_fornecedor_frete
+                , resultadocotacaoitem.cod_material*/
+
+) tmp1
+order  by nroc
+        , cod_fornecedor_frete
+        , cod_material
+        )
+group by nroc,dataoc, cod_funcionario,cod_fornecedor,nome,observacao,  cod_material,desc_material, qtde_aprovada
+, preco, endereco, bairro, cep, desc_cidade,cod_funcionario, dataaprovacao, nomeaprovador, cgc_cpf,descontototal, desconto1, cod_objeto, cod_unidade, descricaoplano, observacao
+ ,datavcto, valorparcela
+
+union all
+
+select nroc,dataoc, cod_funcionario,cod_fornecedor,nome nome_fornecedor,observacao,  cod_material,desc_material, qtde_aprovada qtde
+, preco ,qtde_aprovada*preco-desconto1 total,qtde_aprovada*preco total2, null cod_objetocusto, endereco, bairro, cep, null fone, desc_cidade,cod_funcionario, dataaprovacao, nomeaprovador nome
+, cgc_cpf cgc, descontototal,desconto1,desconto1*-1 desconto2 , cod_objeto,cod_unidade, custo.fn_busca_descricao_oc(cod_objeto) desc_objeto, max(documento)
+, descricaoplano , observacao  , datavcto,valorparcela from (with vw_parcelas as (select parcelascontaspagar.cod_grupoempresa
+                          , parcelascontaspagar.cod_tipocontaspagar
+                          , parcelascontaspagar.documento
+                         , parcelascontaspagar.parcela
+                       --   , notafiscal.sequencia_nf
+                       --   , notafiscal.nrnf
+                       --   , notafiscal.serie
+                      --    , itensentrada.dataentrada_seq
+                          , ordemcompra.nroc
+                            , parcelascontaspagar.datavcto
+                          , parcelascontaspagar.valorparcela
+                     from   material.ordemcompra ordemcompra
+                          , financeiro.parcelascontaspagar parcelascontaspagar
+
+                     where  ordemcompra.dataoc             between '01011900' and '01012050'
+and    parcelascontaspagar.datapgto is null
+                     and  ordemcompra.nroc = parcelascontaspagar.documento
+                     and  ordemcompra.nroc = $P{NROC}
+                     and parcelascontaspagar.cod_tipocontaspagar = 262
+
+--                     and    parcelascontaspagar.origem           = 10
+                     and    parcelascontaspagar.datavcto   between to_date($P{DATAINICIO}, 'YYYY-MM-DD') and to_date($P{DATAFIM}, 'YYYY-MM-DD')
+                     and    parcelascontaspagar.cod_filial       = 1
+                     and    parcelascontaspagar.cod_empresa      = 1
+                     and    parcelascontaspagar.cod_grupoempresa = 1
+
+                     group by parcelascontaspagar.cod_grupoempresa
+                            , parcelascontaspagar.cod_tipocontaspagar
+                            , parcelascontaspagar.documento
+                            , parcelascontaspagar.parcela , ordemcompra.nroc , parcelascontaspagar.datavcto
+                          , parcelascontaspagar.valorparcela
+
+
+                    )
+
+
+select tmp1.nroc
+     , tmp1.nr_cotacao
+     , tmp1.cod_plano
+     , tmp1.dataoc
+     , tmp1.cod_funcionario
+     , tmp1.cod_grupoempresa_dest cod_grupoempresa
+     , tmp1.cod_grupoempresa_dest
+     , tmp1.cod_empresa
+     , tmp1.cod_filial
+     , tmp1.cod_fornecedor
+     , tmp1.observacao
+     , tmp1.provisaopelaordemouentrega
+     , tmp1.cod_indicefinanceiro
+     , tmp1.indicefinanceiro
+     , tmp1.cod_material
+     , tmp1.cod_material_relatorio
+     ,  material.fn_buscadescmaterial(tmp1.cod_material) desc_material
+     ,  material.fn_obterobjcustosolicitacao( tmp1.nr_cotacao,tmp1.cod_material) cod_objeto
+     , tmp1.preco
+     , tmp1.sequencia
+     , tmp1.aliquota_icms
+     , tmp1.observacao obs_rci
+     , tmp1.nr_solicitacao
+     , tmp1.perc_ipi
+     , tmp1.Base_Icms_St     --> OS 43391 UJB 07/05/2010
+     , tmp1.Aliquota_Icms_St --> OS 43391 UJB 07/05/2010
+     , tmp1.descontoporunidade
+     , tmp1.descontoporcentagem
+     , tmp1.vrdesc_rateio_ind
+     , tmp1.descontototal
+     , tmp1.prazoentrega
+     , tmp1.dataentrega
+     , tmp1.entrega
+     , tmp1.precoparaxqtde
+     , tmp1.preco_indice
+     , tmp1.valor_indice_acordado
+     , tmp1.data_indicefinanceiro
+     , tmp1.quantidade_solic
+     , tmp1.quantidade
+     , tmp1.qtde_aprovada
+     , tmp1.nome
+     , tmp1.endereco
+     , tmp1.complemento_endereco
+     , tmp1.bairro
+     , tmp1.cep
+     , tmp1.cod_cidade
+     , tmp1.estado
+     , tmp1.nome_cidade desc_cidade
+     , tmp1.cod_pessoa
+     , tmp1.nomevendedor
+     , tmp1.cod_tipocobranca
+     , tmp1.cgc_cpf
+     , tmp1.descricaoplano
+     , tmp1.informarmanualmente
+     , tmp1.descricaotipofrete
+     , tmp1.cod_tipofrete
+     , tmp1.nome_comprador
+     , tmp1.email_comprador
+     , tmp1.cod_fornecedor_frete
+     , tmp1.telefone
+     , tmp1.ramal
+     , tmp1.database
+     , tmp1.dataaprovacao
+     , tmp1.nomeaprovador
+     , tmp1.valor_icms_st
+     , geral.fn_inf_colaborador(pn_cod_colaborador => tmp1.cod_fornecedor,
+                                pv_palavra_chave   => 'RUC') RUC
+     , (select estado.estado
+       from   material.estado estado
+       where  estado.sigla = tmp1.estado) departamentoPY
+     , count(tmp1.nroc) over () qtdregistros
+     , tmp1.documento
+      , tmp1.datavcto
+     ,tmp1.valorparcela
+
+
+    , material.fn_busca_descontos_oc(tmp1.nr_cotacao, tmp1.cod_plano , tmp1.cod_material,tmp1.nr_solicitacao) desconto1
+    , (select cod_unidade from material.material
+     where material.cod_material = tmp1.cod_material) cod_unidade
+from   (select  ordemcompra.nroc
+             , ordemcompra.nr_cotacao
+             , ordemcompra.cod_plano
+             , ordemcompra.dataoc
+             , ordemcompra.cod_funcionario
+             , ordemcompra.cod_grupoempresa_dest cod_grupoempresa
+             , ordemcompra.cod_grupoempresa_dest
+             , ordemcompra.cod_empresa
+             , ordemcompra.cod_filial
+             , ordemcompra.cod_fornecedor
+             , ordemcompra.observacao
+             , ordemcompra.provisaopelaordemouentrega
+             , ordemcompra.cod_indicefinanceiro
+             , case when ordemcompra.cod_indicefinanceiro is not null then (select ordemcompra.cod_indicefinanceiro || '-' || indicefinanceiro.descricao
+                                                                            from   financeiro.indicefinanceiro
+                                                                            where  indicefinanceiro.cod_indicefinanceiro = ordemcompra.cod_indicefinanceiro)
+                            else (select parametro_financeiro.cod_indicefinanceiropadrao || '-' || indicefinanceiro.descricao
+                                  from   financeiro.parametro_financeiro
+                                       , financeiro.indicefinanceiro
+                                  where  indicefinanceiro.cod_indicefinanceiro = parametro_financeiro.cod_indicefinanceiropadrao
+                                  and    parametro_financeiro.cod_filial       = ordemcompra.cod_filial
+                                  and    parametro_financeiro.cod_empresa      = ordemcompra.cod_empresa
+                                  and    parametro_financeiro.cod_grupoempresa = ordemcompra.cod_grupoempresa_dest)
+                       end indicefinanceiro
+             , resultadocotacaoitem.cod_material
+             , case when (select parametrosmaterial.visualiza_codigopadrao
+                                  from   material.parametrosmaterial parametrosmaterial
+                                  where  parametrosmaterial.cod_filial       = ordemcompra.cod_filial
+                                  and    parametrosmaterial.cod_empresa      = ordemcompra.cod_empresa
+                                  and    parametrosmaterial.cod_grupoempresa = ordemcompra.cod_grupoempresa_dest) = 'N' then
+                                 to_char(resultadocotacaoitem.cod_material)
+                            else to_char(nvl(parametro_item.cod_padrao_item, resultadocotacaoitem.cod_material))
+                       end  cod_material_relatorio
+             , resultadocotacaoitem.preco
+             , resultadocotacaoitem.sequencia
+             , resultadocotacaoitem.aliquota_icms
+             , resultadocotacaoitem.observacao obs_rci
+             , decode('N','N',resultadocotacaoitem.nr_solicitacao,null) nr_solicitacao
+             , resultadocotacaoitem.perc_ipi
+             , resultadocotacaoitem.Base_Icms_St     --> OS 43391 UJB 07/05/2010
+             , resultadocotacaoitem.Aliquota_Icms_St --> OS 43391 UJB 07/05/2010
+             , resultadocotacaoitem.descontoporunidade
+             , resultadocotacaoitem.descontoporcentagem
+             , ((resultadocotacaoitem.vrdesc_rateio_ind / cotacaoitem.qtde_aprovada) * itensordemcompra.quantidade_solic) vrdesc_rateio_ind
+             , ((resultadocotacaoitem.descontototal / cotacaoitem.qtde_aprovada) * itensordemcompra.quantidade_solic) descontototal
+             , resultadocotacaoitem.prazoentrega
+             , resultadocotacaoitem.dataentrega
+             , case when (select count(*)
+                          from   material.itensordemcompraentrega
+                          where  itensordemcompraentrega.cod_material   = itensordemcompra.cod_material
+                          and    itensordemcompraentrega.nr_solicitacao = itensordemcompra.nr_solicitacao
+                          and    itensordemcompraentrega.nroc           = itensordemcompra.nroc) > 1 then ''
+              else decode(nvl(resultadocotacaoitem.prazoentrega, 0), 0, to_char(resultadocotacaoitem.dataentrega, 'DD/MM/YYYY'), resultadocotacaoitem.prazoentrega||' '||resultadocotacaoitem.tipoprazoentrega)
+              end  entrega
+             , resultadocotacaoitem.precoparaxqtde
+             , resultadocotacaoitem.preco_indice
+             , resultadocotacao.valor_indice_acordado
+             , resultadocotacao.data_indicefinanceiro
+             , itensordemcompra.quantidade_solic
+             , cotacaoitem.quantidade
+             , cotacaoitem.qtde_aprovada
+             , pessoa.nome
+             , pessoa.endereco||decode(pessoa.numero_endereco,null,null,' - '||pessoa.numero_endereco) endereco
+             , pessoa.complemento_endereco
+             , pessoa.bairro
+             , pessoa.cep
+             , cidade.cod_cidade
+             , cidade.estado
+             , ltrim(cidade.descricao) || '/' || cidade.estado nome_cidade
+             , fornecedor.cod_pessoa
+             , fornecedor.nomevendedor
+             , nvl(resultadocotacao.cod_tipocobranca,fornecedor.cod_tipocobranca)  cod_tipocobranca
+             , decode(fornecedor.cgc, '', fornecedor.cpf, fornecedor.cgc) cgc_cpf
+             , planopagamento.descricaoplano
+             , planopagamento.informarmanualmente
+             , tipofrete.descricaotipofrete
+             , tipofrete.cod_tipofrete
+             , pessoa_fun.nome nome_comprador
+             , nvl(pessoa_fun.email,pessoa_fun.email_alternativo) email_comprador
+             , resultadocotacaoitem_finaliz.cod_fornecedor_frete
+             , pessoatelefone_empresa.telefone
+             , pessoatelefone_empresa.ramal
+             , ordemcompra.dataoc database
+             , aprovacaoparacompra.dataaprovacao
+             , rh.fn_nomefuncionario(aprovacaoparacompra.cod_grupoempresa, aprovacaoparacompra.cod_funcionario) nomeaprovador
+             , resultadocotacaoitem.valor_icms_st
+             , vw_parcelas.documento
+
+             , vw_parcelas.datavcto
+             , vw_parcelas.valorparcela
+        from   faturamento.parametro_item parametro_item
+             , geral.pessoatelefone_empresa
+             , rh.pessoa pessoa_fun
+             , rh.funcionario
+             , rh.fisica
+             , rh.cidade
+             , rh.pessoa
+             , material.fornecedor
+             , material.planopagamento
+             , material.tipofrete
+             , material.cotacao
+             , material.cotacaoitem
+             , material.aprovacaoparacompra
+             , material.resultadocotacao
+             , material.resultadocotacaoitem_finaliz
+             , material.resultadocotacaoitem resultadocotacaoitem
+             , material.itensordemcompra itensordemcompra
+             , material.ordemcompra
+    , vw_parcelas vw_parcelas
+
+        where
+        ordemcompra.dataoc             between '01011900' and '01012050'
+        and  ordemcompra.nroc =    vw_parcelas.nroc
+
+
+
+        AND parametro_item.cod_material                 (+) = resultadocotacaoitem.cod_material
+        and    pessoatelefone_empresa.cod_pessoa           (+) = fisica.cod_pessoa
+        and    pessoa_fun.cod_pessoa                           = fisica.cod_pessoa
+        and    fisica.cpf                                      = funcionario.cpf
+        and    funcionario.cod_grupoempresa                    = cotacao.cod_grupoempresa
+        and    funcionario.cod_funcionario                     = cotacao.cod_funcionario
+        and    cidade.cod_cidade                               = pessoa.cod_cidade
+        and    pessoa.cod_pessoa                               = fornecedor.cod_pessoa
+        and    fornecedor.cod_fornecedor                       = ordemcompra.cod_fornecedor
+        and    planopagamento.cod_plano                        = ordemcompra.cod_plano
+        and    tipofrete.cod_tipofrete                     (+) = resultadocotacao.cod_tipofrete
+        and    cotacaoitem.nr_cotacao                          = ordemcompra.nr_cotacao
+        and    cotacaoitem.nr_solicitacao                      = itensordemcompra.nr_solicitacao --acrescentado pela erica
+        and    cotacaoitem.cod_material                        = itensordemcompra.cod_material
+        and    cotacao.nr_cotacao                              = ordemcompra.nr_cotacao
+        and    aprovacaoparacompra.nr_cotacao                  = resultadocotacaoitem.nr_cotacao
+        and    aprovacaoparacompra.cod_plano                   = resultadocotacaoitem.cod_plano
+        and    aprovacaoparacompra.cod_material                = resultadocotacaoitem.cod_material
+        and    aprovacaoparacompra.nr_solicitacao              = resultadocotacaoitem.nr_solicitacao
+        and    resultadocotacao.nr_cotacao                     = ordemcompra.nr_cotacao
+        and    resultadocotacao.cod_plano                      = ordemcompra.cod_plano
+        and    resultadocotacaoitem_finaliz.nr_cotacao     (+) = resultadocotacaoitem.nr_cotacao
+        and    resultadocotacaoitem_finaliz.cod_plano      (+) = resultadocotacaoitem.cod_plano
+        and    resultadocotacaoitem_finaliz.cod_material   (+) = resultadocotacaoitem.cod_material
+        and    resultadocotacaoitem_finaliz.nr_solicitacao (+) = resultadocotacaoitem.nr_solicitacao
+        and    resultadocotacaoitem.nr_solicitacao             = itensordemcompra.nr_solicitacao
+        and    resultadocotacaoitem.cod_material               = itensordemcompra.cod_material
+        and    resultadocotacaoitem.cod_plano                  = ordemcompra.cod_plano
+        and    resultadocotacaoitem.nr_cotacao                 = ordemcompra.nr_cotacao
+        and    itensordemcompra.nroc                           = ordemcompra.nroc
+         and ORDEMCOMPRA.Data_Envio is not null
+
+        /*order  by ordemcompra.nroc
+                , resultadocotacaoitem_finaliz.cod_fornecedor_frete
+                , resultadocotacaoitem.cod_material*/
+
+) tmp1
+order  by nroc
+        , cod_fornecedor_frete
+        , cod_material
+        )
+group by nroc,dataoc, cod_funcionario,cod_fornecedor,nome,observacao,  cod_material,desc_material, qtde_aprovada
+, preco, endereco, bairro, cep, desc_cidade,cod_funcionario, dataaprovacao, nomeaprovador
+, cgc_cpf,descontototal, desconto1, cod_objeto, cod_unidade, descricaoplano, observacao ,datavcto
+     ,valorparcela
+order by nroc]]>
+	</queryString>
+	<field name="NROC" class="java.math.BigDecimal"/>
+	<field name="DATAOC" class="java.sql.Timestamp"/>
+	<field name="COD_FUNCIONARIO" class="java.math.BigDecimal"/>
+	<field name="COD_FORNECEDOR" class="java.math.BigDecimal"/>
+	<field name="NOME_FORNECEDOR" class="java.lang.String"/>
+	<field name="OBSERVACAO" class="java.lang.String"/>
+	<field name="COD_MATERIAL" class="java.math.BigDecimal"/>
+	<field name="DESC_MATERIAL" class="java.lang.String"/>
+	<field name="QTDE" class="java.math.BigDecimal"/>
+	<field name="PRECO" class="java.math.BigDecimal"/>
+	<field name="TOTAL" class="java.math.BigDecimal"/>
+	<field name="TOTAL2" class="java.math.BigDecimal"/>
+	<field name="COD_OBJETOCUSTO" class="java.lang.String"/>
+	<field name="ENDERECO" class="java.lang.String"/>
+	<field name="BAIRRO" class="java.lang.String"/>
+	<field name="CEP" class="java.lang.String"/>
+	<field name="FONE" class="java.lang.String"/>
+	<field name="DESC_CIDADE" class="java.lang.String"/>
+	<field name="DATAAPROVACAO" class="java.sql.Timestamp"/>
+	<field name="NOME" class="java.lang.String"/>
+	<field name="CGC" class="java.lang.String"/>
+	<field name="DESCONTOTOTAL" class="java.math.BigDecimal"/>
+	<field name="DESCONTO1" class="java.math.BigDecimal"/>
+	<field name="DESCONTO2" class="java.math.BigDecimal"/>
+	<field name="COD_OBJETO" class="java.math.BigDecimal"/>
+	<field name="COD_UNIDADE" class="java.lang.String"/>
+	<field name="DESC_OBJETO" class="java.lang.String"/>
+	<field name="MAX(DOCUMENTO)" class="java.math.BigDecimal"/>
+	<field name="DESCRICAOPLANO" class="java.lang.String"/>
+	<field name="DATAVCTO" class="java.sql.Timestamp"/>
+	<field name="VALORPARCELA" class="java.math.BigDecimal"/>
+	<variable name="TOTAL_1" class="java.math.BigDecimal" resetType="Group" resetGroup="nroc" calculation="Sum">
+		<variableExpression><![CDATA[$F{TOTAL}]]></variableExpression>
+	</variable>
+	<variable name="TOTAL2_1" class="java.math.BigDecimal" resetType="Group" resetGroup="nroc" calculation="Sum">
+		<variableExpression><![CDATA[$F{TOTAL2}]]></variableExpression>
+	</variable>
+	<variable name="DESCONTO1_1" class="java.math.BigDecimal" resetType="Group" resetGroup="nroc" calculation="Sum">
+		<variableExpression><![CDATA[$F{DESCONTO1}]]></variableExpression>
+	</variable>
+	<variable name="DESCONTO2_1" class="java.math.BigDecimal" resetType="Group" resetGroup="nroc" calculation="Sum">
+		<variableExpression><![CDATA[$F{DESCONTO2}]]></variableExpression>
+	</variable>
+	<variable name="DESCRICAOPLANO_1" class="java.lang.Integer" resetType="Group" resetGroup="nroc" calculation="Count">
+		<variableExpression><![CDATA[$F{DESCRICAOPLANO}]]></variableExpression>
+	</variable>
+	<group name="nroc" isStartNewPage="true">
+		<groupExpression><![CDATA[$F{MAX(DOCUMENTO)}]]></groupExpression>
+		<groupHeader>
+			<band height="112">
+				<staticText>
+					<reportElement x="0" y="2" width="105" height="12" isRemoveLineWhenBlank="true" uuid="81acb5b3-61e9-4f39-8bcb-3713c0e0084d"/>
+					<textElement>
+						<font size="9" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Ordem de Compra Nº:]]></text>
+				</staticText>
+				<textField>
+					<reportElement x="105" y="2" width="100" height="12" uuid="e284aca6-01c7-4049-9af4-a5aa4740d7e8"/>
+					<textElement>
+						<font size="9" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$F{NROC}]]></textFieldExpression>
+				</textField>
+				<staticText>
+					<reportElement x="405" y="2" width="47" height="12" isRemoveLineWhenBlank="true" uuid="2e0fd929-c774-4c74-9058-462134df6b95"/>
+					<textElement>
+						<font size="9" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Data OC:]]></text>
+				</staticText>
+				<textField pattern="dd/MM/yyyy">
+					<reportElement x="455" y="2" width="100" height="12" uuid="68c5e0d2-1a97-4c19-bf90-6f8acdc73066"/>
+					<textElement>
+						<font size="9" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$F{DATAOC}]]></textFieldExpression>
+				</textField>
+				<line>
+					<reportElement x="0" y="2" width="555" height="1" uuid="4c666fea-157a-46d8-8b94-f6a87bca7e76"/>
+				</line>
+				<line>
+					<reportElement x="0" y="13" width="555" height="1" uuid="f91c0944-2002-4e20-83f7-06733cb63ece"/>
+				</line>
+				<staticText>
+					<reportElement x="0" y="14" width="61" height="12" isRemoveLineWhenBlank="true" uuid="bf2da43a-ed79-4e99-8c2f-4b8b254bac88"/>
+					<textElement textAlignment="Right">
+						<font size="9" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Fornecedor:]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="0" y="26" width="61" height="12" isRemoveLineWhenBlank="true" uuid="42b4bc75-fb2e-4c0f-9f80-a39ed0a1daba"/>
+					<textElement textAlignment="Right">
+						<font size="9" isBold="false"/>
+					</textElement>
+					<text><![CDATA[CNPJ/CPF:]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="0" y="38" width="61" height="12" isRemoveLineWhenBlank="true" uuid="ba767d88-da51-4eb8-8f71-cc921c759b4a"/>
+					<textElement textAlignment="Right">
+						<font size="9" isBold="false"/>
+					</textElement>
+					<text><![CDATA[Endereço:]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="0" y="50" width="61" height="12" isRemoveLineWhenBlank="true" uuid="6429f8c7-fa13-494a-94e7-899c23d17c9a"/>
+					<textElement textAlignment="Right">
+						<font size="9" isBold="false"/>
+					</textElement>
+					<text><![CDATA[Bairro:]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="0" y="62" width="61" height="12" isRemoveLineWhenBlank="true" uuid="1fecbfe4-205e-4378-96ea-e15cda62f8e4"/>
+					<textElement textAlignment="Right">
+						<font size="9" isBold="false"/>
+					</textElement>
+					<text><![CDATA[Contato:]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="0" y="74" width="61" height="12" isRemoveLineWhenBlank="true" uuid="10bc7910-e6a3-4698-96e7-b5892c6dd3ea"/>
+					<textElement textAlignment="Right">
+						<font size="9" isBold="false"/>
+					</textElement>
+					<text><![CDATA[Cond. Pagto:]]></text>
+				</staticText>
+				<line>
+					<reportElement x="0" y="86" width="555" height="1" uuid="2d3d1838-c518-456b-8838-9426c68d92c2"/>
+				</line>
+				<staticText>
+					<reportElement x="0" y="87" width="38" height="12" isRemoveLineWhenBlank="true" uuid="be8867ab-2cc7-4a84-a0ac-3c4ff27ec3d4"/>
+					<textElement>
+						<font size="9" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Código]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="46" y="87" width="86" height="12" isRemoveLineWhenBlank="true" uuid="2c89ee2e-073b-421b-997c-40ad538d6ac2"/>
+					<textElement>
+						<font size="9" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Descrição Material]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="181" y="87" width="27" height="12" isRemoveLineWhenBlank="true" uuid="da847457-d6cc-43b7-81ff-117e3990a4d4"/>
+					<textElement>
+						<font size="9" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Qtde.]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="208" y="87" width="27" height="12" isRemoveLineWhenBlank="true" uuid="d4a62a2f-1db0-4c49-8925-2b612af232b9"/>
+					<textElement textAlignment="Center">
+						<font size="9" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Un.]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="235" y="86" width="47" height="12" isRemoveLineWhenBlank="true" uuid="c58cafdd-f81a-484a-ae3c-b6356d96e312"/>
+					<textElement>
+						<font size="9" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Vlr. Unit.]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="282" y="86" width="47" height="12" isRemoveLineWhenBlank="true" uuid="d0ee60cc-86af-41df-8eb0-ddbc52fd3680"/>
+					<textElement>
+						<font size="9" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Vlr. Desc.]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="329" y="86" width="47" height="12" isRemoveLineWhenBlank="true" uuid="8e327c44-4929-4975-b5e7-5a50c09d7b68"/>
+					<textElement>
+						<font size="9" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Vlr. Total]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="372" y="86" width="22" height="12" isRemoveLineWhenBlank="true" uuid="00e5f208-4ed8-488c-aaf5-7856cfab7a8c"/>
+					<textElement>
+						<font size="9" isBold="true"/>
+					</textElement>
+					<text><![CDATA[%IPI]]></text>
+				</staticText>
+				<line>
+					<reportElement x="0" y="110" width="555" height="1" uuid="1cba23f8-0cbd-4ecd-b0f9-b4a6a0f625c2"/>
+				</line>
+				<staticText>
+					<reportElement x="395" y="86" width="34" height="23" isRemoveLineWhenBlank="true" uuid="68d12fee-7f76-45ea-b024-9daed2153f7c"/>
+					<textElement textAlignment="Right">
+						<font size="9" isBold="true"/>
+					</textElement>
+					<text><![CDATA[%ICMS ST]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="431" y="86" width="38" height="23" isRemoveLineWhenBlank="true" uuid="53d95f60-a2ca-4d75-9c3b-f219ce0bbd8b"/>
+					<textElement textAlignment="Right">
+						<font size="9" isBold="true"/>
+					</textElement>
+					<text><![CDATA[%BASE ICMS ST]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="470" y="86" width="38" height="23" isRemoveLineWhenBlank="true" uuid="d6ee7868-84fd-4ce1-96e6-a6d18ad4f345"/>
+					<textElement textAlignment="Right">
+						<font size="9" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Vlr. Tot. ICMS ST]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="508" y="86" width="47" height="23" isRemoveLineWhenBlank="true" uuid="73306cbc-1953-4ad6-af36-93fa6fd9a3e9"/>
+					<textElement textAlignment="Right">
+						<font size="9" isBold="true"/>
+					</textElement>
+					<text><![CDATA[(*) Prazo Entrega]]></text>
+				</staticText>
+				<textField>
+					<reportElement x="61" y="14" width="34" height="12" uuid="8655882e-a269-4608-b855-2abc845d09df"/>
+					<textElement textAlignment="Center">
+						<font size="9" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$F{COD_FORNECEDOR}]]></textFieldExpression>
+				</textField>
+				<textField>
+					<reportElement x="95" y="14" width="334" height="12" uuid="ee7cc6d2-9e59-4e4a-afc2-d2bfc0fb540b"/>
+					<textElement>
+						<font size="9" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$F{NOME_FORNECEDOR}]]></textFieldExpression>
+				</textField>
+				<textField>
+					<reportElement x="66" y="38" width="368" height="12" uuid="5e730dbb-8a89-4a02-81a7-3ee3dc3cc9e7"/>
+					<textElement>
+						<font size="9"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$F{ENDERECO}]]></textFieldExpression>
+				</textField>
+				<textField>
+					<reportElement x="66" y="50" width="259" height="12" uuid="51ceff94-2d08-4264-8205-ca4e986c58d2"/>
+					<textElement>
+						<font size="9"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$F{BAIRRO}]]></textFieldExpression>
+				</textField>
+				<textField isBlankWhenNull="true">
+					<reportElement x="66" y="62" width="259" height="12" uuid="d2734f7f-2887-47f7-9202-d486c7c78ac4"/>
+					<textElement>
+						<font size="9"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$F{FONE}]]></textFieldExpression>
+				</textField>
+				<staticText>
+					<reportElement x="249" y="50" width="29" height="12" isRemoveLineWhenBlank="true" uuid="857425aa-4d31-4e8b-ad20-dbfc0fb0caa3"/>
+					<textElement textAlignment="Right">
+						<font size="9" isBold="false"/>
+					</textElement>
+					<text><![CDATA[CEP:]]></text>
+				</staticText>
+				<textField>
+					<reportElement x="279" y="50" width="100" height="12" uuid="4c73764f-2623-48e7-b500-2d80982d5943"/>
+					<textElement>
+						<font size="9"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$F{CEP}]]></textFieldExpression>
+				</textField>
+				<staticText>
+					<reportElement x="249" y="62" width="29" height="12" isRemoveLineWhenBlank="true" uuid="0ccbc9be-3e30-468f-9383-485e5d8c172d"/>
+					<textElement textAlignment="Right">
+						<font size="9" isBold="false"/>
+					</textElement>
+					<text><![CDATA[Fone:]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="234" y="74" width="44" height="12" isRemoveLineWhenBlank="true" uuid="0a059721-a451-49bb-afef-4c6d90e47a80"/>
+					<textElement textAlignment="Right">
+						<font size="9" isBold="false"/>
+					</textElement>
+					<text><![CDATA[Frete:]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="364" y="50" width="41" height="12" isRemoveLineWhenBlank="true" uuid="e76981e0-47a5-4e77-82b9-9a845285e0c8"/>
+					<textElement textAlignment="Right">
+						<font size="9" isBold="false"/>
+					</textElement>
+					<text><![CDATA[Cidade:]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="364" y="62" width="41" height="12" isRemoveLineWhenBlank="true" uuid="5e6ad077-03b0-4350-a1d2-07eb1c4ed7e0"/>
+					<textElement textAlignment="Right">
+						<font size="9" isBold="false"/>
+					</textElement>
+					<text><![CDATA[Fax:]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="346" y="74" width="59" height="12" isRemoveLineWhenBlank="true" uuid="d9979ab9-15e4-42a7-a061-b4362b6deff6"/>
+					<textElement textAlignment="Right">
+						<font size="9" isBold="false"/>
+					</textElement>
+					<text><![CDATA[Cobrança:]]></text>
+				</staticText>
+				<textField>
+					<reportElement x="415" y="50" width="140" height="12" uuid="f1f232de-9f85-4d73-b064-370a347c846d"/>
+					<textElement>
+						<font size="9"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$F{DESC_CIDADE}]]></textFieldExpression>
+				</textField>
+				<textField pattern="">
+					<reportElement x="66" y="26" width="365" height="12" uuid="e6e4866b-8d50-43c8-b5ca-d77f65124844"/>
+					<textElement>
+						<font size="9"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$F{CGC}]]></textFieldExpression>
+				</textField>
+				<textField>
+					<reportElement x="66" y="74" width="168" height="12" uuid="d7d87e4a-a296-4cb3-8eb0-4f9fa2908e00"/>
+					<textElement>
+						<font size="9"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$F{DESCRICAOPLANO}]]></textFieldExpression>
+				</textField>
+			</band>
+		</groupHeader>
+		<groupFooter>
+			<band height="157">
+				<rectangle>
+					<reportElement x="12" y="83" width="223" height="49" uuid="40d739fb-0d57-4210-b7c2-f41bd28ab2f7"/>
+				</rectangle>
+				<staticText>
+					<reportElement x="300" y="131" width="60" height="12" isRemoveLineWhenBlank="true" uuid="a030bc19-15f9-44da-b10b-b364e3b731d2"/>
+					<textElement textAlignment="Right">
+						<font size="9" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Aprovador:]]></text>
+				</staticText>
+				<line>
+					<reportElement x="310" y="108" width="242" height="1" uuid="68a7fb1e-197e-482f-833a-8f68424594a9"/>
+				</line>
+				<staticText>
+					<reportElement x="310" y="108" width="242" height="12" isRemoveLineWhenBlank="true" uuid="b2584999-e76e-4c39-a4ff-53d98c305efe"/>
+					<textElement textAlignment="Center">
+						<font size="9" isBold="true"/>
+					</textElement>
+					<text><![CDATA[USINA SANTA CLOTILDE S/A]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="259" y="143" width="101" height="12" isRemoveLineWhenBlank="true" uuid="29d00aa5-331d-477f-a697-a96c32b39034"/>
+					<textElement textAlignment="Right">
+						<font size="9" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Data da aprovação:]]></text>
+				</staticText>
+				<textField>
+					<reportElement x="364" y="131" width="177" height="12" uuid="ee2e6c7d-d6e0-4475-9aa1-5fbd21a2be74"/>
+					<textElement>
+						<font size="9"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$F{NOME}]]></textFieldExpression>
+				</textField>
+				<textField pattern="dd/MM/yyyy">
+					<reportElement x="364" y="143" width="177" height="12" uuid="ef068659-de5d-4cb3-b04c-fbbc3eb1375a"/>
+					<textElement>
+						<font size="9"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$F{DATAAPROVACAO}]]></textFieldExpression>
+				</textField>
+				<staticText>
+					<reportElement x="405" y="66" width="136" height="12" isRemoveLineWhenBlank="true" uuid="d2bf7b2a-7362-46cb-ae07-37c2ce9f3a61"/>
+					<textElement textAlignment="Right">
+						<font size="9" isBold="true"/>
+					</textElement>
+					<text><![CDATA[______/________/______]]></text>
+				</staticText>
+				<line>
+					<reportElement x="0" y="59" width="555" height="1" uuid="84423436-a4b5-4fc7-a043-155e865af12e"/>
+				</line>
+				<staticText>
+					<reportElement x="359" y="2" width="82" height="12" isRemoveLineWhenBlank="true" uuid="8b8dbbb6-5fca-4517-b99a-0d71bef4771d"/>
+					<textElement textAlignment="Right">
+						<font size="9" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Sub-total:]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="359" y="44" width="82" height="12" isRemoveLineWhenBlank="true" uuid="13342723-ef35-4396-b44b-6e656214a5fd"/>
+					<textElement textAlignment="Right">
+						<font size="9" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Total:]]></text>
+				</staticText>
+				<textField pattern="#,##0.00;(#,##0.00)">
+					<reportElement x="449" y="44" width="100" height="12" uuid="d6bec782-0660-4d2d-a798-da9b445f2df2"/>
+					<textElement textAlignment="Right">
+						<font size="9" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{TOTAL_1}]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0.00;(#,##0.00)">
+					<reportElement x="441" y="2" width="108" height="12" uuid="ae60910e-083a-4556-83a6-0c214e7967fa"/>
+					<textElement textAlignment="Right">
+						<font size="9" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{TOTAL2_1}]]></textFieldExpression>
+				</textField>
+				<staticText>
+					<reportElement x="360" y="14" width="81" height="12" isRemoveLineWhenBlank="true" uuid="55348bc4-fee1-4700-97fc-b79df19b3d5e"/>
+					<textElement textAlignment="Right">
+						<font size="9" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Desconto:]]></text>
+				</staticText>
+				<textField pattern="#,##0.00;-#,##0.00">
+					<reportElement x="441" y="14" width="108" height="12" uuid="aa9a3f1a-92ea-4bd5-ae1f-270eb8ef2033"/>
+					<textElement textAlignment="Right">
+						<font size="9" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{DESCONTO2_1}]]></textFieldExpression>
+				</textField>
+				<line>
+					<reportElement x="449" y="44" width="100" height="1" uuid="f85c92d9-c32b-42e9-ad8e-73fd3ca10a90"/>
+				</line>
+				<textField pattern="dd/MM/yyyy">
+					<reportElement x="43" y="109" width="71" height="22" uuid="60665109-e8ef-48b4-a959-9746bc0dea82"/>
+					<textElement>
+						<font size="9" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$F{DATAVCTO}]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0.00">
+					<reportElement x="132" y="109" width="92" height="22" uuid="60250d78-5d5f-4537-850b-38567199f99d"/>
+					<textElement>
+						<font size="9" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$F{VALORPARCELA}]]></textFieldExpression>
+				</textField>
+				<staticText>
+					<reportElement x="43" y="97" width="71" height="12" isRemoveLineWhenBlank="true" uuid="f98ed254-666e-4edd-a020-f45874547561"/>
+					<textElement>
+						<font size="9" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Vencimento]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="132" y="97" width="93" height="12" isRemoveLineWhenBlank="true" uuid="0c5a3b95-3b14-42fb-8d07-c86cd7cd6b4b"/>
+					<textElement>
+						<font size="9" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Valor]]></text>
+				</staticText>
+				<rectangle>
+					<reportElement x="12" y="83" width="224" height="12" backcolor="#CCCCCC" uuid="3e7559fb-d28a-4be7-ade4-11fbea217d00"/>
+				</rectangle>
+				<staticText>
+					<reportElement x="12" y="83" width="222" height="12" isRemoveLineWhenBlank="true" uuid="56679e7b-7ed3-4132-badb-14462085a49e"/>
+					<textElement textAlignment="Center">
+						<font size="9" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Pagamento]]></text>
+				</staticText>
+			</band>
+		</groupFooter>
+	</group>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="7" splitType="Stretch"/>
+	</title>
+	<pageHeader>
+		<band height="1" splitType="Stretch"/>
+	</pageHeader>
+	<columnHeader>
+		<band height="116" splitType="Stretch">
+			<rectangle>
+				<reportElement x="12" y="12" width="120" height="82" uuid="8c6d5c53-c0a2-4f20-80a1-02798c55e078"/>
+			</rectangle>
+			<image>
+				<reportElement x="22" y="20" width="110" height="74" uuid="53b4b7f0-0e75-4357-9a42-e0d7ffa1234c"/>
+				<imageExpression><![CDATA[$P{LOGO}]]></imageExpression>
+			</image>
+			<staticText>
+				<reportElement x="205" y="0" width="141" height="12" isRemoveLineWhenBlank="true" uuid="ac176006-3e39-4e58-82a5-926d5111272c"/>
+				<textElement textAlignment="Center">
+					<font size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[USINA SANTA CLOTILDE S/A]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="82" y="12" width="141" height="12" isRemoveLineWhenBlank="true" uuid="0a152b96-6098-48cd-884c-57ec33cba42c"/>
+				<textElement textAlignment="Right">
+					<font size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Grupo Empresa:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="82" y="24" width="141" height="12" isRemoveLineWhenBlank="true" uuid="763b3289-1903-4e62-a224-3d61631366b8"/>
+				<textElement textAlignment="Right">
+					<font size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Empresa:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="82" y="36" width="141" height="12" isRemoveLineWhenBlank="true" uuid="d984f7fb-20af-416d-8653-1c2f025e89b7"/>
+				<textElement textAlignment="Right">
+					<font size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Nome Fantasia:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="82" y="48" width="141" height="12" isRemoveLineWhenBlank="true" uuid="367bc285-9ab2-4bc7-b37a-bce7d4d08cbe"/>
+				<textElement textAlignment="Right">
+					<font size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[CNPJ:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="92" y="58" width="131" height="12" isRemoveLineWhenBlank="true" uuid="6ab6ac22-5a3f-4ee5-9571-b52bf0ddb9d7"/>
+				<textElement textAlignment="Right">
+					<font size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Endereço:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="92" y="70" width="131" height="12" isRemoveLineWhenBlank="true" uuid="eb63dfc5-1ef1-45d4-8121-72a911f69b41"/>
+				<textElement textAlignment="Right">
+					<font size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Bairro:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="92" y="82" width="131" height="12" isRemoveLineWhenBlank="true" uuid="a0a4c33c-0ce5-4ae3-a4e3-324da923b9d2"/>
+				<textElement textAlignment="Right">
+					<font size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Cidade:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="92" y="94" width="131" height="12" isRemoveLineWhenBlank="true" uuid="f0d3f7a6-66ea-4bd5-ad00-8ca841d1f498"/>
+				<textElement textAlignment="Right">
+					<font size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Tel Compras:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="229" y="12" width="131" height="12" isRemoveLineWhenBlank="true" uuid="96c0c463-9401-4100-a4e8-ae6b2f97d6af"/>
+				<textElement>
+					<font size="9" isBold="false"/>
+				</textElement>
+				<text><![CDATA[Santa Clotilde]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="229" y="24" width="131" height="12" isRemoveLineWhenBlank="true" uuid="9f7ddabb-0ff5-4b0b-a909-624764da6643"/>
+				<textElement>
+					<font size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Usina Santa Clotilde]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="229" y="36" width="131" height="12" isRemoveLineWhenBlank="true" uuid="1bac6285-1655-4dff-9ede-933ff4a42c8a"/>
+				<textElement>
+					<font size="9" isBold="false"/>
+				</textElement>
+				<text><![CDATA[Usina Santa Clotilde S/A]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="229" y="48" width="131" height="12" isRemoveLineWhenBlank="true" uuid="d3dedcf3-2d8a-49e6-a7e3-e40bf1ec7605"/>
+				<textElement>
+					<font size="9" isBold="false"/>
+				</textElement>
+				<text><![CDATA[12607842/0001-95]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="229" y="60" width="131" height="12" isRemoveLineWhenBlank="true" uuid="ff09f919-1fad-4762-aa22-a45f99369166"/>
+				<textElement>
+					<font size="9" isBold="false"/>
+				</textElement>
+				<text><![CDATA[Faz. Pau Amarelo, S/N]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="229" y="70" width="131" height="12" isRemoveLineWhenBlank="true" uuid="3cbc5667-34e7-4150-980a-273729b84153"/>
+				<textElement>
+					<font size="9" isBold="false"/>
+				</textElement>
+				<text><![CDATA[Zona Rural]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="229" y="82" width="131" height="12" isRemoveLineWhenBlank="true" uuid="712a4880-2aaa-4fd3-840b-67b4308a66be"/>
+				<textElement>
+					<font size="9" isBold="false"/>
+				</textElement>
+				<text><![CDATA[Rio Largo]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="229" y="94" width="131" height="12" isRemoveLineWhenBlank="true" uuid="2a69b722-32b8-41ef-acfe-3c4f19698257"/>
+				<textElement>
+					<font size="9" isBold="false"/>
+				</textElement>
+				<text><![CDATA[(82) 3261-8000]]></text>
+			</staticText>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="false">
+				<reportElement key="textField" positionType="Float" stretchType="RelativeToBandHeight" x="483" y="30" width="50" height="14" uuid="cb919e25-c84a-41e3-b9dc-6a0f9c21e745"/>
+				<box>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font size="7" isBold="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{PAGE_NUMBER}]]></textFieldExpression>
+			</textField>
+			<textField pattern="dd/MM/yyyy">
+				<reportElement x="481" y="12" width="60" height="13" uuid="62110cd0-45ce-49d4-b2eb-aaf801425d25"/>
+				<textElement>
+					<font size="7" isBold="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA[new java.util.Date()]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="455" y="12" width="26" height="20" uuid="ef18ca24-7899-43e5-8b1d-2bdd888cdb68"/>
+				<textElement>
+					<font size="7"/>
+				</textElement>
+				<text><![CDATA[Data:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="455" y="32" width="26" height="20" uuid="3f130aaa-2803-4da2-986e-3acd6090409f"/>
+				<textElement>
+					<font size="7"/>
+				</textElement>
+				<text><![CDATA[Pag.:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="92" y="104" width="131" height="12" isRemoveLineWhenBlank="true" uuid="1b8401f8-0a72-4810-a307-316999b6e2a9"/>
+				<textElement textAlignment="Right">
+					<font size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[E-mail nfe:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="229" y="104" width="176" height="12" isRemoveLineWhenBlank="true" uuid="f9b29e82-44ec-4a1d-af83-89afd6f8dd2c"/>
+				<textElement>
+					<font size="9" isBold="false"/>
+				</textElement>
+				<text><![CDATA[nfealmoxarifado@usinasclotilde.com.br]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="53" splitType="Stretch">
+			<textField>
+				<reportElement x="0" y="2" width="38" height="12" uuid="f8ae2d56-1764-4fa8-9ed1-44f68f5c2365"/>
+				<textElement>
+					<font size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{COD_MATERIAL}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="46" y="2" width="135" height="34" uuid="b1e216a9-8f2c-4226-ad98-891acfb31336"/>
+				<textElement>
+					<font size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{DESC_MATERIAL}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="181" y="2" width="27" height="12" uuid="04bdffb5-a881-4b23-92cb-808df4dc1a35"/>
+				<textElement textAlignment="Right">
+					<font size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{QTDE}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="208" y="2" width="27" height="12" uuid="bf49d228-ec8e-4a08-b573-2fdb095d6219"/>
+				<textElement textAlignment="Center">
+					<font size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{COD_UNIDADE}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.0000;(-#,##0.0000)">
+				<reportElement x="235" y="2" width="47" height="12" uuid="37b3e07d-4f5e-4d3e-96c2-93404f489fe5"/>
+				<textElement textAlignment="Right">
+					<font size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{PRECO}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;(-#,##0.00)">
+				<reportElement x="325" y="2" width="47" height="12" uuid="faf893b5-447b-4873-bd2c-bedac6081612"/>
+				<textElement textAlignment="Right">
+					<font size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{TOTAL}]]></textFieldExpression>
+			</textField>
+			<line>
+				<reportElement x="0" y="36" width="555" height="1" uuid="829f7f3e-0e60-4ffb-a2f6-1dadfbc59a3c"/>
+			</line>
+			<staticText>
+				<reportElement x="0" y="39" width="82" height="12" isRemoveLineWhenBlank="true" uuid="1aadbd57-5f0b-4ae1-b769-9b145f5585ff"/>
+				<textElement>
+					<font size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Objeto de Custo:]]></text>
+			</staticText>
+			<textField pattern="#,##0.00;(#,##0.00)">
+				<reportElement x="278" y="2" width="47" height="12" uuid="16f1cb60-95d0-4268-9851-311f43537433"/>
+				<textElement textAlignment="Right">
+					<font size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{DESCONTO1}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="84" y="39" width="36" height="14" uuid="9c201c74-8501-4728-8f88-ddf4a85b8e63"/>
+				<textElement>
+					<font size="9" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{COD_OBJETO}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="110" y="39" width="219" height="14" uuid="30f50111-8358-40e8-a7ef-4ef891e4402a"/>
+				<textElement>
+					<font size="9" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{DESC_OBJETO}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<columnFooter>
+		<band height="45" splitType="Stretch"/>
+	</columnFooter>
+	<pageFooter>
+		<band height="54" splitType="Stretch"/>
+	</pageFooter>
+	<summary>
+		<band height="42" splitType="Stretch"/>
+	</summary>
+</jasperReport>

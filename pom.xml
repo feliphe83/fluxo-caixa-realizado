@@ -55,6 +55,19 @@
             <artifactId>commons-dbcp2</artifactId>
             <version>2.12.0</version>
         </dependency>
+
+        <!-- Geração de PDF (Ordem de Compra) a partir do relatório Jasper original -->
+        <dependency>
+            <groupId>net.sf.jasperreports</groupId>
+            <artifactId>jasperreports</artifactId>
+            <version>6.21.5</version>
+        </dependency>
+        <!-- Compilador das expressões do relatório (evita depender do javac do JDK do servidor) -->
+        <dependency>
+            <groupId>org.eclipse.jdt</groupId>
+            <artifactId>ecj</artifactId>
+            <version>3.46.0</version>
+        </dependency>
     </dependencies>
 
     <build>

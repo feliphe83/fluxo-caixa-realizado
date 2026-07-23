@@ -54,7 +54,11 @@ public class AuthFilter implements Filter {
             uri.startsWith(ctx + "/api/redefinir-senha")   ||
             uri.startsWith(ctx + "/css/")                 ||
             uri.startsWith(ctx + "/js/")                  ||
-            uri.startsWith(ctx + "/img/");
+            uri.startsWith(ctx + "/img/")                 ||
+            // Rotas com token opaco próprio na URL (ex.: link de PDF clicado
+            // a partir do chat, sem sessão de navegador nem X-Agro-Api-Key) —
+            // cada servlet valida o token sozinho, por isso ficam liberadas aqui.
+            uri.startsWith(ctx + "/api/publico/");
 
         if (liberado) {
             chain.doFilter(req, res);
