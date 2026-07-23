@@ -416,6 +416,16 @@ public class CombustivelDashboardServlet extends HttpServlet {
         return "Não Classificado";
     }
 
+    /**
+     * Caminhões (canavieiros ou não-canavieiros) têm kmhs_rodados em KM
+     * rodados de verdade, então faz sentido Km/L. Os demais grupos (tratores,
+     * carregadeiras etc.) medem em horas de motor, por isso o consumo médio
+     * é invertido (L/h) — litros por hora rodada.
+     */
+    private static boolean ehCaminhao(String grupo) {
+        return grupo != null && grupo.toLowerCase(Locale.forLanguageTag("pt-BR")).startsWith("caminh");
+    }
+
     // ── Classe Operativa (matriz semanal) ────────────────────────────────
 
     private JsonObject montarPorClasseOperativa(List<Map<String, Object>> linhas, List<LocalDate[]> semanas) {
@@ -531,14 +541,20 @@ public class CombustivelDashboardServlet extends HttpServlet {
             Map.Entry<String, double[]> e = ordenado.get(i);
             double litros = e.getValue()[0];
             double kmhs = e.getValue()[2];
+            String grupo = grupos.get(e.getKey());
+            boolean caminhao = ehCaminhao(grupo);
+            double consumoMedio = caminhao
+                    ? (litros == 0 ? 0 : kmhs / litros)
+                    : (kmhs == 0 ? 0 : litros / kmhs);
             JsonObject o = new JsonObject();
             o.addProperty("posicao", i + 1);
             o.addProperty("equipamento", nomes.get(e.getKey()));
             o.addProperty("modelo", modelos.get(e.getKey()));
-            o.addProperty("grupo", grupos.get(e.getKey()));
+            o.addProperty("grupo", grupo);
             o.addProperty("volume", arred(litros));
             o.addProperty("custo", arred(e.getValue()[1]));
-            o.addProperty("consumoMedio", litros == 0 ? 0 : arred(kmhs / litros));
+            o.addProperty("consumoMedio", arred(consumoMedio));
+            o.addProperty("unidadeConsumo", caminhao ? "Km/L" : "L/h");
             o.addProperty("participacao", totalLitrosFinal == 0 ? 0 : arred(litros / totalLitrosFinal * 100));
             arr.add(o);
         }
