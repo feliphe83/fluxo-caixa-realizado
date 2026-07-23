@@ -17,7 +17,13 @@
     --white: #ffffff;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--creme); color: var(--text); font-size: 13px; height: 100vh; display: flex; flex-direction: column; }
+  /* 100vh no celular conta a área atrás do teclado/barra do navegador, então
+     ao focar o campo de digitar o layout "estoura" pra baixo do visível —
+     100dvh (altura dinâmica de viewport) acompanha o teclado abrindo/fechando.
+     overflow:hidden no body garante que só .chat-mensagens role, nunca a
+     página inteira (o que também empurra a barra de digitar pra fora). */
+  html, body { height: 100vh; height: 100dvh; overflow: hidden; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--creme); color: var(--text); font-size: 13px; display: flex; flex-direction: column; }
 
   .header {
     background: var(--verde-escuro); color: white;
@@ -130,7 +136,8 @@
 
   @page { size: A4 portrait; margin: 12mm; }
   @media print {
-    body { height: auto; display: block; background: white; }
+    html, body { height: auto; overflow: visible; }
+    body { display: block; background: white; }
     .header, .chat-input-bar, .chat-vazio { display: none !important; }
     .print-header {
       display: block; margin-bottom: 18px; padding-bottom: 10px;
