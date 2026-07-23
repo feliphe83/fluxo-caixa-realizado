@@ -25,15 +25,18 @@ import java.util.logging.Logger;
  * AuthFilter) e categoria chat_financeiro da sessão de chat.
  *
  * GET /api/financeiro/ordem-compra?dataIniVcto=yyyy-MM-dd&dataFimVcto=yyyy-MM-dd
- *        [&sessionId=...]
+ *        [&nroc=NNNN] [&sessionId=...]
  *
  * Resposta: { "ok": true, "totalEncontrado": N, "truncado": bool,
  *             "data": [ { ...colunas da consulta... }, ... ] }
  *
  * Período de vencimento (da parcela vinculada à ordem de compra, não a data
- * da própria ordem) é obrigatório. O agente recebe no máximo MAX_LINHAS; o
- * resultado completo fica no AgroConsultaCache para exportação em Excel
- * pelo front-end do chat.
+ * da própria ordem) é obrigatório mesmo quando "nroc" é informado. O agente
+ * recebe no máximo MAX_LINHAS; o resultado completo fica no
+ * AgroConsultaCache para exportação em Excel pelo front-end do chat.
+ *
+ * "nroc" é opcional e restringe a consulta a um número de ordem de compra
+ * específico.
  */
 @WebServlet("/api/financeiro/ordem-compra")
 public class OrdemCompraServlet extends HttpServlet {
@@ -69,11 +72,13 @@ public class OrdemCompraServlet extends HttpServlet {
                 return;
             }
 
-            List<Map<String, Object>> lista = dao.buscar(dataIniVcto, dataFimVcto);
+            Integer nroc = lerInteiro(req.getParameter("nroc"));
+
+            List<Map<String, Object>> lista = dao.buscar(dataIniVcto, dataFimVcto, nroc);
 
             // Guarda o resultado COMPLETO para exportação (Excel) pelo
             // front-end do chat — o agente de IA só recebe a versão truncada.
-            AgroConsultaCache.guardar(sessionId, montarTitulo(dataIniVcto, dataFimVcto), lista);
+            AgroConsultaCache.guardar(sessionId, montarTitulo(dataIniVcto, dataFimVcto, nroc), lista);
 
             int total = lista.size();
             boolean truncado = total > MAX_LINHAS;
@@ -98,7 +103,17 @@ public class OrdemCompraServlet extends HttpServlet {
         }
     }
 
-    private static String montarTitulo(String dataIniVcto, String dataFimVcto) {
-        return "Ordem de Compra — Vencimento " + dataIniVcto.trim() + " a " + dataFimVcto.trim();
+    private static String montarTitulo(String dataIniVcto, String dataFimVcto, Integer nroc) {
+        String t = "Ordem de Compra — Vencimento " + dataIniVcto.trim() + " a " + dataFimVcto.trim();
+        return nroc != null ? t + " · OC " + nroc : t;
+    }
+
+    private static Integer lerInteiro(String v) {
+        if (v == null || v.isBlank()) return null;
+        try {
+            return Integer.valueOf(v.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 }

@@ -34,6 +34,11 @@ import java.util.logging.Logger;
  * nota fiscal de entrada (origem=10) ou diretamente pelo número da ordem
  * como documento, com cod_tipocontaspagar=262 (ex.: adiantamento) — por
  * isso a consulta faz UNION ALL dos dois casos.
+ *
+ * Filtro opcional por nroc (número da ordem de compra): aplicado na query
+ * externa (nroc é uma das COLUNAS_FINAIS, comum aos dois blocos do UNION
+ * ALL), então não precisa ser duplicado dentro de cada branch — o período
+ * de vencimento continua obrigatório mesmo quando nroc é informado.
  */
 public class OrdemCompraDAO {
 
@@ -252,32 +257,39 @@ public class OrdemCompraDAO {
         )
         """;
 
-    private static final String SQL = """
+    private static final String SQL_BASE = """
         select * from (
         select %s
         from ( %s %s ) %s
         union all
         select %s
         from ( %s %s ) %s
-        ) where rownum <= %d
+        )
         """.formatted(
                 COLUNAS_FINAIS, VW_PARCELAS_NOTAFISCAL, TMP1_CORPO, GROUP_BY_FINAL,
-                COLUNAS_FINAIS, VW_PARCELAS_DIRETO, TMP1_CORPO, GROUP_BY_FINAL,
-                MAX_TOTAL);
+                COLUNAS_FINAIS, VW_PARCELAS_DIRETO, TMP1_CORPO, GROUP_BY_FINAL);
 
     /**
      * @param dataIniVcto obrigatório, yyyy-MM-dd — início do período de
      *                    vencimento da parcela vinculada à ordem de compra
      * @param dataFimVcto obrigatório, yyyy-MM-dd — fim do período
+     * @param nroc        opcional — restringe a um número de ordem de compra específico
      */
-    public List<Map<String, Object>> buscar(String dataIniVcto, String dataFimVcto) {
-        try (Connection conn = OracleConnectionUtil.getConnection();
-             PreparedStatement ps = conn.prepareStatement(SQL)) {
+    public List<Map<String, Object>> buscar(String dataIniVcto, String dataFimVcto, Integer nroc) {
+        boolean temNroc = nroc != null;
+        String sql = SQL_BASE + (temNroc
+                ? "where nroc = ? and rownum <= " + MAX_TOTAL
+                : "where rownum <= " + MAX_TOTAL);
 
-            ps.setString(1, dataIniVcto);
-            ps.setString(2, dataFimVcto);
-            ps.setString(3, dataIniVcto);
-            ps.setString(4, dataFimVcto);
+        try (Connection conn = OracleConnectionUtil.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            int idx = 1;
+            ps.setString(idx++, dataIniVcto);
+            ps.setString(idx++, dataFimVcto);
+            ps.setString(idx++, dataIniVcto);
+            ps.setString(idx++, dataFimVcto);
+            if (temNroc) ps.setInt(idx++, nroc);
 
             try (ResultSet rs = ps.executeQuery()) {
                 return RowMapperUtil.toList(rs);
