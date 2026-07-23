@@ -41,11 +41,15 @@ import java.util.logging.Logger;
  *             ordens),
  *             "data": [ { ...colunas da consulta, uma por item... }, ... ] }
  *
- * Período de vencimento (da parcela vinculada à ordem de compra, não a data
- * da própria ordem) é obrigatório mesmo quando "nroc"/"fornecedor" são
- * informados. O agente recebe no máximo MAX_LINHAS em "data" (linha por
- * item); o resultado completo fica no AgroConsultaCache para exportação em
- * Excel pelo front-end do chat. "ordens" existe à parte porque é enxuta o
+ * Período de vencimento é obrigatório para consultas por período/fornecedor
+ * — MAS quando "nroc" é informado (uma ordem específica), o período fica
+ * livre e a busca usa uma janela ampla fixa internamente, já que exigir do
+ * agente acertar a data de vencimento exata de uma ordem específica só
+ * causa falso "não encontrado" quando ele erra a data (a única forma
+ * confiável de achar uma ordem por número é não depender de período).
+ * O agente recebe no máximo MAX_LINHAS em "data" (linha por item); o
+ * resultado completo fica no AgroConsultaCache para exportação em Excel
+ * pelo front-end do chat. "ordens" existe à parte porque é enxuta o
  * suficiente pra listar todas as ordens de um período/fornecedor sem o
  * mesmo limite (mesmo padrão do campo "parcelas" em contas a pagar).
  */
@@ -76,16 +80,21 @@ public class OrdemCompraServlet extends HttpServlet {
                 return;
             }
 
-            String dataIniVcto = DataParamUtil.normalizar(req.getParameter("dataIniVcto"));
-            String dataFimVcto = DataParamUtil.normalizar(req.getParameter("dataFimVcto"));
-            if (dataIniVcto == null || dataFimVcto == null) {
-                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                out.print("{\"ok\":false,\"erro\":\"Parâmetros dataIniVcto e dataFimVcto são obrigatórios (período de vencimento da parcela), nos formatos yyyy-MM-dd ou dd/mm/aaaa\"}");
-                return;
-            }
-
             Integer nroc = lerInteiro(req.getParameter("nroc"));
             String fornecedor = req.getParameter("fornecedor");
+
+            String dataIniVcto = DataParamUtil.normalizar(req.getParameter("dataIniVcto"));
+            String dataFimVcto = DataParamUtil.normalizar(req.getParameter("dataFimVcto"));
+            if (nroc != null) {
+                // Ordem específica: não depende de acertar o período de
+                // vencimento — usa janela ampla fixa (mesma do PDF).
+                dataIniVcto = "1900-01-01";
+                dataFimVcto = "2050-01-01";
+            } else if (dataIniVcto == null || dataFimVcto == null) {
+                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                out.print("{\"ok\":false,\"erro\":\"Parâmetros dataIniVcto e dataFimVcto são obrigatórios (período de vencimento da parcela) quando \\\"nroc\\\" não é informado, nos formatos yyyy-MM-dd ou dd/mm/aaaa\"}");
+                return;
+            }
 
             List<Map<String, Object>> lista = dao.buscar(dataIniVcto, dataFimVcto, nroc, fornecedor);
 
@@ -125,9 +134,12 @@ public class OrdemCompraServlet extends HttpServlet {
     }
 
     private static String montarTitulo(String dataIniVcto, String dataFimVcto, Integer nroc, String fornecedor) {
-        StringBuilder t = new StringBuilder("Ordem de Compra — Vencimento ")
-                .append(dataIniVcto.trim()).append(" a ").append(dataFimVcto.trim());
-        if (nroc != null) t.append(" · OC ").append(nroc);
+        StringBuilder t = new StringBuilder("Ordem de Compra");
+        if (nroc != null) {
+            t.append(" — OC ").append(nroc);
+        } else {
+            t.append(" — Vencimento ").append(dataIniVcto.trim()).append(" a ").append(dataFimVcto.trim());
+        }
         if (fornecedor != null && !fornecedor.isBlank()) t.append(" · ").append(fornecedor.trim());
         return t.toString();
     }

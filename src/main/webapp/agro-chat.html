@@ -306,13 +306,34 @@ function limparConversa() {
   chatInput.focus();
 }
 
+// Formatação mínima e segura do texto do bot: escapa HTML (evita XSS) e só
+// depois converte **negrito** e [texto](url) em tags reais — nessa ordem,
+// pra escapar não estragar as tags recém-criadas. Link só pra http(s), pra
+// não abrir brecha de "javascript:" ou outro esquema.
+function formatarMensagemBot(texto) {
+  const escapado = texto
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+  return escapado
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+}
+
 function addMensagem(tipo, texto) {
   removerVazio();
   const div = document.createElement('div');
   div.className = 'msg ' + tipo;
   const avatar = tipo === 'usuario' ? 'Eu' : 'Dr';
   div.innerHTML = `<div class="msg-avatar">${avatar}</div><div class="msg-bolha"></div>`;
-  div.querySelector('.msg-bolha').textContent = texto;
+  const bolha = div.querySelector('.msg-bolha');
+  if (tipo.startsWith('bot')) {
+    bolha.innerHTML = formatarMensagemBot(texto);
+  } else {
+    bolha.textContent = texto;
+  }
   chatMensagens.appendChild(div);
   chatMensagens.scrollTop = chatMensagens.scrollHeight;
   return div;
