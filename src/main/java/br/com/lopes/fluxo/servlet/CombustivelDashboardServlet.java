@@ -122,6 +122,7 @@ public class CombustivelDashboardServlet extends HttpServlet {
             resultado.add("porAtividade", montarPorAtividade(linhas));
             resultado.add("porClasseOperativa", montarPorClasseOperativa(linhas, semanas));
             resultado.add("topProprios", montarTopProprios(linhas));
+            resultado.add("frotaPropriaReal", montarFrotaPropriaReal(linhas));
             resultado.add("topTerceiros", montarTopTerceiros(linhas));
             resultado.add("opcoes", montarOpcoes(linhas));
             resultado.addProperty("truncadoDetalhe", linhas.size() > MAX_DETALHE);
@@ -411,6 +412,12 @@ public class CombustivelDashboardServlet extends HttpServlet {
 
     // ── Top 10 Equipamentos Próprios ─────────────────────────────────────
 
+    /**
+     * Só entram abastecimentos com equipamento de verdade vinculado
+     * (cod_equipamento preenchido) — sem equipamento (alguém retirou
+     * combustível direto, por placa/pessoa) não é "frota", mesmo sendo
+     * Próprio; senão o nome de uma pessoa aparece como se fosse máquina.
+     */
     private JsonArray montarTopProprios(List<Map<String, Object>> linhas) {
         Map<String, double[]> mapa = new LinkedHashMap<>(); // chave equipamento -> [litros, valor]
         Map<String, String> nomes = new LinkedHashMap<>();
@@ -420,6 +427,7 @@ public class CombustivelDashboardServlet extends HttpServlet {
 
         for (Map<String, Object> l : linhas) {
             if (ehTerceiro(l)) continue;
+            if (!preenchido(l.get("cod_equipamento"))) continue;
             String chave = rotuloEquipamento(l);
             double litros = num(l.get("qtde_litros"));
             double valor = num(l.get("valor_total"));
@@ -452,6 +460,28 @@ public class CombustivelDashboardServlet extends HttpServlet {
             arr.add(o);
         }
         return arr;
+    }
+
+    /**
+     * Volume/equipamentos reais da frota própria (só abastecimentos com
+     * cod_equipamento vinculado) — usado no KPI da seção de ranking, que
+     * precisa bater com o que a própria tabela mostra (kpis.propria inclui
+     * também retiradas sem equipamento, por placa/pessoa).
+     */
+    private JsonObject montarFrotaPropriaReal(List<Map<String, Object>> linhas) {
+        double litros = 0;
+        Set<Object> equipamentos = new HashSet<>();
+        for (Map<String, Object> l : linhas) {
+            if (ehTerceiro(l)) continue;
+            Object equip = l.get("cod_equipamento");
+            if (!preenchido(equip)) continue;
+            litros += num(l.get("qtde_litros"));
+            equipamentos.add(equip);
+        }
+        JsonObject o = new JsonObject();
+        o.addProperty("volume", arred(litros));
+        o.addProperty("equipamentos", equipamentos.size());
+        return o;
     }
 
     private static String classeOperativaBase(Map<String, Object> l) {

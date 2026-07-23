@@ -749,7 +749,7 @@ function kpisProprios(j) {
   return `
     ${kpi('Equipamento Líder', fmtPct(top?.participacao || 0), escapeHtml(top?.equipamento || ''))}
     ${kpi('Concentração Top 10', fmtPct(somaTop10), 'do volume consumido pela frota própria')}
-    ${kpi('Volume da Frota Própria', fmtInt.format(j.kpis.propria.volume) + ' L', j.kpis.propria.equipamentos + ' equipamentos monitorados')}
+    ${kpi('Volume da Frota Própria', fmtInt.format(j.frotaPropriaReal.volume) + ' L', j.frotaPropriaReal.equipamentos + ' equipamentos monitorados')}
   `;
 }
 
