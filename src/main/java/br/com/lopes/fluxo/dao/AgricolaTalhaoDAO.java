@@ -17,7 +17,9 @@ import java.util.logging.Logger;
  * relacionadas: fazenda, variedade, cultura, safra, solo, irrigação etc.),
  * usada como fonte de dados do chatbot agrícola (via n8n).
  *
- * Filtro por safra é obrigatório, igual à consulta original.
+ * Filtro por safra é obrigatório, igual à consulta original. Restrita a
+ * fazenda própria (cod_tipofazenda = 1) — o Dr. Alfredo não deve responder
+ * sobre talhão de fazenda de terceiro.
  */
 public class AgricolaTalhaoDAO {
 
@@ -177,6 +179,10 @@ public class AgricolaTalhaoDAO {
             and    irrigacaotipo.cod_tipoirrigacao   (+) = talhao.cod_tipoirrigacao
 
             and    tipofazenda.cod_tipofazenda           = historico_fazenda.cod_tipofazenda
+
+            -- Só fazenda própria (cod_tipofazenda = 1) — talhão é sempre
+            -- consultado pelo Dr. Alfredo restrito à fazenda própria.
+            and    tipofazenda.cod_tipofazenda           = 1
 
             and    rh.intersecao(safra.data_inicio,safra.data_fim, historico_fazenda.data_inicio, historico_fazenda.data_fim) = 'TRUE'
 

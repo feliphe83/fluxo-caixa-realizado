@@ -35,6 +35,9 @@ import java.util.logging.Logger;
  * produtivo"). O detalhamento linha a linha só entra com agrupar=detalhado,
  * pedido explicitamente — nesse modo o agente só recebe uma amostra
  * truncada e não deve tentar somar/ranquear a partir dela.
+ *
+ * Restrita a fazenda própria (cod_tipofazenda = 1) — o Dr. Alfredo não deve
+ * responder sobre produtividade/TCH de fazenda de terceiro.
  */
 public class AgroProdutividadeDAO {
 
@@ -103,6 +106,10 @@ public class AgroProdutividadeDAO {
         and    pessoa.cod_pessoa                      = fornecedor.cod_pessoa
         and    fornecedor.cod_fornecedor              = historico_fazenda.cod_fornecedor
         and    tipofazenda.cod_tipofazenda            = historico_fazenda.cod_tipofazenda
+
+        -- Só fazenda própria (cod_tipofazenda = 1) — produtividade/TCH é
+        -- sempre consultada pelo Dr. Alfredo restrita à fazenda própria.
+        and    tipofazenda.cod_tipofazenda            = 1
 
         and    setor_agricola.id_setoragricola        = historico_fazenda.id_setoragricola
 
