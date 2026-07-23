@@ -234,10 +234,8 @@ function preset(semanas) {
 }
 
 (function initDatas() {
-  const hoje = new Date();
-  const ini = new Date(hoje.getTime() - 118 * 864e5); // ~17 semanas
-  document.getElementById('dataIni').value = fmt8(ini);
-  document.getElementById('dataFim').value = fmt8(hoje);
+  document.getElementById('dataIni').value = '2026-03-02';
+  document.getElementById('dataFim').value = fmt8(new Date());
 })();
 
 async function carregar() {
