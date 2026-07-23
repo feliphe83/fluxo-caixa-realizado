@@ -766,7 +766,7 @@ function secaoRanking(num, titulo, subtitulo, lista, tipo, kpisHtml) {
   const linhas = lista.map(r => `
     <tr>
       <td><span class="posicao-badge ${r.posicao===1?'top1':''}">${r.posicao}</span></td>
-      <td><b>${escapeHtml(ehProprio ? r.equipamento : r.proprietario)}</b>${ehProprio && r.modelo ? '<br><span style="color:var(--ink-3);font-size:11px">'+escapeHtml(r.modelo)+'</span>' : ''}</td>
+      <td><b>${escapeHtml(ehProprio ? (r.modelo || r.equipamento) : r.proprietario)}</b></td>
       <td>${escapeHtml(ehProprio ? r.grupo : r.atividade)}</td>
       <td class="num">${fmtInt.format(r.volume)} L</td>
       <td class="num">${fmtBRL0.format(r.custo)}</td>

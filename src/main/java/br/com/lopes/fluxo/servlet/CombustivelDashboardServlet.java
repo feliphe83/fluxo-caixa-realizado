@@ -51,11 +51,14 @@ import java.util.logging.Logger;
  * "USINA SANTA CLOTILDE S/A" (às vezes registrada em
  * histproprietarioequip), que conta como Próprio em todo o dashboard.
  *
- * Classe Operativa: de-para administrado (fc_depara_classeoperativa, tela
- * "De-Para Classe Operativa") de cod_modelo → categoria ampla (Trator,
- * Caminhão Apoio, Ônibus…) — modelo sem de-para cadastrado cai em "Não
- * Classificado". A mesma categoria também nomeia o "Grupo Equipamento" dos
- * rankings de Top 10 Próprios/Terceiros.
+ * Classe Operativa (só na matriz semanal, seção 4): de-para administrado
+ * (fc_depara_classeoperativa, tela "De-Para Classe Operativa") de cod_modelo
+ * → categoria ampla (Trator, Caminhão Apoio, Ônibus…) — modelo sem de-para
+ * cadastrado cai em "Não Classificado".
+ *
+ * "Grupo Equipamento" (Top 10 Próprios) e "Atividade Principal" (Top 10
+ * Terceiros): direto de desc_atividade (Objeto de Custo do Oracle, mesmo
+ * campo usado em "Top 6 Atividades") — não dependem do de-para acima.
  *
  * "Semana operacional": blocos de 7 dias a partir de dataIni (S1, S2, …),
  * a última podendo ser parcial se o período não fechar em múltiplo de 7.
@@ -446,8 +449,7 @@ public class CombustivelDashboardServlet extends HttpServlet {
             mapa.get(chave)[1] += valor;
             nomes.putIfAbsent(chave, chave);
             modelos.putIfAbsent(chave, strOf(l.get("descricaomodelo")));
-            String classeBase = classeOperativaBase(l);
-            grupos.putIfAbsent(chave, classeBase);
+            grupos.putIfAbsent(chave, atividadeDe(l));
             totalLitros += litros;
         }
 
@@ -492,12 +494,6 @@ public class CombustivelDashboardServlet extends HttpServlet {
         o.addProperty("volume", arred(litros));
         o.addProperty("equipamentos", equipamentos.size());
         return o;
-    }
-
-    private static String classeOperativaBase(Map<String, Object> l) {
-        String codModelo = strOf(l.get("cod_modelo"));
-        String base = codModelo.isBlank() ? null : ClasseOperativaCache.buscar(codModelo);
-        return (base == null || base.isBlank()) ? "Não Classificado" : base;
     }
 
     // ── Top 10 Terceiros (por proprietário do equipamento) ───────────────
