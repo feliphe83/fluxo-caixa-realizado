@@ -22,6 +22,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -492,6 +493,16 @@ public class CombustivelDashboardServlet extends HttpServlet {
 
     // ── Top 10 Terceiros (por proprietário do equipamento) ───────────────
 
+    /**
+     * Alguns equipamentos têm a própria usina registrada como "proprietário"
+     * no histórico (automotivo.histproprietarioequip) — não é um terceiro de
+     * verdade, então essa linha some deste ranking (mas continua contando
+     * como Terceiro nos KPIs gerais e na Classe Operativa, a pedido).
+     */
+    private static boolean ehAPropriaUsina(String proprietario) {
+        return proprietario.toUpperCase(Locale.forLanguageTag("pt-BR")).contains("USINA SANTA CLOTILDE");
+    }
+
     private JsonArray montarTopTerceiros(List<Map<String, Object>> linhas) {
         Map<String, double[]> mapa = new LinkedHashMap<>();
         Map<String, String> atividades = new LinkedHashMap<>();
@@ -501,6 +512,7 @@ public class CombustivelDashboardServlet extends HttpServlet {
             if (!ehTerceiro(l)) continue;
             String proprietario = strOf(l.get("nome_proprietario"));
             if (proprietario.isBlank()) proprietario = "Proprietário Não Identificado";
+            if (ehAPropriaUsina(proprietario)) continue;
             double litros = num(l.get("qtde_litros"));
             double valor = num(l.get("valor_total"));
             mapa.computeIfAbsent(proprietario, k -> new double[2]);
