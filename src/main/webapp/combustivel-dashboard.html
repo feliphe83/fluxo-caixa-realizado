@@ -840,8 +840,11 @@ function secaoRanking(num, titulo, subtitulo, lista, tipo, kpisHtml) {
       <td>${escapeHtml(ehProprio ? r.grupo : r.atividade)}</td>
       <td class="num">${fmtInt.format(r.volume)} L</td>
       <td class="num">${fmtBRL0.format(r.custo)}</td>
+      ${ehProprio ? `<td class="num">${fmtDec.format(r.consumoMedio || 0)}</td>` : ''}
       <td class="num"><span class="barra-participacao"><span class="fill" style="width:${Math.min(100,r.participacao)}%"></span></span>${fmtPct(r.participacao)}</td>
     </tr>`).join('');
+
+  const colunas = ehProprio ? 7 : 6;
 
   return `
   <div class="secao">
@@ -852,9 +855,11 @@ function secaoRanking(num, titulo, subtitulo, lista, tipo, kpisHtml) {
       <table class="ranking">
         <thead><tr>
           <th>#</th><th>${ehProprio?'Equipamento':'Proprietário do Equipamento'}</th><th>${ehProprio?'Grupo Equipamento':'Atividade Principal'}</th>
-          <th class="num">Volume</th><th class="num">Custo</th><th class="num">Participação</th>
+          <th class="num">Volume</th><th class="num">Custo</th>
+          ${ehProprio ? '<th class="num">Consumo Médio</th>' : ''}
+          <th class="num">Participação</th>
         </tr></thead>
-        <tbody>${linhas || '<tr><td colspan="6" style="text-align:center;color:var(--ink-3);padding:20px">Sem dados no período.</td></tr>'}</tbody>
+        <tbody>${linhas || `<tr><td colspan="${colunas}" style="text-align:center;color:var(--ink-3);padding:20px">Sem dados no período.</td></tr>`}</tbody>
       </table>
     </div>
   </div>`;
@@ -901,8 +906,8 @@ function exportarExcel() {
   const classeLinhas = DADOS.porClasseOperativa.linhas.map(l => [l.nome, ...l.porSemana, l.total]);
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([classeHeader, ...classeLinhas]), 'Classe Operativa');
 
-  const proprios = [['#','Equipamento','Modelo','Grupo','Volume (L)','Custo (R$)','Participação (%)'],
-    ...DADOS.topProprios.map(r => [r.posicao, r.equipamento, r.modelo, r.grupo, r.volume, r.custo, r.participacao])];
+  const proprios = [['#','Equipamento','Modelo','Grupo','Volume (L)','Custo (R$)','Consumo Médio','Participação (%)'],
+    ...DADOS.topProprios.map(r => [r.posicao, r.equipamento, r.modelo, r.grupo, r.volume, r.custo, r.consumoMedio, r.participacao])];
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(proprios), 'Top Próprios');
 
   const terceiros = [['#','Proprietário','Atividade Principal','Volume (L)','Custo (R$)','Participação (%)'],

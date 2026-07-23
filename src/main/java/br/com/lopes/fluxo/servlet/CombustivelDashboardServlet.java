@@ -498,7 +498,7 @@ public class CombustivelDashboardServlet extends HttpServlet {
      * Próprio; senão o nome de uma pessoa aparece como se fosse máquina.
      */
     private JsonArray montarTopProprios(List<Map<String, Object>> linhas) {
-        Map<String, double[]> mapa = new LinkedHashMap<>(); // chave equipamento -> [litros, valor]
+        Map<String, double[]> mapa = new LinkedHashMap<>(); // chave equipamento -> [litros, valor, kmhs_rodados]
         Map<String, String> nomes = new LinkedHashMap<>();
         Map<String, String> modelos = new LinkedHashMap<>();
         Map<String, String> grupos = new LinkedHashMap<>();
@@ -510,9 +510,11 @@ public class CombustivelDashboardServlet extends HttpServlet {
             String chave = rotuloEquipamento(l);
             double litros = num(l.get("qtde_litros"));
             double valor = num(l.get("valor_total"));
-            mapa.computeIfAbsent(chave, k -> new double[2]);
+            double kmhs = num(l.get("kmhs_rodados"));
+            mapa.computeIfAbsent(chave, k -> new double[3]);
             mapa.get(chave)[0] += litros;
             mapa.get(chave)[1] += valor;
+            mapa.get(chave)[2] += kmhs;
             nomes.putIfAbsent(chave, chave);
             modelos.putIfAbsent(chave, strOf(l.get("descricaomodelo")));
             grupos.putIfAbsent(chave, atividadeDe(l));
@@ -527,14 +529,17 @@ public class CombustivelDashboardServlet extends HttpServlet {
         int limite = Math.min(TOP_RANKING, ordenado.size());
         for (int i = 0; i < limite; i++) {
             Map.Entry<String, double[]> e = ordenado.get(i);
+            double litros = e.getValue()[0];
+            double kmhs = e.getValue()[2];
             JsonObject o = new JsonObject();
             o.addProperty("posicao", i + 1);
             o.addProperty("equipamento", nomes.get(e.getKey()));
             o.addProperty("modelo", modelos.get(e.getKey()));
             o.addProperty("grupo", grupos.get(e.getKey()));
-            o.addProperty("volume", arred(e.getValue()[0]));
+            o.addProperty("volume", arred(litros));
             o.addProperty("custo", arred(e.getValue()[1]));
-            o.addProperty("participacao", totalLitrosFinal == 0 ? 0 : arred(e.getValue()[0] / totalLitrosFinal * 100));
+            o.addProperty("consumoMedio", litros == 0 ? 0 : arred(kmhs / litros));
+            o.addProperty("participacao", totalLitrosFinal == 0 ? 0 : arred(litros / totalLitrosFinal * 100));
             arr.add(o);
         }
         return arr;
