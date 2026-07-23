@@ -218,6 +218,8 @@ const fmtDec  = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maxim
 const fmtBRL  = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const fmtBRL0 = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
 const fmtPct  = v => fmtDec.format(v) + '%';
+// Compacto em milhares (R$79K) — usado no rótulo de custo dentro da barra, onde o espaço é curto.
+const fmtK = v => 'R$' + Math.round(v / 1000) + 'K';
 
 function fmt8(d) { return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
 
@@ -411,12 +413,20 @@ const rotulosVolumeCustoPlugin = {
       ctx.textBaseline = 'bottom';
       ctx.fillText(opts.volumes[i], barra.x, barra.y - 4);
 
+      // Custo em pé (vertical), de baixo pra cima, dentro da barra — só
+      // desenha se a altura da barra comportar o texto (medido de verdade,
+      // nunca estoura pra fora do próprio traço).
       const alturaBarra = barra.base - barra.y;
-      if (alturaBarra >= 18) {
-        ctx.font = '600 9.5px -apple-system, "Segoe UI", sans-serif';
+      ctx.font = '700 9.5px -apple-system, "Segoe UI", sans-serif';
+      const larguraTexto = ctx.measureText(opts.custos[i]).width;
+      if (alturaBarra - 10 >= larguraTexto) {
+        ctx.save();
+        ctx.translate(barra.x, (barra.y + barra.base) / 2);
+        ctx.rotate(-Math.PI / 2);
         ctx.fillStyle = '#ffffff';
         ctx.textBaseline = 'middle';
-        ctx.fillText(opts.custos[i], barra.x, (barra.y + barra.base) / 2);
+        ctx.fillText(opts.custos[i], 0, 0);
+        ctx.restore();
       }
     });
     ctx.restore();
@@ -466,7 +476,7 @@ function desenharConsumoSemanal() {
         legend: { display: false },
         rotulosVolumeCusto: {
           volumes: volumes.map(v => fmtInt.format(v) + ' L'),
-          custos: custos.map(v => fmtBRL0.format(v)),
+          custos: custos.map(v => fmtK(v)),
         },
         tooltip: { callbacks: {
           label: c => c.datasetIndex === 0
