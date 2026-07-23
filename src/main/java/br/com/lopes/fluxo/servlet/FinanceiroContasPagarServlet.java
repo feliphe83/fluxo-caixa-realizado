@@ -37,24 +37,34 @@ import java.util.logging.Logger;
  *             "porConta": [ { "conta": desc_fluxo, "valor": soma } , ... ]
  *             ordenado do maior pro menor valor — já pronto pra "separar por
  *             conta e valor",
+ *             "parcelas": [ { "fornecedor", "documento", "parcela",
+ *             "dataVcto", "conta", "valor" }, ... ] — lista ENXUTA (poucas
+ *             colunas) de TODAS as parcelas do período (até MAX_PARCELAS,
+ *             bem mais alto que MAX_LINHAS), pronta pra "listar todas as
+ *             contas" sem esbarrar no limite de "data",
+ *             "parcelasTruncado": bool,
  *             "data": [ { ...colunas da consulta... }, ... ] }
  *
- * Período de vencimento é obrigatório. As linhas são largas (inclui até 10
- * alterações de vencimento), então o agente recebe no máximo MAX_LINHAS; o
- * resultado completo fica no AgroConsultaCache para exportação em Excel.
+ * Período de vencimento é obrigatório. As linhas de "data" são largas
+ * (inclui até 10 alterações de vencimento), então o agente recebe no máximo
+ * MAX_LINHAS ali; o resultado completo fica no AgroConsultaCache para
+ * exportação em Excel. "parcelas" existe à parte porque é enxuta o
+ * suficiente pra listar tudo sem o mesmo limite.
  *
  * "Próxima semana": pergunta recorrente do Dr. Alfredo ("qual o valor total
- * que tenho a pagar na próxima semana?") — nesta empresa a semana operacional
- * começa no SÁBADO e termina na SEXTA-FEIRA seguinte (não domingo-sábado).
- * O agente deve calcular dataIniVcto/dataFimVcto de acordo antes de chamar
- * esta rota, e a resposta deve trazer o valor total (valorTotal) com o
- * detalhamento por conta (porConta) e um totalizador ao final.
+ * que tenho a pagar na próxima semana? liste todas as contas") — nesta
+ * empresa a semana operacional começa no SÁBADO e termina na SEXTA-FEIRA
+ * seguinte (não domingo-sábado). O agente deve calcular
+ * dataIniVcto/dataFimVcto de acordo antes de chamar esta rota, e a resposta
+ * deve trazer o valor total (valorTotal), a lista de cada conta (parcelas)
+ * e um totalizador ao final.
  */
 @WebServlet("/api/financeiro/contas-apagar")
 public class FinanceiroContasPagarServlet extends HttpServlet {
 
     private static final Logger LOG = Logger.getLogger(FinanceiroContasPagarServlet.class.getName());
     private static final int MAX_LINHAS = 30;
+    private static final int MAX_PARCELAS = 300;
 
     private final Gson gson = new Gson();
     private final FinanceiroContasPagarDAO dao = new FinanceiroContasPagarDAO();
@@ -120,6 +130,8 @@ public class FinanceiroContasPagarServlet extends HttpServlet {
             resultado.addProperty("truncado", truncado);
             resultado.addProperty("valorTotal", arred(somaValor(lista)));
             resultado.add("porConta", gson.toJsonTree(agruparPorConta(lista)));
+            resultado.addProperty("parcelasTruncado", total > MAX_PARCELAS);
+            resultado.add("parcelas", gson.toJsonTree(montarParcelas(lista)));
             resultado.add("data", gson.toJsonTree(listaLimitada));
             out.print(gson.toJson(resultado));
 
@@ -175,6 +187,30 @@ public class FinanceiroContasPagarServlet extends HttpServlet {
         });
         ordenado.sort((a, b) -> Double.compare((Double) b.get("valor"), (Double) a.get("valor")));
         return ordenado;
+    }
+
+    /**
+     * Lista enxuta (poucas colunas) de todas as parcelas do período, até
+     * MAX_PARCELAS — bem mais alto que MAX_LINHAS porque cada linha aqui é
+     * pequena, dá pra listar uma semana/mês inteiro de parcelas sem estourar
+     * o contexto do agente.
+     */
+    private static List<Map<String, Object>> montarParcelas(List<Map<String, Object>> lista) {
+        int limite = Math.min(lista.size(), MAX_PARCELAS);
+        List<Map<String, Object>> parcelas = new ArrayList<>(limite);
+        for (int i = 0; i < limite; i++) {
+            Map<String, Object> l = lista.get(i);
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("fornecedor", l.get("nome"));
+            item.put("documento", l.get("documento"));
+            item.put("parcela", l.get("parcela"));
+            item.put("dataVcto", l.get("datavcto"));
+            item.put("conta", l.get("desc_fluxo"));
+            Object v = l.get("valor");
+            item.put("valor", v instanceof Number n ? arred(n.doubleValue()) : v);
+            parcelas.add(item);
+        }
+        return parcelas;
     }
 
     private static double arred(double v) {
