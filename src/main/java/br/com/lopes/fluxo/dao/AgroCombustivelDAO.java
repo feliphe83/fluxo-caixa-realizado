@@ -10,8 +10,10 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 /**
  * DAO da consulta de abastecimento de combustível (posto.abastecimento e
@@ -342,6 +344,33 @@ public class AgroCombustivelDAO {
         }
 
         return executar(SQL_DETALHADO.replace("/*FILTROS*/", filtros.toString()), params);
+    }
+
+    /**
+     * Custo unitário histórico do combustível na data real da retirada
+     * (material.itensrequisicaomaterial.vrcustounitario), para o gráfico
+     * "Evolução do Preço" do dashboard — diferente de valor_unitario da
+     * consulta de abastecimento (posto.f_preco_combustivel), que devolve
+     * sempre o preço vigente hoje, não o preço da época.
+     *
+     * @param codMateriais cod_material dos combustíveis do período (vindos
+     *                     do resultado da consulta principal) — nunca vazio
+     *                     quando chamado (o servlet só chama se houver linhas)
+     */
+    public List<Map<String, Object>> buscarCustoHistorico(String dataIni, String dataFim, Set<Integer> codMateriais) {
+        if (codMateriais.isEmpty()) return List.of();
+
+        String in = codMateriais.stream().map(String::valueOf).collect(Collectors.joining(","));
+        String sql = """
+            select i.cod_material, m.descricao, i.dataretirada, i.vrcustounitario
+            from material.itensrequisicaomaterial i, material.material m
+            where i.cod_material in (%s)
+            and i.dataretirada between ? and ?
+            and i.cod_material = m.cod_material
+            """.formatted(in);
+
+        List<Object> params = List.of(paraDDMMYYYY(dataIni), paraDDMMYYYY(dataFim));
+        return executar(sql, params);
     }
 
     private List<Map<String, Object>> executar(String sql, List<Object> params) {

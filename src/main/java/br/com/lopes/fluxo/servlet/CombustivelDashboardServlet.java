@@ -63,6 +63,12 @@ import java.util.logging.Logger;
  * "Semana operacional": blocos de 7 dias a partir de dataIni (S1, S2, …),
  * a última podendo ser parcial se o período não fechar em múltiplo de 7.
  *
+ * Preço médio semanal ("Evolução do Preço"): vem de
+ * material.itensrequisicaomaterial.vrcustounitario na data real de
+ * retirada — não do valor_unitario da consulta principal
+ * (posto.f_preco_combustivel), que sempre devolve o preço vigente hoje
+ * aplicado retroativamente a qualquer abastecimento antigo.
+ *
  * A agregação é feita aqui (e não no Oracle) porque o dashboard precisa de
  * vários cortes do mesmo resultado — uma única execução da consulta pesada
  * alimenta todos.
@@ -117,12 +123,13 @@ public class CombustivelDashboardServlet extends HttpServlet {
                     dataIni, dataFim, codEquipamento, codTipoCliente, combustivel, codFazenda);
 
             List<LocalDate[]> semanas = montarSemanas(LocalDate.parse(dataIni), LocalDate.parse(dataFim));
+            double[] precoHistoricoPorSemana = buscarPrecoHistoricoPorSemana(linhas, dataIni, dataFim, semanas);
 
             JsonObject resultado = new JsonObject();
             resultado.addProperty("ok", true);
             resultado.addProperty("totalLinhas", linhas.size());
             resultado.add("semanas", jsonSemanas(semanas));
-            resultado.add("serieSemanal", montarSerieSemanal(linhas, semanas));
+            resultado.add("serieSemanal", montarSerieSemanal(linhas, semanas, precoHistoricoPorSemana));
             resultado.add("kpis", montarKpis(linhas, semanas));
             resultado.add("porAreaNegocio", montarPorAreaNegocio(linhas, semanas));
             resultado.add("porAtividade", montarPorAtividade(linhas));
@@ -192,7 +199,8 @@ public class CombustivelDashboardServlet extends HttpServlet {
 
     // ── Série semanal (volume, custo, preço médio) ──────────────────────
 
-    private JsonArray montarSerieSemanal(List<Map<String, Object>> linhas, List<LocalDate[]> semanas) {
+    private JsonArray montarSerieSemanal(List<Map<String, Object>> linhas, List<LocalDate[]> semanas,
+                                          double[] precoHistoricoPorSemana) {
         LocalDate ini = semanas.get(0)[0];
         int n = semanas.size();
         double[] litrosPorSemana = new double[n];
@@ -212,10 +220,48 @@ public class CombustivelDashboardServlet extends HttpServlet {
             o.addProperty("label", semanas.get(i)[0].format(FMT_CURTO));
             o.addProperty("volume", arred(litrosPorSemana[i]));
             o.addProperty("custo", arred(valorPorSemana[i]));
-            o.addProperty("precoMedio", litrosPorSemana[i] == 0 ? 0 : arred(valorPorSemana[i] / litrosPorSemana[i]));
+            o.addProperty("precoMedio", arred(precoHistoricoPorSemana[i]));
             arr.add(o);
         }
         return arr;
+    }
+
+    /**
+     * Preço médio semanal real (material.itensrequisicaomaterial.vrcustounitario
+     * na data de retirada) — usado em "Evolução do Preço". Diferente do
+     * valor_unitario da consulta principal (posto.f_preco_combustivel), que
+     * sempre devolve o preço vigente hoje, não o preço da época de cada
+     * abastecimento.
+     */
+    private double[] buscarPrecoHistoricoPorSemana(List<Map<String, Object>> linhas, String dataIni, String dataFim,
+                                                    List<LocalDate[]> semanas) {
+        int n = semanas.size();
+        double[] soma = new double[n];
+        int[] qtde = new int[n];
+
+        Set<Integer> codMateriais = new HashSet<>();
+        for (Map<String, Object> l : linhas) {
+            Object cod = l.get("cod_combustivel");
+            if (cod instanceof Number num) codMateriais.add(num.intValue());
+        }
+        if (codMateriais.isEmpty()) return soma;
+
+        LocalDate ini = semanas.get(0)[0];
+        List<Map<String, Object>> custos = dao.buscarCustoHistorico(dataIni, dataFim, codMateriais);
+        for (Map<String, Object> c : custos) {
+            int idx = semanaDe(strOf(c.get("dataretirada")), ini, n);
+            if (idx < 0) continue;
+            double custo = num(c.get("vrcustounitario"));
+            if (custo <= 0) continue;
+            soma[idx] += custo;
+            qtde[idx]++;
+        }
+
+        double[] media = new double[n];
+        for (int i = 0; i < n; i++) {
+            media[i] = qtde[i] == 0 ? 0 : soma[i] / qtde[i];
+        }
+        return media;
     }
 
     // ── KPIs (geral + Próprio x Terceiro) ────────────────────────────────
