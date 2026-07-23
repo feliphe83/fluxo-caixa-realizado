@@ -206,6 +206,7 @@
         <button class="exemplo-btn" onclick="enviarExemplo(this)">Qual fazenda teve a maior produtividade (TCH) na safra 74?</button>
         <button class="exemplo-btn" onclick="enviarExemplo(this)">Qual o valor total que tenho a pagar na próxima semana?</button>
         <button class="exemplo-btn" onclick="enviarExemplo(this)">Quais ordens de compra venceram em julho de 2026?</button>
+        <button class="exemplo-btn" onclick="perguntarNumeroOC()">Consultar uma ordem de compra</button>
         <button class="exemplo-btn" onclick="enviarExemplo(this)">Gere um excel com os talhões da safra 74</button>
       </div>
     </div>
@@ -263,6 +264,18 @@ function enviarExemplo(btn) {
   enviarPergunta();
 }
 
+// Atalho "Consultar uma ordem de compra": em vez de mandar uma pergunta
+// vaga pro agente de IA (que pode ou não pedir esclarecimento), já
+// pergunta o número direto na tela — o usuário só digita o número e a
+// pergunta segue normalmente (o agente usa o contexto da conversa pra
+// saber que é o número da ordem de compra).
+function perguntarNumeroOC() {
+  removerVazio();
+  addMensagem('usuario', 'Consultar uma ordem de compra');
+  addMensagem('bot', 'Qual o número da ordem de compra você quer consultar?');
+  chatInput.focus();
+}
+
 function removerVazio() {
   const vazio = document.getElementById('chatVazio');
   if (vazio) vazio.remove();
@@ -284,6 +297,7 @@ const CHAT_VAZIO_HTML = `
       <button class="exemplo-btn" onclick="enviarExemplo(this)">Qual fazenda teve a maior produtividade (TCH) na safra 74?</button>
       <button class="exemplo-btn" onclick="enviarExemplo(this)">Qual o valor total que tenho a pagar na próxima semana?</button>
       <button class="exemplo-btn" onclick="enviarExemplo(this)">Quais ordens de compra venceram em julho de 2026?</button>
+      <button class="exemplo-btn" onclick="perguntarNumeroOC()">Consultar uma ordem de compra</button>
       <button class="exemplo-btn" onclick="enviarExemplo(this)">Gere um excel com os talhões da safra 74</button>
     </div>
   </div>`;
