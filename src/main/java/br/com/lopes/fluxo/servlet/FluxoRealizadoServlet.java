@@ -91,10 +91,14 @@ public class FluxoRealizadoServlet extends HttpServlet {
             }
             // ─────────────────────────────────────────────────────────────
 
-            JsonObject resultado = new JsonObject();
-            resultado.addProperty("ok", true);
-            resultado.add("data", gson.toJsonTree(lista));
-            out.print(gson.toJson(resultado));
+            // Escreve o JSON direto no PrintWriter da resposta (streaming) em
+            // vez de montar um JsonObject/String gigante em memória primeiro
+            // — com períodos largos (ex.: 3 anos) a lista tem dezenas de
+            // milhares de linhas, e montar tudo como uma única String antes
+            // de mandar já causou OutOfMemoryError em produção.
+            out.print("{\"ok\":true,\"data\":");
+            gson.toJson(lista, out);
+            out.print("}");
 
         } catch (Exception e) {
             LOG.log(Level.SEVERE, "Erro no servlet fluxo-realizado", e);

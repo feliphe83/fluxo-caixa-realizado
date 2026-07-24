@@ -1,9 +1,7 @@
 package br.com.lopes.fluxo.servlet;
 
 import br.com.lopes.fluxo.dao.FinanceiroContasPagarDAO;
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
+import com.google.gson.stream.JsonWriter;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -35,7 +33,6 @@ public class FluxoARealizarServlet extends HttpServlet {
     private static final Logger LOG = Logger.getLogger(FluxoARealizarServlet.class.getName());
     private static final DateTimeFormatter FMT = DateTimeFormatter.ISO_LOCAL_DATE;
 
-    private final Gson gson = new Gson();
     private final FinanceiroContasPagarDAO dao = new FinanceiroContasPagarDAO();
 
     @Override
@@ -60,34 +57,40 @@ public class FluxoARealizarServlet extends HttpServlet {
             List<Map<String, Object>> lista = dao.buscar(
                     dataIni.format(FMT), dataFim.format(FMT), null, null, null, false);
 
-            JsonArray arr = new JsonArray();
+            // Escreve o JSON direto no PrintWriter (streaming), sem montar um
+            // JsonArray/JsonObject gigante em memória primeiro — a mesma
+            // causa de um OutOfMemoryError já visto em produção no
+            // FluxoRealizadoServlet, e essa consulta pode devolver ainda
+            // mais linhas (sem filtro de provisão).
+            JsonWriter writer = new JsonWriter(out);
+            writer.beginObject();
+            writer.name("ok").value(true);
+            writer.name("data").beginArray();
             for (Map<String, Object> l : lista) {
-                JsonObject o = new JsonObject();
-                o.addProperty("codContaFluxo", strOf(l.get("conta_fluxo")));
-                o.addProperty("descricaoConta", strOf(l.get("desc_fluxo")));
-                o.addProperty("codEmpenho", strOf(l.get("cod_empenho")));
-                o.addProperty("descEmpenho", strOf(l.get("descricao_empenho")));
-                o.addProperty("codFornecedor", strOf(l.get("cod_fornecedor")));
-                o.addProperty("nome", strOf(l.get("nome")));
-                o.addProperty("descricaoTipoConta", strOf(l.get("desc_contas_pagar")));
-                o.addProperty("documento", strOf(l.get("documento")));
-                o.addProperty("parcela", strOf(l.get("parcela")));
-                o.addProperty("codTipoContasPagar", strOf(l.get("cod_tipocontaspagar")));
-                o.addProperty("provisao", strOf(l.get("provisao")));
-                o.addProperty("usuario", strOf(l.get("usuario")));
+                writer.beginObject();
+                writer.name("codContaFluxo").value(strOf(l.get("conta_fluxo")));
+                writer.name("descricaoConta").value(strOf(l.get("desc_fluxo")));
+                writer.name("codEmpenho").value(strOf(l.get("cod_empenho")));
+                writer.name("descEmpenho").value(strOf(l.get("descricao_empenho")));
+                writer.name("codFornecedor").value(strOf(l.get("cod_fornecedor")));
+                writer.name("nome").value(strOf(l.get("nome")));
+                writer.name("descricaoTipoConta").value(strOf(l.get("desc_contas_pagar")));
+                writer.name("documento").value(strOf(l.get("documento")));
+                writer.name("parcela").value(strOf(l.get("parcela")));
+                writer.name("codTipoContasPagar").value(strOf(l.get("cod_tipocontaspagar")));
+                writer.name("provisao").value(strOf(l.get("provisao")));
+                writer.name("usuario").value(strOf(l.get("usuario")));
                 Object valor = l.get("valor");
-                if (valor instanceof Number n) o.addProperty("valor", n);
-                o.addProperty("codIndiceFinanceiro", (String) null);
-                o.addProperty("dataVcto", dataApenas(strOf(l.get("datavcto"))));
-                o.addProperty("dataVctoOrig", dataApenas(strOf(l.get("datavcto_orig"))));
-                o.addProperty("dataEntrada", dataApenas(strOf(l.get("dataentrada"))));
-                arr.add(o);
+                writer.name("valor").value(valor instanceof Number n ? n : null);
+                writer.name("codIndiceFinanceiro").nullValue();
+                writer.name("dataVcto").value(dataApenas(strOf(l.get("datavcto"))));
+                writer.name("dataVctoOrig").value(dataApenas(strOf(l.get("datavcto_orig"))));
+                writer.name("dataEntrada").value(dataApenas(strOf(l.get("dataentrada"))));
+                writer.endObject();
             }
-
-            JsonObject result = new JsonObject();
-            result.addProperty("ok", true);
-            result.add("data", arr);
-            out.print(gson.toJson(result));
+            writer.endArray();
+            writer.endObject();
+            writer.flush();
 
         } catch (Exception e) {
             LOG.log(Level.SEVERE, "Erro fluxo-arealizar", e);
