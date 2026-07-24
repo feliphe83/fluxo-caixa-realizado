@@ -14,6 +14,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -29,6 +31,9 @@ import java.util.logging.Logger;
  * GET /api/financeiro/contas-apagar?dataIniVcto=yyyy-MM-dd&dataFimVcto=yyyy-MM-dd
  *        [&dataIniEntrada=yyyy-MM-dd&dataFimEntrada=yyyy-MM-dd]
  *        [&fornecedor=trecho do nome] [&sessionId=...]
+ *
+ * GET /api/financeiro/contas-apagar?periodo=proximaSemana[&sessionId=...]
+ *        (substitui dataIniVcto/dataFimVcto — ver seção "Próxima semana")
  *
  * Resposta: { "ok": true, "totalEncontrado": N, "truncado": bool,
  *             "valorTotal": soma de TODAS as parcelas do período (não só as
@@ -54,8 +59,12 @@ import java.util.logging.Logger;
  * "Próxima semana": pergunta recorrente do Dr. Alfredo ("qual o valor total
  * que tenho a pagar na próxima semana? liste todas as contas") — nesta
  * empresa a semana operacional começa no SÁBADO e termina na SEXTA-FEIRA
- * seguinte (não domingo-sábado). O agente deve calcular
- * dataIniVcto/dataFimVcto de acordo antes de chamar esta rota, e a resposta
+ * seguinte (não domingo-sábado). Em vez de pedir pro agente de IA calcular
+ * dataIniVcto/dataFimVcto sozinho (LLM erra matemática de datas com
+ * frequência — já aconteceu de devolver um intervalo de 11 dias em vez de
+ * 7), o parâmetro "periodo=proximaSemana" faz o PRÓPRIO SERVLET calcular o
+ * sábado-a-sexta certo a partir da data de hoje (ver {@link #proximaSemana()}),
+ * ignorando dataIniVcto/dataFimVcto se vierem informados junto. A resposta
  * deve trazer o valor total (valorTotal), a lista de cada conta (parcelas)
  * e um totalizador ao final.
  */
@@ -86,12 +95,25 @@ public class FinanceiroContasPagarServlet extends HttpServlet {
                 return;
             }
 
-            String dataIniVcto = DataParamUtil.normalizar(req.getParameter("dataIniVcto"));
-            String dataFimVcto = DataParamUtil.normalizar(req.getParameter("dataFimVcto"));
-            if (dataIniVcto == null || dataFimVcto == null) {
-                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                out.print("{\"ok\":false,\"erro\":\"Parâmetros dataIniVcto e dataFimVcto são obrigatórios (período de vencimento), nos formatos yyyy-MM-dd ou dd/mm/aaaa\"}");
-                return;
+            String periodo = req.getParameter("periodo");
+            String dataIniVcto;
+            String dataFimVcto;
+            if ("proximaSemana".equalsIgnoreCase(periodo)) {
+                // Calculado aqui, não pelo agente de IA — LLM erra matemática de
+                // datas com frequência (ex.: já devolveu um intervalo de 11 dias
+                // pedindo "próxima semana"). Sábado a sexta-feira, sempre a
+                // partir da data de hoje do servidor.
+                LocalDate[] semana = proximaSemana();
+                dataIniVcto = semana[0].toString();
+                dataFimVcto = semana[1].toString();
+            } else {
+                dataIniVcto = DataParamUtil.normalizar(req.getParameter("dataIniVcto"));
+                dataFimVcto = DataParamUtil.normalizar(req.getParameter("dataFimVcto"));
+                if (dataIniVcto == null || dataFimVcto == null) {
+                    resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                    out.print("{\"ok\":false,\"erro\":\"Parâmetros dataIniVcto e dataFimVcto são obrigatórios (período de vencimento) quando \\\"periodo\\\" não é informado, nos formatos yyyy-MM-dd ou dd/mm/aaaa\"}");
+                    return;
+                }
             }
 
             String dataIniEntrada = DataParamUtil.normalizar(req.getParameter("dataIniEntrada"));
@@ -215,5 +237,18 @@ public class FinanceiroContasPagarServlet extends HttpServlet {
 
     private static double arred(double v) {
         return Math.round(v * 100.0) / 100.0;
+    }
+
+    /**
+     * Sábado a sexta-feira seguinte — "esta semana" é o bloco que contém
+     * hoje; "próxima semana" é o bloco seguinte a esse.
+     */
+    private static LocalDate[] proximaSemana() {
+        LocalDate hoje = LocalDate.now();
+        int diasDesdeSabado = (hoje.getDayOfWeek().getValue() - DayOfWeek.SATURDAY.getValue() + 7) % 7;
+        LocalDate inicioSemanaAtual = hoje.minusDays(diasDesdeSabado);
+        LocalDate inicioProxima = inicioSemanaAtual.plusDays(7);
+        LocalDate fimProxima = inicioProxima.plusDays(6);
+        return new LocalDate[]{ inicioProxima, fimProxima };
     }
 }
