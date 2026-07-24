@@ -24,8 +24,9 @@ import java.util.logging.Logger;
  * opcionais. Usa a conexão do fluxo de caixa (usuário cpd), que já tem os
  * grants do schema financeiro.
  *
- * Sem filtro de provisão — traz tudo (provisionado ou não), tanto para o
- * Dr. Alfredo quanto para a tela "Fluxo a Realizar".
+ * Filtro de provisão (parâmetro apenasNaoProvisionado): o Dr. Alfredo só
+ * quer provisao = 'N' (desconsidera as provisionadas); a tela quer tudo,
+ * sem filtro nenhum, e decide o que mostrar/agrupar do lado do cliente.
  */
 public class FinanceiroContasPagarDAO {
 
@@ -264,6 +265,7 @@ public class FinanceiroContasPagarDAO {
                          and   pcp.cod_grupoempresa    = aux.cod_grupoempresa
                  ) tabela
                  where tabela.cod_tipocontaspagar not in (817,789)
+                 /*FILTRO_PROVISAO*/
             )
         ) q
         left join (
@@ -347,10 +349,13 @@ public class FinanceiroContasPagarDAO {
      * @param conta                 opcional, trecho da conta de fluxo (desc_fluxo) —
      *                              usado pra "detalhar" um item específico de um
      *                              agrupamento por conta já mostrado antes
+     * @param apenasNaoProvisionado true: só provisao = 'N' (uso do Dr.
+     *                              Alfredo); false: sem filtro de provisão,
+     *                              traz tudo (uso da tela Fluxo a Realizar)
      */
     public List<Map<String, Object>> buscar(String dataIniVcto, String dataFimVcto,
                                             String dataIniEntrada, String dataFimEntrada,
-                                            String fornecedor, String conta) {
+                                            String fornecedor, String conta, boolean apenasNaoProvisionado) {
 
         boolean temEntrada = dataIniEntrada != null && !dataIniEntrada.isBlank()
                           && dataFimEntrada != null && !dataFimEntrada.isBlank();
@@ -364,6 +369,8 @@ public class FinanceiroContasPagarDAO {
         boolean temConta = conta != null && !conta.isBlank();
         sql = sql.replace("/*FILTRO_CONTA*/",
                 temConta ? "and upper(desc_fluxo) like '%'||upper(?)||'%'" : "");
+
+        sql = sql.replace("/*FILTRO_PROVISAO*/", apenasNaoProvisionado ? "and tabela.provisao = 'N'" : "");
 
         // O período de vencimento (e o de entrada, se houver) repete em cada um
         // dos 4 blocos da união, na ordem em que os ? aparecem no SQL.

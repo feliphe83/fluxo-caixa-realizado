@@ -143,7 +143,7 @@ public class FinanceiroContasPagarServlet extends HttpServlet {
             String conta = req.getParameter("conta");
 
             List<Map<String, Object>> lista = dao.buscar(dataIniVcto, dataFimVcto,
-                    dataIniEntrada, dataFimEntrada, fornecedor, conta);
+                    dataIniEntrada, dataFimEntrada, fornecedor, conta, true);
 
             // Guarda o resultado COMPLETO para exportação (Excel) pelo
             // front-end do chat — o agente de IA só recebe a versão truncada.
