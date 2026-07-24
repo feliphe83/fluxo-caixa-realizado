@@ -22,6 +22,10 @@ import java.util.logging.Logger;
  * Período de vencimento é obrigatório; período de entrada e fornecedor são
  * opcionais. Usa a conexão do fluxo de caixa (usuário cpd), que já tem os
  * grants do schema financeiro.
+ *
+ * Parcelas com provisao = 'N' são desconsideradas (fixo, não é filtro
+ * opcional) — só entram parcelas provisionadas (S) ou sem provisão marcada
+ * (null, tratado como S).
  */
 public class FinanceiroContasPagarDAO {
 
@@ -260,6 +264,7 @@ public class FinanceiroContasPagarDAO {
                          and   pcp.cod_grupoempresa    = aux.cod_grupoempresa
                  ) tabela
                  where tabela.cod_tipocontaspagar not in (817,789)
+                 and   nvl(tabela.provisao,'S') <> 'N'
             )
         ) q
         left join (
