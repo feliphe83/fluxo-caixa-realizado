@@ -44,11 +44,11 @@
        do módulo continua com a largura inteira. O menu abre por cima do
        conteúdo (overlay), não empurra nada. */
     .snav-sidebar {
-      position: fixed; top: 0; left: 0; height: 100vh; width: var(--snav-w);
-      background: #0f1e36; border-right: 1px solid rgba(26,58,124,0.35);
+      position: fixed; top: 0; right: 0; height: 100vh; width: var(--snav-w);
+      background: #0f1e36; border-left: 1px solid rgba(26,58,124,0.35);
       display: flex; flex-direction: column; z-index: 1040;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      transform: translateX(-100%); transition: transform .22s ease;
+      transform: translateX(100%); transition: transform .22s ease;
       box-shadow: 0 0 40px rgba(0,0,0,.35);
     }
     .snav-sidebar.aberto { transform: translateX(0); }
