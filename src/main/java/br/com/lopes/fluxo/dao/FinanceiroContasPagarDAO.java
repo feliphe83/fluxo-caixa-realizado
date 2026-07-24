@@ -16,15 +16,17 @@ import java.util.logging.Logger;
 /**
  * DAO da consulta de contas a pagar (fluxo de caixa a realizar) do
  * financeiro, com valores líquidos (baixas/acréscimos/descontos) e o
- * histórico de alterações de vencimento (até 10 por parcela) — usada como
- * fonte de dados do chatbot (via n8n) para perguntas financeiras.
+ * histórico de alterações de vencimento (até 10 por parcela) — compartilhada
+ * pelo chatbot (Dr. Alfredo, via n8n) e pela tela "Fluxo a Realizar"
+ * (FluxoARealizarServlet).
  *
  * Período de vencimento é obrigatório; período de entrada e fornecedor são
  * opcionais. Usa a conexão do fluxo de caixa (usuário cpd), que já tem os
  * grants do schema financeiro.
  *
- * Só entram parcelas com provisao = 'N' (fixo, não é filtro opcional) — as
- * provisionadas (S) são desconsideradas.
+ * Filtro de provisão (parâmetro apenasNaoProvisionado): o Dr. Alfredo só
+ * quer provisao = 'N' (desconsidera as provisionadas); a tela quer tudo,
+ * sem filtro nenhum, e decide o que mostrar/agrupar do lado do cliente.
  */
 public class FinanceiroContasPagarDAO {
 
@@ -263,7 +265,7 @@ public class FinanceiroContasPagarDAO {
                          and   pcp.cod_grupoempresa    = aux.cod_grupoempresa
                  ) tabela
                  where tabela.cod_tipocontaspagar not in (817,789)
-                 and   tabela.provisao = 'N'
+                 /*FILTRO_PROVISAO*/
             )
         ) q
         left join (
@@ -338,15 +340,18 @@ public class FinanceiroContasPagarDAO {
         """.formatted(MAX_TOTAL);
 
     /**
-     * @param dataIniVcto    obrigatório, yyyy-MM-dd (vencimento >=)
-     * @param dataFimVcto    obrigatório, yyyy-MM-dd (vencimento <=)
-     * @param dataIniEntrada opcional (com dataFimEntrada), yyyy-MM-dd
-     * @param dataFimEntrada opcional (com dataIniEntrada), yyyy-MM-dd
-     * @param fornecedor     opcional, trecho do nome do fornecedor
+     * @param dataIniVcto           obrigatório, yyyy-MM-dd (vencimento >=)
+     * @param dataFimVcto           obrigatório, yyyy-MM-dd (vencimento <=)
+     * @param dataIniEntrada        opcional (com dataFimEntrada), yyyy-MM-dd
+     * @param dataFimEntrada        opcional (com dataIniEntrada), yyyy-MM-dd
+     * @param fornecedor            opcional, trecho do nome do fornecedor
+     * @param apenasNaoProvisionado true: só provisao = 'N' (uso do Dr.
+     *                              Alfredo); false: sem filtro de provisão,
+     *                              traz tudo (uso da tela Fluxo a Realizar)
      */
     public List<Map<String, Object>> buscar(String dataIniVcto, String dataFimVcto,
                                             String dataIniEntrada, String dataFimEntrada,
-                                            String fornecedor) {
+                                            String fornecedor, boolean apenasNaoProvisionado) {
 
         boolean temEntrada = dataIniEntrada != null && !dataIniEntrada.isBlank()
                           && dataFimEntrada != null && !dataFimEntrada.isBlank();
@@ -356,6 +361,8 @@ public class FinanceiroContasPagarDAO {
         boolean temFornecedor = fornecedor != null && !fornecedor.isBlank();
         sql = sql.replace("/*FILTRO_FORNECEDOR*/",
                 temFornecedor ? "and upper(nome) like '%'||upper(?)||'%'" : "");
+
+        sql = sql.replace("/*FILTRO_PROVISAO*/", apenasNaoProvisionado ? "and tabela.provisao = 'N'" : "");
 
         // O período de vencimento (e o de entrada, se houver) repete em cada um
         // dos 4 blocos da união, na ordem em que os ? aparecem no SQL.

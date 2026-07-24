@@ -135,7 +135,7 @@ public class FinanceiroContasPagarServlet extends HttpServlet {
             String fornecedor = req.getParameter("fornecedor");
 
             List<Map<String, Object>> lista = dao.buscar(dataIniVcto, dataFimVcto,
-                    dataIniEntrada, dataFimEntrada, fornecedor);
+                    dataIniEntrada, dataFimEntrada, fornecedor, true);
 
             // Guarda o resultado COMPLETO para exportação (Excel) pelo
             // front-end do chat — o agente de IA só recebe a versão truncada.
