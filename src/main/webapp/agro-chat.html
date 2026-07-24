@@ -268,15 +268,19 @@ function enviarExemplo(btn) {
   enviarPergunta();
 }
 
-// Atalho "Consultar uma ordem de compra": em vez de mandar uma pergunta
-// vaga pro agente de IA (que pode ou não pedir esclarecimento), já
-// pergunta o número direto na tela — o usuário só digita o número e a
-// pergunta segue normalmente (o agente usa o contexto da conversa pra
-// saber que é o número da ordem de compra).
+// Atalho "Consultar uma ordem de compra": a pergunta "Qual o número..." é só
+// visual (não passa pelo agente de IA — a memória da conversa no n8n não vê
+// essas duas mensagens). Por isso, quando o usuário digitar só o número em
+// seguida, enviarPergunta() reescreve a mensagem pra incluir o contexto
+// completo antes de mandar pro backend — senão o agente recebe só "158397"
+// isolado, sem saber que é sobre ordem de compra, e responde qualquer coisa.
+let aguardandoNumeroOC = false;
+
 function perguntarNumeroOC() {
   removerVazio();
   addMensagem('usuario', 'Consultar uma ordem de compra');
   addMensagem('bot', 'Qual o número da ordem de compra você quer consultar?');
+  aguardandoNumeroOC = true;
   chatInput.focus();
 }
 
@@ -315,6 +319,7 @@ function limparConversa() {
 
   speechSynthesis.cancel();
   chatMensagens.innerHTML = CHAT_VAZIO_HTML;
+  aguardandoNumeroOC = false;
 
   SESSION_ID = 'web-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
   sessionStorage.setItem('agroChatSessionId', SESSION_ID);
@@ -567,6 +572,17 @@ async function enviarPergunta() {
   const pergunta = chatInput.value.trim();
   if (!pergunta) return;
 
+  // Se a mensagem anterior foi o atalho de "Consultar uma ordem de compra"
+  // (pergunta puramente visual, que o agente nunca viu), reescreve a
+  // resposta do usuário numa frase completa antes de mandar pro backend.
+  let perguntaParaEnviar = pergunta;
+  if (aguardandoNumeroOC) {
+    perguntaParaEnviar = /^\d+$/.test(pergunta)
+      ? `Quero consultar a ordem de compra número ${pergunta}`
+      : pergunta;
+    aguardandoNumeroOC = false;
+  }
+
   chatInput.value = '';
   chatInput.style.height = 'auto';
   btnEnviar.disabled = true;
@@ -587,7 +603,7 @@ async function enviarPergunta() {
     const resp = await fetch('api/ia/agro-chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pergunta, sessionId: SESSION_ID })
+      body: JSON.stringify({ pergunta: perguntaParaEnviar, sessionId: SESSION_ID })
     });
     const json = await resp.json();
     loadingEl.remove();
