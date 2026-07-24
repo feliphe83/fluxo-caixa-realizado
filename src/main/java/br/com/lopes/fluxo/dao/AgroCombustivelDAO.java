@@ -277,6 +277,8 @@ public class AgroCombustivelDAO {
      * @param codEquipamento opcional
      * @param codTipoCliente opcional
      * @param combustivel    opcional, trecho da descrição do combustível
+     * @param codFazenda     opcional (mesmo filtro já usado pelo dashboard
+     *                       da tela de combustível, buscarDetalhadoDashboard)
      * @param agrupar        opcional: null/"combustivel" (padrão — soma por
      *                       combustível), "equipamento" (soma por
      *                       equipamento, maior consumo primeiro — usado
@@ -284,43 +286,9 @@ public class AgroCombustivelDAO {
      *                       quando pedido explicitamente)
      */
     public List<Map<String, Object>> buscar(String dataIni, String dataFim, Integer codEquipamento,
-                                            Integer codTipoCliente, String combustivel, String agrupar) {
+                                            Integer codTipoCliente, String combustivel, Integer codFazenda,
+                                            String agrupar) {
 
-        StringBuilder filtros = new StringBuilder();
-        List<Object> params = new ArrayList<>();
-        params.add(paraDDMMYYYY(dataIni));
-        params.add(paraDDMMYYYY(dataFim));
-
-        if (codEquipamento != null) {
-            filtros.append(" and abastecimento.cod_equipamento = ?\n");
-            params.add(codEquipamento);
-        }
-        if (codTipoCliente != null) {
-            filtros.append(" and abastecimento.cod_tipocliente = ?\n");
-            params.add(codTipoCliente);
-        }
-        if (combustivel != null && !combustivel.isBlank()) {
-            filtros.append(" and upper(material.descricao) like '%'||upper(?)||'%'\n");
-            params.add(combustivel.trim());
-        }
-
-        String template = switch (agrupar == null ? "" : agrupar.trim().toLowerCase()) {
-            case "detalhado" -> SQL_DETALHADO;
-            case "equipamento" -> SQL_POR_EQUIPAMENTO;
-            default -> SQL_POR_COMBUSTIVEL;
-        };
-        return executar(template.replace("/*FILTROS*/", filtros.toString()), params);
-    }
-
-    /**
-     * Detalhe linha a linha para o dashboard de consumo de combustível
-     * (tela combustivel-dashboard.html) — mesma consulta do Dr. Alfredo,
-     * com o filtro adicional de fazenda. A agregação (KPIs, séries,
-     * rankings) é feita no servlet, sobre este resultado.
-     */
-    public List<Map<String, Object>> buscarDetalhadoDashboard(String dataIni, String dataFim,
-                                                              Integer codEquipamento, Integer codTipoCliente,
-                                                              String combustivel, Integer codFazenda) {
         StringBuilder filtros = new StringBuilder();
         List<Object> params = new ArrayList<>();
         params.add(paraDDMMYYYY(dataIni));
@@ -343,7 +311,24 @@ public class AgroCombustivelDAO {
             params.add(codFazenda);
         }
 
-        return executar(SQL_DETALHADO.replace("/*FILTROS*/", filtros.toString()), params);
+        String template = switch (agrupar == null ? "" : agrupar.trim().toLowerCase()) {
+            case "detalhado" -> SQL_DETALHADO;
+            case "equipamento" -> SQL_POR_EQUIPAMENTO;
+            default -> SQL_POR_COMBUSTIVEL;
+        };
+        return executar(template.replace("/*FILTROS*/", filtros.toString()), params);
+    }
+
+    /**
+     * Detalhe linha a linha para o dashboard de consumo de combustível
+     * (tela combustivel-dashboard.html) — mesma consulta do Dr. Alfredo,
+     * sempre no modo detalhado. A agregação (KPIs, séries, rankings) é
+     * feita no servlet, sobre este resultado.
+     */
+    public List<Map<String, Object>> buscarDetalhadoDashboard(String dataIni, String dataFim,
+                                                              Integer codEquipamento, Integer codTipoCliente,
+                                                              String combustivel, Integer codFazenda) {
+        return buscar(dataIni, dataFim, codEquipamento, codTipoCliente, combustivel, codFazenda, "detalhado");
     }
 
     /**

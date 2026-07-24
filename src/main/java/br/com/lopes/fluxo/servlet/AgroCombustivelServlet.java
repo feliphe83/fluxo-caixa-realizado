@@ -26,7 +26,7 @@ import java.util.logging.Logger;
  *
  * GET /api/agricola/combustivel?dataIni=yyyy-MM-dd&dataFim=yyyy-MM-dd
  *        [&codEquipamento=N] [&codTipoCliente=N] [&combustivel=trecho]
- *        [&agrupar=equipamento|detalhado] [&sessionId=...]
+ *        [&codFazenda=N] [&agrupar=equipamento|detalhado] [&sessionId=...]
  *
  * Resposta: { "ok": true, "totalEncontrado": N, "truncado": bool,
  *             "data": [ { ...colunas da consulta... }, ... ] }
@@ -34,7 +34,8 @@ import java.util.logging.Logger;
  * Período de abastecimento é obrigatório; os demais filtros são opcionais e,
  * se vierem em formato inválido, são apenas ignorados (não bloqueiam a
  * consulta) — o agente de IA às vezes manda um valor vazio/errado num filtro
- * opcional mesmo sem o usuário ter pedido esse filtro.
+ * opcional mesmo sem o usuário ter pedido esse filtro. "codFazenda" é o
+ * mesmo filtro já usado pelo dashboard da tela de combustível.
  *
  * Por padrão (sem agrupar, ou agrupar=combustivel), litros e valor (R$) vêm
  * somados direto do banco por combustível, do maior para o menor consumo —
@@ -88,13 +89,14 @@ public class AgroCombustivelServlet extends HttpServlet {
             Integer codEquipamento = lerInteiro(req.getParameter("codEquipamento"));
             Integer codTipoCliente = lerInteiro(req.getParameter("codTipoCliente"));
             String combustivel = req.getParameter("combustivel");
+            Integer codFazenda = lerInteiro(req.getParameter("codFazenda"));
             String agrupar = req.getParameter("agrupar");
 
-            List<Map<String, Object>> lista = dao.buscar(dataIni, dataFim, codEquipamento, codTipoCliente, combustivel, agrupar);
+            List<Map<String, Object>> lista = dao.buscar(dataIni, dataFim, codEquipamento, codTipoCliente, combustivel, codFazenda, agrupar);
 
             // Guarda o resultado COMPLETO para exportação (Excel) pelo
             // front-end do chat — o agente de IA só recebe a versão truncada.
-            AgroConsultaCache.guardar(sessionId, montarTitulo(dataIni, dataFim, codEquipamento, combustivel, agrupar), lista);
+            AgroConsultaCache.guardar(sessionId, montarTitulo(dataIni, dataFim, codEquipamento, combustivel, codFazenda, agrupar), lista);
 
             int total = lista.size();
             boolean truncado = total > MAX_LINHAS;
@@ -125,12 +127,13 @@ public class AgroCombustivelServlet extends HttpServlet {
     }
 
     private static String montarTitulo(String dataIni, String dataFim, Integer codEquipamento,
-                                       String combustivel, String agrupar) {
+                                       String combustivel, Integer codFazenda, String agrupar) {
         StringBuilder t = new StringBuilder("Combustível");
         if (agrupar != null && !agrupar.isBlank()) t.append(" por ").append(agrupar.trim());
         t.append(" — ").append(dataIni).append(" a ").append(dataFim);
         if (codEquipamento != null) t.append(" · Equipamento ").append(codEquipamento);
         if (combustivel != null && !combustivel.isBlank()) t.append(" · ").append(combustivel.trim());
+        if (codFazenda != null) t.append(" · Fazenda ").append(codFazenda);
         return t.toString();
     }
 }
