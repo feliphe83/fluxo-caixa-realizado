@@ -337,6 +337,7 @@ public class FinanceiroContasPagarDAO {
         ) where nvl(valor, 0) > 0
           and rownum <= %d
         /*FILTRO_FORNECEDOR*/
+        /*FILTRO_CONTA*/
         """.formatted(MAX_TOTAL);
 
     /**
@@ -345,13 +346,16 @@ public class FinanceiroContasPagarDAO {
      * @param dataIniEntrada        opcional (com dataFimEntrada), yyyy-MM-dd
      * @param dataFimEntrada        opcional (com dataIniEntrada), yyyy-MM-dd
      * @param fornecedor            opcional, trecho do nome do fornecedor
+     * @param conta                 opcional, trecho da conta de fluxo (desc_fluxo) —
+     *                              usado pra "detalhar" um item específico de um
+     *                              agrupamento por conta já mostrado antes
      * @param apenasNaoProvisionado true: só provisao = 'N' (uso do Dr.
      *                              Alfredo); false: sem filtro de provisão,
      *                              traz tudo (uso da tela Fluxo a Realizar)
      */
     public List<Map<String, Object>> buscar(String dataIniVcto, String dataFimVcto,
                                             String dataIniEntrada, String dataFimEntrada,
-                                            String fornecedor, boolean apenasNaoProvisionado) {
+                                            String fornecedor, String conta, boolean apenasNaoProvisionado) {
 
         boolean temEntrada = dataIniEntrada != null && !dataIniEntrada.isBlank()
                           && dataFimEntrada != null && !dataFimEntrada.isBlank();
@@ -361,6 +365,10 @@ public class FinanceiroContasPagarDAO {
         boolean temFornecedor = fornecedor != null && !fornecedor.isBlank();
         sql = sql.replace("/*FILTRO_FORNECEDOR*/",
                 temFornecedor ? "and upper(nome) like '%'||upper(?)||'%'" : "");
+
+        boolean temConta = conta != null && !conta.isBlank();
+        sql = sql.replace("/*FILTRO_CONTA*/",
+                temConta ? "and upper(desc_fluxo) like '%'||upper(?)||'%'" : "");
 
         sql = sql.replace("/*FILTRO_PROVISAO*/", apenasNaoProvisionado ? "and tabela.provisao = 'N'" : "");
 
@@ -376,6 +384,7 @@ public class FinanceiroContasPagarDAO {
             }
         }
         if (temFornecedor) params.add(fornecedor.trim());
+        if (temConta) params.add(conta.trim());
 
         try (Connection conn = OracleConnectionUtil.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {

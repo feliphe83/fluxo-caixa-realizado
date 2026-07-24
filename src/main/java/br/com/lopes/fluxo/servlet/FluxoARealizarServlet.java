@@ -55,7 +55,7 @@ public class FluxoARealizarServlet extends HttpServlet {
 
         try {
             List<Map<String, Object>> lista = dao.buscar(
-                    dataIni.format(FMT), dataFim.format(FMT), null, null, null, false);
+                    dataIni.format(FMT), dataFim.format(FMT), null, null, null, null, false);
 
             // Escreve o JSON direto no PrintWriter (streaming), sem montar um
             // JsonArray/JsonObject gigante em memória primeiro — a mesma

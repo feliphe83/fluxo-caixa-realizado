@@ -30,7 +30,14 @@ import java.util.logging.Logger;
  *
  * GET /api/financeiro/contas-apagar?dataIniVcto=yyyy-MM-dd&dataFimVcto=yyyy-MM-dd
  *        [&dataIniEntrada=yyyy-MM-dd&dataFimEntrada=yyyy-MM-dd]
- *        [&fornecedor=trecho do nome] [&sessionId=...]
+ *        [&fornecedor=trecho do nome] [&conta=trecho da conta de fluxo] [&sessionId=...]
+ *
+ * "conta": opcional — filtra por trecho do nome da conta de fluxo (desc_fluxo).
+ *        Usado para "detalhar" um item específico depois que o agente já
+ *        mostrou um agrupamento "porConta" (ex.: usuário pede "detalhe o item
+ *        2" ou "detalhe empréstimos bancários") — o agente deve repetir a
+ *        MESMA consulta (mesmo período/periodo=proximaSemana) acrescentando
+ *        este filtro, e então listar as "parcelas" retornadas.
  *
  * GET /api/financeiro/contas-apagar?periodo=proximaSemana[&sessionId=...]
  *        (substitui dataIniVcto/dataFimVcto — ver seção "Próxima semana")
@@ -133,14 +140,15 @@ public class FinanceiroContasPagarServlet extends HttpServlet {
             }
 
             String fornecedor = req.getParameter("fornecedor");
+            String conta = req.getParameter("conta");
 
             List<Map<String, Object>> lista = dao.buscar(dataIniVcto, dataFimVcto,
-                    dataIniEntrada, dataFimEntrada, fornecedor, true);
+                    dataIniEntrada, dataFimEntrada, fornecedor, conta, true);
 
             // Guarda o resultado COMPLETO para exportação (Excel) pelo
             // front-end do chat — o agente de IA só recebe a versão truncada.
             AgroConsultaCache.guardar(sessionId,
-                    montarTitulo(dataIniVcto, dataFimVcto, dataIniEntrada, dataFimEntrada, fornecedor), lista);
+                    montarTitulo(dataIniVcto, dataFimVcto, dataIniEntrada, dataFimEntrada, fornecedor, conta), lista);
 
             int total = lista.size();
             boolean truncado = total > MAX_LINHAS;
@@ -169,11 +177,12 @@ public class FinanceiroContasPagarServlet extends HttpServlet {
         }
     }
 
-    private static String montarTitulo(String vi, String vf, String ei, String ef, String fornecedor) {
+    private static String montarTitulo(String vi, String vf, String ei, String ef, String fornecedor, String conta) {
         StringBuilder t = new StringBuilder("Contas a Pagar — Vencimento ")
                 .append(vi.trim()).append(" a ").append(vf.trim());
         if (ei != null && !ei.isBlank()) t.append(" · Entrada ").append(ei.trim()).append(" a ").append(ef.trim());
         if (fornecedor != null && !fornecedor.isBlank()) t.append(" · ").append(fornecedor.trim());
+        if (conta != null && !conta.isBlank()) t.append(" · Conta ").append(conta.trim());
         return t.toString();
     }
 
