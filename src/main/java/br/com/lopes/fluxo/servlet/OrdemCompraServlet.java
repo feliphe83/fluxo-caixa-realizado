@@ -182,13 +182,17 @@ public class OrdemCompraServlet extends HttpServlet {
         return Math.round(v * 100.0) / 100.0;
     }
 
-    /** Link direto (sem header/sessão) pro PDF formatado de uma ordem específica. */
+    /**
+     * Link direto (sem header/sessão) pro PDF formatado de uma ordem
+     * específica — aponta pra ordem-compra-pdf.html (não direto pro PDF cru),
+     * que embute o PDF e adiciona botões de Voltar e Compartilhar (WhatsApp).
+     */
     private static String montarPdfUrl(HttpServletRequest req, int nroc) {
         String token = OrdemCompraPdfTokenCache.gerarToken(nroc);
         String base = req.getScheme() + "://" + req.getServerName()
                 + (req.getServerPort() == 80 || req.getServerPort() == 443 ? "" : ":" + req.getServerPort())
                 + req.getContextPath();
-        return base + "/api/publico/ordem-compra-pdf?token=" + token;
+        return base + "/ordem-compra-pdf.html?token=" + token;
     }
 
     private static Integer lerInteiro(String v) {

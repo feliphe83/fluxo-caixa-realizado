@@ -49,6 +49,10 @@ public class AuthFilter implements Filter {
             uri.equals(ctx + "/login.html")              ||
             uri.equals(ctx + "/esqueci-senha.html")       ||
             uri.equals(ctx + "/redefinir-senha.html")     ||
+            // Página que embute o PDF da ordem de compra (link clicado a
+            // partir do chat) — sem sessão, autenticada pelo token na URL,
+            // que a própria API de PDF (/api/publico/*) valida ao carregar.
+            uri.equals(ctx + "/ordem-compra-pdf.html")    ||
             uri.startsWith(ctx + "/api/login")            ||
             uri.startsWith(ctx + "/api/esqueci-senha")     ||
             uri.startsWith(ctx + "/api/redefinir-senha")   ||

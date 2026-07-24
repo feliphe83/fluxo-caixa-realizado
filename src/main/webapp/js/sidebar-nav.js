@@ -63,10 +63,11 @@
       display: flex; align-items: center; gap: 10px; flex-shrink: 0;
     }
     .snav-logo-box {
-      width: 36px; height: 36px; border-radius: 9px; background: #1a3a7c;
+      width: 36px; height: 36px; border-radius: 9px; background: white;
       display: flex; align-items: center; justify-content: center;
-      color: white; font-weight: 800; font-size: 13px; flex-shrink: 0;
+      flex-shrink: 0; overflow: hidden; padding: 4px;
     }
+    .snav-logo-box img { width: 100%; height: 100%; object-fit: contain; }
     .snav-logo-txt { font-size: 12.5px; font-weight: 700; color: #e2e8f0; line-height: 1.3; }
     .snav-logo-sub { font-size: 9.5px; color: #64748b; text-transform: uppercase; letter-spacing: .6px; }
 
@@ -127,7 +128,7 @@
   sidebar.className = 'snav-sidebar';
   sidebar.innerHTML = `
     <div class="snav-logo">
-      <div class="snav-logo-box">USC</div>
+      <div class="snav-logo-box"><img src="img/logo.png" alt="USC"></div>
       <div>
         <div class="snav-logo-txt">Usina Santa Clotilde</div>
         <div class="snav-logo-sub">Intranet</div>

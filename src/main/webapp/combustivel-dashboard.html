@@ -33,7 +33,8 @@
     display: flex; align-items: center; justify-content: space-between;
   }
   .header-left { display: flex; align-items: center; gap: 12px; }
-  .header-logo { width: 38px; height: 38px; border-radius: 8px; background: rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; }
+  .header-logo { width: 38px; height: 38px; border-radius: 8px; background: white; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 4px; flex-shrink: 0; }
+  .header-logo img { width: 100%; height: 100%; object-fit: contain; }
   .header-title { font-size: 16px; font-weight: 700; }
   .header-sub { font-size: 11px; opacity: .75; margin-top: 2px; }
   .btn-voltar {
@@ -172,7 +173,7 @@
 
 <div class="header">
   <div class="header-left">
-    <div class="header-logo">USC</div>
+    <div class="header-logo"><img src="img/logo.png" alt="USC"></div>
     <div>
       <div class="header-title">Relatório Executivo · Consumo de Combustível</div>
       <div class="header-sub">Visão consolidada por combustível · Usina Santa Clotilde</div>
