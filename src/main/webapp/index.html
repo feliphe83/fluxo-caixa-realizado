@@ -257,11 +257,11 @@
   }
   .btn-add-manual:hover { background: var(--verde); color: white; }
 
-  .btn-excluir-manual {
+  .btn-excluir-manual, .btn-editar-manual {
     background: none; border: none; cursor: pointer; font-size: 11px;
     margin-left: 6px; opacity: .55; vertical-align: middle;
   }
-  .btn-excluir-manual:hover { opacity: 1; }
+  .btn-excluir-manual:hover, .btn-editar-manual:hover { opacity: 1; }
 
   /* MODAL: Lançamento Manual */
   .lm-campo { display: flex; flex-direction: column; gap: 5px; }
@@ -735,7 +735,7 @@
 <div class="modal-overlay" id="modalLancamentoManual" onclick="if(event.target===this) fecharModalLancamentoManual()">
   <div class="modal-box" style="max-width:520px">
     <div class="modal-header">
-      <span>Novo Lançamento Manual</span>
+      <span id="lmTituloModal">Novo Lançamento Manual</span>
       <button class="modal-fechar" onclick="fecharModalLancamentoManual()" aria-label="Fechar">✕</button>
     </div>
     <div class="modal-body" style="padding:18px 20px">
@@ -997,36 +997,63 @@ function mostrarErroLM(msg) {
   el.style.display = 'block';
 }
 
-async function abrirModalLancamentoManual() {
+let EDITANDO_ID_LM = null;
+
+async function abrirModalLancamentoManual(itemParaEditar) {
+  EDITANDO_ID_LM = itemParaEditar ? itemParaEditar.idLancamentoManual : null;
+  document.getElementById('lmTituloModal').textContent =
+    itemParaEditar ? 'Editar Lançamento Manual' : 'Novo Lançamento Manual';
+
   document.getElementById('lmErro').style.display = 'none';
-  document.getElementById('lmFornecedor').value = '';
-  document.getElementById('lmDataVencimento').value = document.getElementById('dataInicio').value || fmt8(new Date());
-  document.getElementById('lmValor').value = '';
+  document.getElementById('lmFornecedor').value = itemParaEditar ? (itemParaEditar.nome || '') : '';
+  document.getElementById('lmDataVencimento').value = itemParaEditar
+    ? (itemParaEditar.dataVcto || '')
+    : (document.getElementById('dataInicio').value || fmt8(new Date()));
+  document.getElementById('lmValor').value = itemParaEditar ? itemParaEditar.valor : '';
   document.getElementById('lmEmpenho').innerHTML = '<option value="">Selecione o Grupo de Empenho primeiro</option>';
   document.getElementById('lmEmpenho').disabled = true;
   document.getElementById('modalLancamentoManual').classList.add('aberto');
 
-  if (OPCOES_LANCAMENTO_MANUAL) return;
-
   const selDesc = document.getElementById('lmDescricaoItem');
   const selGrupo = document.getElementById('lmGrupoEmpenho');
-  try {
-    const r = await fetch('api/lancamento-manual/opcoes');
-    const j = await r.json();
-    if (!j.ok) throw new Error(j.erro);
-    OPCOES_LANCAMENTO_MANUAL = j;
-    selDesc.innerHTML = '<option value="">Selecione…</option>' +
-      j.contasFluxo.map(o => `<option value="${esc(o.cod)}">${esc(o.descricao)}</option>`).join('');
-    selGrupo.innerHTML = '<option value="">Selecione…</option>' +
-      j.gruposEmpenho.map(o => `<option value="${esc(o.cod)}">${esc(o.descricao)}</option>`).join('');
-  } catch (e) {
-    selDesc.innerHTML = '<option value="">Erro ao carregar</option>';
-    selGrupo.innerHTML = '<option value="">Erro ao carregar</option>';
-    mostrarErroLM('Erro ao carregar opções do Oracle: ' + e.message);
+
+  if (!OPCOES_LANCAMENTO_MANUAL) {
+    try {
+      const r = await fetch('api/lancamento-manual/opcoes');
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.erro);
+      OPCOES_LANCAMENTO_MANUAL = j;
+      selDesc.innerHTML = '<option value="">Selecione…</option>' +
+        j.contasFluxo.map(o => `<option value="${esc(o.cod)}">${esc(o.descricao)}</option>`).join('');
+      selGrupo.innerHTML = '<option value="">Selecione…</option>' +
+        j.gruposEmpenho.map(o => `<option value="${esc(o.cod)}">${esc(o.descricao)}</option>`).join('');
+    } catch (e) {
+      selDesc.innerHTML = '<option value="">Erro ao carregar</option>';
+      selGrupo.innerHTML = '<option value="">Erro ao carregar</option>';
+      mostrarErroLM('Erro ao carregar opções do Oracle: ' + e.message);
+      return;
+    }
+  }
+
+  if (itemParaEditar) {
+    selDesc.value = itemParaEditar.codContaFluxo || '';
+    selGrupo.value = itemParaEditar.codGrupoEmpenho || '';
+    await aoTrocarGrupoEmpenho();
+    document.getElementById('lmEmpenho').value = itemParaEditar.codEmpenho || '';
+  } else {
+    selDesc.value = '';
+    selGrupo.value = '';
   }
 }
 
+function editarLancamentoManual(id) {
+  const item = DADOS_RAW.find(d => d.idLancamentoManual === id);
+  if (!item) { alert('Lançamento não encontrado — gere o relatório de novo e tente outra vez.'); return; }
+  abrirModalLancamentoManual(item);
+}
+
 function fecharModalLancamentoManual() {
+  EDITANDO_ID_LM = null;
   document.getElementById('modalLancamentoManual').classList.remove('aberto');
 }
 
@@ -1072,8 +1099,10 @@ async function salvarLancamentoManual() {
   btn.textContent = 'Salvando…';
 
   try {
-    const r = await fetch('api/lancamento-manual', {
-      method: 'POST',
+    const url = EDITANDO_ID_LM ? ('api/lancamento-manual?id=' + EDITANDO_ID_LM) : 'api/lancamento-manual';
+    const method = EDITANDO_ID_LM ? 'PUT' : 'POST';
+    const r = await fetch(url, {
+      method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         descricaoItem: selDesc.options[selDesc.selectedIndex].text,
@@ -1448,12 +1477,15 @@ function abrirModalParcelas(g, periodoId, periodoLabel) {
     const ehManual = it.provisao === 'Manual';
     const labelBadge = { N: 'Título', S: 'Provisão', Manual: 'Manual' }[it.provisao] || '';
     const badge = labelBadge ? `<span class="badge badge-${it.provisao}">${labelBadge}</span>` : '';
+    const editar = ehManual
+      ? `<button class="btn-editar-manual" title="Editar lançamento manual" onclick="editarLancamentoManual(${it.idLancamentoManual})">✏️</button>`
+      : '';
     const excluir = ehManual
       ? `<button class="btn-excluir-manual" title="Excluir lançamento manual" onclick="excluirLancamentoManual(${it.idLancamentoManual})">🗑</button>`
       : '';
     return `
       <tr class="${marcado ? 'linha-desconsiderada' : ''}">
-        <td>${esc(it.nome || '—')}${badge}${excluir}</td>
+        <td>${esc(it.nome || '—')}${badge}${editar}${excluir}</td>
         <td>${esc(it.parcela || '—')}</td>
         <td>${fmtR(it.realizado)}</td>
         <td style="text-align:center">

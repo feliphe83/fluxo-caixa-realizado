@@ -48,6 +48,8 @@ import java.util.logging.Logger;
  * POST /api/lancamento-manual
  *        Body: { descricaoItem, codContaFluxo, codGrupoEmpenho, descGrupoEmpenho,
  *                codEmpenho, descEmpenho, fornecedor, dataVencimento, valor }
+ * PUT  /api/lancamento-manual?id=N
+ *        Mesmo body do POST — edita um lançamento existente (mesma validação).
  * DELETE /api/lancamento-manual?id=N
  *
  * Exige sessão de login normal (AuthFilter já garante isso fora de
@@ -347,6 +349,89 @@ public class LancamentoManualServlet extends HttpServlet {
 
         } catch (SQLException e) {
             LOG.log(Level.SEVERE, "Erro ao criar lancamento-manual", e);
+            erro(resp, 500, e.getMessage());
+        }
+    }
+
+    // ── PUT: editar lançamento existente ─────────────────────────────────
+
+    @Override
+    protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        String idStr = req.getParameter("id");
+        if (idStr == null || !idStr.matches("\\d+")) {
+            erro(resp, 400, "Informe o id do lançamento");
+            return;
+        }
+
+        JsonObject body;
+        try {
+            StringBuilder sb = new StringBuilder();
+            try (BufferedReader br = req.getReader()) {
+                String l;
+                while ((l = br.readLine()) != null) sb.append(l);
+            }
+            body = JsonParser.parseString(sb.toString()).getAsJsonObject();
+        } catch (Exception e) {
+            erro(resp, 400, "Body inválido");
+            return;
+        }
+
+        String descricaoItem = campo(body, "descricaoItem");
+        String codContaFluxo = campo(body, "codContaFluxo");
+        String codGrupoEmpenho = campo(body, "codGrupoEmpenho");
+        String descGrupoEmpenho = campo(body, "descGrupoEmpenho");
+        String codEmpenho = campo(body, "codEmpenho");
+        String descEmpenho = campo(body, "descEmpenho");
+        String fornecedor = campo(body, "fornecedor");
+        String dataVencimentoStr = campo(body, "dataVencimento");
+
+        if (descricaoItem.isBlank() || codGrupoEmpenho.isBlank() || codEmpenho.isBlank()
+                || fornecedor.isBlank() || dataVencimentoStr.isBlank() || !body.has("valor")) {
+            erro(resp, 400, "Descrição do Item, Grupo de Empenho, Empenho, Fornecedor, Data de Vencimento e Valor são obrigatórios");
+            return;
+        }
+
+        LocalDate dataVencimento;
+        try {
+            dataVencimento = LocalDate.parse(dataVencimentoStr);
+        } catch (DateTimeParseException e) {
+            erro(resp, 400, "Data de Vencimento inválida (use yyyy-MM-dd)");
+            return;
+        }
+
+        BigDecimal valor;
+        try {
+            valor = body.get("valor").getAsBigDecimal();
+        } catch (Exception e) {
+            erro(resp, 400, "Valor inválido");
+            return;
+        }
+        if (valor.signum() <= 0) {
+            erro(resp, 400, "Valor deve ser maior que zero");
+            return;
+        }
+
+        String sql = "UPDATE fc_lancamento_manual SET " +
+                "descricao_item=?, cod_contafluxo=?, cod_grupoempenho=?, desc_grupoempenho=?, " +
+                "cod_empenho=?, desc_empenho=?, fornecedor=?, data_vencimento=?, valor=? " +
+                "WHERE id=?";
+
+        try (Connection c = conn(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, descricaoItem);
+            ps.setString(2, codContaFluxo.isBlank() ? null : codContaFluxo);
+            ps.setString(3, codGrupoEmpenho);
+            ps.setString(4, descGrupoEmpenho);
+            ps.setString(5, codEmpenho);
+            ps.setString(6, descEmpenho);
+            ps.setString(7, fornecedor);
+            ps.setString(8, dataVencimento.toString());
+            ps.setBigDecimal(9, valor);
+            ps.setLong(10, Long.parseLong(idStr));
+            int linhas = ps.executeUpdate();
+            if (linhas == 0) { erro(resp, 404, "Lançamento não encontrado"); return; }
+            json(resp, "{\"ok\":true}");
+        } catch (SQLException e) {
+            LOG.log(Level.SEVERE, "Erro ao editar lancamento-manual", e);
             erro(resp, 500, e.getMessage());
         }
     }
