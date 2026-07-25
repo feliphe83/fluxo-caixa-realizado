@@ -1,6 +1,7 @@
 package br.com.lopes.fluxo.servlet;
 
 import br.com.lopes.fluxo.util.ChatPermissaoUtil;
+import br.com.lopes.fluxo.util.SemanaOperacionalUtil;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -106,15 +107,27 @@ public class AgroChatServlet extends HttpServlet {
             // O modelo de IA não sabe a data atual — sem isso, "próxima semana"
             // vira uma data inventada (ex.: 2023). Anexada à pergunta para
             // funcionar independentemente do system prompt configurado no n8n.
+            // As semanas vão como DATAS PRONTAS (calculadas por
+            // SemanaOperacionalUtil, sábado a sexta, com a virada de "próxima
+            // semana" na segunda-feira), nunca como regra em prosa pro modelo
+            // aplicar — LLM erra aritmética de datas com frequência, e regra
+            // em prosa aqui já conflitou com as datas do system prompt do n8n.
             java.time.LocalDate hoje = java.time.LocalDate.now(java.time.ZoneId.of("America/Maceio"));
             String diaSemana = hoje.getDayOfWeek().getDisplayName(
                     java.time.format.TextStyle.FULL, new java.util.Locale("pt", "BR"));
+            java.time.format.DateTimeFormatter br = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            java.time.LocalDate[] semanaAtual = SemanaOperacionalUtil.semanaAtual(hoje);
+            java.time.LocalDate[] proximaSemana = SemanaOperacionalUtil.proximaSemana(hoje);
             String contextoData = "\n\n[Contexto do sistema: hoje é " + diaSemana + ", "
-                    + hoje.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"))
-                    + ". Converta períodos relativos como 'esta semana', 'próxima semana' ou 'este mês' "
-                    + "em datas concretas ao usar as ferramentas. A semana da usina começa no SÁBADO e "
-                    + "termina na sexta-feira: 'esta semana' = do último sábado (inclusive hoje, se for sábado) "
-                    + "até a próxima sexta-feira; 'próxima semana' = do próximo sábado até a sexta seguinte. "
+                    + hoje.format(br)
+                    + ". Semana operacional atual (sábado a sexta): " + semanaAtual[0].format(br)
+                    + " a " + semanaAtual[1].format(br)
+                    + ". Próxima semana de pagamento: " + proximaSemana[0].format(br)
+                    + " a " + proximaSemana[1].format(br)
+                    + ". Quando o usuário falar 'esta semana' ou 'próxima semana', use EXATAMENTE essas "
+                    + "datas nas ferramentas — NUNCA calcule datas de semana você mesmo. Outros períodos "
+                    + "relativos ('este mês', 'próximos 15 dias') devem ser convertidos em datas concretas "
+                    + "a partir da data de hoje. "
                     + "Ao escrever números na resposta (valores em R$, litros, toneladas, quantidades etc.), "
                     + "use SEMPRE o formato brasileiro: ponto como separador de milhar e vírgula como separador "
                     + "decimal (ex.: 60.686,92 — nunca 60,686.92).]";

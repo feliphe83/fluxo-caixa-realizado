@@ -22,14 +22,22 @@ public final class SemanaOperacionalUtil {
     }
 
     public static LocalDate[] semanaAtual() {
-        return blocoDe(LocalDate.now());
+        return semanaAtual(LocalDate.now());
+    }
+
+    public static LocalDate[] semanaAtual(LocalDate hoje) {
+        return blocoDe(hoje);
     }
 
     public static LocalDate[] proximaSemana() {
+        return proximaSemana(LocalDate.now());
+    }
+
+    public static LocalDate[] proximaSemana(LocalDate hoje) {
         // Hoje menos 2 dias: sábado e domingo ainda contam como a semana
         // anterior, então o "bloco seguinte" deles é a semana que acabou de
         // começar — a virada real acontece na segunda-feira.
-        LocalDate[] referencia = blocoDe(LocalDate.now().minusDays(2));
+        LocalDate[] referencia = blocoDe(hoje.minusDays(2));
         LocalDate inicio = referencia[0].plusDays(7);
         return new LocalDate[]{inicio, inicio.plusDays(6)};
     }
