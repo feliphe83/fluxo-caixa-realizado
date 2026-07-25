@@ -76,6 +76,11 @@
   .msg.usuario .msg-bolha { background: var(--verde-escuro); color: white; border-color: var(--verde-escuro); }
   .msg.erro .msg-bolha { background: #fef2f2; border-color: #fca5a5; color: #b91c1c; }
 
+  .tabela-scroll { overflow-x: auto; margin: 8px 0; -webkit-overflow-scrolling: touch; }
+  .tabela-md { border-collapse: collapse; white-space: normal; font-size: 12.5px; width: 100%; }
+  .tabela-md th, .tabela-md td { border: 1px solid var(--border); padding: 4px 8px; text-align: left; white-space: nowrap; }
+  .tabela-md th { background: var(--verde-claro); font-weight: 600; }
+
   .msg-loading .msg-bolha { display: flex; gap: 4px; align-items: center; padding: 12px 16px; }
   .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--cinza); animation: pulse 1.2s infinite ease-in-out; }
   .dot:nth-child(2) { animation-delay: .2s; }
@@ -336,9 +341,53 @@ function formatarMensagemBot(texto) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
-  return escapado
+  const comLinksBoldTitulos = escapado
     .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^#{1,6}\s+(.+)$/gm, '<strong>$1</strong>');
+  return converterTabelasMarkdown(comLinksBoldTitulos);
+}
+
+// Converte tabelas markdown (estilo GFM, |col|col|) em <table> — o agente
+// às vezes responde nesse formato (ex.: previsão do tempo) e sem isso o
+// texto cru da tabela aparecia quebrado/ilegível (herda white-space:
+// pre-wrap da bolha da mensagem).
+function converterTabelasMarkdown(texto) {
+  const ehLinhaTabela = l => /^\s*\|.*\|\s*$/.test(l);
+  const ehSeparador = l => /^[\s|:-]+$/.test(l) && l.includes('-') && l.includes('|');
+  const dividir = l => {
+    let s = l.trim();
+    if (s.startsWith('|')) s = s.slice(1);
+    if (s.endsWith('|')) s = s.slice(0, -1);
+    return s.split('|').map(c => c.trim());
+  };
+
+  const linhas = texto.split('\n');
+  const saida = [];
+  let i = 0;
+  while (i < linhas.length) {
+    if (ehLinhaTabela(linhas[i]) && ehSeparador(linhas[i + 1] || '')) {
+      const cabecalho = dividir(linhas[i]);
+      const corpo = [];
+      let j = i + 2;
+      while (j < linhas.length && ehLinhaTabela(linhas[j])) {
+        corpo.push(dividir(linhas[j]));
+        j++;
+      }
+      let html = '<div class="tabela-scroll"><table class="tabela-md"><thead><tr>'
+          + cabecalho.map(c => `<th>${c}</th>`).join('') + '</tr></thead><tbody>';
+      corpo.forEach(cols => {
+        html += '<tr>' + cols.map(c => `<td>${c}</td>`).join('') + '</tr>';
+      });
+      html += '</tbody></table></div>';
+      saida.push(html);
+      i = j;
+    } else {
+      saida.push(linhas[i]);
+      i++;
+    }
+  }
+  return saida.join('\n');
 }
 
 function addMensagem(tipo, texto) {
