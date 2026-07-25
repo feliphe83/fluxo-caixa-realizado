@@ -4,6 +4,7 @@ import br.com.lopes.fluxo.dao.FinanceiroContasPagarDAO;
 import br.com.lopes.fluxo.util.AgroConsultaCache;
 import br.com.lopes.fluxo.util.ChatPermissaoUtil;
 import br.com.lopes.fluxo.util.DataParamUtil;
+import br.com.lopes.fluxo.util.SemanaOperacionalUtil;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
@@ -14,7 +15,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -70,10 +70,17 @@ import java.util.logging.Logger;
  * dataIniVcto/dataFimVcto sozinho (LLM erra matemática de datas com
  * frequência — já aconteceu de devolver um intervalo de 11 dias em vez de
  * 7), o parâmetro "periodo=proximaSemana" faz o PRÓPRIO SERVLET calcular o
- * sábado-a-sexta certo a partir da data de hoje (ver {@link #proximaSemana()}),
+ * sábado-a-sexta certo a partir da data de hoje (ver
+ * {@link br.com.lopes.fluxo.util.SemanaOperacionalUtil#proximaSemana()}),
  * ignorando dataIniVcto/dataFimVcto se vierem informados junto. A resposta
  * deve trazer o valor total (valorTotal), a lista de cada conta (parcelas)
  * e um totalizador ao final.
+ *
+ * Ver também {@link PeriodoSemanaServlet}, que devolve as datas da semana
+ * atual e da próxima semana já calculadas — pensado pra ser consultado pelo
+ * fluxo do n8n ANTES do agente responder, e injetado no system prompt, pra
+ * eliminar de vez a dependência do agente calcular (ou até escolher usar)
+ * "periodo=proximaSemana" corretamente.
  */
 @WebServlet("/api/financeiro/contas-apagar")
 public class FinanceiroContasPagarServlet extends HttpServlet {
@@ -110,7 +117,7 @@ public class FinanceiroContasPagarServlet extends HttpServlet {
                 // datas com frequência (ex.: já devolveu um intervalo de 11 dias
                 // pedindo "próxima semana"). Sábado a sexta-feira, sempre a
                 // partir da data de hoje do servidor.
-                LocalDate[] semana = proximaSemana();
+                LocalDate[] semana = SemanaOperacionalUtil.proximaSemana();
                 dataIniVcto = semana[0].toString();
                 dataFimVcto = semana[1].toString();
             } else {
@@ -246,18 +253,5 @@ public class FinanceiroContasPagarServlet extends HttpServlet {
 
     private static double arred(double v) {
         return Math.round(v * 100.0) / 100.0;
-    }
-
-    /**
-     * Sábado a sexta-feira seguinte — "esta semana" é o bloco que contém
-     * hoje; "próxima semana" é o bloco seguinte a esse.
-     */
-    private static LocalDate[] proximaSemana() {
-        LocalDate hoje = LocalDate.now();
-        int diasDesdeSabado = (hoje.getDayOfWeek().getValue() - DayOfWeek.SATURDAY.getValue() + 7) % 7;
-        LocalDate inicioSemanaAtual = hoje.minusDays(diasDesdeSabado);
-        LocalDate inicioProxima = inicioSemanaAtual.plusDays(7);
-        LocalDate fimProxima = inicioProxima.plusDays(6);
-        return new LocalDate[]{ inicioProxima, fimProxima };
     }
 }
