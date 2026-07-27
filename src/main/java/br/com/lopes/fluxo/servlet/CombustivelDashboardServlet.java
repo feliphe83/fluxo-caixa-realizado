@@ -132,6 +132,7 @@ public class CombustivelDashboardServlet extends HttpServlet {
 
             List<LocalDate[]> semanas = montarSemanas(LocalDate.parse(dataIni), LocalDate.parse(dataFim));
             double[] precoHistoricoPorSemana = buscarPrecoHistoricoPorSemana(linhas, dataIni, dataFim, semanas);
+            corrigirValorComPrecoHistorico(linhas, semanas, precoHistoricoPorSemana);
 
             JsonObject resultado = new JsonObject();
             resultado.addProperty("ok", true);
@@ -270,6 +271,32 @@ public class CombustivelDashboardServlet extends HttpServlet {
             media[i] = qtde[i] == 0 ? 0 : soma[i] / qtde[i];
         }
         return media;
+    }
+
+    /**
+     * Corrige o custo de cada abastecimento usando o preço médio histórico
+     * real da semana (material.itensrequisicaomaterial.vrcustounitario) em
+     * vez do valor_total/valor_unitario que vem da consulta principal — este
+     * usa posto.f_preco_combustivel(sysdate,...), ou seja, sempre o preço
+     * vigente HOJE aplicado retroativamente a qualquer abastecimento antigo.
+     * Sem essa correção, todo custo do dashboard (KPIs, área de negócio,
+     * atividade, rankings, detalhamento) sairia calculado com o preço de
+     * hoje em vez do preço real pago na época. Semanas sem preço histórico
+     * disponível mantêm o valor original da consulta (fallback).
+     */
+    private void corrigirValorComPrecoHistorico(List<Map<String, Object>> linhas, List<LocalDate[]> semanas,
+                                                double[] precoHistoricoPorSemana) {
+        LocalDate ini = semanas.get(0)[0];
+        int n = semanas.size();
+        for (Map<String, Object> l : linhas) {
+            int idx = semanaDe(strOf(l.get("data")), ini, n);
+            if (idx < 0) continue;
+            double precoReal = precoHistoricoPorSemana[idx];
+            if (precoReal <= 0) continue;
+            double litros = num(l.get("qtde_litros"));
+            l.put("valor_unitario", arred(precoReal));
+            l.put("valor_total", arred(litros * precoReal));
+        }
     }
 
     // ── KPIs (geral + Próprio x Terceiro) ────────────────────────────────
