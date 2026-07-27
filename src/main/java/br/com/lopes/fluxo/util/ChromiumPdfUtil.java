@@ -53,7 +53,13 @@ public final class ChromiumPdfUtil {
         "/usr/bin/chromium",
     };
 
-    private static final Duration TIMEOUT = Duration.ofSeconds(90);
+    // 8 minutos: o --virtual-time-budget pausa o relógio virtual enquanto há
+    // fetch() pendente, então o tempo real de execução é dominado pela API da
+    // página (ex.: o dashboard de combustível com ~26 semanas leva vários
+    // minutos consultando o Oracle) — um timeout curto (90s) matava o Chrome
+    // no meio de uma geração que terminaria bem (observado ~5min30s em
+    // produção).
+    private static final Duration TIMEOUT = Duration.ofMinutes(8);
 
     private ChromiumPdfUtil() {}
 
