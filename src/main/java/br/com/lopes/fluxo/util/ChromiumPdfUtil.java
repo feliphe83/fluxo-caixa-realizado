@@ -1,31 +1,42 @@
 package br.com.lopes.fluxo.util;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
+import java.util.Comparator;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
 /**
  * Gera PDF de uma página HTML (ex.: combustivel-dashboard.html) chamando o
- * Chromium instalado no servidor em modo headless — reaproveita o CSS de
- * impressão da própria página em vez de recriar o relatório num motor de PDF
- * separado (JasperReports etc.).
+ * Chromium/Chrome instalado no servidor em modo headless — reaproveita o CSS
+ * de impressão da própria página em vez de recriar o relatório num motor de
+ * PDF separado (JasperReports etc.).
  *
  * Configuração necessária:
  *   - Variável de ambiente CHROMIUM_BIN com o caminho do binário (ex.:
- *     /usr/bin/chromium-browser, /usr/bin/chromium ou /usr/bin/google-chrome).
- *     Se não configurada, tenta os caminhos comuns do Ubuntu nessa ordem.
+ *     /usr/bin/google-chrome-stable). Se não configurada, tenta os caminhos
+ *     comuns do Ubuntu nessa ordem.
+ *
+ * Cada execução usa um --user-data-dir temporário e exclusivo: sem isso o
+ * Chrome tenta abrir o perfil padrão do usuário do serviço (HOME do Tomcat)
+ * e pode ficar pendurado esperando o lock do perfil (SingletonLock) ou
+ * falhar por diretório não gravável — foi a causa de um travamento em
+ * produção onde o processo nunca terminava.
+ *
+ * A saída do processo vai para um arquivo temporário (não para um pipe): ler
+ * o pipe com readAllBytes() antes do waitFor() bloqueia pra sempre se o
+ * Chrome não sair, e o timeout nunca chega a valer — o scheduler de
+ * relatórios (thread única) ficava travado junto.
  *
  * Limitação conhecida: a página só recebe os dados via fetch() assíncrono
- * depois de carregar (ex.: combustivel-dashboard.html chama
- * /api/combustivel-dashboard e só desenha os gráficos quando a resposta
- * chega). O Chromium headless com --print-to-pdf espera o evento "load" da
- * página, o que normalmente já é suficiente pra esse fetch (rápido) e os
- * gráficos (Chart.js, síncrono) terminarem — mas não há garantia formal.
- * Se o PDF gerado às vezes sair incompleto/em branco, o próximo passo é usar
- * o Chrome DevTools Protocol pra esperar um sinal explícito da página antes
- * de imprimir, em vez do --print-to-pdf simples da linha de comando.
+ * depois de carregar. O --virtual-time-budget dá um orçamento de tempo pra
+ * isso resolver antes de imprimir, o que cobre o caso normal — mas não há
+ * garantia formal; se o PDF sair incompleto, o próximo passo é usar o Chrome
+ * DevTools Protocol pra esperar um sinal explícito da página.
  */
 public final class ChromiumPdfUtil {
 
@@ -37,7 +48,7 @@ public final class ChromiumPdfUtil {
         "/usr/bin/google-chrome-stable",
     };
 
-    private static final Duration TIMEOUT = Duration.ofSeconds(60);
+    private static final Duration TIMEOUT = Duration.ofSeconds(90);
 
     private ChromiumPdfUtil() {}
 
@@ -56,6 +67,8 @@ public final class ChromiumPdfUtil {
     public static byte[] gerarPdf(String url) throws Exception {
         String bin = binario();
         File tempPdf = File.createTempFile("relatorio-" + UUID.randomUUID(), ".pdf");
+        File logSaida = File.createTempFile("chromium-saida-", ".log");
+        Path perfilTemp = Files.createTempDirectory("chromium-perfil-");
         try {
             ProcessBuilder pb = new ProcessBuilder(
                 bin,
@@ -63,30 +76,59 @@ public final class ChromiumPdfUtil {
                 "--disable-gpu",
                 "--no-sandbox",
                 "--disable-dev-shm-usage",
+                "--no-first-run",
+                "--no-default-browser-check",
+                "--disable-extensions",
+                "--user-data-dir=" + perfilTemp,
                 "--print-to-pdf=" + tempPdf.getAbsolutePath(),
-                "--print-to-pdf-no-header",
                 "--no-pdf-header-footer",
                 "--virtual-time-budget=8000",
                 url
             );
             pb.redirectErrorStream(true);
+            pb.redirectOutput(logSaida);
+
             Process p = pb.start();
-            byte[] saida = p.getInputStream().readAllBytes();
             boolean terminou = p.waitFor(TIMEOUT.toSeconds(), TimeUnit.SECONDS);
             if (!terminou) {
                 p.destroyForcibly();
-                throw new RuntimeException("Chromium não terminou dentro do tempo limite (" + TIMEOUT.toSeconds() + "s)");
+                p.waitFor(10, TimeUnit.SECONDS);
+                throw new RuntimeException("Chromium não terminou dentro do tempo limite ("
+                        + TIMEOUT.toSeconds() + "s). Saída: " + lerSaida(logSaida));
             }
             if (p.exitValue() != 0) {
-                throw new RuntimeException("Chromium retornou código " + p.exitValue() + ": " + new String(saida));
+                throw new RuntimeException("Chromium retornou código " + p.exitValue() + ": " + lerSaida(logSaida));
             }
             if (!tempPdf.exists() || tempPdf.length() == 0) {
-                throw new RuntimeException("Chromium não gerou o arquivo PDF (saída: " + new String(saida) + ")");
+                throw new RuntimeException("Chromium não gerou o arquivo PDF. Saída: " + lerSaida(logSaida));
             }
             return Files.readAllBytes(tempPdf.toPath());
         } finally {
             //noinspection ResultOfMethodCallIgnored
             tempPdf.delete();
+            //noinspection ResultOfMethodCallIgnored
+            logSaida.delete();
+            apagarRecursivo(perfilTemp);
+        }
+    }
+
+    private static String lerSaida(File logSaida) {
+        try {
+            String s = Files.readString(logSaida.toPath());
+            return s.length() > 1500 ? s.substring(s.length() - 1500) : s;
+        } catch (IOException e) {
+            return "(não foi possível ler a saída do Chromium)";
+        }
+    }
+
+    private static void apagarRecursivo(Path dir) {
+        try (Stream<Path> caminhos = Files.walk(dir)) {
+            caminhos.sorted(Comparator.reverseOrder()).forEach(pth -> {
+                //noinspection ResultOfMethodCallIgnored
+                pth.toFile().delete();
+            });
+        } catch (IOException ignorado) {
+            // diretório temporário — se sobrar, o SO limpa
         }
     }
 }
