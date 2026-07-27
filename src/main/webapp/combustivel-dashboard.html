@@ -141,13 +141,17 @@
      não redesenha de verdade a tempo do preview de impressão gerar as
      páginas. Sem uma largura máxima fixa, o canvas era desenhado na largura
      cheia da tela (pode passar de 1300px num monitor largo) e, ao imprimir
-     numa página bem mais estreita (~700px), a parte da direita (as barras/
-     pontos mais recentes) ficava cortada pelo overflow:hidden abaixo — que
+     numa página bem mais estreita, a parte da direita (as barras/pontos
+     mais recentes) ficava cortada pelo overflow:hidden abaixo — que
      continua aqui como rede de segurança contra vazamento vertical, não
      mais precisando cortar horizontalmente já que a largura agora é segura
      pra ambos os casos. max-width (não width) deixa encolher se o
-     container for mais estreito ainda (ex.: mobile). */
-  .grafico-area { position: relative; height: 220px; max-width: 640px; margin-top: 6px; overflow: hidden; }
+     container for mais estreito ainda (ex.: mobile).
+     690px = largura útil real da página impressa: A4 (210mm) menos as
+     margens do @page (9mm de cada lado) menos o padding do .secao no
+     modo impressão (14px de cada lado) ≈ 698px, com uma pequena folga de
+     segurança contra arredondamento/DPI. */
+  .grafico-area { position: relative; height: 220px; max-width: 690px; margin-top: 6px; overflow: hidden; }
   .legenda-manual { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px; font-size: 11.5px; color: var(--ink-2); }
   .legenda-manual .item { display: flex; align-items: center; gap: 6px; }
   .legenda-manual .dot { width: 9px; height: 9px; border-radius: 3px; }
