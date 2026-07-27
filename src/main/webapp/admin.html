@@ -539,6 +539,12 @@
       </div>
     </div>
 
+    <div class="mf">
+      <label>Código de logon no ERP</label>
+      <input type="number" id="mIdLogonErp" placeholder="Ex: 132">
+      <div class="hint">Usado pelo alerta de ordens de compra por WhatsApp, pra saber quais ordens são deste aprovador. Deixe em branco se ele não aprova compras.</div>
+    </div>
+
     <div class="mf" id="mfS">
       <label>Senha</label>
       <input type="password" id="mSenha" placeholder="Mínimo 6 caracteres">
@@ -658,6 +664,7 @@ const RELS=[
   {id:'chat_acesso',label:'Dr. Alfredo — Acesso ao Assistente',desc:'Abrir e conversar com o Dr. Alfredo (sem isso o chat fica bloqueado)'},
   {id:'chat_agricola',label:'Dr. Alfredo — Consultas Agrícolas',desc:'Perguntar sobre talhões, insumos e chuvas ao Dr. Alfredo'},
   {id:'chat_financeiro',label:'Dr. Alfredo — Consultas Financeiras',desc:'Perguntar sobre contas a pagar e dados financeiros ao Dr. Alfredo'},
+  {id:'alerta_oc_pendente',label:'Alerta de Ordem de Compra (WhatsApp)',desc:'Receber aviso no WhatsApp quando houver ordem de compra aguardando sua aprovação (exige telefone e código de logon no ERP cadastrados)'},
 ];
 
 let usuarios=[], perms={}, permUser=null, delId=null, editId=null, isAdminCheck=false;
@@ -818,6 +825,7 @@ function abrirNovo() {
   document.getElementById('mNome').value='';
   document.getElementById('mEmail').value='';
   document.getElementById('mTelefone').value='';
+  document.getElementById('mIdLogonErp').value='';
   document.getElementById('mSenha').value='';
   document.getElementById('mAtivo').value='S';
   document.getElementById('mfS').style.display='';
@@ -838,6 +846,7 @@ function abrirEditar(id) {
   document.getElementById('mNome').value=u.nome;
   document.getElementById('mEmail').value=u.email||'';
   document.getElementById('mTelefone').value=u.telefone||'';
+  document.getElementById('mIdLogonErp').value=u.idLogonErp||'';
   document.getElementById('mAtivo').value=u.ativo;
   document.getElementById('mfS').style.display='none';
   document.getElementById('mfSN').style.display='';
@@ -858,12 +867,13 @@ async function salvar() {
   const ativo    = document.getElementById('mAtivo').value;
   const senha    = document.getElementById('mSenha').value;
   const senhaN   = document.getElementById('mSenhaN').value;
+  const idLogonErp = document.getElementById('mIdLogonErp').value.trim();
   const admin    = isAdminCheck?'S':'N';
 
   if(!logon||!nome){toast('Preencha logon e nome','red');return;}
   if(!id&&senha.length<6){toast('Senha mínimo 6 caracteres','red');return;}
 
-  const payload={logon,nome,email:email||null,telefone:telefone||null,ativo,administrador:admin};
+  const payload={logon,nome,email:email||null,telefone:telefone||null,ativo,administrador:admin,idLogonErp:idLogonErp||null};
   if(!id){if(!senha){toast('Informe a senha','red');return;}payload.senha=senha;}
   else{payload.id=parseInt(id);if(senhaN)payload.senha=senhaN;}
 
