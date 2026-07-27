@@ -43,6 +43,9 @@ public class AgroCombustivelDAO {
     /** Teto absoluto de linhas devolvidas (protege memória do Tomcat/export). */
     private static final int MAX_TOTAL = 20000;
 
+    /** cod_material do Óleo Diesel B S10 (material.material) — filtro exato quando combustivel="Diesel". */
+    private static final int COD_MATERIAL_DIESEL = 389497;
+
     // Nível intermediário: uma linha por abastecimento, com preço calculado
     // (posto.f_preco_combustivel) e classificação por objeto de custo —
     // reaproveitado tanto no modo detalhado quanto nos modos agregados
@@ -303,8 +306,15 @@ public class AgroCombustivelDAO {
             params.add(codTipoCliente);
         }
         if (combustivel != null && !combustivel.isBlank()) {
-            filtros.append(" and upper(material.descricao) like '%'||upper(?)||'%'\n");
-            params.add(combustivel.trim());
+            if ("diesel".equalsIgnoreCase(combustivel.trim())) {
+                // cod_material exato do Óleo Diesel B S10 — evita que a busca por
+                // texto (upper(material.descricao) like '%DIESEL%') inclua algum
+                // outro material cuja descrição também contenha "DIESEL".
+                filtros.append(" and material.cod_material = ").append(COD_MATERIAL_DIESEL).append("\n");
+            } else {
+                filtros.append(" and upper(material.descricao) like '%'||upper(?)||'%'\n");
+                params.add(combustivel.trim());
+            }
         }
         if (codFazenda != null) {
             filtros.append(" and abastecimento.cod_fazenda = ?\n");
