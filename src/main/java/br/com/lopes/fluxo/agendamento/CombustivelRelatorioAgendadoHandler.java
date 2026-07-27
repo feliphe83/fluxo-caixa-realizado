@@ -25,8 +25,10 @@ import java.util.logging.Logger;
  * por WhatsApp pra cada destinatário.
  *
  * parametros esperado: {"semanas": N, "combustivel": "Diesel"} — mesma ideia
- * dos botões de preset da tela ("Últimas N semanas"): dataFim = hoje,
- * dataIni = hoje - (N*7-1) dias.
+ * dos botões de preset da tela ("Últimas N semanas"), mas fechando em ONTEM
+ * (dataFim = hoje - 1, dataIni = dataFim - (N*7-1) dias): o dia corrente
+ * ainda está em andamento (abastecimentos acontecendo), então incluí-lo
+ * traria uma última semana parcial no relatório enviado.
  */
 public class CombustivelRelatorioAgendadoHandler implements RelatorioAgendadoHandler {
 
@@ -47,12 +49,12 @@ public class CombustivelRelatorioAgendadoHandler implements RelatorioAgendadoHan
         int semanas = parametros.has("semanas") ? parametros.get("semanas").getAsInt() : 26;
         String combustivel = parametros.has("combustivel") ? parametros.get("combustivel").getAsString() : "Diesel";
 
-        LocalDate hoje = LocalDate.now();
-        LocalDate dataIni = hoje.minusDays(semanas * 7L - 1);
+        LocalDate dataFim = LocalDate.now().minusDays(1);
+        LocalDate dataIni = dataFim.minusDays(semanas * 7L - 1);
 
         String jsessionid = obterSessao(idUsuarioCriacao);
 
-        String query = "dataIni=" + dataIni.format(ISO) + "&dataFim=" + hoje.format(ISO)
+        String query = "dataIni=" + dataIni.format(ISO) + "&dataFim=" + dataFim.format(ISO)
                 + "&combustivel=" + URLEncoder.encode(combustivel, StandardCharsets.UTF_8);
         String url = baseUrlInterno() + "/combustivel-dashboard.html;jsessionid=" + jsessionid + "?" + query;
 
