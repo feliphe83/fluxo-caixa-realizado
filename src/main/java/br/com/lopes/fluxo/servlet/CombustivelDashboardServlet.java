@@ -19,6 +19,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -130,8 +131,9 @@ public class CombustivelDashboardServlet extends HttpServlet {
             linhas.removeIf(l -> !preenchido(l.get("cod_equipamento")));
 
             List<LocalDate[]> semanas = montarSemanas(LocalDate.parse(dataIni), LocalDate.parse(dataFim));
-            double[] precoHistoricoPorSemana = buscarPrecoHistoricoPorSemana(linhas, dataIni, dataFim, semanas);
-            corrigirValorComPrecoHistorico(linhas, semanas, precoHistoricoPorSemana);
+            List<Map<String, Object>> custosHistoricos = buscarCustosHistoricos(linhas, dataIni, dataFim);
+            double[] precoHistoricoPorSemana = precoMedioPorSemana(custosHistoricos, semanas);
+            corrigirValorComPrecoHistorico(linhas, semanas, custosHistoricos, precoHistoricoPorSemana);
 
             JsonObject resultado = new JsonObject();
             resultado.addProperty("ok", true);
@@ -235,37 +237,46 @@ public class CombustivelDashboardServlet extends HttpServlet {
     }
 
     /**
-     * Preço médio semanal real (material.itensrequisicaomaterial.vrcustounitario
-     * na data de retirada) — usado em "Evolução do Preço". Diferente do
-     * valor_unitario da consulta principal (posto.f_preco_combustivel), que
-     * sempre devolve o preço vigente hoje, não o preço da época de cada
-     * abastecimento.
+     * Retiradas reais de combustível no período
+     * (material.itensrequisicaomaterial: data, quantidade, vrcustounitario e
+     * cod_equipamento de cada retirada) — a fonte de verdade do CUSTO do
+     * dashboard, conferida pelo financeiro como sum(quantidade *
+     * vrcustounitario). Buscadas uma vez e usadas tanto no preço médio
+     * semanal (gráfico "Evolução do Preço") quanto na correção do custo de
+     * cada abastecimento.
      */
-    private double[] buscarPrecoHistoricoPorSemana(List<Map<String, Object>> linhas, String dataIni, String dataFim,
-                                                    List<LocalDate[]> semanas) {
-        int n = semanas.size();
-        double[] soma = new double[n];
-        double[] litros = new double[n];
-
+    private List<Map<String, Object>> buscarCustosHistoricos(List<Map<String, Object>> linhas,
+                                                             String dataIni, String dataFim) {
         Set<Integer> codMateriais = new HashSet<>();
         for (Map<String, Object> l : linhas) {
             Object cod = l.get("cod_combustivel");
             if (cod instanceof Number num) codMateriais.add(num.intValue());
         }
-        if (codMateriais.isEmpty()) return soma;
+        if (codMateriais.isEmpty()) return List.of();
+        return dao.buscarCustoHistorico(dataIni, dataFim, codMateriais);
+    }
+
+    /**
+     * Preço médio semanal real, PONDERADO pela quantidade retirada
+     * (sum(qtd*preco)/sum(qtd)) — usado no gráfico "Evolução do Preço" e
+     * como fallback da correção de custo quando o equipamento não tem
+     * retirada registrada na semana. Diferente do valor_unitario da
+     * consulta principal (posto.f_preco_combustivel), que sempre devolve o
+     * preço vigente hoje, não o preço da época de cada abastecimento.
+     */
+    private double[] precoMedioPorSemana(List<Map<String, Object>> custos, List<LocalDate[]> semanas) {
+        int n = semanas.size();
+        double[] soma = new double[n];
+        double[] litros = new double[n];
+        if (custos.isEmpty()) return soma;
 
         LocalDate ini = semanas.get(0)[0];
-        List<Map<String, Object>> custos = dao.buscarCustoHistorico(dataIni, dataFim, codMateriais);
         for (Map<String, Object> c : custos) {
             int idx = semanaDe(strOf(c.get("dataretirada")), ini, n);
             if (idx < 0) continue;
             double custo = num(c.get("vrcustounitario"));
             double quantidade = num(c.get("quantidade"));
             if (custo <= 0 || quantidade <= 0) continue;
-            // Média PONDERADA pela quantidade retirada — não média simples dos
-            // preços: o custo real do período é sum(quantidade*vrcustounitario),
-            // e só a ponderação reproduz esse total quando o preço é reaplicado
-            // aos litros abastecidos (validado contra a soma direta no Oracle).
             soma[idx] += custo * quantidade;
             litros[idx] += quantidade;
         }
@@ -278,29 +289,54 @@ public class CombustivelDashboardServlet extends HttpServlet {
     }
 
     /**
-     * Corrige o custo de cada abastecimento usando o preço médio histórico
-     * real da semana (material.itensrequisicaomaterial.vrcustounitario) em
-     * vez do valor_total/valor_unitario que vem da consulta principal — este
-     * usa posto.f_preco_combustivel(sysdate,...), ou seja, sempre o preço
-     * vigente HOJE aplicado retroativamente a qualquer abastecimento antigo.
-     * Sem essa correção, todo custo do dashboard (KPIs, área de negócio,
-     * atividade, rankings, detalhamento) sairia calculado com o preço de
-     * hoje em vez do preço real pago na época. Semanas sem preço histórico
-     * disponível mantêm o valor original da consulta (fallback).
+     * Corrige o custo de cada abastecimento usando o preço real de retirada
+     * do PRÓPRIO equipamento naquela semana (média ponderada das retiradas
+     * do equipamento em itensrequisicaomaterial), em vez do
+     * valor_total/valor_unitario da consulta principal — este usa
+     * posto.f_preco_combustivel(sysdate,...), ou seja, sempre o preço
+     * vigente HOJE aplicado retroativamente.
+     *
+     * A granularidade por equipamento+semana (e não só por semana) importa:
+     * com um preço médio geral da semana, o custo total até fecha, mas a
+     * divisão entre Próprios e Terceiros sai diferente da conferência real
+     * do financeiro (sum(qtd*vrcustounitario) por dono do equipamento).
+     * Fallbacks: sem retirada do equipamento na semana → preço médio geral
+     * da semana; sem preço nenhum na semana → mantém o valor original.
      */
     private void corrigirValorComPrecoHistorico(List<Map<String, Object>> linhas, List<LocalDate[]> semanas,
-                                                double[] precoHistoricoPorSemana) {
+                                                List<Map<String, Object>> custos, double[] precoSemanaGeral) {
         LocalDate ini = semanas.get(0)[0];
         int n = semanas.size();
+
+        Map<String, double[]> porEquipSemana = new HashMap<>(); // equip|semana -> [soma qtd*preco, soma qtd]
+        for (Map<String, Object> c : custos) {
+            int idx = semanaDe(strOf(c.get("dataretirada")), ini, n);
+            if (idx < 0) continue;
+            double custo = num(c.get("vrcustounitario"));
+            double quantidade = num(c.get("quantidade"));
+            String equip = chaveEquip(c.get("cod_equipamento"));
+            if (custo <= 0 || quantidade <= 0 || equip.isBlank()) continue;
+            double[] acc = porEquipSemana.computeIfAbsent(equip + "|" + idx, k -> new double[2]);
+            acc[0] += custo * quantidade;
+            acc[1] += quantidade;
+        }
+
         for (Map<String, Object> l : linhas) {
             int idx = semanaDe(strOf(l.get("data")), ini, n);
             if (idx < 0) continue;
-            double precoReal = precoHistoricoPorSemana[idx];
+            double[] acc = porEquipSemana.get(chaveEquip(l.get("cod_equipamento")) + "|" + idx);
+            double precoReal = (acc != null && acc[1] > 0) ? acc[0] / acc[1] : precoSemanaGeral[idx];
             if (precoReal <= 0) continue;
             double litros = num(l.get("qtde_litros"));
-            l.put("valor_unitario", arred(precoReal));
+            l.put("valor_unitario", precoReal);
             l.put("valor_total", arred(litros * precoReal));
         }
+    }
+
+    /** Chave estável do equipamento pra casar abastecimento x retirada (evita "123" vs "123.0" entre colunas NUMBER). */
+    private static String chaveEquip(Object v) {
+        if (v instanceof Number num) return String.valueOf(num.longValue());
+        return strOf(v);
     }
 
     // ── KPIs (geral + Próprio x Terceiro) ────────────────────────────────
