@@ -32,6 +32,7 @@ public final class ChromiumPdfUtil {
     private static final String[] CAMINHOS_PADRAO = {
         "/usr/bin/chromium-browser",
         "/usr/bin/chromium",
+        "/snap/bin/chromium",   // instalação via "sudo apt install chromium-browser" no Ubuntu 20.04+ cai aqui (é um snap por trás)
         "/usr/bin/google-chrome",
         "/usr/bin/google-chrome-stable",
     };
