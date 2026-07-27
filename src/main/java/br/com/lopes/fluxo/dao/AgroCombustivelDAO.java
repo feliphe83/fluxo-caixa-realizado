@@ -348,6 +348,9 @@ public class AgroCombustivelDAO {
      * consulta de abastecimento (posto.f_preco_combustivel), que devolve
      * sempre o preço vigente hoje, não o preço da época.
      *
+     * cod_item_custo <> 0 exclui registros sem custo de verdade associado
+     * (validado comparando com a soma direta de quantidade*vrcustounitario).
+     *
      * @param codMateriais cod_material dos combustíveis do período (vindos
      *                     do resultado da consulta principal) — nunca vazio
      *                     quando chamado (o servlet só chama se houver linhas)
@@ -362,6 +365,7 @@ public class AgroCombustivelDAO {
             where i.cod_material in (%s)
             and i.dataretirada between ? and ?
             and i.cod_material = m.cod_material
+            and i.cod_item_custo <> 0
             """.formatted(in);
 
         List<Object> params = List.of(paraDDMMYYYY(dataIni), paraDDMMYYYY(dataFim));
