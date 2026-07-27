@@ -43,11 +43,30 @@ public class AlertaOcPendenteDAO {
                   id_usuario INT NOT NULL,
                   tipo VARCHAR(40) NOT NULL,
                   nr_solicitacao VARCHAR(40) NOT NULL,
+                  item VARCHAR(150) NOT NULL DEFAULT '',
                   data_envio TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                  UNIQUE KEY uk_usuario_oc (id_usuario, tipo, nr_solicitacao),
+                  UNIQUE KEY uk_usuario_oc_item (id_usuario, tipo, nr_solicitacao, item),
                   INDEX idx_data_envio (data_envio)
                 )
                 """);
+            // O aviso é por ITEM (uma mensagem por material), então a chave de
+            // controle ganhou o material. Bases criadas na primeira versão
+            // tinham a chave só até nr_solicitacao — o que barraria o 2º item
+            // da mesma solicitação. Cada passo roda solto porque só o primeiro
+            // deploy precisa de todos.
+            for (String ddl : new String[] {
+                    "ALTER TABLE fc_alerta_oc_enviado ADD COLUMN item VARCHAR(150) NOT NULL DEFAULT ''",
+                    "ALTER TABLE fc_alerta_oc_enviado DROP INDEX uk_usuario_oc",
+                    "ALTER TABLE fc_alerta_oc_enviado ADD UNIQUE KEY uk_usuario_oc_item (id_usuario, tipo, nr_solicitacao, item)" }) {
+                try {
+                    st.execute(ddl);
+                } catch (SQLException e) {
+                    // 42S21 = coluna duplicada, 42000 = índice inexistente/duplicado: esperados a partir da 2ª vez
+                    if (!"42S21".equals(e.getSQLState()) && !"42000".equals(e.getSQLState())) {
+                        LOG.log(Level.WARNING, "Falha ao ajustar fc_alerta_oc_enviado: " + ddl, e);
+                    }
+                }
+            }
             // fc_usuario já existia antes deste alerta, então a coluna do
             // id_logon entra por ALTER. MySQL não tem "ADD COLUMN IF NOT
             // EXISTS" nessa versão: rodar sempre e ignorar o erro de coluna
@@ -75,10 +94,10 @@ public class AlertaOcPendenteDAO {
         conn().close();
     }
 
-    /** Ordens que este usuário já recebeu, como "tipo|nr_solicitacao". */
+    /** Itens que este usuário já recebeu, como "tipo|nr_solicitacao|material". */
     public Set<String> jaEnviados(int idUsuario) throws SQLException {
         String sql = """
-            SELECT tipo, nr_solicitacao FROM fc_alerta_oc_enviado
+            SELECT tipo, nr_solicitacao, item FROM fc_alerta_oc_enviado
             WHERE id_usuario = ? AND data_envio >= DATE_SUB(NOW(), INTERVAL ? DAY)
             """;
         Set<String> chaves = new HashSet<>();
@@ -87,24 +106,27 @@ public class AlertaOcPendenteDAO {
             ps.setInt(1, idUsuario);
             ps.setInt(2, DIAS_HISTORICO);
             try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) chaves.add(chave(rs.getString("tipo"), rs.getString("nr_solicitacao")));
+                while (rs.next()) {
+                    chaves.add(chave(rs.getString("tipo"), rs.getString("nr_solicitacao"), rs.getString("item")));
+                }
             }
         }
         return chaves;
     }
 
     /**
-     * Marca a ordem como avisada. INSERT IGNORE porque a chave única
-     * (usuário + tipo + solicitação) é a garantia real de não repetir — se
-     * duas execuções se cruzarem, a segunda simplesmente não insere.
+     * Marca o item como avisado. INSERT IGNORE porque a chave única
+     * (usuário + tipo + solicitação + item) é a garantia real de não
+     * repetir — se duas execuções se cruzarem, a segunda não insere.
      */
-    public void registrarEnviado(int idUsuario, String tipo, String nrSolicitacao) throws SQLException {
-        String sql = "INSERT IGNORE INTO fc_alerta_oc_enviado (id_usuario, tipo, nr_solicitacao) VALUES (?,?,?)";
+    public void registrarEnviado(int idUsuario, String tipo, String nrSolicitacao, String item) throws SQLException {
+        String sql = "INSERT IGNORE INTO fc_alerta_oc_enviado (id_usuario, tipo, nr_solicitacao, item) VALUES (?,?,?,?)";
         try (Connection c = conn();
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, idUsuario);
             ps.setString(2, tipo);
             ps.setString(3, nrSolicitacao);
+            ps.setString(4, limitarItem(item));
             ps.executeUpdate();
         }
     }
@@ -119,7 +141,14 @@ public class AlertaOcPendenteDAO {
         }
     }
 
-    public static String chave(String tipo, String nrSolicitacao) {
-        return tipo + "|" + nrSolicitacao;
+    public static String chave(String tipo, String nrSolicitacao, String item) {
+        return tipo + "|" + nrSolicitacao + "|" + limitarItem(item);
+    }
+
+    /** Mesmo corte da coluna, pra chave lida do banco e chave montada em memória baterem. */
+    private static String limitarItem(String item) {
+        if (item == null) return "";
+        String v = item.trim();
+        return v.length() > 150 ? v.substring(0, 150) : v;
     }
 }
