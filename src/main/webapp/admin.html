@@ -187,6 +187,10 @@
       <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
       De-Para Classe Operativa
     </div>
+    <div class="sb-item" id="nav-whatsapp" onclick="setSec('whatsapp')">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
+      Relatórios WhatsApp
+    </div>
   </nav>
   <div class="sb-foot">
     <div class="sb-user">
@@ -229,6 +233,7 @@
       <button class="tab"    id="tab-modulos"     onclick="setSec('modulos')">🧩 Módulos (Hub)</button>
       <button class="tab"    id="tab-depara"      onclick="setSec('depara')">🔄 De-Para Serviços</button>
       <button class="tab"    id="tab-classeoperativa" onclick="setSec('classeoperativa')">🚜 De-Para Classe Operativa</button>
+      <button class="tab"    id="tab-whatsapp"    onclick="setSec('whatsapp')">📱 Relatórios WhatsApp</button>
     </div>
 
     <div class="sec on" id="sec-usuarios">
@@ -397,6 +402,32 @@
       </div>
     </div>
 
+    <div class="sec" id="sec-whatsapp">
+      <div class="panel">
+        <div class="ph">
+          <div class="ph-title">Agendamentos de Envio</div>
+          <button class="btn-primary" style="padding:7px 14px;font-size:13px" onclick="abrirNovoWpp()">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Novo Agendamento
+          </button>
+        </div>
+        <div style="padding:14px 18px 0;font-size:12.5px;color:var(--text2);line-height:1.6">
+          Cada agendamento gera o relatório em PDF automaticamente no dia/hora escolhidos e envia por WhatsApp
+          pros destinatários marcados (precisam ter telefone cadastrado em <b>Usuários</b>).
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Nome</th><th>Relatório</th><th>Dia/Hora</th><th>Destinatários</th><th>Última Execução</th><th>Ativo</th><th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tbWpp">
+            <tr><td colspan="7" style="text-align:center;padding:28px;color:var(--text3)">Carregando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -552,6 +583,70 @@
   </div>
 </div>
 
+<!-- MODAL RELATÓRIO WHATSAPP -->
+<div class="ov" id="ovWpp">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-title" id="mWppTitle">Novo Agendamento</div>
+    <div class="modal-sub">Configure o envio automático de um relatório em PDF por WhatsApp</div>
+    <input type="hidden" id="mWppId">
+
+    <div class="mf">
+      <label>Nome do agendamento</label>
+      <input type="text" id="mWppNome" placeholder="Ex: Relatório de Combustível Semanal">
+    </div>
+
+    <div class="mf">
+      <label>Tipo de Relatório</label>
+      <select id="mWppTipo" onchange="atualizarCamposTipoWpp()">
+        <option value="combustivel">Combustível</option>
+      </select>
+    </div>
+
+    <div id="camposCombustivelWpp">
+      <div class="mf-grid">
+        <div class="mf">
+          <label>Últimas quantas semanas</label>
+          <input type="number" id="mWppSemanas" value="26" min="1" max="104">
+        </div>
+        <div class="mf">
+          <label>Combustível</label>
+          <input type="text" id="mWppCombustivel" value="Diesel" placeholder="Ex: Diesel, Gasolina, Etanol">
+        </div>
+      </div>
+    </div>
+
+    <div class="mf-grid">
+      <div class="mf">
+        <label>Dia da Semana</label>
+        <select id="mWppDiaSemana">
+          <option value="1">Segunda-feira</option>
+          <option value="2">Terça-feira</option>
+          <option value="3">Quarta-feira</option>
+          <option value="4">Quinta-feira</option>
+          <option value="5">Sexta-feira</option>
+          <option value="6">Sábado</option>
+          <option value="7">Domingo</option>
+        </select>
+      </div>
+      <div class="mf">
+        <label>Hora de Envio</label>
+        <input type="time" id="mWppHora" value="08:00">
+      </div>
+    </div>
+
+    <div class="mf">
+      <label>Destinatários</label>
+      <div id="destinatariosWppGrid" style="max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding:8px;background:var(--surf2);border:1px solid var(--border);border-radius:8px"></div>
+      <div class="hint">Usuários sem telefone cadastrado aparecem desabilitados — cadastre o telefone em Usuários primeiro.</div>
+    </div>
+
+    <div class="modal-acts">
+      <button class="btn-cancel" onclick="fecharModal('ovWpp')">Cancelar</button>
+      <button class="btn-ok" onclick="salvarWpp()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"><div class="tdot" id="tdot"></div><span id="tmsg"></span></div>
 
 <script>
@@ -613,6 +708,11 @@ function setSec(s) {
     document.getElementById('tsub').textContent='Agrupa cada equipamento em Classe Operativa (Dashboard de Combustível)';
     document.getElementById('btnAcao').style.display='none';
     carregarClasseOp();
+  } else if(s==='whatsapp'){
+    document.getElementById('ttitle').textContent='Relatórios WhatsApp';
+    document.getElementById('tsub').textContent='Agende o envio automático de relatórios em PDF por WhatsApp';
+    document.getElementById('btnAcao').style.display='none';
+    carregarRelatoriosAgendados();
   } else {
     document.getElementById('ttitle').textContent='Permissões';
     document.getElementById('tsub').textContent='Defina quais módulos cada usuário pode acessar';
@@ -1283,6 +1383,172 @@ async function excluirClasseOp(cod) {
   } catch(e) {
     toast('Erro: ' + e.message, 'red');
   }
+}
+
+// ── Relatórios WhatsApp ───────────────────────────────────────────
+const DIAS_SEMANA_WPP = {1:'Segunda',2:'Terça',3:'Quarta',4:'Quinta',5:'Sexta',6:'Sábado',7:'Domingo'};
+const TIPOS_RELATORIO_WPP = {combustivel:'Combustível'};
+let RELATORIOS_WPP = [];
+let USUARIOS_WPP = [];
+
+async function carregarRelatoriosAgendados() {
+  try {
+    const [ra, ru] = await Promise.all([
+      fetch('api/admin/relatorio-agendado'),
+      fetch('api/admin/relatorio-agendado/usuarios')
+    ]);
+    const ja = await ra.json();
+    const ju = await ru.json();
+    if (!ja.ok) throw new Error(ja.erro);
+    if (!ju.ok) throw new Error(ju.erro);
+    RELATORIOS_WPP = ja.data;
+    USUARIOS_WPP = ju.data;
+    renderWpp();
+  } catch(e) {
+    document.getElementById('tbWpp').innerHTML =
+      `<tr><td colspan="7" style="text-align:center;padding:28px;color:var(--red)">Erro: ${esc(e.message)}</td></tr>`;
+  }
+}
+
+function renderWpp() {
+  if (RELATORIOS_WPP.length === 0) {
+    document.getElementById('tbWpp').innerHTML =
+      '<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text3)">Nenhum agendamento cadastrado ainda.</td></tr>';
+    return;
+  }
+  document.getElementById('tbWpp').innerHTML = RELATORIOS_WPP.map(a => `
+    <tr>
+      <td><strong>${esc(a.nome)}</strong></td>
+      <td>${esc(TIPOS_RELATORIO_WPP[a.tipoRelatorio] || a.tipoRelatorio)}</td>
+      <td>${DIAS_SEMANA_WPP[a.diaSemana]} às ${esc(a.horaEnvio)}</td>
+      <td>${a.qtdeDestinatarios}</td>
+      <td class="muted">${a.ultimaExecucao
+        ? fmtD(a.ultimaExecucao) + ' ' + (a.ultimoStatus === 'erro' ? '<span style="color:#f87171">(erro)</span>' : '<span style="color:#4ade80">(ok)</span>')
+        : '—'}</td>
+      <td><button class="tog ${a.ativo?'on':''}" onclick="alternarAtivoWpp(${a.id}, ${!a.ativo})"></button></td>
+      <td><div class="acts">
+        <button class="bico" onclick="abrirEditarWpp(${a.id})" title="Editar">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+        </button>
+        <button class="bico del" onclick="excluirWpp(${a.id},'${esc(a.nome)}')" title="Excluir">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+            <path d="M10 11v6M14 11v6M9 6V4h6v2"/>
+          </svg>
+        </button>
+      </div></td>
+    </tr>`).join('');
+}
+
+async function alternarAtivoWpp(id, novoAtivo) {
+  try {
+    const r = await fetch('api/admin/relatorio-agendado/' + id + '/ativo', {
+      method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ativo: novoAtivo})
+    });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro);
+    toast(novoAtivo ? 'Agendamento ativado' : 'Agendamento desativado', novoAtivo ? 'green' : 'yellow');
+    carregarRelatoriosAgendados();
+  } catch(e) { toast('Erro: ' + e.message, 'red'); }
+}
+
+function renderDestinatariosWpp(selecionados) {
+  const sel = new Set(selecionados || []);
+  document.getElementById('destinatariosWppGrid').innerHTML = USUARIOS_WPP.map(u => `
+    <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:${u.telefone ? 'var(--text)' : 'var(--text3)'}">
+      <input type="checkbox" value="${u.id}" ${sel.has(u.id) ? 'checked' : ''} ${u.telefone ? '' : 'disabled'}>
+      ${esc(u.nome)} ${u.telefone ? '<span class="muted">— ' + esc(u.telefone) + '</span>' : '<span style="color:#f87171">(sem telefone cadastrado)</span>'}
+    </label>`).join('');
+}
+
+function destinatariosSelecionadosWpp() {
+  return Array.from(document.querySelectorAll('#destinatariosWppGrid input[type=checkbox]:checked')).map(i => parseInt(i.value));
+}
+
+function atualizarCamposTipoWpp() {
+  const tipo = document.getElementById('mWppTipo').value;
+  document.getElementById('camposCombustivelWpp').style.display = tipo === 'combustivel' ? '' : 'none';
+}
+
+function abrirNovoWpp() {
+  document.getElementById('mWppTitle').textContent = 'Novo Agendamento';
+  document.getElementById('mWppId').value = '';
+  document.getElementById('mWppNome').value = '';
+  document.getElementById('mWppTipo').value = 'combustivel';
+  document.getElementById('mWppSemanas').value = '26';
+  document.getElementById('mWppCombustivel').value = 'Diesel';
+  document.getElementById('mWppDiaSemana').value = '1';
+  document.getElementById('mWppHora').value = '08:00';
+  atualizarCamposTipoWpp();
+  renderDestinatariosWpp([]);
+  document.getElementById('ovWpp').classList.add('open');
+}
+
+async function abrirEditarWpp(id) {
+  try {
+    const r = await fetch('api/admin/relatorio-agendado/' + id);
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro);
+    const a = j.data;
+    document.getElementById('mWppTitle').textContent = 'Editar Agendamento';
+    document.getElementById('mWppId').value = a.id;
+    document.getElementById('mWppNome').value = a.nome;
+    document.getElementById('mWppTipo').value = a.tipoRelatorio;
+    const p = a.parametros || {};
+    document.getElementById('mWppSemanas').value = p.semanas || 26;
+    document.getElementById('mWppCombustivel').value = p.combustivel || 'Diesel';
+    document.getElementById('mWppDiaSemana').value = a.diaSemana;
+    document.getElementById('mWppHora').value = a.horaEnvio;
+    atualizarCamposTipoWpp();
+    renderDestinatariosWpp((a.destinatarios || []).map(d => d.id));
+    document.getElementById('ovWpp').classList.add('open');
+  } catch(e) { toast('Erro: ' + e.message, 'red'); }
+}
+
+async function salvarWpp() {
+  const id = document.getElementById('mWppId').value;
+  const nome = document.getElementById('mWppNome').value.trim();
+  const tipoRelatorio = document.getElementById('mWppTipo').value;
+  const diaSemana = parseInt(document.getElementById('mWppDiaSemana').value);
+  const horaEnvio = document.getElementById('mWppHora').value;
+  const destinatarios = destinatariosSelecionadosWpp();
+
+  if (!nome) { toast('Informe o nome do agendamento', 'red'); return; }
+  if (!horaEnvio) { toast('Informe a hora de envio', 'red'); return; }
+  if (destinatarios.length === 0) { toast('Escolha ao menos um destinatário', 'red'); return; }
+
+  const parametros = tipoRelatorio === 'combustivel'
+    ? { semanas: parseInt(document.getElementById('mWppSemanas').value) || 26,
+        combustivel: document.getElementById('mWppCombustivel').value.trim() || 'Diesel' }
+    : {};
+
+  const payload = { tipoRelatorio, nome, diaSemana, horaEnvio, parametros, destinatarios };
+
+  try {
+    const url = id ? 'api/admin/relatorio-agendado/' + id : 'api/admin/relatorio-agendado';
+    const method = id ? 'PUT' : 'POST';
+    const r = await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro);
+    fecharModal('ovWpp');
+    toast(id ? 'Agendamento atualizado!' : 'Agendamento criado!', 'green');
+    carregarRelatoriosAgendados();
+  } catch(e) { toast('Erro: ' + e.message, 'red'); }
+}
+
+async function excluirWpp(id, nome) {
+  if (!confirm('Excluir o agendamento "' + nome + '"? Esta ação não pode ser desfeita.')) return;
+  try {
+    const r = await fetch('api/admin/relatorio-agendado/' + id, { method: 'DELETE' });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro);
+    toast('Agendamento excluído', 'yellow');
+    carregarRelatoriosAgendados();
+  } catch(e) { toast('Erro: ' + e.message, 'red'); }
 }
 
 </script>

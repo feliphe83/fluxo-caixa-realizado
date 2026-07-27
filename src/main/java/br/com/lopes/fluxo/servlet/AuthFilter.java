@@ -62,7 +62,12 @@ public class AuthFilter implements Filter {
             // Rotas com token opaco próprio na URL (ex.: link de PDF clicado
             // a partir do chat, sem sessão de navegador nem X-Agro-Api-Key) —
             // cada servlet valida o token sozinho, por isso ficam liberadas aqui.
-            uri.startsWith(ctx + "/api/publico/");
+            uri.startsWith(ctx + "/api/publico/")         ||
+            // Endpoints internos (ex.: bootstrap de sessão pro Chromium
+            // headless gerar PDF de relatório agendado) — cada servlet exige
+            // que a requisição venha do próprio loopback (127.0.0.1/::1),
+            // inalcançável de fora já que o Tomcat só é exposto via nginx.
+            uri.startsWith(ctx + "/api/interno/");
 
         if (liberado) {
             chain.doFilter(req, res);
