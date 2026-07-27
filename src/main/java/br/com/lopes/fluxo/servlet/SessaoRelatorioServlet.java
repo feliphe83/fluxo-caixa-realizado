@@ -24,11 +24,22 @@ import java.sql.SQLException;
  * GET /api/interno/sessao-relatorio?idUsuario=N
  *   -> { ok:true, jsessionid: "..." }
  *
+ * GET /api/interno/sessao-relatorio?idUsuario=N&redirect=pagina.html?a=1
+ *   -> 302 para a página, com Set-Cookie da sessão recém-criada
+ *
+ * A forma com "redirect" é a que o Chromium headless usa: ele abre ESTA
+ * URL, guarda o cookie JSESSIONID da resposta e só então segue pra página —
+ * assim os fetch() que a página faz pra API vão autenticados pelo mesmo
+ * cookie. Passar ";jsessionid=" na URL da página não resolve: identifica no
+ * máximo o HTML, e as chamadas de API subsequentes saem sem credencial
+ * nenhuma, caindo no redirect de login (o PDF saía com a tela de login).
+ *
  * Segurança: liberado no AuthFilter (path público), mas só responde se a
  * requisição vier do próprio loopback (127.0.0.1/::1) — não alcançável de
  * fora, já que o Tomcat só é exposto externamente através do nginx (porta
  * 8080 não tem rota da internet até aqui). Sem token opaco na URL porque
- * quem chama já É o servidor.
+ * quem chama já É o servidor. O destino do redirect é restrito a um caminho
+ * relativo dentro do próprio contexto.
  */
 @WebServlet("/api/interno/sessao-relatorio")
 public class SessaoRelatorioServlet extends HttpServlet {
@@ -80,8 +91,21 @@ public class SessaoRelatorioServlet extends HttpServlet {
                 session.setAttribute("idUsuario", idUsuario);
                 session.setAttribute("nome", nome);
                 session.setAttribute("administrador", administrador);
-                // Só serve pra renderizar uma página e tirar o PDF — curta duração.
-                session.setMaxInactiveInterval(5 * 60);
+                // Tempo de sobra pro Chromium carregar a página, esperar as
+                // consultas do relatório (podem levar minutos) e imprimir.
+                session.setMaxInactiveInterval(15 * 60);
+
+                String redirect = req.getParameter("redirect");
+                if (redirect != null && !redirect.isBlank()) {
+                    if (!destinoInterno(redirect)) {
+                        resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                        out.print("{\"ok\":false,\"erro\":\"redirect deve ser um caminho relativo dentro da aplicação\"}");
+                        out.flush();
+                        return;
+                    }
+                    resp.sendRedirect(req.getContextPath() + "/" + redirect);
+                    return;
+                }
 
                 out.print("{\"ok\":true,\"jsessionid\":\"" + session.getId() + "\"}");
             }
@@ -91,5 +115,16 @@ public class SessaoRelatorioServlet extends HttpServlet {
         } finally {
             out.flush();
         }
+    }
+
+    /**
+     * Só aceita caminho relativo dentro do próprio contexto — barra URL
+     * absoluta ("http://…"), protocol-relative ("//host") e qualquer tentativa
+     * de subir de diretório, pra este endpoint não virar um open redirect.
+     */
+    private static boolean destinoInterno(String redirect) {
+        return !redirect.startsWith("/")
+            && !redirect.contains("://")
+            && !redirect.contains("..");
     }
 }
