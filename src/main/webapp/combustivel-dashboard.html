@@ -134,8 +134,14 @@
 
   .split-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 4px; }
 
-  /* ── Gráficos ── */
-  .grafico-area { position: relative; height: 300px; margin-top: 6px; }
+  /* ── Gráficos ──
+     Altura fixa igual pra tela e impressão (não dá pra confiar em encolher
+     só na impressão via CSS — o Chart.js desenha o <canvas> uma vez, no
+     tamanho que o container tinha naquele momento, e não redesenha de
+     verdade a tempo do preview de impressão gerar as páginas). overflow
+     hidden é uma rede de segurança: se o canvas ainda assim ficar maior que
+     o container, corta em vez de vazar por cima da seção seguinte. */
+  .grafico-area { position: relative; height: 220px; margin-top: 6px; overflow: hidden; }
   .legenda-manual { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px; font-size: 11.5px; color: var(--ink-2); }
   .legenda-manual .item { display: flex; align-items: center; gap: 6px; }
   .legenda-manual .dot { width: 9px; height: 9px; border-radius: 3px; }
@@ -220,9 +226,8 @@
        relatório (ex.: Resumo + Consumo Semanal + Evolução do Preço na
        página 1) — sem isso, a 3ª seção não cabe no restante da página e o
        navegador joga ela inteira pra página seguinte, deixando-a quase em
-       branco. Os gráficos (Chart.js) são responsivos e se redesenham no
-       tamanho novo do contêiner ao imprimir. */
-    .grafico-area { height: 150px !important; margin-top: 2px; }
+       branco. A altura dos gráficos NÃO é reduzida aqui de propósito — ver
+       comentário na classe .grafico-area. */
     .bloco-barra { padding: 4px 10px; font-size: 9px; }
     .kpi-row-6 .kpi { padding: 5px 4px; }
     .kpi .valor { font-size: 13px; white-space: nowrap; }
@@ -289,15 +294,6 @@
 <script>
 let DADOS = null;
 let charts = {};
-
-// Os gráficos (Chart.js) são desenhados uma vez, no tamanho de TELA do
-// container .grafico-area. O CSS de impressão encolhe esse container, mas
-// o <canvas> em si não redesenha sozinho — sem isso, ele "vaza" por cima da
-// seção seguinte na impressão. beforeprint/afterprint forçam o Chart.js a
-// reconsultar o tamanho atual do container e redesenhar (resize() sem
-// argumentos = auto-detecta a partir do container pai).
-window.addEventListener('beforeprint', () => { Object.values(charts).forEach(c => c.resize()); });
-window.addEventListener('afterprint', () => { Object.values(charts).forEach(c => c.resize()); });
 
 /** Últimas N semanas mostradas nos gráficos/tabela de classe operativa —
  * as demais semanas do período viram a barra/coluna "Média histórica",
@@ -534,7 +530,7 @@ function secaoConsumoSemanal(j) {
     <div class="secao-header"><span class="secao-num">2</span><span class="secao-titulo">Consumo Semanal</span></div>
     <div class="secao-sub">Últimas ${ultimas.length} semanas${historica ? ' + média histórica (' + historica.numSemanas + ' semanas)' : ''}</div>
 
-    <div class="grafico-area" style="height:340px"><canvas id="chConsumoSemanal"></canvas></div>
+    <div class="grafico-area" style="height:230px"><canvas id="chConsumoSemanal"></canvas></div>
     <div class="legenda-manual">
       ${historica ? '<span class="item"><span class="dot" style="background:' + getCss('--serie-outros') + '"></span>Média histórica</span>' : ''}
       <span class="item"><span class="dot" style="background:${getCss('--serie-3')}"></span>Semana comum</span>
@@ -753,7 +749,7 @@ function secaoDistribuicao(j) {
     <div class="secao-sub">Acumulado do período</div>
 
     <div class="distrib-grid">
-      <div class="grafico-area" style="height:260px"><canvas id="chDonutArea"></canvas></div>
+      <div class="grafico-area" style="height:200px"><canvas id="chDonutArea"></canvas></div>
       <div class="legenda-lista">${legendaAreas}</div>
     </div>
 
@@ -796,7 +792,7 @@ function secaoAtividades(j) {
     <div class="secao-header"><span class="secao-num">5</span><span class="secao-titulo">Top 6 Atividades</span></div>
     <div class="secao-sub">Consumo acumulado por atividade operacional</div>
 
-    <div class="grafico-area" style="height:280px"><canvas id="chAtividades"></canvas></div>
+    <div class="grafico-area"><canvas id="chAtividades"></canvas></div>
 
     <div class="insight-box"><span class="insight-icone">i</span><div>
       As seis atividades de maior consumo somam <b>${fmtPct(somaTop6)}</b> do total, lideradas por
