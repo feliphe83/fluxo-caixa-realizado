@@ -605,8 +605,9 @@
     <div id="camposCombustivelWpp">
       <div class="mf-grid">
         <div class="mf">
-          <label>Últimas quantas semanas</label>
-          <input type="number" id="mWppSemanas" value="26" min="1" max="104">
+          <label>Data Início</label>
+          <input type="date" id="mWppDataIni" value="2026-03-02">
+          <div class="hint">O relatório vai desta data até o dia anterior ao envio.</div>
         </div>
         <div class="mf">
           <label>Combustível</label>
@@ -1474,6 +1475,14 @@ function destinatariosSelecionadosWpp() {
   return Array.from(document.querySelectorAll('#destinatariosWppGrid input[type=checkbox]:checked')).map(i => parseInt(i.value));
 }
 
+/** Data equivalente a "últimas N semanas" fechando ontem — só pra exibir na
+ *  edição de agendamentos criados antes do campo Data Início existir. */
+function dataIniPorSemanas(semanas) {
+  const ontem = new Date(Date.now() - 864e5);
+  const ini = new Date(ontem.getTime() - (semanas * 7 - 1) * 864e5);
+  return ini.getFullYear() + '-' + String(ini.getMonth()+1).padStart(2,'0') + '-' + String(ini.getDate()).padStart(2,'0');
+}
+
 function atualizarCamposTipoWpp() {
   const tipo = document.getElementById('mWppTipo').value;
   document.getElementById('camposCombustivelWpp').style.display = tipo === 'combustivel' ? '' : 'none';
@@ -1484,7 +1493,7 @@ function abrirNovoWpp() {
   document.getElementById('mWppId').value = '';
   document.getElementById('mWppNome').value = '';
   document.getElementById('mWppTipo').value = 'combustivel';
-  document.getElementById('mWppSemanas').value = '26';
+  document.getElementById('mWppDataIni').value = '2026-03-02';
   document.getElementById('mWppCombustivel').value = 'Diesel';
   document.getElementById('mWppDiaSemana').value = '1';
   document.getElementById('mWppHora').value = '08:00';
@@ -1504,7 +1513,9 @@ async function abrirEditarWpp(id) {
     document.getElementById('mWppNome').value = a.nome;
     document.getElementById('mWppTipo').value = a.tipoRelatorio;
     const p = a.parametros || {};
-    document.getElementById('mWppSemanas').value = p.semanas || 26;
+    // Agendamentos criados na versão anterior guardam "semanas" em vez de
+    // "dataIni" — mostra a data equivalente pra edição não perder o período.
+    document.getElementById('mWppDataIni').value = p.dataIni || dataIniPorSemanas(p.semanas || 26);
     document.getElementById('mWppCombustivel').value = p.combustivel || 'Diesel';
     document.getElementById('mWppDiaSemana').value = a.diaSemana;
     document.getElementById('mWppHora').value = a.horaEnvio;
@@ -1522,12 +1533,15 @@ async function salvarWpp() {
   const horaEnvio = document.getElementById('mWppHora').value;
   const destinatarios = destinatariosSelecionadosWpp();
 
+  const dataIni = document.getElementById('mWppDataIni').value;
+
   if (!nome) { toast('Informe o nome do agendamento', 'red'); return; }
   if (!horaEnvio) { toast('Informe a hora de envio', 'red'); return; }
+  if (tipoRelatorio === 'combustivel' && !dataIni) { toast('Informe a data de início do relatório', 'red'); return; }
   if (destinatarios.length === 0) { toast('Escolha ao menos um destinatário', 'red'); return; }
 
   const parametros = tipoRelatorio === 'combustivel'
-    ? { semanas: parseInt(document.getElementById('mWppSemanas').value) || 26,
+    ? { dataIni,
         combustivel: document.getElementById('mWppCombustivel').value.trim() || 'Diesel' }
     : {};
 
