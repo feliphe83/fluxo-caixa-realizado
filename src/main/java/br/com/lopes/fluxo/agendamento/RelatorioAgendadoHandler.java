@@ -18,10 +18,13 @@ public interface RelatorioAgendadoHandler {
 
     /**
      * @param parametros        JSON específico do tipo de relatório (ex.:
-     *                          combustível usa {"semanas":N,"combustivel":"..."})
-     * @param destinatarios     lista de {id, nome, telefone} (ver RelatorioAgendadoDAO.listarDestinatarios)
+     *                          combustível usa {"dataIni":"...","combustivel":"..."})
+     * @param destinatarios     lista de {id, nome, telefone, idLogonErp} (ver RelatorioAgendadoDAO.listarDestinatarios)
      * @param idUsuarioCriacao  usuário que criou o agendamento — usado pra
      *                          abrir a página com as mesmas permissões dele
+     * @return resumo curto do que aconteceu, pra aparecer no histórico de
+     *         execuções da tela (ex.: "3 ordens avisadas"); null cai num
+     *         texto genérico
      */
-    void executar(JsonObject parametros, List<Map<String, Object>> destinatarios, long idUsuarioCriacao) throws Exception;
+    String executar(JsonObject parametros, List<Map<String, Object>> destinatarios, long idUsuarioCriacao) throws Exception;
 }

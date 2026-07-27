@@ -3,10 +3,8 @@ package br.com.lopes.fluxo.agendamento;
 import br.com.lopes.fluxo.dao.AlertaOcPendenteDAO;
 import br.com.lopes.fluxo.dao.OrdemCompraPendenteDAO;
 import br.com.lopes.fluxo.util.EvolutionApiUtil;
+import com.google.gson.JsonObject;
 
-import javax.servlet.ServletContextEvent;
-import javax.servlet.ServletContextListener;
-import javax.servlet.annotation.WebListener;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -14,34 +12,33 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Avisa por WhatsApp quem tem ordem de compra esperando aprovação — o que
- * antes era feito por uma aplicação num agendador do Windows.
+ * tipo_relatorio = "oc_pendente" — avisa por WhatsApp quem tem ordem de
+ * compra esperando aprovação, substituindo a aplicação que fazia isso num
+ * agendador do Windows.
  *
- * A cada {@link #INTERVALO_MINUTOS} minutos, para cada destinatário
- * (ver {@link AlertaOcPendenteDAO#listarDestinatarios()}), consulta as
- * ordens pendentes daquele aprovador no ERP e manda uma mensagem por ordem
- * nova. "Nova" é o que ainda não foi avisado àquela pessoa: enquanto a
- * ordem seguir pendente ela continua voltando na consulta, mas não é
- * reenviada.
+ * É um agendamento recorrente (intervalo em minutos, não dia/hora): a cada
+ * ciclo consulta as ordens pendentes de cada destinatário no ERP e manda
+ * uma mensagem por ordem NOVA. "Nova" é a que ainda não foi avisada àquela
+ * pessoa — enquanto a ordem seguir pendente ela continua voltando na
+ * consulta, mas não é reenviada (ver {@link AlertaOcPendenteDAO}).
  *
- * É um agendador à parte do {@link RelatorioAgendadoScheduler} porque a
- * natureza é outra: lá é um relatório em dia/hora marcados, aqui é uma
- * varredura contínua.
+ * Cada destinatário precisa do "Código de logon no ERP" preenchido no
+ * cadastro de usuário: é ele que diz quais ordens são daquele aprovador.
+ * Quem não tiver é ignorado (com aviso no log), porque não há como saber o
+ * que mandar.
+ *
+ * parametros: nenhum — o que varia (intervalo e destinatários) está nas
+ * colunas do próprio agendamento.
  */
-@WebListener
-public class AlertaOcPendenteScheduler implements ServletContextListener {
+public class AlertaOcPendenteHandler implements RelatorioAgendadoHandler {
 
-    private static final Logger LOG = Logger.getLogger(AlertaOcPendenteScheduler.class.getName());
-    private static final int INTERVALO_MINUTOS = 10;
+    private static final Logger LOG = Logger.getLogger(AlertaOcPendenteHandler.class.getName());
 
-    /** Teto de mensagens por destinatário em uma passada, pra uma enxurrada de ordens novas não virar spam. */
+    /** Teto de mensagens por destinatário em um ciclo, pra uma enxurrada de ordens novas não virar spam. */
     private static final int MAX_MENSAGENS_POR_CICLO = 15;
 
     private static final NumberFormat MOEDA = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("pt-BR"));
@@ -49,64 +46,51 @@ public class AlertaOcPendenteScheduler implements ServletContextListener {
 
     private final AlertaOcPendenteDAO controle = new AlertaOcPendenteDAO();
     private final OrdemCompraPendenteDAO erp = new OrdemCompraPendenteDAO();
-    private ScheduledExecutorService executor;
 
     @Override
-    public void contextInitialized(ServletContextEvent sce) {
-        try {
-            controle.garantirEstrutura();
-        } catch (Exception e) {
-            LOG.log(Level.SEVERE, "Não foi possível preparar as tabelas do alerta de ordem de compra", e);
-        }
-
-        executor = Executors.newSingleThreadScheduledExecutor(r -> {
-            Thread t = new Thread(r, "alerta-oc-pendente");
-            t.setDaemon(true);
-            return t;
-        });
-        executor.scheduleAtFixedRate(this::verificar, 2, INTERVALO_MINUTOS, TimeUnit.MINUTES);
-        LOG.info("AlertaOcPendenteScheduler iniciado — verifica a cada " + INTERVALO_MINUTOS + " minutos.");
-    }
-
-    @Override
-    public void contextDestroyed(ServletContextEvent sce) {
-        if (executor != null) executor.shutdownNow();
-    }
-
-    private void verificar() {
-        List<Map<String, Object>> destinatarios;
-        try {
-            destinatarios = controle.listarDestinatarios();
-        } catch (Exception e) {
-            LOG.log(Level.SEVERE, "Erro ao carregar destinatários do alerta de ordem de compra", e);
-            return;
-        }
-        if (destinatarios.isEmpty()) return;
+    public String executar(JsonObject parametros, List<Map<String, Object>> destinatarios, long idUsuarioCriacao) throws Exception {
+        int totalAvisadas = 0;
+        int semLogon = 0;
+        Exception ultimaFalha = null;
 
         for (Map<String, Object> destinatario : destinatarios) {
+            Object idLogon = destinatario.get("idLogonErp");
+            if (!(idLogon instanceof Number)) {
+                semLogon++;
+                LOG.warning("Alerta de ordem de compra: " + destinatario.get("nome")
+                        + " está sem o código de logon do ERP no cadastro — ignorado.");
+                continue;
+            }
             try {
-                avisar(destinatario);
+                totalAvisadas += avisar(destinatario, ((Number) idLogon).intValue());
             } catch (Exception e) {
                 // Falha de um destinatário não pode travar os demais.
+                ultimaFalha = e;
                 LOG.log(Level.SEVERE, "Erro no alerta de ordem de compra para " + destinatario.get("nome"), e);
             }
         }
 
-        try {
-            controle.limparHistoricoAntigo();
-        } catch (Exception e) {
-            LOG.log(Level.WARNING, "Não foi possível limpar o histórico antigo do alerta de ordem de compra", e);
+        if (ultimaFalha != null) {
+            throw new RuntimeException("Falha em ao menos um destinatário: " + ultimaFalha.getMessage(), ultimaFalha);
         }
+        if (semLogon > 0 && totalAvisadas == 0) {
+            throw new IllegalStateException(semLogon + " destinatário(s) sem código de logon do ERP no cadastro de usuário.");
+        }
+
+        String resumo = totalAvisadas == 0
+                ? "Nenhuma ordem nova."
+                : totalAvisadas + " ordem(ns) avisada(s).";
+        return semLogon > 0 ? resumo + " " + semLogon + " destinatário(s) sem código de logon do ERP." : resumo;
     }
 
-    private void avisar(Map<String, Object> destinatario) throws Exception {
+    /** @return quantas ordens foram avisadas a este destinatário */
+    private int avisar(Map<String, Object> destinatario, int idLogon) throws Exception {
         int idUsuario = ((Number) destinatario.get("id")).intValue();
-        int idLogon = ((Number) destinatario.get("idLogonErp")).intValue();
         String nome = String.valueOf(destinatario.get("nome"));
         String telefone = String.valueOf(destinatario.get("telefone"));
 
         List<Map<String, Object>> itens = erp.buscarPendentes(idLogon);
-        if (itens.isEmpty()) return;
+        if (itens.isEmpty()) return 0;
 
         Set<String> jaEnviados = controle.jaEnviados(idUsuario);
 
@@ -134,6 +118,7 @@ public class AlertaOcPendenteScheduler implements ServletContextListener {
         if (enviadas > 0) {
             LOG.info("Alerta de ordem de compra: " + enviadas + " ordem(ns) avisada(s) para " + nome);
         }
+        return enviadas;
     }
 
     /** Uma ordem pode ter vários itens (uma linha por material) — vira uma mensagem só. */

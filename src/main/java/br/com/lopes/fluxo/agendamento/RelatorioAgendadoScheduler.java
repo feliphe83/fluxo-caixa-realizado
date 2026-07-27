@@ -1,5 +1,6 @@
 package br.com.lopes.fluxo.agendamento;
 
+import br.com.lopes.fluxo.dao.AlertaOcPendenteDAO;
 import br.com.lopes.fluxo.dao.RelatorioAgendadoDAO;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -19,29 +20,36 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Dispara os envios de relatório por WhatsApp na hora agendada
- * (Administração → Relatórios WhatsApp). Verifica a cada
- * {@link #INTERVALO_MINUTOS} minutos se algum agendamento ativo bate com o
- * dia da semana/hora atual (fuso America/Maceio) e ainda não rodou hoje —
- * ver {@link RelatorioAgendadoDAO#listarPendentes}.
+ * Dispara os envios agendados por WhatsApp (Administração → Relatórios
+ * WhatsApp). Verifica a cada {@link #INTERVALO_MINUTOS} minuto(s) o que
+ * está na hora de rodar — ver {@link RelatorioAgendadoDAO#listarPendentes},
+ * que cobre os dois tipos de recorrência:
  *
- * Um agendamento com hora_envio=08:00 dispara na primeira verificação do
- * scheduler que rodar às ou depois das 08:00 daquele dia — pode atrasar até
- * INTERVALO_MINUTOS, o que é aceitável pra um envio semanal informativo.
+ * - semanal (ex.: relatório de combustível toda segunda às 08:00): dispara
+ *   na primeira verificação após a hora marcada;
+ * - por intervalo (ex.: alerta de ordem de compra a cada 10 minutos):
+ *   dispara quando passou o intervalo desde a última execução.
  *
- * Novos tipos de relatório: implemente {@link RelatorioAgendadoHandler} e
- * registre em {@link #HANDLERS}.
+ * O tique é de 1 minuto justamente por causa do modo por intervalo — assim
+ * um alerta configurado para 10 minutos não vira 15.
+ *
+ * Novos tipos: implemente {@link RelatorioAgendadoHandler} e registre em
+ * {@link #HANDLERS}.
  */
 @WebListener
 public class RelatorioAgendadoScheduler implements ServletContextListener {
 
     private static final Logger LOG = Logger.getLogger(RelatorioAgendadoScheduler.class.getName());
-    private static final int INTERVALO_MINUTOS = 5;
+    private static final int INTERVALO_MINUTOS = 1;
     private static final ZoneId FUSO = ZoneId.of("America/Maceio");
 
     private static final Map<String, RelatorioAgendadoHandler> HANDLERS = Map.of(
-            "combustivel", new CombustivelRelatorioAgendadoHandler()
+            "combustivel", new CombustivelRelatorioAgendadoHandler(),
+            "oc_pendente", new AlertaOcPendenteHandler()
     );
+
+    /** Execuções mais antigas que isso são descartadas — os recorrentes geram um registro por ciclo. */
+    private static final int DIAS_HISTORICO_EXECUCAO = 90;
 
     private static final RelatorioAgendadoDAO DAO = new RelatorioAgendadoDAO();
 
@@ -61,6 +69,15 @@ public class RelatorioAgendadoScheduler implements ServletContextListener {
 
     @Override
     public void contextInitialized(ServletContextEvent sce) {
+        try {
+            // Cria as tabelas/colunas usadas pelos agendamentos antes de
+            // qualquer tela abrir (a de Usuários já lê fc_usuario.id_logon_erp).
+            DAO.garantirEstrutura();
+            new AlertaOcPendenteDAO().garantirEstrutura();
+        } catch (Exception e) {
+            LOG.log(Level.SEVERE, "Não foi possível preparar as tabelas dos agendamentos", e);
+        }
+
         executor = Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, "relatorio-agendado-scheduler");
             t.setDaemon(true);
@@ -81,6 +98,9 @@ public class RelatorioAgendadoScheduler implements ServletContextListener {
             List<Map<String, Object>> pendentes = DAO.listarPendentes(agora.getDayOfWeek(), agora.toLocalTime().withNano(0).withSecond(0));
             for (Map<String, Object> agendamento : pendentes) {
                 executarUm(agendamento);
+            }
+            if (agora.getHour() == 3 && agora.getMinute() < INTERVALO_MINUTOS) {
+                DAO.limparExecucoesAntigas(DIAS_HISTORICO_EXECUCAO);
             }
         } catch (Exception e) {
             LOG.log(Level.SEVERE, "Erro ao verificar relatórios agendados pendentes", e);
@@ -121,8 +141,9 @@ public class RelatorioAgendadoScheduler implements ServletContextListener {
 
             LOG.info("Executando relatório agendado #" + id + " (" + nome + ", tipo=" + tipo + ") para "
                     + destinatarios.size() + " destinatário(s)");
-            handler.executar(parametros, destinatarios, idUsuarioCriacao);
-            registrarSemLancar(id, "sucesso", "Enviado para " + destinatarios.size() + " destinatário(s).");
+            String resumo = handler.executar(parametros, destinatarios, idUsuarioCriacao);
+            registrarSemLancar(id, "sucesso",
+                    resumo != null ? resumo : "Enviado para " + destinatarios.size() + " destinatário(s).");
 
         } catch (Exception e) {
             LOG.log(Level.SEVERE, "Falha ao executar relatório agendado #" + id + " (" + nome + ")", e);

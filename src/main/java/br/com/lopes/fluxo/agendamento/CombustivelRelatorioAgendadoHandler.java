@@ -38,7 +38,7 @@ public class CombustivelRelatorioAgendadoHandler implements RelatorioAgendadoHan
     }
 
     @Override
-    public void executar(JsonObject parametros, List<Map<String, Object>> destinatarios, long idUsuarioCriacao) throws Exception {
+    public String executar(JsonObject parametros, List<Map<String, Object>> destinatarios, long idUsuarioCriacao) throws Exception {
         String combustivel = parametros.has("combustivel") ? parametros.get("combustivel").getAsString() : "Diesel";
 
         LocalDate dataFim = LocalDate.now().minusDays(1);
@@ -81,6 +81,8 @@ public class CombustivelRelatorioAgendadoHandler implements RelatorioAgendadoHan
                     + " envios falharam (os demais foram entregues): "
                     + (ultimaFalha == null ? "" : ultimaFalha.getMessage()), ultimaFalha);
         }
+        return "Enviado para " + destinatarios.size() + " destinatário(s) — período "
+                + dataIni.format(BR) + " a " + dataFim.format(BR) + ".";
     }
 
     /**

@@ -13,6 +13,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Agendamentos de envio de relatório por WhatsApp (tela Administração →
@@ -31,6 +33,8 @@ import java.util.Map;
  * projeto — id_usuario é só um INT solto).
  */
 public class RelatorioAgendadoDAO {
+
+    private static final Logger LOG = Logger.getLogger(RelatorioAgendadoDAO.class.getName());
 
     private static final String DB_URL  = "jdbc:mysql://localhost:3306/intranet?useSSL=false&serverTimezone=America/Recife&allowPublicKeyRetrieval=true";
     private static final String DB_USER = "lopes_app";
@@ -71,8 +75,27 @@ public class RelatorioAgendadoDAO {
                   INDEX idx_agendamento (id_agendamento)
                 )
                 """);
+            // Recorrência por intervalo (ex.: alerta de ordem de compra a cada
+            // 10 minutos) chegou depois do agendamento semanal: dia_semana e
+            // hora_envio passam a aceitar nulo, e quem tem intervalo_minutos
+            // preenchido é recorrente. MySQL não tem "ADD COLUMN IF NOT
+            // EXISTS" aqui, então roda sempre ignorando o erro de duplicada.
+            try {
+                st.execute("ALTER TABLE fc_relatorio_agendado ADD COLUMN intervalo_minutos INT NULL");
+                st.execute("ALTER TABLE fc_relatorio_agendado MODIFY dia_semana TINYINT NULL");
+                st.execute("ALTER TABLE fc_relatorio_agendado MODIFY hora_envio TIME NULL");
+            } catch (SQLException e) {
+                if (!"42S21".equals(e.getSQLState())) {  // 42S21 = coluna duplicada, esperado a partir da 2ª vez
+                    LOG.log(Level.WARNING, "Não foi possível garantir as colunas de recorrência do agendamento", e);
+                }
+            }
         }
         return c;
+    }
+
+    /** Cria as tabelas/colunas do agendamento — chamado no start da aplicação. */
+    public void garantirEstrutura() throws SQLException {
+        conn().close();
     }
 
     // ── Listagem (tela de administração) ─────────────────────────────────
@@ -80,7 +103,7 @@ public class RelatorioAgendadoDAO {
     /** Lista todos os agendamentos com contagem de destinatários e status da última execução. */
     public List<Map<String, Object>> listar() throws SQLException {
         String sql = """
-            SELECT a.id, a.tipo_relatorio, a.nome, a.dia_semana, a.hora_envio, a.parametros,
+            SELECT a.id, a.tipo_relatorio, a.nome, a.dia_semana, a.hora_envio, a.intervalo_minutos, a.parametros,
                    a.ativo, a.data_criacao,
                    (SELECT COUNT(*) FROM fc_relatorio_agendado_destinatario d WHERE d.id_agendamento = a.id) qtde_destinatarios,
                    (SELECT e.data_execucao FROM fc_relatorio_agendado_execucao e
@@ -101,7 +124,7 @@ public class RelatorioAgendadoDAO {
 
     public Map<String, Object> buscarPorId(int id) throws SQLException {
         String sql = """
-            SELECT id, tipo_relatorio, nome, dia_semana, hora_envio, parametros, ativo, data_criacao,
+            SELECT id, tipo_relatorio, nome, dia_semana, hora_envio, intervalo_minutos, parametros, ativo, data_criacao,
                    id_usuario_criacao
             FROM fc_relatorio_agendado WHERE id = ?
             """;
@@ -122,8 +145,16 @@ public class RelatorioAgendadoDAO {
         m.put("id", rs.getInt("id"));
         m.put("tipoRelatorio", rs.getString("tipo_relatorio"));
         m.put("nome", rs.getString("nome"));
-        m.put("diaSemana", rs.getInt("dia_semana"));
-        m.put("horaEnvio", rs.getString("hora_envio").substring(0, 5));
+        // Semanal usa diaSemana/horaEnvio; recorrente usa intervaloMinutos —
+        // os campos do outro modo ficam nulos.
+        Integer diaSemana = rs.getInt("dia_semana");
+        if (rs.wasNull()) diaSemana = null;
+        m.put("diaSemana", diaSemana);
+        String horaEnvio = rs.getString("hora_envio");
+        m.put("horaEnvio", horaEnvio == null ? null : horaEnvio.substring(0, 5));
+        Integer intervalo = rs.getInt("intervalo_minutos");
+        if (rs.wasNull()) intervalo = null;
+        m.put("intervaloMinutos", intervalo);
         m.put("parametros", rs.getString("parametros"));
         m.put("ativo", "S".equals(rs.getString("ativo")));
         Timestamp criacao = rs.getTimestamp("data_criacao");
@@ -151,7 +182,7 @@ public class RelatorioAgendadoDAO {
     /** Destinatários de um agendamento, já com nome/telefone (join em fc_usuario). */
     public List<Map<String, Object>> listarDestinatarios(int idAgendamento) throws SQLException {
         String sql = """
-            SELECT u.id, u.nome, u.telefone
+            SELECT u.id, u.nome, u.telefone, u.id_logon_erp
             FROM fc_relatorio_agendado_destinatario d
             JOIN fc_usuario u ON u.id = d.id_usuario
             WHERE d.id_agendamento = ?
@@ -167,6 +198,10 @@ public class RelatorioAgendadoDAO {
                     m.put("id", rs.getInt("id"));
                     m.put("nome", rs.getString("nome"));
                     m.put("telefone", rs.getString("telefone"));
+                    // Só o alerta de ordem de compra usa: identifica o aprovador no ERP.
+                    Integer idLogonErp = rs.getInt("id_logon_erp");
+                    if (rs.wasNull()) idLogonErp = null;
+                    m.put("idLogonErp", idLogonErp);
                     lista.add(m);
                 }
             }
@@ -176,22 +211,28 @@ public class RelatorioAgendadoDAO {
 
     // ── CRUD ──────────────────────────────────────────────────────────────
 
-    public int criar(String tipoRelatorio, String nome, int diaSemana, String horaEnvio,
+    /**
+     * @param diaSemana        1-7, ou null quando a recorrência é por intervalo
+     * @param horaEnvio        "HH:mm:ss", ou null quando a recorrência é por intervalo
+     * @param intervaloMinutos de quantos em quantos minutos repete, ou null no agendamento semanal
+     */
+    public int criar(String tipoRelatorio, String nome, Integer diaSemana, String horaEnvio, Integer intervaloMinutos,
                       String parametros, long idUsuarioCriacao, List<Integer> destinatarios) throws SQLException {
         String sql = """
             INSERT INTO fc_relatorio_agendado
-                (tipo_relatorio, nome, dia_semana, hora_envio, parametros, ativo, id_usuario_criacao)
-            VALUES (?,?,?,?,?, 'S', ?)
+                (tipo_relatorio, nome, dia_semana, hora_envio, intervalo_minutos, parametros, ativo, id_usuario_criacao)
+            VALUES (?,?,?,?,?,?, 'S', ?)
             """;
         try (Connection c = conn()) {
             int id;
             try (PreparedStatement ps = c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
                 ps.setString(1, tipoRelatorio);
                 ps.setString(2, nome);
-                ps.setInt(3, diaSemana);
+                ps.setObject(3, diaSemana);
                 ps.setString(4, horaEnvio);
-                ps.setString(5, parametros);
-                ps.setLong(6, idUsuarioCriacao);
+                ps.setObject(5, intervaloMinutos);
+                ps.setString(6, parametros);
+                ps.setLong(7, idUsuarioCriacao);
                 ps.executeUpdate();
                 try (ResultSet rs = ps.getGeneratedKeys()) {
                     rs.next();
@@ -203,20 +244,21 @@ public class RelatorioAgendadoDAO {
         }
     }
 
-    public void atualizar(int id, String nome, int diaSemana, String horaEnvio,
+    public void atualizar(int id, String nome, Integer diaSemana, String horaEnvio, Integer intervaloMinutos,
                           String parametros, List<Integer> destinatarios) throws SQLException {
         String sql = """
             UPDATE fc_relatorio_agendado
-               SET nome=?, dia_semana=?, hora_envio=?, parametros=?
+               SET nome=?, dia_semana=?, hora_envio=?, intervalo_minutos=?, parametros=?
              WHERE id=?
             """;
         try (Connection c = conn()) {
             try (PreparedStatement ps = c.prepareStatement(sql)) {
                 ps.setString(1, nome);
-                ps.setInt(2, diaSemana);
+                ps.setObject(2, diaSemana);
                 ps.setString(3, horaEnvio);
-                ps.setString(4, parametros);
-                ps.setInt(5, id);
+                ps.setObject(4, intervaloMinutos);
+                ps.setString(5, parametros);
+                ps.setInt(6, id);
                 ps.executeUpdate();
             }
             try (PreparedStatement ps = c.prepareStatement("DELETE FROM fc_relatorio_agendado_destinatario WHERE id_agendamento=?")) {
@@ -266,22 +308,34 @@ public class RelatorioAgendadoDAO {
     // ── Scheduler ─────────────────────────────────────────────────────────
 
     /**
-     * Agendamentos ativos cujo dia_semana bate com {@code hoje} e cujo
-     * hora_envio já passou (dentro da janela do dia), e que AINDA não têm
-     * execução registrada hoje — evita reenviar se o scheduler rodar de novo
-     * antes do próximo dia_semana bater.
+     * Agendamentos ativos que devem rodar agora, nos dois modos:
+     *
+     * - semanal (intervalo_minutos nulo): dia_semana bate com {@code hoje},
+     *   hora_envio já passou e ainda não houve execução hoje — assim não
+     *   reenvia se o scheduler rodar de novo antes de virar o dia;
+     * - recorrente (intervalo_minutos preenchido): passou pelo menos esse
+     *   tanto de minutos desde a última execução (ou nunca executou).
      */
     public List<Map<String, Object>> listarPendentes(DayOfWeek hoje, LocalTime agora) throws SQLException {
         String sql = """
             SELECT a.id, a.tipo_relatorio, a.nome, a.parametros, a.id_usuario_criacao
             FROM fc_relatorio_agendado a
             WHERE a.ativo = 'S'
-              AND a.dia_semana = ?
-              AND a.hora_envio <= ?
-              AND NOT EXISTS (
-                    SELECT 1 FROM fc_relatorio_agendado_execucao e
-                    WHERE e.id_agendamento = a.id
-                      AND DATE(e.data_execucao) = CURDATE()
+              AND (
+                    (a.intervalo_minutos IS NULL
+                     AND a.dia_semana = ?
+                     AND a.hora_envio <= ?
+                     AND NOT EXISTS (
+                           SELECT 1 FROM fc_relatorio_agendado_execucao e
+                           WHERE e.id_agendamento = a.id
+                             AND DATE(e.data_execucao) = CURDATE()
+                     ))
+                 OR (a.intervalo_minutos IS NOT NULL
+                     AND NOT EXISTS (
+                           SELECT 1 FROM fc_relatorio_agendado_execucao e
+                           WHERE e.id_agendamento = a.id
+                             AND e.data_execucao > DATE_SUB(NOW(), INTERVAL a.intervalo_minutos MINUTE)
+                     ))
               )
             """;
         List<Map<String, Object>> lista = new ArrayList<>();
@@ -304,6 +358,19 @@ public class RelatorioAgendadoDAO {
         return lista;
     }
 
+    /**
+     * Descarta execuções antigas — sem isso a tabela cresce rápido com os
+     * agendamentos recorrentes (um registro a cada intervalo).
+     */
+    public void limparExecucoesAntigas(int dias) throws SQLException {
+        try (Connection c = conn();
+             PreparedStatement ps = c.prepareStatement(
+                 "DELETE FROM fc_relatorio_agendado_execucao WHERE data_execucao < DATE_SUB(NOW(), INTERVAL ? DAY)")) {
+            ps.setInt(1, dias);
+            ps.executeUpdate();
+        }
+    }
+
     public void registrarExecucao(int idAgendamento, String status, String detalhe) throws SQLException {
         String sql = "INSERT INTO fc_relatorio_agendado_execucao (id_agendamento, status, detalhe) VALUES (?,?,?)";
         try (Connection c = conn();
@@ -318,7 +385,7 @@ public class RelatorioAgendadoDAO {
     // ── Usuários (pra montar o multi-select de destinatários no admin) ────
 
     public List<Map<String, Object>> listarUsuariosAtivos() throws SQLException {
-        String sql = "SELECT id, nome, telefone FROM fc_usuario WHERE ativo='S' ORDER BY nome";
+        String sql = "SELECT id, nome, telefone, id_logon_erp FROM fc_usuario WHERE ativo='S' ORDER BY nome";
         List<Map<String, Object>> lista = new ArrayList<>();
         try (Connection c = conn();
              PreparedStatement ps = c.prepareStatement(sql);
@@ -328,6 +395,9 @@ public class RelatorioAgendadoDAO {
                 m.put("id", rs.getInt("id"));
                 m.put("nome", rs.getString("nome"));
                 m.put("telefone", rs.getString("telefone"));
+                Integer idLogonErp = rs.getInt("id_logon_erp");
+                if (rs.wasNull()) idLogonErp = null;
+                m.put("idLogonErp", idLogonErp);
                 lista.add(m);
             }
         }

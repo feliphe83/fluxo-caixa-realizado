@@ -6,30 +6,26 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Apoio (MySQL) do alerta de ordens de compra pendentes: quem recebe e o
- * que já foi avisado.
+ * Apoio (MySQL) do alerta de ordens de compra pendentes: guarda o que já
+ * foi avisado a cada pessoa.
  *
- * O controle do que já foi avisado é o que permite rodar de dez em dez
- * minutos sem repetir mensagem: enquanto a ordem continuar pendente de
- * aprovação ela segue aparecendo na consulta do ERP, mas só é enviada na
- * primeira vez que aparece para aquele destinatário.
+ * É esse controle que permite rodar de poucos em poucos minutos sem
+ * repetir mensagem: enquanto a ordem continuar pendente de aprovação ela
+ * segue aparecendo na consulta do ERP, mas só é enviada na primeira vez
+ * que aparece para aquele destinatário.
+ *
+ * Quem recebe vem do próprio agendamento (Administração → Relatórios
+ * WhatsApp), não daqui.
  */
 public class AlertaOcPendenteDAO {
 
     private static final Logger LOG = Logger.getLogger(AlertaOcPendenteDAO.class.getName());
-
-    /** Chave da permissão (fc_permissao) que libera o recebimento do alerta. */
-    public static final String PERMISSAO = "alerta_oc_pendente";
 
     /** Registros de envio mais antigos que isso são descartados (a ordem já foi aprovada há muito). */
     private static final int DIAS_HISTORICO = 180;
@@ -77,43 +73,6 @@ public class AlertaOcPendenteDAO {
      */
     public void garantirEstrutura() throws SQLException {
         conn().close();
-    }
-
-    /**
-     * Quem deve receber o alerta: usuário ativo, com a permissão
-     * {@link #PERMISSAO} concedida, telefone cadastrado e id_logon do ERP
-     * preenchido (sem ele não dá pra saber quais ordens são dele).
-     *
-     * Administrador não entra automaticamente, diferente de outras
-     * permissões do sistema: receber alerta é opt-in, senão todo admin
-     * passaria a receber mensagem de WhatsApp sem ter pedido.
-     */
-    public List<Map<String, Object>> listarDestinatarios() throws SQLException {
-        String sql = """
-            SELECT u.id, u.nome, u.telefone, u.id_logon_erp
-            FROM fc_usuario u
-            JOIN fc_permissao p ON p.id_usuario = u.id AND p.relatorio = ? AND p.ativo = 'S'
-            WHERE u.ativo = 'S'
-              AND u.telefone IS NOT NULL AND TRIM(u.telefone) <> ''
-              AND u.id_logon_erp IS NOT NULL AND u.id_logon_erp > 0
-            ORDER BY u.nome
-            """;
-        List<Map<String, Object>> lista = new ArrayList<>();
-        try (Connection c = conn();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, PERMISSAO);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    Map<String, Object> m = new LinkedHashMap<>();
-                    m.put("id", rs.getInt("id"));
-                    m.put("nome", rs.getString("nome"));
-                    m.put("telefone", rs.getString("telefone"));
-                    m.put("idLogonErp", rs.getInt("id_logon_erp"));
-                    lista.add(m);
-                }
-            }
-        }
-        return lista;
     }
 
     /** Ordens que este usuário já recebeu, como "tipo|nr_solicitacao". */

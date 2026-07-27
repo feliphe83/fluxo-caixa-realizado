@@ -602,9 +602,10 @@
     </div>
 
     <div class="mf">
-      <label>Tipo de Relatório</label>
+      <label>Tipo de Envio</label>
       <select id="mWppTipo" onchange="atualizarCamposTipoWpp()">
-        <option value="combustivel">Combustível</option>
+        <option value="combustivel">Relatório de Combustível (PDF)</option>
+        <option value="oc_pendente">Alerta de Ordem de Compra pendente</option>
       </select>
     </div>
 
@@ -622,22 +623,32 @@
       </div>
     </div>
 
-    <div class="mf-grid">
-      <div class="mf">
-        <label>Dia da Semana</label>
-        <select id="mWppDiaSemana">
-          <option value="1">Segunda-feira</option>
-          <option value="2">Terça-feira</option>
-          <option value="3">Quarta-feira</option>
-          <option value="4">Quinta-feira</option>
-          <option value="5">Sexta-feira</option>
-          <option value="6">Sábado</option>
-          <option value="7">Domingo</option>
-        </select>
+    <div id="camposSemanalWpp">
+      <div class="mf-grid">
+        <div class="mf">
+          <label>Dia da Semana</label>
+          <select id="mWppDiaSemana">
+            <option value="1">Segunda-feira</option>
+            <option value="2">Terça-feira</option>
+            <option value="3">Quarta-feira</option>
+            <option value="4">Quinta-feira</option>
+            <option value="5">Sexta-feira</option>
+            <option value="6">Sábado</option>
+            <option value="7">Domingo</option>
+          </select>
+        </div>
+        <div class="mf">
+          <label>Hora de Envio</label>
+          <input type="time" id="mWppHora" value="08:00">
+        </div>
       </div>
+    </div>
+
+    <div id="camposIntervaloWpp" style="display:none">
       <div class="mf">
-        <label>Hora de Envio</label>
-        <input type="time" id="mWppHora" value="08:00">
+        <label>Verificar a cada (minutos)</label>
+        <input type="number" id="mWppIntervalo" value="10" min="1" max="1440">
+        <div class="hint">O alerta roda continuamente nesse intervalo e avisa apenas as ordens ainda não comunicadas — cada ordem é enviada uma única vez por pessoa.</div>
       </div>
     </div>
 
@@ -664,7 +675,6 @@ const RELS=[
   {id:'chat_acesso',label:'Dr. Alfredo — Acesso ao Assistente',desc:'Abrir e conversar com o Dr. Alfredo (sem isso o chat fica bloqueado)'},
   {id:'chat_agricola',label:'Dr. Alfredo — Consultas Agrícolas',desc:'Perguntar sobre talhões, insumos e chuvas ao Dr. Alfredo'},
   {id:'chat_financeiro',label:'Dr. Alfredo — Consultas Financeiras',desc:'Perguntar sobre contas a pagar e dados financeiros ao Dr. Alfredo'},
-  {id:'alerta_oc_pendente',label:'Alerta de Ordem de Compra (WhatsApp)',desc:'Receber aviso no WhatsApp quando houver ordem de compra aguardando sua aprovação (exige telefone e código de logon no ERP cadastrados)'},
 ];
 
 let usuarios=[], perms={}, permUser=null, delId=null, editId=null, isAdminCheck=false;
@@ -1398,7 +1408,11 @@ async function excluirClasseOp(cod) {
 
 // ── Relatórios WhatsApp ───────────────────────────────────────────
 const DIAS_SEMANA_WPP = {1:'Segunda',2:'Terça',3:'Quarta',4:'Quinta',5:'Sexta',6:'Sábado',7:'Domingo'};
-const TIPOS_RELATORIO_WPP = {combustivel:'Combustível'};
+const TIPOS_RELATORIO_WPP = {combustivel:'Combustível (PDF)', oc_pendente:'Alerta de Ordem de Compra'};
+/** Tipos que rodam por intervalo (a cada N minutos) em vez de dia da semana + hora. */
+const TIPOS_RECORRENTES_WPP = ['oc_pendente'];
+/** Tipos que dependem do código de logon do ERP no cadastro do destinatário. */
+const TIPOS_COM_LOGON_ERP_WPP = ['oc_pendente'];
 let RELATORIOS_WPP = [];
 let USUARIOS_WPP = [];
 
@@ -1431,7 +1445,7 @@ function renderWpp() {
     <tr>
       <td><strong>${esc(a.nome)}</strong></td>
       <td>${esc(TIPOS_RELATORIO_WPP[a.tipoRelatorio] || a.tipoRelatorio)}</td>
-      <td>${DIAS_SEMANA_WPP[a.diaSemana]} às ${esc(a.horaEnvio)}</td>
+      <td>${a.intervaloMinutos ? 'A cada ' + a.intervaloMinutos + ' min' : DIAS_SEMANA_WPP[a.diaSemana] + ' às ' + esc(a.horaEnvio)}</td>
       <td>${a.qtdeDestinatarios}</td>
       <td class="muted">${a.ultimaExecucao
         ? fmtD(a.ultimaExecucao) + ' ' + (a.ultimoStatus === 'erro' ? '<span style="color:#f87171">(erro)</span>' : '<span style="color:#4ade80">(ok)</span>')
@@ -1484,16 +1498,26 @@ async function alternarAtivoWpp(id, novoAtivo) {
 
 function renderDestinatariosWpp(selecionados) {
   const sel = new Set(selecionados || []);
+  const tipo = document.getElementById('mWppTipo').value;
+  const exigeLogon = TIPOS_COM_LOGON_ERP_WPP.includes(tipo);
   // Estilos inline defensivos: o CSS genérico do modal (.mf input { width:100%;
   // padding... } e .mf label { text-transform:uppercase; font-size:10px... })
   // pega qualquer input/label dentro de .mf — sem o width:auto no checkbox ele
   // vira um bloco de largura total e espreme o nome do usuário pra fora do grid.
-  document.getElementById('destinatariosWppGrid').innerHTML = USUARIOS_WPP.map(u => `
-    <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:400;text-transform:none;letter-spacing:normal;margin:0;cursor:pointer;color:${u.telefone ? 'var(--text)' : 'var(--text3)'}">
-      <input type="checkbox" value="${u.id}" ${sel.has(u.id) ? 'checked' : ''} ${u.telefone ? '' : 'disabled'}
+  document.getElementById('destinatariosWppGrid').innerHTML = USUARIOS_WPP.map(u => {
+    const semTelefone = !u.telefone;
+    const semLogon = exigeLogon && !u.idLogonErp;
+    const bloqueado = semTelefone || semLogon;
+    const aviso = semTelefone ? '<span style="color:#f87171">(sem telefone cadastrado)</span>'
+                : semLogon    ? '<span style="color:#f87171">(sem código de logon no ERP)</span>'
+                : '<span class="muted">— ' + esc(u.telefone) + '</span>';
+    return `
+    <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:400;text-transform:none;letter-spacing:normal;margin:0;cursor:pointer;color:${bloqueado ? 'var(--text3)' : 'var(--text)'}">
+      <input type="checkbox" value="${u.id}" ${sel.has(u.id) && !bloqueado ? 'checked' : ''} ${bloqueado ? 'disabled' : ''}
              style="width:16px;height:16px;padding:0;margin:0;flex:0 0 auto;accent-color:var(--blue2)">
-      <span>${esc(u.nome)} ${u.telefone ? '<span class="muted">— ' + esc(u.telefone) + '</span>' : '<span style="color:#f87171">(sem telefone cadastrado)</span>'}</span>
-    </label>`).join('');
+      <span>${esc(u.nome)} ${aviso}</span>
+    </label>`;
+  }).join('');
 }
 
 function destinatariosSelecionadosWpp() {
@@ -1510,7 +1534,12 @@ function dataIniPorSemanas(semanas) {
 
 function atualizarCamposTipoWpp() {
   const tipo = document.getElementById('mWppTipo').value;
+  const recorrente = TIPOS_RECORRENTES_WPP.includes(tipo);
   document.getElementById('camposCombustivelWpp').style.display = tipo === 'combustivel' ? '' : 'none';
+  // Recorrente é configurado por intervalo; os demais, por dia da semana e hora.
+  document.getElementById('camposSemanalWpp').style.display = recorrente ? 'none' : '';
+  document.getElementById('camposIntervaloWpp').style.display = recorrente ? '' : 'none';
+  renderDestinatariosWpp(destinatariosSelecionadosWpp());
 }
 
 function abrirNovoWpp() {
@@ -1522,8 +1551,9 @@ function abrirNovoWpp() {
   document.getElementById('mWppCombustivel').value = 'Diesel';
   document.getElementById('mWppDiaSemana').value = '1';
   document.getElementById('mWppHora').value = '08:00';
-  atualizarCamposTipoWpp();
+  document.getElementById('mWppIntervalo').value = '10';
   renderDestinatariosWpp([]);
+  atualizarCamposTipoWpp();
   document.getElementById('ovWpp').classList.add('open');
 }
 
@@ -1542,10 +1572,11 @@ async function abrirEditarWpp(id) {
     // "dataIni" — mostra a data equivalente pra edição não perder o período.
     document.getElementById('mWppDataIni').value = p.dataIni || dataIniPorSemanas(p.semanas || 26);
     document.getElementById('mWppCombustivel').value = p.combustivel || 'Diesel';
-    document.getElementById('mWppDiaSemana').value = a.diaSemana;
-    document.getElementById('mWppHora').value = a.horaEnvio;
-    atualizarCamposTipoWpp();
+    document.getElementById('mWppDiaSemana').value = a.diaSemana || 1;
+    document.getElementById('mWppHora').value = a.horaEnvio || '08:00';
+    document.getElementById('mWppIntervalo').value = a.intervaloMinutos || 10;
     renderDestinatariosWpp((a.destinatarios || []).map(d => d.id));
+    atualizarCamposTipoWpp();
     document.getElementById('ovWpp').classList.add('open');
   } catch(e) { toast('Erro: ' + e.message, 'red'); }
 }
@@ -1554,14 +1585,17 @@ async function salvarWpp() {
   const id = document.getElementById('mWppId').value;
   const nome = document.getElementById('mWppNome').value.trim();
   const tipoRelatorio = document.getElementById('mWppTipo').value;
+  const recorrente = TIPOS_RECORRENTES_WPP.includes(tipoRelatorio);
   const diaSemana = parseInt(document.getElementById('mWppDiaSemana').value);
   const horaEnvio = document.getElementById('mWppHora').value;
+  const intervaloMinutos = parseInt(document.getElementById('mWppIntervalo').value);
   const destinatarios = destinatariosSelecionadosWpp();
 
   const dataIni = document.getElementById('mWppDataIni').value;
 
   if (!nome) { toast('Informe o nome do agendamento', 'red'); return; }
-  if (!horaEnvio) { toast('Informe a hora de envio', 'red'); return; }
+  if (recorrente && (!intervaloMinutos || intervaloMinutos < 1)) { toast('Informe de quantos em quantos minutos verificar', 'red'); return; }
+  if (!recorrente && !horaEnvio) { toast('Informe a hora de envio', 'red'); return; }
   if (tipoRelatorio === 'combustivel' && !dataIni) { toast('Informe a data de início do relatório', 'red'); return; }
   if (destinatarios.length === 0) { toast('Escolha ao menos um destinatário', 'red'); return; }
 
@@ -1570,7 +1604,11 @@ async function salvarWpp() {
         combustivel: document.getElementById('mWppCombustivel').value.trim() || 'Diesel' }
     : {};
 
-  const payload = { tipoRelatorio, nome, diaSemana, horaEnvio, parametros, destinatarios };
+  // Só um dos dois modos de recorrência vai no payload; o backend usa a
+  // presença de intervaloMinutos pra saber qual é.
+  const payload = recorrente
+    ? { tipoRelatorio, nome, intervaloMinutos, parametros, destinatarios }
+    : { tipoRelatorio, nome, diaSemana, horaEnvio, parametros, destinatarios };
 
   try {
     const url = id ? 'api/admin/relatorio-agendado/' + id : 'api/admin/relatorio-agendado';

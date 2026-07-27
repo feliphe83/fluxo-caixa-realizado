@@ -133,8 +133,9 @@ public class RelatorioAgendadoServlet extends HttpServlet {
             int id = dao.criar(
                     b.get("tipoRelatorio").getAsString(),
                     b.get("nome").getAsString(),
-                    b.get("diaSemana").getAsInt(),
-                    b.get("horaEnvio").getAsString() + ":00",
+                    lerDiaSemana(b),
+                    lerHoraEnvio(b),
+                    lerIntervaloMinutos(b),
                     gson.toJson(b.get("parametros")),
                     idUsuarioCriacao,
                     lerDestinatarios(b));
@@ -166,8 +167,9 @@ public class RelatorioAgendadoServlet extends HttpServlet {
             dao.atualizar(
                     id,
                     b.get("nome").getAsString(),
-                    b.get("diaSemana").getAsInt(),
-                    b.get("horaEnvio").getAsString() + ":00",
+                    lerDiaSemana(b),
+                    lerHoraEnvio(b),
+                    lerIntervaloMinutos(b),
                     gson.toJson(b.get("parametros")),
                     lerDestinatarios(b));
             json(resp, "{\"ok\":true}");
@@ -212,17 +214,45 @@ public class RelatorioAgendadoServlet extends HttpServlet {
         return lista;
     }
 
+    /** Recorrente = tem intervaloMinutos; senão é o agendamento semanal (dia + hora). */
+    private static boolean ehRecorrente(JsonObject b) {
+        return b.has("intervaloMinutos") && !b.get("intervaloMinutos").isJsonNull()
+            && !b.get("intervaloMinutos").getAsString().isBlank();
+    }
+
+    private Integer lerIntervaloMinutos(JsonObject b) {
+        return ehRecorrente(b) ? b.get("intervaloMinutos").getAsInt() : null;
+    }
+
+    private Integer lerDiaSemana(JsonObject b) {
+        if (ehRecorrente(b) || !b.has("diaSemana") || b.get("diaSemana").isJsonNull()) return null;
+        return b.get("diaSemana").getAsInt();
+    }
+
+    private String lerHoraEnvio(JsonObject b) {
+        if (ehRecorrente(b) || !b.has("horaEnvio") || b.get("horaEnvio").isJsonNull()) return null;
+        String v = b.get("horaEnvio").getAsString();
+        return v.isBlank() ? null : v + ":00";
+    }
+
     private String validar(JsonObject b) {
         if (!b.has("nome") || b.get("nome").getAsString().isBlank()) return "Informe o nome do agendamento";
-        if (!b.has("diaSemana")) return "Informe o dia da semana";
-        int dia = b.get("diaSemana").getAsInt();
-        if (dia < 1 || dia > 7) return "Dia da semana inválido (use 1=segunda a 7=domingo)";
-        if (!b.has("horaEnvio") || b.get("horaEnvio").getAsString().isBlank()) return "Informe a hora de envio";
-        try {
-            LocalTime.parse(b.get("horaEnvio").getAsString());
-        } catch (Exception e) {
-            return "Hora de envio inválida (use HH:mm)";
+
+        if (ehRecorrente(b)) {
+            int intervalo = b.get("intervaloMinutos").getAsInt();
+            if (intervalo < 1) return "Intervalo inválido (mínimo 1 minuto)";
+        } else {
+            if (!b.has("diaSemana")) return "Informe o dia da semana";
+            int dia = b.get("diaSemana").getAsInt();
+            if (dia < 1 || dia > 7) return "Dia da semana inválido (use 1=segunda a 7=domingo)";
+            if (!b.has("horaEnvio") || b.get("horaEnvio").getAsString().isBlank()) return "Informe a hora de envio";
+            try {
+                LocalTime.parse(b.get("horaEnvio").getAsString());
+            } catch (Exception e) {
+                return "Hora de envio inválida (use HH:mm)";
+            }
         }
+
         if (!b.has("destinatarios") || !b.get("destinatarios").isJsonArray() || b.get("destinatarios").getAsJsonArray().isEmpty()) {
             return "Escolha ao menos um destinatário";
         }
