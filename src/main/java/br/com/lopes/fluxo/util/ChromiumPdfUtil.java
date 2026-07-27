@@ -40,12 +40,17 @@ import java.util.stream.Stream;
  */
 public final class ChromiumPdfUtil {
 
+    // Google Chrome (.deb) primeiro. O Chromium via snap fica FORA da lista de
+    // propósito: o confinamento do snap dá a ele um /tmp privado — o PDF é
+    // escrito lá dentro e fica invisível pro processo Java, que conclui que o
+    // arquivo não foi gerado (aconteceu em produção quando o snap ganhou a
+    // prioridade). Se um dia só houver o snap na máquina, não use — instale o
+    // Chrome via .deb ou aponte CHROMIUM_BIN pra outro binário não confinado.
     private static final String[] CAMINHOS_PADRAO = {
+        "/usr/bin/google-chrome-stable",
+        "/usr/bin/google-chrome",
         "/usr/bin/chromium-browser",
         "/usr/bin/chromium",
-        "/snap/bin/chromium",   // instalação via "sudo apt install chromium-browser" no Ubuntu 20.04+ cai aqui (é um snap por trás)
-        "/usr/bin/google-chrome",
-        "/usr/bin/google-chrome-stable",
     };
 
     private static final Duration TIMEOUT = Duration.ofSeconds(90);
