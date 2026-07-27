@@ -54,7 +54,12 @@ public class AgroCombustivelDAO {
     // abastecimento.data é comparada como string DDMMYYYY (sem separadores,
     // sem to_date()) — forma já validada em produção para esta coluna.
     private static final String SUBQUERY_DETALHE = """
-        select tmp.* , tmp.nome_fornecedor nome_proprietario
+        select tmp.*
+             -- Proprietário do equipamento pela função oficial do ERP (mesma
+             -- usada nas validações do financeiro), não mais pelo join manual
+             -- em histproprietarioequip — é ela que decide Próprio x Terceiro
+             -- no dashboard (Próprio = "USINA SANTA CLOTILDE S/A").
+             , automotivo.fn_busca_nome_proprietario(1, tmp.cod_equipamento) nome_proprietario
              , posto.fn_busca_arvore_objetocusto(tmp.cod_objetocusto_detalhe,'C','NG')                   cod_negocio
              , nvl(posto.fn_busca_arvore_objetocusto(tmp.cod_objetocusto_detalhe,'D','NG'),'Não possui') desc_negocio
              , posto.fn_busca_arvore_objetocusto(tmp.cod_objetocusto_detalhe,'C','PR')                   cod_processo
