@@ -11,6 +11,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -42,7 +43,20 @@ public class RelatorioAgendadoScheduler implements ServletContextListener {
             "combustivel", new CombustivelRelatorioAgendadoHandler()
     );
 
-    private final RelatorioAgendadoDAO dao = new RelatorioAgendadoDAO();
+    private static final RelatorioAgendadoDAO DAO = new RelatorioAgendadoDAO();
+
+    /**
+     * Fila das execuções manuais (botão "Executar agora" da administração),
+     * separada do tick automático: um envio manual demorado — a geração do
+     * PDF leva minutos — não pode atrasar a verificação periódica, e uma fila
+     * de tamanho 1 evita que vários cliques gerem envios concorrentes.
+     */
+    private static final ExecutorService MANUAL = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "relatorio-agendado-manual");
+        t.setDaemon(true);
+        return t;
+    });
+
     private ScheduledExecutorService executor;
 
     @Override
@@ -64,7 +78,7 @@ public class RelatorioAgendadoScheduler implements ServletContextListener {
     private void verificarEExecutar() {
         try {
             ZonedDateTime agora = ZonedDateTime.now(FUSO);
-            List<Map<String, Object>> pendentes = dao.listarPendentes(agora.getDayOfWeek(), agora.toLocalTime().withNano(0).withSecond(0));
+            List<Map<String, Object>> pendentes = DAO.listarPendentes(agora.getDayOfWeek(), agora.toLocalTime().withNano(0).withSecond(0));
             for (Map<String, Object> agendamento : pendentes) {
                 executarUm(agendamento);
             }
@@ -73,7 +87,19 @@ public class RelatorioAgendadoScheduler implements ServletContextListener {
         }
     }
 
-    private void executarUm(Map<String, Object> agendamento) {
+    /**
+     * Dispara um agendamento na hora, em background — usado pelo botão
+     * "Executar agora". Devolve o controle na mesma hora (a geração leva
+     * minutos); o resultado sai em fc_relatorio_agendado_execucao, igual ao
+     * disparo automático.
+     *
+     * @param agendamento no formato de {@link RelatorioAgendadoDAO#buscarPorId}
+     */
+    public static void dispararAgora(Map<String, Object> agendamento) {
+        MANUAL.submit(() -> executarUm(agendamento));
+    }
+
+    private static void executarUm(Map<String, Object> agendamento) {
         int id = (int) agendamento.get("id");
         String tipo = String.valueOf(agendamento.get("tipoRelatorio"));
         String nome = String.valueOf(agendamento.get("nome"));
@@ -86,7 +112,7 @@ public class RelatorioAgendadoScheduler implements ServletContextListener {
 
         try {
             long idUsuarioCriacao = ((Number) agendamento.get("idUsuarioCriacao")).longValue();
-            List<Map<String, Object>> destinatarios = dao.listarDestinatarios(id);
+            List<Map<String, Object>> destinatarios = DAO.listarDestinatarios(id);
             if (destinatarios.isEmpty()) {
                 registrarSemLancar(id, "erro", "Sem destinatários cadastrados.");
                 return;
@@ -104,7 +130,7 @@ public class RelatorioAgendadoScheduler implements ServletContextListener {
         }
     }
 
-    private JsonObject parseParametros(String raw) {
+    private static JsonObject parseParametros(String raw) {
         if (raw == null || raw.isBlank() || "null".equals(raw)) return new JsonObject();
         try {
             return JsonParser.parseString(raw).getAsJsonObject();
@@ -113,9 +139,9 @@ public class RelatorioAgendadoScheduler implements ServletContextListener {
         }
     }
 
-    private void registrarSemLancar(int idAgendamento, String status, String detalhe) {
+    private static void registrarSemLancar(int idAgendamento, String status, String detalhe) {
         try {
-            dao.registrarExecucao(idAgendamento, status, detalhe);
+            DAO.registrarExecucao(idAgendamento, status, detalhe);
         } catch (Exception e) {
             LOG.log(Level.SEVERE, "Não foi possível registrar a execução do agendamento #" + idAgendamento, e);
         }

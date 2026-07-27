@@ -101,7 +101,8 @@ public class RelatorioAgendadoDAO {
 
     public Map<String, Object> buscarPorId(int id) throws SQLException {
         String sql = """
-            SELECT id, tipo_relatorio, nome, dia_semana, hora_envio, parametros, ativo, data_criacao
+            SELECT id, tipo_relatorio, nome, dia_semana, hora_envio, parametros, ativo, data_criacao,
+                   id_usuario_criacao
             FROM fc_relatorio_agendado WHERE id = ?
             """;
         try (Connection c = conn();
@@ -127,6 +128,13 @@ public class RelatorioAgendadoDAO {
         m.put("ativo", "S".equals(rs.getString("ativo")));
         Timestamp criacao = rs.getTimestamp("data_criacao");
         m.put("dataCriacao", criacao == null ? null : criacao.toString());
+        try {
+            // Só a consulta de buscarPorId traz essa coluna — é ela que
+            // alimenta a execução manual ("Executar agora").
+            m.put("idUsuarioCriacao", rs.getLong("id_usuario_criacao"));
+        } catch (SQLException ignorado) {
+            // listar() não seleciona a coluna
+        }
         try {
             m.put("qtdeDestinatarios", rs.getInt("qtde_destinatarios"));
             Timestamp ultima = rs.getTimestamp("ultima_execucao");

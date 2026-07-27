@@ -1,5 +1,6 @@
 package br.com.lopes.fluxo.servlet;
 
+import br.com.lopes.fluxo.agendamento.RelatorioAgendadoScheduler;
 import br.com.lopes.fluxo.dao.RelatorioAgendadoDAO;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -114,6 +115,12 @@ public class RelatorioAgendadoServlet extends HttpServlet {
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         if (!isAdmin(req)) { erro(resp, 403, "Acesso negado"); return; }
         try {
+            String path = req.getPathInfo();
+            if (path != null && path.endsWith("/executar")) {
+                executarAgora(resp, Integer.parseInt(path.substring(1, path.length() - "/executar".length())));
+                return;
+            }
+
             JsonObject b = lerBody(req);
             if (!b.has("tipoRelatorio") || b.get("tipoRelatorio").getAsString().isBlank()) {
                 erro(resp, 400, "Informe o tipo de relatório");
@@ -182,6 +189,19 @@ public class RelatorioAgendadoServlet extends HttpServlet {
             LOG.log(Level.SEVERE, "Erro ao excluir relatório agendado", e);
             erro(resp, 500, e.getMessage());
         }
+    }
+
+    /**
+     * Dispara o agendamento na hora ("Executar agora"), sem esperar o dia/hora
+     * marcados e sem exigir que ele esteja ativo. Responde de imediato: a
+     * geração do PDF leva minutos e roda em background — o resultado aparece
+     * na coluna "Última Execução" da tela, como num disparo automático.
+     */
+    private void executarAgora(HttpServletResponse resp, int id) throws IOException, SQLException {
+        Map<String, Object> agendamento = dao.buscarPorId(id);
+        if (agendamento == null) { erro(resp, 404, "Agendamento não encontrado"); return; }
+        RelatorioAgendadoScheduler.dispararAgora(agendamento);
+        json(resp, "{\"ok\":true}");
     }
 
     private List<Integer> lerDestinatarios(JsonObject b) {
