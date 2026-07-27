@@ -45,11 +45,10 @@ import java.util.logging.Logger;
  *
  * Próprio x Terceiro: pelo proprietário histórico do equipamento
  * (automotivo.histproprietarioequip, já presente na consulta como
- * cod_proprietario) — sem registro de proprietário (LEFT JOIN nulo) é
- * equipamento sempre da usina (Próprio); com um fornecedor registrado como
- * dono naquele período, é Terceiro — exceto quando esse "dono" é a própria
- * "USINA SANTA CLOTILDE S/A" (às vezes registrada em
- * histproprietarioequip), que conta como Próprio em todo o dashboard.
+ * cod_proprietario/nome_proprietario) — Próprio é SOMENTE quando o dono
+ * registrado é a "USINA SANTA CLOTILDE S/A"; qualquer outro caso é
+ * Terceiro, inclusive equipamento sem proprietário registrado (a frota
+ * própria tem sempre a usina registrada como dona).
  *
  * Classe Operativa (só na matriz semanal, seção 4): de-para administrado
  * (fc_depara_classeoperativa, tela "De-Para Classe Operativa") de
@@ -246,7 +245,7 @@ public class CombustivelDashboardServlet extends HttpServlet {
                                                     List<LocalDate[]> semanas) {
         int n = semanas.size();
         double[] soma = new double[n];
-        int[] qtde = new int[n];
+        double[] litros = new double[n];
 
         Set<Integer> codMateriais = new HashSet<>();
         for (Map<String, Object> l : linhas) {
@@ -261,14 +260,19 @@ public class CombustivelDashboardServlet extends HttpServlet {
             int idx = semanaDe(strOf(c.get("dataretirada")), ini, n);
             if (idx < 0) continue;
             double custo = num(c.get("vrcustounitario"));
-            if (custo <= 0) continue;
-            soma[idx] += custo;
-            qtde[idx]++;
+            double quantidade = num(c.get("quantidade"));
+            if (custo <= 0 || quantidade <= 0) continue;
+            // Média PONDERADA pela quantidade retirada — não média simples dos
+            // preços: o custo real do período é sum(quantidade*vrcustounitario),
+            // e só a ponderação reproduz esse total quando o preço é reaplicado
+            // aos litros abastecidos (validado contra a soma direta no Oracle).
+            soma[idx] += custo * quantidade;
+            litros[idx] += quantidade;
         }
 
         double[] media = new double[n];
         for (int i = 0; i < n; i++) {
-            media[i] = qtde[i] == 0 ? 0 : soma[i] / qtde[i];
+            media[i] = litros[i] == 0 ? 0 : soma[i] / litros[i];
         }
         return media;
     }
@@ -347,14 +351,14 @@ public class CombustivelDashboardServlet extends HttpServlet {
     }
 
     /**
-     * Terceiro = existe proprietário histórico registrado para o equipamento
-     * (cod_proprietario preenchido) E esse proprietário não é a própria
-     * usina — alguns equipamentos têm "USINA SANTA CLOTILDE S/A" registrada
-     * em automotivo.histproprietarioequip, o que não é um terceiro de
-     * verdade; esses contam como Próprio em todo o dashboard.
+     * Próprio = o proprietário histórico do equipamento
+     * (automotivo.histproprietarioequip) é a "USINA SANTA CLOTILDE S/A" —
+     * SOMENTE esses. Qualquer outro caso é Terceiro, inclusive equipamento
+     * sem proprietário registrado (antes contava como Próprio; a regra do
+     * financeiro é que frota própria tem sempre a usina registrada como
+     * dona).
      */
     private static boolean ehTerceiro(Map<String, Object> l) {
-        if (!preenchido(l.get("cod_proprietario"))) return false;
         return !ehAPropriaUsina(strOf(l.get("nome_proprietario")));
     }
 

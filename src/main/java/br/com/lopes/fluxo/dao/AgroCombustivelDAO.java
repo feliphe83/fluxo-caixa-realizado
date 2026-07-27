@@ -360,7 +360,7 @@ public class AgroCombustivelDAO {
 
         String in = codMateriais.stream().map(String::valueOf).collect(Collectors.joining(","));
         String sql = """
-            select i.cod_material, m.descricao, i.dataretirada, i.vrcustounitario
+            select i.cod_material, m.descricao, i.dataretirada, i.vrcustounitario, i.quantidade
             from material.itensrequisicaomaterial i, material.material m
             where i.cod_material in (%s)
             and i.dataretirada between ? and ?
