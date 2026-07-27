@@ -192,6 +192,29 @@
     .filtros-grid { grid-template-columns: 1fr 1fr; }
     .header { flex-wrap: wrap; }
   }
+
+  /* ── Impressão (botão "Imprimir" → Ctrl+P / Salvar como PDF) ──
+     Segue o layout retrato do relatório em PDF: cabeçalho do relatório
+     (mesmo que o da tela) no topo, sem chrome de navegação/filtros, cores
+     forçadas a imprimir, e quebras de página nos mesmos pontos do PDF
+     (Resumo+Consumo Semanal+Preço · Distribuição+Top6 · Classe Operativa ·
+     Rankings). Não repete cabeçalho/rodapé com "Página X/Y" em cada folha
+     física — o Chrome não suporta isso via CSS (precisaria de um gerador de
+     PDF no servidor). */
+  @page { size: A4 portrait; margin: 12mm 10mm; }
+  @media print {
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+    body { background: white; }
+    .conteudo { max-width: 100%; padding: 0; margin: 0; }
+    .filtros-card, .export-bar, .btn-voltar { display: none !important; }
+    .header { border-radius: 0; }
+    .secao { border: 1px solid #d8dfee; box-shadow: none; break-inside: avoid; margin-bottom: 12px; }
+    .secao.pagina-nova { break-before: page; }
+    .grafico-area, .bloco-kpis, .nota-box, .insight-box { break-inside: avoid; }
+    table.matriz, table.ranking, table.tabela-simples { break-inside: auto; }
+    table.matriz thead, table.ranking thead, table.tabela-simples thead { display: table-header-group; }
+    table.matriz tr, table.ranking tr, table.tabela-simples tr { break-inside: avoid; }
+  }
 </style>
 </head>
 <body>
@@ -699,7 +722,7 @@ function secaoDistribuicao(j) {
   const liderArea = areas[0];
 
   return `
-  <div class="secao">
+  <div class="secao pagina-nova">
     <div class="secao-header"><span class="secao-num">4</span><span class="secao-titulo">Distribuição por Área de Negócio</span></div>
     <div class="secao-sub">Acumulado do período</div>
 
@@ -836,7 +859,7 @@ function secaoClasseOperativa(j) {
   const totalCols = totalUltimas.map(v => `<td>${fmtInt.format(Math.round(v))}</td>`).join('');
 
   return `
-  <div class="secao">
+  <div class="secao pagina-nova">
     <div class="secao-header"><span class="secao-num">6</span><span class="secao-titulo">Consumo por Classe Operativa</span></div>
     <div class="secao-sub">Volume em litros (L) · média (${nHist} sem. históricas) + últimas ${ultimasSemanas.length} semanas · intensidade da cor = peso na linha</div>
 
@@ -876,7 +899,7 @@ function secaoRanking(num, titulo, subtitulo, lista, tipo) {
   const colunas = ehProprio ? 7 : 6;
 
   return `
-  <div class="secao">
+  <div class="secao${num === '7' ? ' pagina-nova' : ''}">
     <div class="secao-header"><span class="secao-num">${num}</span><span class="secao-titulo">${titulo}</span></div>
     <div class="secao-sub">${subtitulo} · ordenado do maior para o menor consumo</div>
     <div class="tabela-scroll" style="overflow-x:auto">
