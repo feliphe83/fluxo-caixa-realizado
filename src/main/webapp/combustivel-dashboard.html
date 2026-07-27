@@ -290,6 +290,15 @@
 let DADOS = null;
 let charts = {};
 
+// Os gráficos (Chart.js) são desenhados uma vez, no tamanho de TELA do
+// container .grafico-area. O CSS de impressão encolhe esse container, mas
+// o <canvas> em si não redesenha sozinho — sem isso, ele "vaza" por cima da
+// seção seguinte na impressão. beforeprint/afterprint forçam o Chart.js a
+// reconsultar o tamanho atual do container e redesenhar (resize() sem
+// argumentos = auto-detecta a partir do container pai).
+window.addEventListener('beforeprint', () => { Object.values(charts).forEach(c => c.resize()); });
+window.addEventListener('afterprint', () => { Object.values(charts).forEach(c => c.resize()); });
+
 /** Últimas N semanas mostradas nos gráficos/tabela de classe operativa —
  * as demais semanas do período viram a barra/coluna "Média histórica",
  * igual ao relatório PDF ("Últimas 5 semanas + Média Histórica"). */
