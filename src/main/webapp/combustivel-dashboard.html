@@ -135,13 +135,19 @@
   .split-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 4px; }
 
   /* ── Gráficos ──
-     Altura fixa igual pra tela e impressão (não dá pra confiar em encolher
-     só na impressão via CSS — o Chart.js desenha o <canvas> uma vez, no
-     tamanho que o container tinha naquele momento, e não redesenha de
-     verdade a tempo do preview de impressão gerar as páginas). overflow
-     hidden é uma rede de segurança: se o canvas ainda assim ficar maior que
-     o container, corta em vez de vazar por cima da seção seguinte. */
-  .grafico-area { position: relative; height: 220px; margin-top: 6px; overflow: hidden; }
+     Altura E largura fixas, iguais em tela e impressão — não dá pra confiar
+     em redimensionar só na impressão via CSS/JS: o Chart.js desenha o
+     <canvas> uma vez, no tamanho que o container tinha naquele momento, e
+     não redesenha de verdade a tempo do preview de impressão gerar as
+     páginas. Sem uma largura máxima fixa, o canvas era desenhado na largura
+     cheia da tela (pode passar de 1300px num monitor largo) e, ao imprimir
+     numa página bem mais estreita (~700px), a parte da direita (as barras/
+     pontos mais recentes) ficava cortada pelo overflow:hidden abaixo — que
+     continua aqui como rede de segurança contra vazamento vertical, não
+     mais precisando cortar horizontalmente já que a largura agora é segura
+     pra ambos os casos. max-width (não width) deixa encolher se o
+     container for mais estreito ainda (ex.: mobile). */
+  .grafico-area { position: relative; height: 220px; max-width: 640px; margin-top: 6px; overflow: hidden; }
   .legenda-manual { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px; font-size: 11.5px; color: var(--ink-2); }
   .legenda-manual .item { display: flex; align-items: center; gap: 6px; }
   .legenda-manual .dot { width: 9px; height: 9px; border-radius: 3px; }
