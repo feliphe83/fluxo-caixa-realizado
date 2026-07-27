@@ -201,19 +201,36 @@
      Rankings). Não repete cabeçalho/rodapé com "Página X/Y" em cada folha
      física — o Chrome não suporta isso via CSS (precisaria de um gerador de
      PDF no servidor). */
-  @page { size: A4 portrait; margin: 12mm 10mm; }
+  @page { size: A4 portrait; margin: 10mm 9mm; }
   @media print {
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
-    body { background: white; }
+    body { background: white; font-size: 11px; }
     .conteudo { max-width: 100%; padding: 0; margin: 0; }
     .filtros-card, .export-bar, .btn-voltar { display: none !important; }
-    .header { border-radius: 0; }
-    .secao { border: 1px solid #d8dfee; box-shadow: none; break-inside: avoid; margin-bottom: 12px; }
+    .header { border-radius: 0; padding: 10px 16px; }
+    .secao { border: 1px solid #d8dfee; box-shadow: none; break-inside: avoid; padding: 10px 14px; margin-bottom: 8px; }
     .secao.pagina-nova { break-before: page; }
+    .secao-sub { margin: 2px 0 8px 32px; }
     .grafico-area, .bloco-kpis, .nota-box, .insight-box { break-inside: avoid; }
     table.matriz, table.ranking, table.tabela-simples { break-inside: auto; }
     table.matriz thead, table.ranking thead, table.tabela-simples thead { display: table-header-group; }
     table.matriz tr, table.ranking tr, table.tabela-simples tr { break-inside: avoid; }
+
+    /* Encolhe o que é grande na tela pra caber junto na mesma página do
+       relatório (ex.: Resumo + Consumo Semanal + Evolução do Preço na
+       página 1) — sem isso, a 3ª seção não cabe no restante da página e o
+       navegador joga ela inteira pra página seguinte, deixando-a quase em
+       branco. Os gráficos (Chart.js) são responsivos e se redesenham no
+       tamanho novo do contêiner ao imprimir. */
+    .grafico-area { height: 150px !important; margin-top: 2px; }
+    .bloco-barra { padding: 4px 10px; font-size: 9px; }
+    .kpi-row-6 .kpi { padding: 5px 4px; }
+    .kpi .valor { font-size: 13px; white-space: nowrap; }
+    .kpi .rotulo { font-size: 7px; margin-top: 1px; }
+    .kpi .sub { font-size: 6.5px; margin-top: 0; }
+    .nota-box { padding: 6px 12px; font-size: 9.5px; margin-top: 8px !important; }
+    .insight-box { padding: 6px 10px; margin-top: 6px; font-size: 9.5px; }
+    .legenda-manual { margin-top: 4px; font-size: 9px; gap: 10px; }
   }
 </style>
 </head>
