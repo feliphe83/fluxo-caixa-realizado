@@ -7,8 +7,8 @@
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --serie-1: #2a78d6;   /* azul — base */
-    --serie-2: #eb6834;   /* laranja */
+    --serie-1: #2a78d6;   /* azul — base / Equipamentos Próprios */
+    --serie-2: #eb6834;   /* laranja — Equipamentos de Terceiros / destaque */
     --serie-3: #1baf7a;   /* água — maior/destaque positivo */
     --serie-4: #eda100;   /* amarelo */
     --serie-5: #e87ba4;   /* magenta */
@@ -26,24 +26,29 @@
     color: #1a1a2e;
   }
 
+  /* ── Header (estilo do relatório PDF) ── */
   .header {
-    background: linear-gradient(135deg, #0f2460 0%, #1a3a7c 100%);
+    background: linear-gradient(135deg, #16342a 0%, #234f3b 100%);
     color: white;
     padding: 16px 28px;
-    display: flex; align-items: center; justify-content: space-between;
+    display: flex; align-items: center; justify-content: space-between; gap: 20px;
   }
-  .header-left { display: flex; align-items: center; gap: 12px; }
-  .header-logo { width: 38px; height: 38px; border-radius: 8px; background: white; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 4px; flex-shrink: 0; }
+  .header-left { display: flex; align-items: center; gap: 14px; min-width: 0; }
+  .header-logo { width: 44px; height: 44px; border-radius: 8px; background: white; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 5px; flex-shrink: 0; }
   .header-logo img { width: 100%; height: 100%; object-fit: contain; }
-  .header-title { font-size: 16px; font-weight: 700; }
-  .header-sub { font-size: 11px; opacity: .75; margin-top: 2px; }
+  .header-title { font-size: 19px; font-weight: 800; }
+  .header-sub { font-size: 12.5px; opacity: .9; margin-top: 3px; font-weight: 600; }
+  .header-periodo { font-size: 11.5px; opacity: .72; margin-top: 3px; }
+  .header-right { display: flex; align-items: center; gap: 18px; flex-shrink: 0; }
+  .header-emitido { font-size: 10.5px; opacity: .85; text-align: right; line-height: 1.5; white-space: nowrap; }
+  .header-emitido b { font-size: 13px; display: block; }
   .btn-voltar {
     display: flex; align-items: center; gap: 7px;
     padding: 8px 16px; border-radius: 8px;
     border: 1.5px solid rgba(255,255,255,0.3);
     background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.9);
     font-size: 13px; font-weight: 600; cursor: pointer;
-    margin-right: 56px;
+    margin-right: 56px; white-space: nowrap;
   }
   .btn-voltar:hover { background: rgba(255,255,255,0.18); }
 
@@ -101,20 +106,33 @@
   .nota-box b { color: var(--ink); }
   .nota-icone { flex-shrink: 0; color: #eda100; font-size: 14px; line-height: 1.6; }
 
-  /* ── KPIs ── */
+  /* ── KPIs (valor em destaque, rótulo abaixo — como no PDF) ── */
+  .kpi { padding: 2px; }
+  .kpi .valor { font-size: 19px; font-weight: 800; color: var(--ink); line-height: 1.15; }
+  .kpi .rotulo { font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .3px; margin-top: 3px; }
+  .kpi .sub { font-size: 10.5px; color: var(--ink-3); margin-top: 2px; }
+
   .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
-  .kpi { background: #f8faff; border: 1px solid #e3e8f5; border-radius: 12px; padding: 14px 16px; }
-  .kpi .rotulo { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .3px; margin-bottom: 6px; }
-  .kpi .valor { font-size: 22px; font-weight: 800; color: var(--ink); line-height: 1.1; }
-  .kpi .sub { font-size: 11px; color: var(--ink-3); margin-top: 4px; }
+  .kpi-row .kpi { background: #f8faff; border: 1px solid #e3e8f5; border-radius: 12px; padding: 14px 16px; }
+
+  /* Blocos "GERAL CONSOLIDADO" / "PRÓPRIOS" / "TERCEIROS", no estilo das
+     faixas coloridas do relatório PDF: barra de título + grade de 6 tiles. */
+  .bloco-kpis { margin-bottom: 18px; }
+  .bloco-kpis.split { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .bloco-barra {
+    padding: 8px 14px; border-radius: 8px 8px 0 0; font-size: 11px; font-weight: 800;
+    letter-spacing: .6px; color: white; text-align: center; text-transform: uppercase;
+  }
+  .bloco-barra.geral { background: var(--ink); }
+  .bloco-barra.propria { background: var(--serie-1); }
+  .bloco-barra.terceiro { background: var(--serie-2); }
+  .kpi-row-6 {
+    display: grid; grid-template-columns: repeat(6, 1fr); gap: 1px;
+    background: #e3e8f5; border: 1px solid #e3e8f5; border-radius: 0 0 10px 10px; overflow: hidden;
+  }
+  .kpi-row-6 .kpi { background: #f8faff; padding: 12px 8px; text-align: center; }
 
   .split-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 4px; }
-  .split-card { border-radius: 12px; padding: 14px 16px; color: white; }
-  .split-card.propria { background: linear-gradient(135deg, #1a3a7c, #0f2460); }
-  .split-card.terceiro { background: linear-gradient(135deg, #2a4f9c, #1a3a7c); }
-  .split-card .rotulo { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; opacity: .85; }
-  .split-card .valor { font-size: 22px; font-weight: 800; margin: 4px 0 8px; }
-  .split-card .linhas { font-size: 11.5px; opacity: .9; display: flex; flex-direction: column; gap: 3px; }
 
   /* ── Gráficos ── */
   .grafico-area { position: relative; height: 300px; margin-top: 6px; }
@@ -122,8 +140,14 @@
   .legenda-manual .item { display: flex; align-items: center; gap: 6px; }
   .legenda-manual .dot { width: 9px; height: 9px; border-radius: 3px; }
 
-  /* ── Distribuição ── */
-  .distrib-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 20px; }
+  /* ── Distribuição (donut + legenda) ── */
+  .distrib-grid { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 24px; align-items: center; }
+  .legenda-lista { display: flex; flex-direction: column; gap: 12px; }
+  .legenda-area { display: flex; align-items: flex-start; gap: 10px; }
+  .legenda-dot { width: 12px; height: 12px; border-radius: 3px; margin-top: 3px; flex-shrink: 0; }
+  .legenda-nome { font-size: 12.5px; font-weight: 700; color: var(--ink); }
+  .legenda-valores { font-size: 11.5px; color: var(--ink-2); margin-top: 1px; }
+
   table.tabela-simples { width: 100%; border-collapse: collapse; font-size: 12.5px; }
   table.tabela-simples thead th { background: #eef2fb; color: var(--ink); text-align: left; padding: 8px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: .3px; }
   table.tabela-simples thead th.num { text-align: right; }
@@ -140,6 +164,7 @@
   table.matriz thead th:first-child { text-align: left; min-width: 160px; }
   table.matriz tbody td { padding: 6px 8px; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--ink); }
   table.matriz tbody td:first-child { text-align: left; font-weight: 600; background: white !important; }
+  table.matriz tbody td:nth-child(2) { font-style: italic; color: var(--ink-3); }
   table.matriz tbody tr.total td { background: #eef2fb !important; font-weight: 800; border-top: 2px solid var(--ink); color: var(--ink) !important; }
 
   /* ── Rankings ── */
@@ -158,14 +183,14 @@
   .erro-state { color: #ef4444; }
   #painel.atualizando { opacity: .5; pointer-events: none; transition: opacity .15s; }
 
-  .detalhe-toggle { text-align: center; margin-top: 4px; }
-  .detalhe-toggle button { background: none; border: none; color: var(--serie-1); font-size: 12.5px; font-weight: 600; cursor: pointer; padding: 8px; }
-
   @media (max-width: 1000px) {
     .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .kpi-row-6 { grid-template-columns: repeat(3, 1fr); }
+    .bloco-kpis.split { grid-template-columns: 1fr; }
     .split-row { grid-template-columns: 1fr; }
     .distrib-grid { grid-template-columns: 1fr; }
     .filtros-grid { grid-template-columns: 1fr 1fr; }
+    .header { flex-wrap: wrap; }
   }
 </style>
 </head>
@@ -175,14 +200,18 @@
   <div class="header-left">
     <div class="header-logo"><img src="img/logo.png" alt="USC"></div>
     <div>
-      <div class="header-title">Relatório Executivo · Consumo de Combustível</div>
-      <div class="header-sub">Visão consolidada por combustível · Usina Santa Clotilde</div>
+      <div class="header-title">Usina Santa Clotilde S/A</div>
+      <div class="header-sub" id="headerSub">Relatório Executivo — Consumo de Combustível</div>
+      <div class="header-periodo" id="headerPeriodo">&nbsp;</div>
     </div>
   </div>
-  <button class="btn-voltar" onclick="window.location.href='hub.html'">
-    <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-    Voltar
-  </button>
+  <div class="header-right">
+    <div class="header-emitido">Emitido em<b id="headerEmitido">—</b></div>
+    <button class="btn-voltar" onclick="window.location.href='hub.html'">
+      <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Voltar
+    </button>
+  </div>
 </div>
 
 <div class="conteudo">
@@ -220,17 +249,24 @@
 <script>
 let DADOS = null;
 let charts = {};
-let detalheAberto = false;
+
+/** Últimas N semanas mostradas nos gráficos/tabela de classe operativa —
+ * as demais semanas do período viram a barra/coluna "Média histórica",
+ * igual ao relatório PDF ("Últimas 5 semanas + Média Histórica"). */
+const N_ULTIMAS = 5;
 
 const fmtInt  = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 });
 const fmtDec  = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtDec1 = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const fmtBRL  = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const fmtBRL0 = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
-const fmtPct  = v => fmtDec.format(v) + '%';
+const fmtPct  = v => fmtDec1.format(v) + '%';
 // Compacto em milhares (R$79K) — usado no rótulo de custo dentro da barra, onde o espaço é curto.
 const fmtK = v => 'R$' + Math.round(v / 1000) + 'K';
 
 function fmt8(d) { return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+function fmtDataCurta(iso) { const [y,m,d] = iso.split('-'); return d + '/' + m + '/' + y.slice(2); }
+function fmtDataLonga(iso) { const [y,m,d] = iso.split('-'); return d + '/' + m + '/' + y; }
 
 function preset(semanas) {
   const hoje = new Date();
@@ -243,6 +279,9 @@ function preset(semanas) {
 (function initDatas() {
   document.getElementById('dataIni').value = '2026-03-02';
   document.getElementById('dataFim').value = fmt8(new Date());
+  const hoje = new Date();
+  document.getElementById('headerEmitido').textContent =
+    fmt8(hoje).split('-').reverse().join('/');
 })();
 
 async function carregar() {
@@ -268,6 +307,7 @@ async function carregar() {
 
     DADOS = j;
     atualizarListaCombustiveis(j.opcoes);
+    atualizarCabecalho(j);
     renderizar();
 
   } catch (e) {
@@ -287,6 +327,19 @@ function atualizarListaCombustiveis(opcoes) {
     .map(o => `<option value="${escapeHtml(o.descricao)}"></option>`).join('');
 }
 
+function atualizarCabecalho(j) {
+  const filtro = document.getElementById('fCombustivel').value.trim();
+  const opcoes = (j.opcoes && j.opcoes.combustiveis) || [];
+  const achado = filtro ? opcoes.find(o => o.descricao.toLowerCase().includes(filtro.toLowerCase())) : null;
+  const nomeCombustivel = achado ? achado.descricao : (filtro || 'Combustível');
+  document.getElementById('headerSub').textContent = 'Relatório Executivo — Consumo de ' + nomeCombustivel;
+
+  const dataIni = document.getElementById('dataIni').value;
+  const dataFim = document.getElementById('dataFim').value;
+  document.getElementById('headerPeriodo').textContent =
+    'Período: ' + fmtDataLonga(dataIni) + ' a ' + fmtDataLonga(dataFim) + ' · ' + j.semanas.length + ' semanas acumuladas';
+}
+
 // ── Renderização geral ───────────────────────────────────────────────────
 
 function renderizar() {
@@ -301,12 +354,14 @@ function renderizar() {
   }
 
   painel.innerHTML = `
-    ${secaoResumoExecutivo(j)}
+    ${secaoGeralConsolidado(j)}
+    ${secaoConsumoSemanal(j)}
     ${secaoEvolucaoPreco(j)}
     ${secaoDistribuicao(j)}
+    ${secaoAtividades(j)}
     ${secaoClasseOperativa(j)}
-    ${secaoRanking('5', 'Top 10 Equipamentos Próprios', 'Ranking por volume consumido · frota própria', j.topProprios, 'proprios', kpisProprios(j))}
-    ${secaoRanking('6', 'Top 10 Terceiros', 'Ranking por proprietário de equipamento', j.topTerceiros, 'terceiros', kpisTerceiros(j))}
+    ${secaoRanking('7', 'Top 10 Equipamentos Próprios', 'Ranking por volume consumido · frota própria', j.topProprios, 'proprios')}
+    ${secaoRanking('8', 'Top 10 Terceiros por Proprietário', 'Ranking por proprietário de equipamento', j.topTerceiros, 'terceiros')}
     <div class="export-bar" style="margin-top:0">
       <div style="flex:1;font-size:12px;color:var(--ink-3);align-self:center">
         ${j.truncadoDetalhe ? 'Detalhamento limitado aos ' + fmtInt.format(j.detalhe.length) + ' abastecimentos mais recentes (de ' + fmtInt.format(j.totalLinhas) + ' no período).' : fmtInt.format(j.totalLinhas) + ' abastecimentos no período.'}
@@ -324,29 +379,61 @@ function renderizar() {
 
   desenharConsumoSemanal();
   desenharPreco();
+  desenharDistribuicaoDonut();
   desenharAtividades();
-  desenharDistribuicaoSemanal();
 }
 
-// ── 1. Resumo Executivo ──────────────────────────────────────────────────
+function kpi(valor, rotulo, sub) {
+  return `<div class="kpi"><div class="valor">${valor}</div><div class="rotulo">${rotulo}</div>${sub?`<div class="sub">${sub}</div>`:''}</div>`;
+}
 
-function secaoResumoExecutivo(j) {
+// ── 1. Geral Consolidado / Próprios / Terceiros ──────────────────────────
+
+function secaoGeralConsolidado(j) {
   const k = j.kpis;
+  const dataIni = document.getElementById('dataIni').value;
+  const dataFim = document.getElementById('dataFim').value;
+
   return `
   <div class="secao">
     <div class="secao-header"><span class="secao-num">1</span><span class="secao-titulo">Resumo Executivo</span></div>
     <div class="secao-sub">Visão consolidada do consumo · ${j.semanas.length} semanas operacionais</div>
 
-    <div class="kpi-row">
-      ${kpi('Volume Total Consumido', fmtInt.format(k.volumeTotal) + ' L', 'Média semanal: ' + fmtInt.format(k.mediaSemanalVolume) + ' L')}
-      ${kpi('Custo Total no Período', fmtBRL0.format(k.custoTotal), 'Média semanal: ' + fmtBRL0.format(k.mediaSemanalCusto))}
-      ${kpi('Preço Médio Ponderado', fmtBRL.format(k.precoMedioPonderado) + '/L', '')}
-      ${kpi('Equipamentos Monitorados', fmtInt.format(k.equipamentosMonitorados) + ' unid.', k.propria.equipamentos + ' próprios + ' + k.terceiro.equipamentos + ' terceiros')}
+    <div class="bloco-kpis">
+      <div class="bloco-barra geral">Geral — Consolidado</div>
+      <div class="kpi-row-6">
+        ${kpi(fmtInt.format(k.volumeTotal) + ' L', 'Vol. Total', 'acum. ' + j.semanas.length + ' sem.')}
+        ${kpi(fmtBRL0.format(k.custoTotal), 'Custo Total', 'período')}
+        ${kpi(fmtBRL.format(k.precoMedioPonderado) + '/L', 'Preço Médio', 'média ponderada')}
+        ${kpi(fmtInt.format(k.mediaSemanalVolume) + ' L/sem', 'Média Semanal', 'por semana')}
+        ${kpi(fmtInt.format(k.equipamentosMonitorados) + ' equip.', 'Equipamentos', 'monitorados')}
+        ${kpi(j.semanas.length + ' semanas', 'Período', fmtDataCurta(dataIni) + ' a ' + fmtDataCurta(dataFim))}
+      </div>
     </div>
 
-    <div class="split-row">
-      ${splitCard('propria', 'Equipamentos Próprios', k.propria)}
-      ${splitCard('terceiro', 'Equipamentos Terceiros', k.terceiro)}
+    <div class="bloco-kpis split">
+      <div>
+        <div class="bloco-barra propria">Equipamentos Próprios</div>
+        <div class="kpi-row-6">
+          ${kpi(fmtInt.format(k.propria.volume) + ' L', 'Vol. Próprios', fmtPct(k.propria.participacaoVolume) + ' do total')}
+          ${kpi(fmtBRL0.format(k.propria.custo), 'Custo', 'período')}
+          ${kpi(fmtBRL.format(k.propria.precoMedio) + '/L', 'Preço Médio', 'média pond.')}
+          ${kpi(fmtInt.format(k.propria.mediaSemanalVolume) + ' L/sem', 'Média Semanal', 'por semana')}
+          ${kpi(fmtInt.format(k.propria.equipamentos) + ' equip.', 'Equipamentos', 'próprios')}
+          ${kpi(fmtPct(k.propria.participacaoVolume), 'Participação', 'do consumo')}
+        </div>
+      </div>
+      <div>
+        <div class="bloco-barra terceiro">Equipamentos de Terceiros</div>
+        <div class="kpi-row-6">
+          ${kpi(fmtInt.format(k.terceiro.volume) + ' L', 'Vol. Terceiros', fmtPct(k.terceiro.participacaoVolume) + ' do total')}
+          ${kpi(fmtBRL0.format(k.terceiro.custo), 'Custo', 'período')}
+          ${kpi(fmtBRL.format(k.terceiro.precoMedio) + '/L', 'Preço Médio', 'média pond.')}
+          ${kpi(fmtInt.format(k.terceiro.mediaSemanalVolume) + ' L/sem', 'Média Semanal', 'por semana')}
+          ${kpi(fmtInt.format(k.terceiro.equipamentos) + ' equip.', 'Equipamentos', 'terceiros')}
+          ${kpi(fmtPct(k.terceiro.participacaoVolume), 'Participação', 'do consumo')}
+        </div>
+      </div>
     </div>
 
     <div class="nota-box" style="margin-top:18px">
@@ -354,46 +441,7 @@ function secaoResumoExecutivo(j) {
       <div><b>Nota — PIS/COFINS:</b> os valores monetários apresentados neste relatório são líquidos de PIS e COFINS
       (9,25% = PIS 1,65% + COFINS 7,60%), conforme legislação vigente para o regime não cumulativo.</div>
     </div>
-
-    <div style="font-size:13px;font-weight:700;color:var(--ink);margin-top:18px">Consumo Semanal — Volume (L) e Custo (R$)</div>
-    <div class="grafico-area" style="height:340px"><canvas id="chConsumoSemanal"></canvas></div>
-    <div class="legenda-manual">
-      <span class="item"><span class="dot" style="background:var(--serie-1)"></span>Semana comum</span>
-      <span class="item"><span class="dot" style="background:var(--serie-3)"></span>Maior volume</span>
-      <span class="item"><span class="dot" style="background:var(--serie-8)"></span>Menor volume</span>
-      <span class="item"><span class="dot" style="background:var(--serie-6)"></span>Última semana</span>
-      <span class="item">- - - Tendência (média móvel)</span>
-      <span class="item">Rótulo acima da barra = Volume · rótulo no meio = Custo</span>
-    </div>
-    <div class="insight-box"><span class="insight-icone">i</span><div>${insightResumo(j)}</div></div>
   </div>`;
-}
-
-function kpi(rotulo, valor, sub) {
-  return `<div class="kpi"><div class="rotulo">${rotulo}</div><div class="valor">${valor}</div>${sub?`<div class="sub">${sub}</div>`:''}</div>`;
-}
-
-function splitCard(classe, titulo, k) {
-  return `
-    <div class="split-card ${classe}">
-      <div class="rotulo">${titulo}</div>
-      <div class="valor">${fmtInt.format(k.equipamentos)} unid.</div>
-      <div class="linhas">
-        <span>Volume: ${fmtInt.format(k.volume)} L · ${fmtDec.format(k.participacaoVolume)}% do total</span>
-        <span>Custo: ${fmtBRL0.format(k.custo)} · Preço médio: ${fmtBRL.format(k.precoMedio)}/L</span>
-        <span>Média semanal: ${fmtInt.format(k.mediaSemanalVolume)} L${k.proprietariosAtivos ? ' · ' + k.proprietariosAtivos + ' fornecedores ativos' : ''}</span>
-      </div>
-    </div>`;
-}
-
-function insightResumo(j) {
-  const serie = j.serieSemanal;
-  const maxS = serie.reduce((a,b) => b.volume > a.volume ? b : a);
-  const minS = serie.reduce((a,b) => b.volume < a.volume ? b : a);
-  const ultima = serie[serie.length - 1];
-  return `O consumo semanal variou entre <b>${fmtInt.format(minS.volume)} L</b> (semana de ${minS.label}) e ` +
-    `<b>${fmtInt.format(maxS.volume)} L</b> (semana de ${maxS.label}). Na última semana registrada (${ultima.label}), ` +
-    `o volume foi de <b>${fmtInt.format(ultima.volume)} L</b>, ao custo de <b>${fmtBRL0.format(ultima.custo)}</b>.`;
 }
 
 const eixoBase = {
@@ -402,13 +450,60 @@ const eixoBase = {
   ticks: { color: '#898781', font: { size: 11 } },
 };
 
-function mediaMovel(valores, janela) {
-  const meio = Math.floor(janela / 2);
-  return valores.map((_, i) => {
-    const ini = Math.max(0, i - meio), fim = Math.min(valores.length, i + meio + 1);
-    const fatia = valores.slice(ini, fim);
-    return fatia.reduce((a,b) => a+b, 0) / fatia.length;
-  });
+function getCss(varName) {
+  return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+}
+
+/** Divide a série semanal em "histórico" (tudo menos as últimas N) + "últimas N",
+ * igual ao recorte "Últimas 5 Semanas + Média Histórica" do relatório PDF. */
+function ultimasComMedia(serie, n) {
+  if (serie.length <= n) return { historica: null, ultimas: serie };
+  const ultimas = serie.slice(-n);
+  const resto = serie.slice(0, serie.length - n);
+  const somaVolume = resto.reduce((s, x) => s + x.volume, 0);
+  const somaCusto = resto.reduce((s, x) => s + x.custo, 0);
+  const precosValidos = resto.map(x => x.precoMedio).filter(v => v > 0);
+  const mediaPreco = precosValidos.length ? precosValidos.reduce((a, b) => a + b, 0) / precosValidos.length : 0;
+  return {
+    historica: {
+      label: 'Média\n(' + resto.length + ' sem)',
+      volume: somaVolume / resto.length,
+      custo: somaCusto / resto.length,
+      precoMedio: mediaPreco,
+      numSemanas: resto.length,
+    },
+    ultimas,
+  };
+}
+
+// ── 2. Consumo Semanal — Últimas Semanas + Média Histórica ──────────────
+
+function secaoConsumoSemanal(j) {
+  const { historica, ultimas } = ultimasComMedia(j.serieSemanal, N_ULTIMAS);
+  return `
+  <div class="secao">
+    <div class="secao-header"><span class="secao-num">2</span><span class="secao-titulo">Consumo Semanal</span></div>
+    <div class="secao-sub">Últimas ${ultimas.length} semanas${historica ? ' + média histórica (' + historica.numSemanas + ' semanas)' : ''}</div>
+
+    <div class="grafico-area" style="height:340px"><canvas id="chConsumoSemanal"></canvas></div>
+    <div class="legenda-manual">
+      ${historica ? '<span class="item"><span class="dot" style="background:' + getCss('--serie-outros') + '"></span>Média histórica</span>' : ''}
+      <span class="item"><span class="dot" style="background:${getCss('--serie-3')}"></span>Semana comum</span>
+      <span class="item"><span class="dot" style="background:${getCss('--serie-2')}"></span>Última semana</span>
+      <span class="item">Rótulo acima da barra = Volume · rótulo dentro = Custo</span>
+    </div>
+    <div class="insight-box"><span class="insight-icone">i</span><div>${insightConsumoSemanal(historica, ultimas)}</div></div>
+  </div>`;
+}
+
+function insightConsumoSemanal(historica, ultimas) {
+  const ultima = ultimas[ultimas.length - 1];
+  let texto = '';
+  if (historica) {
+    texto += `Média histórica (${historica.numSemanas} sem): <b>${fmtInt.format(historica.volume)} L</b> / <b>${fmtBRL0.format(historica.custo)}</b>. `;
+  }
+  texto += `Última semana (${ultima.label}): <b>${fmtInt.format(ultima.volume)} L</b>, ao custo de <b>${fmtBRL0.format(ultima.custo)}</b>.`;
+  return texto;
 }
 
 // Desenha, por cima das barras de Volume: o valor de Volume acima da barra e
@@ -449,39 +544,28 @@ const rotulosVolumeCustoPlugin = {
 };
 
 function desenharConsumoSemanal() {
-  const serie = DADOS.serieSemanal;
-  const volumes = serie.map(s => s.volume);
-  const custos = serie.map(s => s.custo);
+  const { historica, ultimas } = ultimasComMedia(DADOS.serieSemanal, N_ULTIMAS);
+  const pontos = historica ? [historica, ...ultimas] : ultimas;
 
-  let idxMax = 0, idxMin = 0;
-  serie.forEach((s, i) => {
-    if (s.volume > serie[idxMax].volume) idxMax = i;
-    if (s.volume < serie[idxMin].volume) idxMin = i;
-  });
-  const idxUltima = serie.length - 1;
+  const labels = pontos.map((p, i) => (historica && i === 0) ? 'Média (' + historica.numSemanas + ' sem)' : p.label);
+  const volumes = pontos.map(p => p.volume);
+  const custos = pontos.map(p => p.custo);
 
-  const cores = serie.map((s, i) => {
-    if (i === idxUltima) return getCss('--serie-6');
-    if (i === idxMax) return getCss('--serie-3');
-    if (i === idxMin) return getCss('--serie-8');
-    return getCss('--serie-1');
+  const idxUltima = pontos.length - 1;
+  const cores = pontos.map((p, i) => {
+    if (historica && i === 0) return getCss('--serie-outros');
+    if (i === idxUltima) return getCss('--serie-2');
+    return getCss('--serie-3');
   });
 
   novoChart('chConsumoSemanal', {
     type: 'bar',
     data: {
-      labels: serie.map(s => s.label),
-      datasets: [
-        {
-          type: 'bar', label: 'Volume (L)',
-          data: volumes, backgroundColor: cores, maxBarThickness: 30, borderRadius: 4, borderSkipped: 'bottom',
-          order: 2,
-        },
-        {
-          type: 'line', label: 'Tendência', data: mediaMovel(volumes, 3),
-          borderColor: '#52514e', borderDash: [5,4], borderWidth: 2, pointRadius: 0, fill: false, order: 1,
-        }
-      ]
+      labels,
+      datasets: [{
+        type: 'bar', label: 'Volume (L)',
+        data: volumes.map(v => arred2(v)), backgroundColor: cores, maxBarThickness: 42, borderRadius: 4, borderSkipped: 'bottom',
+      }]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
@@ -494,13 +578,11 @@ function desenharConsumoSemanal() {
           custos: custos.map(v => fmtK(v)),
         },
         tooltip: { callbacks: {
-          label: c => c.datasetIndex === 0
-            ? ['Volume: ' + fmtInt.format(c.parsed.y) + ' L', 'Custo: ' + fmtBRL0.format(custos[c.dataIndex])]
-            : c.dataset.label + ': ' + fmtInt.format(c.parsed.y) + ' L'
+          label: c => ['Volume: ' + fmtInt.format(c.parsed.y) + ' L', 'Custo: ' + fmtBRL0.format(custos[c.dataIndex])]
         } }
       },
       scales: {
-        x: { ...eixoBase, grid: { display: false }, ticks: { ...eixoBase.ticks, maxTicksLimit: 20, maxRotation: 0 } },
+        x: { ...eixoBase, grid: { display: false }, ticks: { ...eixoBase.ticks, maxRotation: 0 } },
         y: { ...eixoBase, beginAtZero: true, ticks: { ...eixoBase.ticks, callback: v => fmtInt.format(v) } }
       }
     },
@@ -508,47 +590,36 @@ function desenharConsumoSemanal() {
   });
 }
 
-function getCss(varName) {
-  return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
-}
+function arred2(v) { return Math.round(v * 100) / 100; }
 
-// ── 2. Evolução do Preço ─────────────────────────────────────────────────
+// ── 3. Evolução do Preço ─────────────────────────────────────────────────
 
 function secaoEvolucaoPreco(j) {
-  const serie = j.serieSemanal;
-  const precos = serie.map(s => s.precoMedio).filter(v => v > 0);
-  const media = precos.reduce((a,b)=>a+b,0) / (precos.length || 1);
-  const min = Math.min(...precos), max = Math.max(...precos);
-  const variacao = precos.length > 1 ? ((precos[precos.length-1] - precos[0]) / precos[0] * 100) : 0;
-
+  const { historica, ultimas } = ultimasComMedia(j.serieSemanal, N_ULTIMAS);
   return `
   <div class="secao">
-    <div class="secao-header"><span class="secao-num">2</span><span class="secao-titulo">Evolução do Preço do Combustível</span></div>
-    <div class="secao-sub">Preço médio ponderado semanal (R$/L)</div>
-
-    <div class="kpi-row">
-      ${kpi('Preço Médio do Período', fmtBRL.format(media) + '/L', 'Base: ' + j.semanas.length + ' semanas operacionais')}
-      ${kpi('Menor Preço Semanal', fmtBRL.format(min) + '/L', '')}
-      ${kpi('Maior Preço Semanal', fmtBRL.format(max) + '/L', '')}
-      ${kpi('Variação no Período', (variacao>=0?'+':'') + fmtDec.format(variacao) + '%', 'De ' + fmtBRL.format(precos[0]||0) + ' para ' + fmtBRL.format(precos[precos.length-1]||0))}
-    </div>
+    <div class="secao-header"><span class="secao-num">3</span><span class="secao-titulo">Evolução do Preço do Combustível</span></div>
+    <div class="secao-sub">Preço médio ponderado (R$/L) · últimas ${ultimas.length} semanas${historica ? ' + média histórica' : ''}</div>
 
     <div class="grafico-area"><canvas id="chPreco"></canvas></div>
     <div class="legenda-manual">
-      <span class="item"><span class="dot" style="background:var(--serie-1)"></span>Preço médio semanal</span>
-      <span class="item"><span class="dot" style="background:var(--serie-3)"></span>Menor preço</span>
-      <span class="item"><span class="dot" style="background:var(--serie-8)"></span>Maior preço</span>
-      <span class="item">- - - Média do período</span>
+      ${historica ? '<span class="item"><span class="dot" style="background:' + getCss('--serie-outros') + '"></span>Média histórica</span>' : ''}
+      <span class="item"><span class="dot" style="background:${getCss('--serie-1')}"></span>Preço médio semanal</span>
     </div>
-    <div class="insight-box"><span class="insight-icone">i</span><div>${insightPreco(precos, media, variacao)}</div></div>
+    <div class="insight-box"><span class="insight-icone">i</span><div>${insightPreco(historica, ultimas)}</div></div>
   </div>`;
 }
 
-function insightPreco(precos, media, variacao) {
+function insightPreco(historica, ultimas) {
+  const precos = ultimas.map(s => s.precoMedio).filter(v => v > 0);
   if (!precos.length) return 'Sem dados de preço suficientes no período.';
-  const sentido = variacao >= 0 ? 'alta' : 'queda';
-  return `O preço médio fechou em <b>${sentido} de ${fmtDec.format(Math.abs(variacao))}%</b> no período, ` +
-    `de <b>${fmtBRL.format(precos[0])}/L</b> para <b>${fmtBRL.format(precos[precos.length-1])}/L</b>, com média de <b>${fmtBRL.format(media)}/L</b>.`;
+  const ultimoPreco = precos[precos.length - 1];
+  let texto = '';
+  if (historica && historica.precoMedio > 0) {
+    texto += `Preço médio histórico: <b>${fmtBRL.format(historica.precoMedio)}/L</b>. `;
+  }
+  texto += `Última semana: <b>${fmtBRL.format(ultimoPreco)}/L</b>.`;
+  return texto;
 }
 
 // Valor (R$/L) acima de cada ponto da linha de preço.
@@ -572,37 +643,24 @@ const rotulosPontoPlugin = {
 };
 
 function desenharPreco() {
-  const serie = DADOS.serieSemanal;
-  const precos = serie.map(s => s.precoMedio);
-  const validos = precos.map((v,i) => ({v,i})).filter(x => x.v > 0);
-  const media = validos.reduce((a,b)=>a+b.v,0) / (validos.length || 1);
-  let idxMax = validos[0]?.i || 0, idxMin = validos[0]?.i || 0;
-  validos.forEach(x => { if (x.v > precos[idxMax]) idxMax = x.i; if (x.v < precos[idxMin]) idxMin = x.i; });
+  const { historica, ultimas } = ultimasComMedia(DADOS.serieSemanal, N_ULTIMAS);
+  const pontos = historica ? [historica, ...ultimas] : ultimas;
+  const labels = pontos.map((p, i) => (historica && i === 0) ? 'Média (' + historica.numSemanas + ' sem)' : p.label);
+  const precos = pontos.map(p => p.precoMedio);
 
-  const pointColors = precos.map((v, i) => {
-    if (v === 0) return 'transparent';
-    if (i === idxMax) return getCss('--serie-8');
-    if (i === idxMin) return getCss('--serie-3');
-    return getCss('--serie-1');
-  });
-  const pointRadius = precos.map((v, i) => (i === idxMax || i === idxMin) ? 6 : 3);
+  const pointColors = pontos.map((p, i) => (historica && i === 0) ? getCss('--serie-outros') : getCss('--serie-1'));
+  const pointRadius = pontos.map((p, i) => (historica && i === 0) ? 5 : 4);
 
   novoChart('chPreco', {
     type: 'line',
     data: {
-      labels: serie.map(s => s.label),
-      datasets: [
-        {
-          label: 'Preço médio (R$/L)', data: precos,
-          borderColor: getCss('--serie-1'), backgroundColor: 'rgba(42,120,214,0.08)', fill: true,
-          borderWidth: 2, pointRadius, pointBackgroundColor: pointColors, pointBorderColor: '#fff', pointBorderWidth: 2,
-          tension: 0.2, spanGaps: true,
-        },
-        {
-          label: 'Média do período', data: precos.map(() => media),
-          borderColor: '#94a0b8', borderDash: [5,4], borderWidth: 1.5, pointRadius: 0, fill: false,
-        }
-      ]
+      labels,
+      datasets: [{
+        label: 'Preço médio (R$/L)', data: precos,
+        borderColor: getCss('--serie-1'), backgroundColor: 'rgba(42,120,214,0.08)', fill: true,
+        borderWidth: 2, pointRadius, pointBackgroundColor: pointColors, pointBorderColor: '#fff', pointBorderWidth: 2,
+        tension: 0.2, spanGaps: true,
+      }]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
@@ -614,7 +672,7 @@ function desenharPreco() {
         tooltip: { callbacks: { label: c => c.dataset.label + ': ' + fmtBRL.format(c.parsed.y) + '/L' } }
       },
       scales: {
-        x: { ...eixoBase, grid: { display: false }, ticks: { ...eixoBase.ticks, maxTicksLimit: 20, maxRotation: 0 } },
+        x: { ...eixoBase, grid: { display: false }, ticks: { ...eixoBase.ticks, maxRotation: 0 } },
         y: { ...eixoBase, ticks: { ...eixoBase.ticks, callback: v => fmtBRL.format(v) } }
       }
     },
@@ -622,55 +680,78 @@ function desenharPreco() {
   });
 }
 
-// ── 3. Distribuição do Consumo ───────────────────────────────────────────
+// ── 4. Distribuição por Área de Negócio (donut + legenda) ───────────────
+
+const CORES_DONUT = ['--serie-3', '--serie-1', '--serie-2', '--serie-4', '--serie-5', '--serie-outros'];
 
 function secaoDistribuicao(j) {
   const areas = j.porAreaNegocio;
-  const totalVolume = areas.reduce((s,a)=>s+a.volume,0);
-  const totalCusto = areas.reduce((s,a)=>s+a.custo,0);
-  const linhasArea = areas.map(a => `
-    <tr>
-      <td>${escapeHtml(a.nome)}</td>
-      <td class="num">${fmtInt.format(a.volume)} L</td>
-      <td class="num">${fmtBRL0.format(a.custo)}</td>
-      <td class="num"><span class="barra-participacao"><span class="fill" style="width:${Math.min(100,a.participacao)}%"></span></span>${fmtPct(a.participacao)}</td>
-    </tr>`).join('');
+  const cores = CORES_DONUT.map(getCss);
+  const legendaAreas = areas.map((a, i) => `
+    <div class="legenda-area">
+      <span class="legenda-dot" style="background:${cores[Math.min(i, cores.length - 1)]}"></span>
+      <div>
+        <div class="legenda-nome">${escapeHtml(a.nome)}</div>
+        <div class="legenda-valores">${fmtInt.format(a.volume)} L · ${fmtBRL0.format(a.custo)} · ${fmtPct(a.participacao)}</div>
+      </div>
+    </div>`).join('');
 
-  const top6 = j.porAtividade;
-  const somaTop6 = top6.reduce((s,a)=>s+a.participacao,0);
   const liderArea = areas[0];
 
   return `
   <div class="secao">
-    <div class="secao-header"><span class="secao-num">3</span><span class="secao-titulo">Distribuição do Consumo</span></div>
-    <div class="secao-sub">Leitura por área de negócio e por atividade operacional</div>
+    <div class="secao-header"><span class="secao-num">4</span><span class="secao-titulo">Distribuição por Área de Negócio</span></div>
+    <div class="secao-sub">Acumulado do período</div>
 
     <div class="distrib-grid">
-      <div>
-        <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:10px">Consumo por Área de Negócio</div>
-        <table class="tabela-simples">
-          <thead><tr><th>Área de Negócio</th><th class="num">Volume</th><th class="num">Custo</th><th class="num">Participação</th></tr></thead>
-          <tbody>
-            ${linhasArea}
-            <tr><td>Total Geral</td><td class="num">${fmtInt.format(totalVolume)} L</td><td class="num">${fmtBRL0.format(totalCusto)}</td><td class="num">100,00%</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <div>
-        <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:10px">Top 6 Atividades — Maior Consumo</div>
-        <div class="grafico-area" style="height:260px"><canvas id="chAtividades"></canvas></div>
-      </div>
-    </div>
-
-    <div style="margin-top:18px">
-      <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:10px">Participação Semanal por Área de Negócio</div>
-      <div class="grafico-area" style="height:220px"><canvas id="chDistribSemanal"></canvas></div>
+      <div class="grafico-area" style="height:260px"><canvas id="chDonutArea"></canvas></div>
+      <div class="legenda-lista">${legendaAreas}</div>
     </div>
 
     <div class="insight-box"><span class="insight-icone">i</span><div>
-      A <b>${escapeHtml(liderArea?.nome || '')}</b> concentra <b>${fmtPct(liderArea?.participacao || 0)}</b> do combustível consumido
-      (${fmtInt.format(liderArea?.volume || 0)} L). As seis atividades de maior consumo somam <b>${fmtPct(somaTop6)}</b> do total,
-      lideradas por <b>${escapeHtml(top6[0]?.nome || '')}</b> (${fmtPct(top6[0]?.participacao || 0)}).
+      <b>${escapeHtml(liderArea?.nome || '')}</b> = ${fmtPct(liderArea?.participacao || 0)} (${fmtInt.format(liderArea?.volume || 0)} L / ${fmtBRL0.format(liderArea?.custo || 0)}).
+    </div></div>
+  </div>`;
+}
+
+function desenharDistribuicaoDonut() {
+  const areas = DADOS.porAreaNegocio;
+  const cores = CORES_DONUT.map(getCss);
+  novoChart('chDonutArea', {
+    type: 'doughnut',
+    data: {
+      labels: areas.map(a => a.nome),
+      datasets: [{
+        data: areas.map(a => a.volume),
+        backgroundColor: areas.map((a, i) => cores[Math.min(i, cores.length - 1)]),
+        borderColor: '#fff', borderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '62%',
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: c => c.label + ': ' + fmtInt.format(c.parsed) + ' L (' + fmtPct(areas[c.dataIndex].participacao) + ')' } }
+      }
+    }
+  });
+}
+
+// ── 5. Top 6 Atividades ──────────────────────────────────────────────────
+
+function secaoAtividades(j) {
+  const top6 = j.porAtividade;
+  const somaTop6 = top6.reduce((s, a) => s + a.participacao, 0);
+  return `
+  <div class="secao">
+    <div class="secao-header"><span class="secao-num">5</span><span class="secao-titulo">Top 6 Atividades</span></div>
+    <div class="secao-sub">Consumo acumulado por atividade operacional</div>
+
+    <div class="grafico-area" style="height:280px"><canvas id="chAtividades"></canvas></div>
+
+    <div class="insight-box"><span class="insight-icone">i</span><div>
+      As seis atividades de maior consumo somam <b>${fmtPct(somaTop6)}</b> do total, lideradas por
+      <b>${escapeHtml(top6[0]?.nome || '')}</b> (${fmtInt.format(top6[0]?.volume || 0)} L).
     </div></div>
   </div>`;
 }
@@ -684,7 +765,7 @@ function desenharAtividades() {
       datasets: [{
         data: top6.map(a => a.volume),
         backgroundColor: top6.map((a,i) => i === 0 ? getCss('--ink') : getCss('--serie-1')),
-        maxBarThickness: 20, borderRadius: 4, borderSkipped: 'start',
+        maxBarThickness: 24, borderRadius: 4, borderSkipped: 'start',
       }]
     },
     options: {
@@ -699,7 +780,7 @@ function desenharAtividades() {
         x: { ...eixoBase, beginAtZero: true, ticks: { ...eixoBase.ticks, maxTicksLimit: 5, callback: v => fmtInt.format(v) } },
         y: { ...eixoBase, grid: { display: false },
              ticks: { ...eixoBase.ticks, autoSkip: false,
-                      callback: function(v) { const l = this.getLabelForValue(v); return l.length > 24 ? l.substring(0,23) + '…' : l; } } }
+                      callback: function(v) { const l = this.getLabelForValue(v); return l.length > 30 ? l.substring(0,29) + '…' : l; } } }
       }
     },
     plugins: [rotuloPontaBarraPlugin]
@@ -723,84 +804,48 @@ const rotuloPontaBarraPlugin = {
   }
 };
 
-function desenharDistribuicaoSemanal() {
-  const todasAreas = DADOS.porAreaNegocio;
-  const labels = DADOS.semanas.map(s => s.label);
-  const n = labels.length;
-  const cores = [getCss('--serie-1'), getCss('--serie-3'), getCss('--serie-4'), getCss('--serie-2'), getCss('--serie-5')];
-
-  const top5 = todasAreas.slice(0, 5);
-  const resto = todasAreas.slice(5);
-
-  const series = top5.map((a, i) => ({ nome: a.nome, cor: cores[i], litros: a.porSemana }));
-  if (resto.length) {
-    const litrosOutras = Array(n).fill(0);
-    resto.forEach(a => a.porSemana.forEach((v, i) => litrosOutras[i] += v));
-    series.push({ nome: 'Outras', cor: getCss('--serie-outros'), litros: litrosOutras });
-  }
-
-  // Participação (%) de cada área dentro do total DAQUELA semana (todas as áreas).
-  const totalPorSemana = Array(n).fill(0);
-  todasAreas.forEach(a => a.porSemana.forEach((v, i) => totalPorSemana[i] += v));
-
-  novoChart('chDistribSemanal', {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: series.map(s => ({
-        label: s.nome,
-        data: s.litros.map((v, i) => totalPorSemana[i] > 0 ? arred2(v / totalPorSemana[i] * 100) : 0),
-        backgroundColor: s.cor,
-        maxBarThickness: 22,
-      }))
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 }, color: '#52514e' } },
-        tooltip: { callbacks: { label: c => c.dataset.label + ': ' + fmtPct(c.parsed.y) } }
-      },
-      scales: {
-        x: { ...eixoBase, stacked: true, grid: { display: false }, ticks: { ...eixoBase.ticks, maxTicksLimit: 20, maxRotation: 0 } },
-        y: { ...eixoBase, stacked: true, max: 100, ticks: { ...eixoBase.ticks, callback: v => v + '%' } }
-      }
-    }
-  });
-}
-
-function arred2(v) { return Math.round(v * 100) / 100; }
-
-// ── 4. Classe Operativa (matriz) ─────────────────────────────────────────
+// ── 6. Classe Operativa (matriz: média histórica + últimas semanas) ─────
 
 function secaoClasseOperativa(j) {
   const co = j.porClasseOperativa;
   const semanas = j.semanas;
-  const theadCols = semanas.map(s => `<th>${s.label}</th>`).join('');
+  const n = Math.min(N_ULTIMAS, semanas.length);
+  const nHist = semanas.length - n;
+  const ultimasSemanas = semanas.slice(-n);
+  const theadCols = ultimasSemanas.map(s => `<th>${s.label}</th>`).join('');
 
   const linhas = co.linhas.map(l => {
-    const maxLinha = Math.max(...l.porSemana, 1);
-    const cols = l.porSemana.map(v => {
+    const ultimas = l.porSemana.slice(-n);
+    const resto = l.porSemana.slice(0, l.porSemana.length - n);
+    const media = resto.length ? resto.reduce((a,b) => a+b, 0) / resto.length : 0;
+    const total = ultimas.reduce((a,b) => a+b, 0);
+    const maxLinha = Math.max(media, ...ultimas, 1);
+    const celula = v => {
       const intensidade = v / maxLinha;
       const bg = v === 0 ? 'transparent' : `rgba(42,120,214,${0.12 + intensidade*0.55})`;
       const cor = intensidade > 0.6 ? '#fff' : 'var(--ink)';
-      return `<td style="background:${bg};color:${cor}">${v ? fmtInt.format(v) : '-'}</td>`;
-    }).join('');
-    return `<tr><td>${escapeHtml(l.nome)}</td>${cols}<td class="num" style="font-weight:700">${fmtInt.format(l.total)}</td></tr>`;
+      return `<td style="background:${bg};color:${cor}">${v ? fmtInt.format(Math.round(v)) : '-'}</td>`;
+    };
+    return `<tr><td>${escapeHtml(l.nome)}</td><td>${media ? fmtInt.format(Math.round(media)) : '-'}</td>${ultimas.map(celula).join('')}<td class="num" style="font-weight:700">${fmtInt.format(Math.round(total))}</td></tr>`;
   }).join('');
 
-  const totalCols = co.totalPorSemana.map(v => `<td>${fmtInt.format(v)}</td>`).join('');
+  const totalUltimas = co.totalPorSemana.slice(-n);
+  const totalResto = co.totalPorSemana.slice(0, co.totalPorSemana.length - n);
+  const totalMedia = totalResto.length ? totalResto.reduce((a,b) => a+b, 0) / totalResto.length : 0;
+  const totalGeralUltimas = totalUltimas.reduce((a,b) => a+b, 0);
+  const totalCols = totalUltimas.map(v => `<td>${fmtInt.format(Math.round(v))}</td>`).join('');
 
   return `
   <div class="secao">
-    <div class="secao-header"><span class="secao-num">4</span><span class="secao-titulo">Consumo Semanal por Classe Operativa</span></div>
-    <div class="secao-sub">Volume em litros (L) · linhas = classe operativa · colunas = semana operacional · intensidade da cor = peso na linha</div>
+    <div class="secao-header"><span class="secao-num">6</span><span class="secao-titulo">Consumo por Classe Operativa</span></div>
+    <div class="secao-sub">Volume em litros (L) · média (${nHist} sem. históricas) + últimas ${ultimasSemanas.length} semanas · intensidade da cor = peso na linha</div>
 
     <div class="matriz-scroll">
       <table class="matriz">
-        <thead><tr><th>Classe Operativa</th>${theadCols}<th>Total</th></tr></thead>
+        <thead><tr><th>Classe Operativa</th><th>Média<br>(${nHist}sem)</th>${theadCols}<th>Total<br>${ultimasSemanas.length}sem</th></tr></thead>
         <tbody>
           ${linhas}
-          <tr class="total"><td>Total Geral</td>${totalCols}<td>${fmtInt.format(co.totalGeral)}</td></tr>
+          <tr class="total"><td>Total Geral</td><td>${totalMedia ? fmtInt.format(Math.round(totalMedia)) : '-'}</td>${totalCols}<td>${fmtInt.format(Math.round(totalGeralUltimas))}</td></tr>
         </tbody>
       </table>
     </div>
@@ -810,54 +855,38 @@ function secaoClasseOperativa(j) {
   </div>`;
 }
 
-// ── 5/6. Rankings (Próprios / Terceiros) ─────────────────────────────────
+// ── 7/8. Rankings (Próprios / Terceiros) ─────────────────────────────────
 
-function kpisProprios(j) {
-  const top = j.topProprios[0];
-  const somaTop10 = j.topProprios.reduce((s,r)=>s+r.participacao,0);
-  return `
-    ${kpi('Equipamento Líder', fmtPct(top?.participacao || 0), escapeHtml(top?.equipamento || ''))}
-    ${kpi('Concentração Top 10', fmtPct(somaTop10), 'do volume consumido pela frota própria')}
-    ${kpi('Volume da Frota Própria', fmtInt.format(j.frotaPropriaReal.volume) + ' L', j.frotaPropriaReal.equipamentos + ' equipamentos monitorados')}
-  `;
-}
-
-function kpisTerceiros(j) {
-  const top = j.topTerceiros[0];
-  const somaTop10 = j.topTerceiros.reduce((s,r)=>s+r.participacao,0);
-  return `
-    ${kpi('Maior Fornecedor', fmtPct(top?.participacao || 0), escapeHtml(top?.proprietario || ''))}
-    ${kpi('Concentração Top 10', fmtPct(somaTop10), 'do volume consumido por terceiros')}
-    ${kpi('Fornecedores Ativos', fmtInt.format(j.kpis.terceiro.proprietariosAtivos || 0), 'proprietários distintos no período')}
-  `;
-}
-
-function secaoRanking(num, titulo, subtitulo, lista, tipo, kpisHtml) {
+function secaoRanking(num, titulo, subtitulo, lista, tipo) {
   const ehProprio = tipo === 'proprios';
-  const linhas = lista.map(r => `
+  const linhas = lista.map(r => {
+    const consumoStr = r.unidadeConsumo === 'Km/L' ? fmtDec.format(r.consumoMedio || 0) : fmtDec1.format(r.consumoMedio || 0);
+    return `
     <tr>
       <td><span class="posicao-badge ${r.posicao===1?'top1':''}">${r.posicao}</span></td>
       <td><b>${escapeHtml(ehProprio ? (r.modelo || r.equipamento) : r.proprietario)}</b></td>
       <td>${escapeHtml(ehProprio ? r.grupo : r.atividade)}</td>
       <td class="num">${fmtInt.format(r.volume)} L</td>
-      ${ehProprio ? `<td class="num">${fmtDec.format(r.consumoMedio || 0)} ${escapeHtml(r.unidadeConsumo || '')}</td>` : ''}
+      <td class="num">${fmtBRL0.format(r.custo)}</td>
       <td class="num"><span class="barra-participacao"><span class="fill" style="width:${Math.min(100,r.participacao)}%"></span></span>${fmtPct(r.participacao)}</td>
-    </tr>`).join('');
+      ${ehProprio ? `<td class="num">${consumoStr} ${escapeHtml(r.unidadeConsumo || '')}</td>` : ''}
+    </tr>`;
+  }).join('');
 
-  const colunas = ehProprio ? 6 : 5;
+  const colunas = ehProprio ? 7 : 6;
 
   return `
   <div class="secao">
     <div class="secao-header"><span class="secao-num">${num}</span><span class="secao-titulo">${titulo}</span></div>
     <div class="secao-sub">${subtitulo} · ordenado do maior para o menor consumo</div>
-    <div class="kpi-row" style="grid-template-columns:repeat(3,1fr)">${kpisHtml}</div>
     <div class="tabela-scroll" style="overflow-x:auto">
       <table class="ranking">
         <thead><tr>
-          <th>#</th><th>${ehProprio?'Equipamento':'Proprietário do Equipamento'}</th><th>${ehProprio?'Grupo Equipamento':'Atividade Principal'}</th>
-          <th class="num">Volume</th>
-          ${ehProprio ? '<th class="num">Consumo Médio</th>' : ''}
-          <th class="num">Participação</th>
+          <th>#</th><th>${ehProprio?'Equipamento':'Proprietário / Empresa'}</th><th>Obj. Custo</th>
+          <th class="num">Volume (L)</th>
+          <th class="num">Custo (R$)</th>
+          <th class="num">Part.%</th>
+          ${ehProprio ? '<th class="num">Cons. Médio</th>' : ''}
         </tr></thead>
         <tbody>${linhas || `<tr><td colspan="${colunas}" style="text-align:center;color:var(--ink-3);padding:20px">Sem dados no período.</td></tr>`}</tbody>
       </table>
@@ -906,12 +935,12 @@ function exportarExcel() {
   const classeLinhas = DADOS.porClasseOperativa.linhas.map(l => [l.nome, ...l.porSemana, l.total]);
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([classeHeader, ...classeLinhas]), 'Classe Operativa');
 
-  const proprios = [['#','Equipamento','Modelo','Grupo','Volume (L)','Consumo Médio','Unidade','Participação (%)'],
-    ...DADOS.topProprios.map(r => [r.posicao, r.equipamento, r.modelo, r.grupo, r.volume, r.consumoMedio, r.unidadeConsumo, r.participacao])];
+  const proprios = [['#','Equipamento','Modelo','Obj. Custo','Volume (L)','Custo (R$)','Consumo Médio','Unidade','Participação (%)'],
+    ...DADOS.topProprios.map(r => [r.posicao, r.equipamento, r.modelo, r.grupo, r.volume, r.custo, r.consumoMedio, r.unidadeConsumo, r.participacao])];
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(proprios), 'Top Próprios');
 
-  const terceiros = [['#','Proprietário','Atividade Principal','Volume (L)','Participação (%)'],
-    ...DADOS.topTerceiros.map(r => [r.posicao, r.proprietario, r.atividade, r.volume, r.participacao])];
+  const terceiros = [['#','Proprietário','Obj. Custo','Volume (L)','Custo (R$)','Participação (%)'],
+    ...DADOS.topTerceiros.map(r => [r.posicao, r.proprietario, r.atividade, r.volume, r.custo, r.participacao])];
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(terceiros), 'Top Terceiros');
 
   const detalhe = DADOS.detalhe.map(d => ({
