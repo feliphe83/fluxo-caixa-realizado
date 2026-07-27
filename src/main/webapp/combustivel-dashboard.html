@@ -173,15 +173,16 @@
   .barra-participacao { display: inline-block; width: 60px; height: 6px; border-radius: 3px; background: #e3e8f5; overflow: hidden; vertical-align: middle; margin-right: 8px; }
   .barra-participacao .fill { height: 100%; background: var(--serie-1); border-radius: 3px; }
 
-  /* ── Classe Operativa (matriz/heatmap) ── */
+  /* ── Classe Operativa (matriz) ── */
   .matriz-scroll { overflow-x: auto; }
   table.matriz { width: 100%; border-collapse: collapse; font-size: 11px; min-width: 900px; }
   table.matriz thead th { background: var(--ink); color: white; padding: 7px 8px; font-size: 9.5px; text-transform: uppercase; text-align: right; white-space: nowrap; }
   table.matriz thead th:first-child { text-align: left; min-width: 160px; }
+  table.matriz tbody tr { border-bottom: 1px solid #eef1f8; }
   table.matriz tbody td { padding: 6px 8px; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--ink); }
-  table.matriz tbody td:first-child { text-align: left; font-weight: 600; background: white !important; }
+  table.matriz tbody td:first-child { text-align: left; font-weight: 600; }
   table.matriz tbody td:nth-child(2) { font-style: italic; color: var(--ink-3); }
-  table.matriz tbody tr.total td { background: #eef2fb !important; font-weight: 800; border-top: 2px solid var(--ink); color: var(--ink) !important; }
+  table.matriz tbody tr.total td { background: #eef2fb; font-weight: 800; border-top: 2px solid var(--ink); color: var(--ink); }
 
   /* ── Rankings ── */
   table.ranking { width: 100%; border-collapse: collapse; font-size: 12.5px; }
@@ -874,13 +875,7 @@ function secaoClasseOperativa(j) {
     const resto = l.porSemana.slice(0, l.porSemana.length - n);
     const media = resto.length ? resto.reduce((a,b) => a+b, 0) / resto.length : 0;
     const total = ultimas.reduce((a,b) => a+b, 0);
-    const maxLinha = Math.max(media, ...ultimas, 1);
-    const celula = v => {
-      const intensidade = v / maxLinha;
-      const bg = v === 0 ? 'transparent' : `rgba(42,120,214,${0.12 + intensidade*0.55})`;
-      const cor = intensidade > 0.6 ? '#fff' : 'var(--ink)';
-      return `<td style="background:${bg};color:${cor}">${v ? fmtInt.format(Math.round(v)) : '-'}</td>`;
-    };
+    const celula = v => `<td>${v ? fmtInt.format(Math.round(v)) : '-'}</td>`;
     return `<tr><td>${escapeHtml(l.nome)}</td><td>${media ? fmtInt.format(Math.round(media)) : '-'}</td>${ultimas.map(celula).join('')}<td class="num" style="font-weight:700">${fmtInt.format(Math.round(total))}</td></tr>`;
   }).join('');
 
@@ -893,7 +888,7 @@ function secaoClasseOperativa(j) {
   return `
   <div class="secao pagina-nova">
     <div class="secao-header"><span class="secao-num">6</span><span class="secao-titulo">Consumo por Classe Operativa</span></div>
-    <div class="secao-sub">Volume em litros (L) · média (${nHist} sem. históricas) + últimas ${ultimasSemanas.length} semanas · intensidade da cor = peso na linha</div>
+    <div class="secao-sub">Volume em litros (L) · média (${nHist} sem. históricas) + últimas ${ultimasSemanas.length} semanas</div>
 
     <div class="matriz-scroll">
       <table class="matriz">
