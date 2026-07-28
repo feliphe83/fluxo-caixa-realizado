@@ -138,7 +138,8 @@ public class RelatorioAgendadoServlet extends HttpServlet {
                     lerIntervaloMinutos(b),
                     gson.toJson(b.get("parametros")),
                     idUsuarioCriacao,
-                    lerDestinatarios(b));
+                    lerLista(b, "destinatarios"),
+                    lerLista(b, "copiaTotal"));
             json(resp, "{\"ok\":true,\"id\":" + id + "}");
         } catch (SQLException e) {
             LOG.log(Level.SEVERE, "Erro ao criar relatório agendado", e);
@@ -171,7 +172,8 @@ public class RelatorioAgendadoServlet extends HttpServlet {
                     lerHoraEnvio(b),
                     lerIntervaloMinutos(b),
                     gson.toJson(b.get("parametros")),
-                    lerDestinatarios(b));
+                    lerLista(b, "destinatarios"),
+                    lerLista(b, "copiaTotal"));
             json(resp, "{\"ok\":true}");
         } catch (SQLException e) {
             LOG.log(Level.SEVERE, "Erro ao atualizar relatório agendado", e);
@@ -206,10 +208,11 @@ public class RelatorioAgendadoServlet extends HttpServlet {
         json(resp, "{\"ok\":true}");
     }
 
-    private List<Integer> lerDestinatarios(JsonObject b) {
+    /** Lê um array de ids do corpo ("destinatarios" ou "copiaTotal"). */
+    private List<Integer> lerLista(JsonObject b, String campo) {
         List<Integer> lista = new ArrayList<>();
-        if (b.has("destinatarios") && b.get("destinatarios").isJsonArray()) {
-            for (JsonElement e : b.get("destinatarios").getAsJsonArray()) lista.add(e.getAsInt());
+        if (b.has(campo) && b.get(campo).isJsonArray()) {
+            for (JsonElement e : b.get(campo).getAsJsonArray()) lista.add(e.getAsInt());
         }
         return lista;
     }

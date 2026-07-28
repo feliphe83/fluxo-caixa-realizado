@@ -6,6 +6,8 @@ import br.com.lopes.fluxo.util.EvolutionApiUtil;
 import com.google.gson.JsonObject;
 
 import java.text.NumberFormat;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -30,6 +32,11 @@ import java.util.logging.Logger;
  * cadastro de usuário: é ele que diz quais ordens são daquele aprovador.
  * Quem não tiver é ignorado (com aviso no log), porque não há como saber o
  * que mandar.
+ *
+ * A exceção é o destinatário marcado como "recebe todas" no agendamento:
+ * ele acompanha o grupo inteiro, recebendo tudo o que os aprovadores
+ * receberam, mesmo sem ter alçada nenhuma (e portanto sem precisar de
+ * código de logon).
  *
  * parametros: nenhum — o que varia (intervalo e destinatários) está nas
  * colunas do próprio agendamento.
@@ -58,7 +65,18 @@ public class AlertaOcPendenteHandler implements RelatorioAgendadoHandler {
         int semLogon = 0;
         Exception ultimaFalha = null;
 
+        // Quem está "em cópia" recebe tudo o que os aprovadores deste
+        // agendamento receberam, mesmo não sendo da alçada dele — por isso os
+        // itens de todos vão sendo acumulados aqui (sem repetir) e só depois
+        // são enviados às cópias.
+        Map<String, Map<String, Object>> itensDeTodos = new LinkedHashMap<>();
+        List<Map<String, Object>> copias = new ArrayList<>();
+
         for (Map<String, Object> destinatario : destinatarios) {
+            if (Boolean.TRUE.equals(destinatario.get("copia"))) {
+                copias.add(destinatario);
+                continue;
+            }
             Object idLogon = destinatario.get("idLogonErp");
             if (!(idLogon instanceof Number)) {
                 semLogon++;
@@ -67,11 +85,22 @@ public class AlertaOcPendenteHandler implements RelatorioAgendadoHandler {
                 continue;
             }
             try {
-                totalAvisadas += avisar(destinatario, ((Number) idLogon).intValue());
+                List<Map<String, Object>> itens = erp.buscarPendentes(((Number) idLogon).intValue());
+                for (Map<String, Object> item : itens) itensDeTodos.putIfAbsent(chaveDoItem(item), item);
+                totalAvisadas += avisar(destinatario, itens);
             } catch (Exception e) {
                 // Falha de um destinatário não pode travar os demais.
                 ultimaFalha = e;
                 LOG.log(Level.SEVERE, "Erro no alerta de ordem de compra para " + destinatario.get("nome"), e);
+            }
+        }
+
+        for (Map<String, Object> copia : copias) {
+            try {
+                totalAvisadas += avisar(copia, new ArrayList<>(itensDeTodos.values()));
+            } catch (Exception e) {
+                ultimaFalha = e;
+                LOG.log(Level.SEVERE, "Erro no alerta de ordem de compra (cópia) para " + copia.get("nome"), e);
             }
         }
 
@@ -88,13 +117,16 @@ public class AlertaOcPendenteHandler implements RelatorioAgendadoHandler {
         return semLogon > 0 ? resumo + " " + semLogon + " destinatário(s) sem código de logon do ERP." : resumo;
     }
 
+    private static String chaveDoItem(Map<String, Object> item) {
+        return AlertaOcPendenteDAO.chave(str(item.get("tipo")), str(item.get("nr_solicitacao")), str(item.get("cod_material")));
+    }
+
     /** @return quantos itens foram avisados a este destinatário */
-    private int avisar(Map<String, Object> destinatario, int idLogon) throws Exception {
+    private int avisar(Map<String, Object> destinatario, List<Map<String, Object>> itens) throws Exception {
         int idUsuario = ((Number) destinatario.get("id")).intValue();
         String nome = String.valueOf(destinatario.get("nome"));
         String telefone = String.valueOf(destinatario.get("telefone"));
 
-        List<Map<String, Object>> itens = erp.buscarPendentes(idLogon);
         if (itens.isEmpty()) return 0;
 
         Set<String> jaEnviados = controle.jaEnviados(idUsuario);

@@ -1409,6 +1409,15 @@ async function excluirClasseOp(cod) {
 // ── Relatórios WhatsApp ───────────────────────────────────────────
 const DIAS_SEMANA_WPP = {1:'Segunda',2:'Terça',3:'Quarta',4:'Quinta',5:'Sexta',6:'Sábado',7:'Domingo'};
 const TIPOS_RELATORIO_WPP = {combustivel:'Combustível (PDF)', oc_pendente:'Alerta de Ordem de Compra'};
+/** Data e hora da execução — o horário importa nos agendamentos que rodam de minuto em minuto.
+ *  O backend manda "yyyy-MM-dd HH:mm:ss[.S]" (Timestamp.toString), que o Safari não aceita em
+ *  new Date(); por isso o formato é montado na mão, sem depender do parser do navegador. */
+function fmtDataHoraWpp(s) {
+  if (!s) return '—';
+  const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+  return m ? `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}` : s;
+}
+
 /** Tipos que rodam por intervalo (a cada N minutos) em vez de dia da semana + hora. */
 const TIPOS_RECORRENTES_WPP = ['oc_pendente'];
 /** Tipos que dependem do código de logon do ERP no cadastro do destinatário. */
@@ -1448,7 +1457,7 @@ function renderWpp() {
       <td>${a.intervaloMinutos ? 'A cada ' + a.intervaloMinutos + ' min' : DIAS_SEMANA_WPP[a.diaSemana] + ' às ' + esc(a.horaEnvio)}</td>
       <td>${a.qtdeDestinatarios}</td>
       <td class="muted">${a.ultimaExecucao
-        ? fmtD(a.ultimaExecucao) + ' ' + (a.ultimoStatus === 'erro' ? '<span style="color:#f87171">(erro)</span>' : '<span style="color:#4ade80">(ok)</span>')
+        ? fmtDataHoraWpp(a.ultimaExecucao) + ' ' + (a.ultimoStatus === 'erro' ? '<span style="color:#f87171">(erro)</span>' : '<span style="color:#4ade80">(ok)</span>')
         : '—'}</td>
       <td><button class="tog ${a.ativo?'on':''}" onclick="alternarAtivoWpp(${a.id}, ${!a.ativo})"></button></td>
       <td><div class="acts">
@@ -1496,8 +1505,9 @@ async function alternarAtivoWpp(id, novoAtivo) {
   } catch(e) { toast('Erro: ' + e.message, 'red'); }
 }
 
-function renderDestinatariosWpp(selecionados) {
+function renderDestinatariosWpp(selecionados, copias) {
   const sel = new Set(selecionados || []);
+  const copia = new Set(copias || []);
   const tipo = document.getElementById('mWppTipo').value;
   const exigeLogon = TIPOS_COM_LOGON_ERP_WPP.includes(tipo);
   // Estilos inline defensivos: o CSS genérico do modal (.mf input { width:100%;
@@ -1506,22 +1516,51 @@ function renderDestinatariosWpp(selecionados) {
   // vira um bloco de largura total e espreme o nome do usuário pra fora do grid.
   document.getElementById('destinatariosWppGrid').innerHTML = USUARIOS_WPP.map(u => {
     const semTelefone = !u.telefone;
-    const semLogon = exigeLogon && !u.idLogonErp;
+    const ehCopia = copia.has(u.id);
+    // Quem recebe todas não precisa de código de logon: não é a alçada dele
+    // que define o que recebe.
+    const semLogon = exigeLogon && !u.idLogonErp && !ehCopia;
     const bloqueado = semTelefone || semLogon;
     const aviso = semTelefone ? '<span style="color:#f87171">(sem telefone cadastrado)</span>'
                 : semLogon    ? '<span style="color:#f87171">(sem código de logon no ERP)</span>'
                 : '<span class="muted">— ' + esc(u.telefone) + '</span>';
+    // A opção "recebe todas" só existe no alerta de ordem de compra, onde
+    // cada pessoa normalmente recebe apenas o que é da alçada dela.
+    const marcaCopia = exigeLogon ? `
+      <label title="Recebe todas as ordens do grupo, não só as da alçada dele"
+             style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:400;text-transform:none;letter-spacing:normal;margin:0 0 0 auto;white-space:nowrap;cursor:pointer;color:var(--text3)">
+        <input type="checkbox" data-copia="${u.id}" ${ehCopia ? 'checked' : ''} ${semTelefone ? 'disabled' : ''}
+               onchange="aoMarcarCopiaWpp(${u.id}, this.checked)"
+               style="width:14px;height:14px;padding:0;margin:0;flex:0 0 auto;accent-color:var(--blue2)">
+        recebe todas
+      </label>` : '';
     return `
-    <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:400;text-transform:none;letter-spacing:normal;margin:0;cursor:pointer;color:${bloqueado ? 'var(--text3)' : 'var(--text)'}">
-      <input type="checkbox" value="${u.id}" ${sel.has(u.id) && !bloqueado ? 'checked' : ''} ${bloqueado ? 'disabled' : ''}
-             style="width:16px;height:16px;padding:0;margin:0;flex:0 0 auto;accent-color:var(--blue2)">
-      <span>${esc(u.nome)} ${aviso}</span>
-    </label>`;
+    <div style="display:flex;align-items:center;gap:10px">
+      <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:400;text-transform:none;letter-spacing:normal;margin:0;cursor:pointer;color:${bloqueado ? 'var(--text3)' : 'var(--text)'}">
+        <input type="checkbox" value="${u.id}" ${(sel.has(u.id) || ehCopia) && !bloqueado ? 'checked' : ''} ${bloqueado ? 'disabled' : ''}
+               style="width:16px;height:16px;padding:0;margin:0;flex:0 0 auto;accent-color:var(--blue2)">
+        <span>${esc(u.nome)} ${aviso}</span>
+      </label>
+      ${marcaCopia}
+    </div>`;
   }).join('');
 }
 
+/** Marcar "recebe todas" implica ser destinatário; desmarcar não tira a pessoa da lista. */
+function aoMarcarCopiaWpp(idUsuario, marcado) {
+  if (!marcado) return;
+  const principal = document.querySelector(`#destinatariosWppGrid input[type=checkbox][value="${idUsuario}"]`);
+  if (principal) { principal.disabled = false; principal.checked = true; }
+}
+
 function destinatariosSelecionadosWpp() {
-  return Array.from(document.querySelectorAll('#destinatariosWppGrid input[type=checkbox]:checked')).map(i => parseInt(i.value));
+  return Array.from(document.querySelectorAll('#destinatariosWppGrid input[type=checkbox][value]:checked')).map(i => parseInt(i.value));
+}
+
+/** Subconjunto dos destinatários que recebe tudo do agendamento. */
+function copiasSelecionadasWpp() {
+  return Array.from(document.querySelectorAll('#destinatariosWppGrid input[type=checkbox][data-copia]:checked'))
+              .map(i => parseInt(i.dataset.copia));
 }
 
 /** Data equivalente a "últimas N semanas" fechando ontem — só pra exibir na
@@ -1539,7 +1578,7 @@ function atualizarCamposTipoWpp() {
   // Recorrente é configurado por intervalo; os demais, por dia da semana e hora.
   document.getElementById('camposSemanalWpp').style.display = recorrente ? 'none' : '';
   document.getElementById('camposIntervaloWpp').style.display = recorrente ? '' : 'none';
-  renderDestinatariosWpp(destinatariosSelecionadosWpp());
+  renderDestinatariosWpp(destinatariosSelecionadosWpp(), copiasSelecionadasWpp());
 }
 
 function abrirNovoWpp() {
@@ -1552,7 +1591,7 @@ function abrirNovoWpp() {
   document.getElementById('mWppDiaSemana').value = '1';
   document.getElementById('mWppHora').value = '08:00';
   document.getElementById('mWppIntervalo').value = '10';
-  renderDestinatariosWpp([]);
+  renderDestinatariosWpp([], []);
   atualizarCamposTipoWpp();
   document.getElementById('ovWpp').classList.add('open');
 }
@@ -1575,7 +1614,8 @@ async function abrirEditarWpp(id) {
     document.getElementById('mWppDiaSemana').value = a.diaSemana || 1;
     document.getElementById('mWppHora').value = a.horaEnvio || '08:00';
     document.getElementById('mWppIntervalo').value = a.intervaloMinutos || 10;
-    renderDestinatariosWpp((a.destinatarios || []).map(d => d.id));
+    renderDestinatariosWpp((a.destinatarios || []).map(d => d.id),
+                           (a.destinatarios || []).filter(d => d.copia).map(d => d.id));
     atualizarCamposTipoWpp();
     document.getElementById('ovWpp').classList.add('open');
   } catch(e) { toast('Erro: ' + e.message, 'red'); }
@@ -1590,6 +1630,7 @@ async function salvarWpp() {
   const horaEnvio = document.getElementById('mWppHora').value;
   const intervaloMinutos = parseInt(document.getElementById('mWppIntervalo').value);
   const destinatarios = destinatariosSelecionadosWpp();
+  const copiaTotal = copiasSelecionadasWpp();
 
   const dataIni = document.getElementById('mWppDataIni').value;
 
@@ -1607,8 +1648,8 @@ async function salvarWpp() {
   // Só um dos dois modos de recorrência vai no payload; o backend usa a
   // presença de intervaloMinutos pra saber qual é.
   const payload = recorrente
-    ? { tipoRelatorio, nome, intervaloMinutos, parametros, destinatarios }
-    : { tipoRelatorio, nome, diaSemana, horaEnvio, parametros, destinatarios };
+    ? { tipoRelatorio, nome, intervaloMinutos, parametros, destinatarios, copiaTotal }
+    : { tipoRelatorio, nome, diaSemana, horaEnvio, parametros, destinatarios, copiaTotal };
 
   try {
     const url = id ? 'api/admin/relatorio-agendado/' + id : 'api/admin/relatorio-agendado';

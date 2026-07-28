@@ -61,6 +61,7 @@ public class RelatorioAgendadoDAO {
                   id INT AUTO_INCREMENT PRIMARY KEY,
                   id_agendamento INT NOT NULL,
                   id_usuario INT NOT NULL,
+                  copia CHAR(1) NOT NULL DEFAULT 'N',
                   UNIQUE KEY uk_agendamento_usuario (id_agendamento, id_usuario),
                   INDEX idx_agendamento (id_agendamento)
                 )
@@ -80,13 +81,19 @@ public class RelatorioAgendadoDAO {
             // hora_envio passam a aceitar nulo, e quem tem intervalo_minutos
             // preenchido é recorrente. MySQL não tem "ADD COLUMN IF NOT
             // EXISTS" aqui, então roda sempre ignorando o erro de duplicada.
-            try {
-                st.execute("ALTER TABLE fc_relatorio_agendado ADD COLUMN intervalo_minutos INT NULL");
-                st.execute("ALTER TABLE fc_relatorio_agendado MODIFY dia_semana TINYINT NULL");
-                st.execute("ALTER TABLE fc_relatorio_agendado MODIFY hora_envio TIME NULL");
-            } catch (SQLException e) {
-                if (!"42S21".equals(e.getSQLState())) {  // 42S21 = coluna duplicada, esperado a partir da 2ª vez
-                    LOG.log(Level.WARNING, "Não foi possível garantir as colunas de recorrência do agendamento", e);
+            for (String ddl : new String[] {
+                    "ALTER TABLE fc_relatorio_agendado ADD COLUMN intervalo_minutos INT NULL",
+                    "ALTER TABLE fc_relatorio_agendado MODIFY dia_semana TINYINT NULL",
+                    "ALTER TABLE fc_relatorio_agendado MODIFY hora_envio TIME NULL",
+                    // Destinatário "em cópia": recebe tudo do agendamento, não só
+                    // o que é da alçada dele (ver AlertaOcPendenteHandler).
+                    "ALTER TABLE fc_relatorio_agendado_destinatario ADD COLUMN copia CHAR(1) NOT NULL DEFAULT 'N'" }) {
+                try {
+                    st.execute(ddl);
+                } catch (SQLException e) {
+                    if (!"42S21".equals(e.getSQLState())) {  // 42S21 = coluna duplicada, esperado a partir da 2ª vez
+                        LOG.log(Level.WARNING, "Falha ao ajustar as tabelas de agendamento: " + ddl, e);
+                    }
                 }
             }
         }
@@ -182,7 +189,7 @@ public class RelatorioAgendadoDAO {
     /** Destinatários de um agendamento, já com nome/telefone (join em fc_usuario). */
     public List<Map<String, Object>> listarDestinatarios(int idAgendamento) throws SQLException {
         String sql = """
-            SELECT u.id, u.nome, u.telefone, u.id_logon_erp
+            SELECT u.id, u.nome, u.telefone, u.id_logon_erp, d.copia
             FROM fc_relatorio_agendado_destinatario d
             JOIN fc_usuario u ON u.id = d.id_usuario
             WHERE d.id_agendamento = ?
@@ -202,6 +209,7 @@ public class RelatorioAgendadoDAO {
                     Integer idLogonErp = rs.getInt("id_logon_erp");
                     if (rs.wasNull()) idLogonErp = null;
                     m.put("idLogonErp", idLogonErp);
+                    m.put("copia", "S".equals(rs.getString("copia")));
                     lista.add(m);
                 }
             }
@@ -217,7 +225,8 @@ public class RelatorioAgendadoDAO {
      * @param intervaloMinutos de quantos em quantos minutos repete, ou null no agendamento semanal
      */
     public int criar(String tipoRelatorio, String nome, Integer diaSemana, String horaEnvio, Integer intervaloMinutos,
-                      String parametros, long idUsuarioCriacao, List<Integer> destinatarios) throws SQLException {
+                      String parametros, long idUsuarioCriacao, List<Integer> destinatarios,
+                      List<Integer> copias) throws SQLException {
         String sql = """
             INSERT INTO fc_relatorio_agendado
                 (tipo_relatorio, nome, dia_semana, hora_envio, intervalo_minutos, parametros, ativo, id_usuario_criacao)
@@ -239,13 +248,13 @@ public class RelatorioAgendadoDAO {
                     id = rs.getInt(1);
                 }
             }
-            salvarDestinatarios(c, id, destinatarios);
+            salvarDestinatarios(c, id, destinatarios, copias);
             return id;
         }
     }
 
     public void atualizar(int id, String nome, Integer diaSemana, String horaEnvio, Integer intervaloMinutos,
-                          String parametros, List<Integer> destinatarios) throws SQLException {
+                          String parametros, List<Integer> destinatarios, List<Integer> copias) throws SQLException {
         String sql = """
             UPDATE fc_relatorio_agendado
                SET nome=?, dia_semana=?, hora_envio=?, intervalo_minutos=?, parametros=?
@@ -265,17 +274,23 @@ public class RelatorioAgendadoDAO {
                 ps.setInt(1, id);
                 ps.executeUpdate();
             }
-            salvarDestinatarios(c, id, destinatarios);
+            salvarDestinatarios(c, id, destinatarios, copias);
         }
     }
 
-    private void salvarDestinatarios(Connection c, int idAgendamento, List<Integer> destinatarios) throws SQLException {
+    /**
+     * @param copias subconjunto de {@code destinatarios} que recebe tudo do
+     *               agendamento, e não só o que é da alçada da pessoa
+     */
+    private void salvarDestinatarios(Connection c, int idAgendamento, List<Integer> destinatarios,
+                                     List<Integer> copias) throws SQLException {
         if (destinatarios == null || destinatarios.isEmpty()) return;
-        String sql = "INSERT INTO fc_relatorio_agendado_destinatario (id_agendamento, id_usuario) VALUES (?,?)";
+        String sql = "INSERT INTO fc_relatorio_agendado_destinatario (id_agendamento, id_usuario, copia) VALUES (?,?,?)";
         try (PreparedStatement ps = c.prepareStatement(sql)) {
             for (Integer idUsuario : destinatarios) {
                 ps.setInt(1, idAgendamento);
                 ps.setInt(2, idUsuario);
+                ps.setString(3, copias != null && copias.contains(idUsuario) ? "S" : "N");
                 ps.addBatch();
             }
             ps.executeBatch();
