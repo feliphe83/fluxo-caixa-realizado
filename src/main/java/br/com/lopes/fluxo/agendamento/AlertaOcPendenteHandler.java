@@ -64,7 +64,11 @@ public class AlertaOcPendenteHandler implements RelatorioAgendadoHandler {
     public String executar(JsonObject parametros, List<Map<String, Object>> destinatarios, long idUsuarioCriacao) throws Exception {
         int totalAvisadas = 0;
         int semLogon = 0;
-        Exception ultimaFalha = null;
+        // Uma linha por destinatário que falhou, com nome e telefone: o que
+        // aparece na coluna "Última Execução" da tela precisa dizer DE QUEM é
+        // o problema, senão não dá pra agir (erro típico: número que não tem
+        // conta de WhatsApp, e sem o nome não se sabe qual cadastro corrigir).
+        List<String> falhas = new ArrayList<>();
 
         // Quem está "em cópia" recebe tudo o que os aprovadores deste
         // agendamento receberam, mesmo não sendo da alçada dele — por isso os
@@ -92,7 +96,7 @@ public class AlertaOcPendenteHandler implements RelatorioAgendadoHandler {
                 totalAvisadas += avisar(destinatario, itens);
             } catch (Exception e) {
                 // Falha de um destinatário não pode travar os demais.
-                ultimaFalha = e;
+                falhas.add(descreverFalha(destinatario, e));
                 LOG.log(Level.SEVERE, "Erro no alerta de ordem de compra para " + destinatario.get("nome"), e);
             }
         }
@@ -101,13 +105,13 @@ public class AlertaOcPendenteHandler implements RelatorioAgendadoHandler {
             try {
                 totalAvisadas += avisar(copia, new ArrayList<>(itensDeTodos.values()));
             } catch (Exception e) {
-                ultimaFalha = e;
+                falhas.add(descreverFalha(copia, e));
                 LOG.log(Level.SEVERE, "Erro no alerta de ordem de compra (cópia) para " + copia.get("nome"), e);
             }
         }
 
-        if (ultimaFalha != null) {
-            throw new RuntimeException("Falha em ao menos um destinatário: " + ultimaFalha.getMessage(), ultimaFalha);
+        if (!falhas.isEmpty()) {
+            throw new RuntimeException(String.join(" | ", falhas));
         }
         if (semLogon > 0 && totalAvisadas == 0) {
             throw new IllegalStateException(semLogon + " destinatário(s) sem código de logon do ERP no cadastro de usuário.");
@@ -117,6 +121,22 @@ public class AlertaOcPendenteHandler implements RelatorioAgendadoHandler {
                 ? "Nenhuma compra pendente nova."
                 : totalAvisadas + " item(ns) avisado(s).";
         return semLogon > 0 ? resumo + " " + semLogon + " destinatário(s) sem código de logon do ERP." : resumo;
+    }
+
+    /**
+     * "Fulano (82 99999-0000): motivo" — o suficiente para saber, olhando a
+     * tela, qual cadastro corrigir. Números que o WhatsApp não reconhece são
+     * o caso mais comum, e a resposta crua da Evolution API não diz de quem
+     * é o número, só qual é.
+     */
+    private static String descreverFalha(Map<String, Object> destinatario, Exception e) {
+        String nome = str(destinatario.get("nome"));
+        String telefone = str(destinatario.get("telefone"));
+        String motivo = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
+        if (motivo.contains("\"exists\":false")) {
+            motivo = "número sem conta de WhatsApp (confira o telefone no cadastro)";
+        }
+        return nome + (telefone.isEmpty() ? "" : " (" + telefone + ")") + ": " + motivo;
     }
 
     /**
