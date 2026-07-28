@@ -539,10 +539,20 @@
       </div>
     </div>
 
-    <div class="mf">
-      <label>Código de logon no ERP</label>
-      <input type="number" id="mIdLogonErp" placeholder="Ex: 132">
-      <div class="hint">Usado pelo alerta de ordens de compra por WhatsApp, pra saber quais ordens são deste aprovador. Deixe em branco se ele não aprova compras.</div>
+    <div class="mf-grid">
+      <div class="mf">
+        <label>Código de logon no ERP</label>
+        <input type="number" id="mIdLogonErp" placeholder="Ex: 132">
+        <div class="hint">Usado pelo alerta de ordens de compra por WhatsApp, pra saber quais ordens são deste aprovador. Deixe em branco se ele não aprova compras.</div>
+      </div>
+      <div class="mf">
+        <label>Etapa de aprovação</label>
+        <select id="mEtapaAprovacao">
+          <option value="1">1º aprovador</option>
+          <option value="2">2º aprovador</option>
+        </select>
+        <div class="hint">O 2º aprovador recebe as ordens que já passaram pela aprovação intermediária.</div>
+      </div>
     </div>
 
     <div class="mf" id="mfS">
@@ -836,6 +846,7 @@ function abrirNovo() {
   document.getElementById('mEmail').value='';
   document.getElementById('mTelefone').value='';
   document.getElementById('mIdLogonErp').value='';
+  document.getElementById('mEtapaAprovacao').value='1';
   document.getElementById('mSenha').value='';
   document.getElementById('mAtivo').value='S';
   document.getElementById('mfS').style.display='';
@@ -857,6 +868,7 @@ function abrirEditar(id) {
   document.getElementById('mEmail').value=u.email||'';
   document.getElementById('mTelefone').value=u.telefone||'';
   document.getElementById('mIdLogonErp').value=u.idLogonErp||'';
+  document.getElementById('mEtapaAprovacao').value=String(u.etapaAprovacao||1);
   document.getElementById('mAtivo').value=u.ativo;
   document.getElementById('mfS').style.display='none';
   document.getElementById('mfSN').style.display='';
@@ -878,12 +890,13 @@ async function salvar() {
   const senha    = document.getElementById('mSenha').value;
   const senhaN   = document.getElementById('mSenhaN').value;
   const idLogonErp = document.getElementById('mIdLogonErp').value.trim();
+  const etapaAprovacao = document.getElementById('mEtapaAprovacao').value;
   const admin    = isAdminCheck?'S':'N';
 
   if(!logon||!nome){toast('Preencha logon e nome','red');return;}
   if(!id&&senha.length<6){toast('Senha mínimo 6 caracteres','red');return;}
 
-  const payload={logon,nome,email:email||null,telefone:telefone||null,ativo,administrador:admin,idLogonErp:idLogonErp||null};
+  const payload={logon,nome,email:email||null,telefone:telefone||null,ativo,administrador:admin,idLogonErp:idLogonErp||null,etapaAprovacao};
   if(!id){if(!senha){toast('Informe a senha','red');return;}payload.senha=senha;}
   else{payload.id=parseInt(id);if(senhaN)payload.senha=senhaN;}
 
@@ -1521,9 +1534,13 @@ function renderDestinatariosWpp(selecionados, copias) {
     // que define o que recebe.
     const semLogon = exigeLogon && !u.idLogonErp && !ehCopia;
     const bloqueado = semTelefone || semLogon;
+    // A etapa vem do cadastro do usuário (aqui é só informativo): o 2º
+    // aprovador recebe as ordens que já passaram pela aprovação intermediária.
+    const etapa = exigeLogon && !ehCopia && u.etapaAprovacao === 2
+                ? ' <span class="muted">· 2º aprovador</span>' : '';
     const aviso = semTelefone ? '<span style="color:#f87171">(sem telefone cadastrado)</span>'
                 : semLogon    ? '<span style="color:#f87171">(sem código de logon no ERP)</span>'
-                : '<span class="muted">— ' + esc(u.telefone) + '</span>';
+                : '<span class="muted">— ' + esc(u.telefone) + '</span>' + etapa;
     // A opção "recebe todas" só existe no alerta de ordem de compra, onde
     // cada pessoa normalmente recebe apenas o que é da alçada dela.
     const marcaCopia = exigeLogon ? `

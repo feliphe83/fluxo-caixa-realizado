@@ -67,17 +67,26 @@ public class AlertaOcPendenteDAO {
                     }
                 }
             }
-            // fc_usuario já existia antes deste alerta, então a coluna do
-            // id_logon entra por ALTER. MySQL não tem "ADD COLUMN IF NOT
+            // fc_usuario já existia antes deste alerta, então as colunas do
+            // aprovador entram por ALTER. MySQL não tem "ADD COLUMN IF NOT
             // EXISTS" nessa versão: rodar sempre e ignorar o erro de coluna
             // duplicada é mais simples (e igualmente seguro) do que consultar
             // o information_schema antes.
-            try {
-                st.execute("ALTER TABLE fc_usuario ADD COLUMN id_logon_erp INT NULL");
-                LOG.info("Coluna fc_usuario.id_logon_erp criada.");
-            } catch (SQLException e) {
-                if (!"42S21".equals(e.getSQLState())) {  // 42S21 = coluna duplicada, esperado a partir da 2ª vez
-                    LOG.log(Level.WARNING, "Não foi possível garantir a coluna fc_usuario.id_logon_erp", e);
+            //
+            // etapa_aprovacao diz se a pessoa é 1º ou 2º aprovador — são
+            // consultas diferentes no ERP (ver OrdemCompraPendenteDAO). Quem
+            // já estava cadastrado vira 1º, que era o comportamento único até
+            // aqui.
+            for (String ddl : new String[] {
+                    "ALTER TABLE fc_usuario ADD COLUMN id_logon_erp INT NULL",
+                    "ALTER TABLE fc_usuario ADD COLUMN etapa_aprovacao TINYINT NOT NULL DEFAULT 1" }) {
+                try {
+                    st.execute(ddl);
+                    LOG.info("Estrutura de aprovador ajustada: " + ddl);
+                } catch (SQLException e) {
+                    if (!"42S21".equals(e.getSQLState())) {  // 42S21 = coluna duplicada, esperado a partir da 2ª vez
+                        LOG.log(Level.WARNING, "Não foi possível ajustar fc_usuario: " + ddl, e);
+                    }
                 }
             }
         }
@@ -85,7 +94,8 @@ public class AlertaOcPendenteDAO {
     }
 
     /**
-     * Garante a tabela de controle e a coluna fc_usuario.id_logon_erp.
+     * Garante a tabela de controle e as colunas fc_usuario.id_logon_erp /
+     * fc_usuario.etapa_aprovacao.
      * Chamado no start da aplicação porque a tela de Usuários já lê essa
      * coluna — sem isso ela quebraria na janela entre o boot e a primeira
      * varredura do alerta.

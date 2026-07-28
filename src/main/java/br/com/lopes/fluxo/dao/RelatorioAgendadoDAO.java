@@ -189,7 +189,7 @@ public class RelatorioAgendadoDAO {
     /** Destinatários de um agendamento, já com nome/telefone (join em fc_usuario). */
     public List<Map<String, Object>> listarDestinatarios(int idAgendamento) throws SQLException {
         String sql = """
-            SELECT u.id, u.nome, u.telefone, u.id_logon_erp, d.copia
+            SELECT u.id, u.nome, u.telefone, u.id_logon_erp, u.etapa_aprovacao, d.copia
             FROM fc_relatorio_agendado_destinatario d
             JOIN fc_usuario u ON u.id = d.id_usuario
             WHERE d.id_agendamento = ?
@@ -209,6 +209,8 @@ public class RelatorioAgendadoDAO {
                     Integer idLogonErp = rs.getInt("id_logon_erp");
                     if (rs.wasNull()) idLogonErp = null;
                     m.put("idLogonErp", idLogonErp);
+                    // 1º ou 2º aprovador: decide qual consulta do ERP roda.
+                    m.put("etapaAprovacao", rs.getInt("etapa_aprovacao"));
                     m.put("copia", "S".equals(rs.getString("copia")));
                     lista.add(m);
                 }
@@ -400,7 +402,7 @@ public class RelatorioAgendadoDAO {
     // ── Usuários (pra montar o multi-select de destinatários no admin) ────
 
     public List<Map<String, Object>> listarUsuariosAtivos() throws SQLException {
-        String sql = "SELECT id, nome, telefone, id_logon_erp FROM fc_usuario WHERE ativo='S' ORDER BY nome";
+        String sql = "SELECT id, nome, telefone, id_logon_erp, etapa_aprovacao FROM fc_usuario WHERE ativo='S' ORDER BY nome";
         List<Map<String, Object>> lista = new ArrayList<>();
         try (Connection c = conn();
              PreparedStatement ps = c.prepareStatement(sql);
@@ -413,6 +415,7 @@ public class RelatorioAgendadoDAO {
                 Integer idLogonErp = rs.getInt("id_logon_erp");
                 if (rs.wasNull()) idLogonErp = null;
                 m.put("idLogonErp", idLogonErp);
+                m.put("etapaAprovacao", rs.getInt("etapa_aprovacao"));
                 lista.add(m);
             }
         }

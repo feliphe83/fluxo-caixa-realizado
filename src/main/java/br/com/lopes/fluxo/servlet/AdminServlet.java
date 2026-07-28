@@ -60,7 +60,7 @@ public class AdminServlet extends HttpServlet {
     }
 
     private void listarUsuarios(HttpServletResponse resp) throws IOException {
-        String sql = "SELECT id, logon, nome, email, telefone, ativo, administrador, data_criacao, id_logon_erp FROM fc_usuario ORDER BY logon";
+        String sql = "SELECT id, logon, nome, email, telefone, ativo, administrador, data_criacao, id_logon_erp, etapa_aprovacao FROM fc_usuario ORDER BY logon";
         try (Connection c = conn(); PreparedStatement ps = c.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
             JsonArray arr = new JsonArray();
             while (rs.next()) {
@@ -76,6 +76,7 @@ public class AdminServlet extends HttpServlet {
                 Integer idLogonErp = rs.getInt("id_logon_erp");
                 if (rs.wasNull()) idLogonErp = null;
                 o.addProperty("idLogonErp",    idLogonErp);
+                o.addProperty("etapaAprovacao", rs.getInt("etapa_aprovacao"));
                 arr.add(o);
             }
             JsonObject r = new JsonObject(); r.addProperty("ok", true); r.add("data", arr);
@@ -93,15 +94,17 @@ public class AdminServlet extends HttpServlet {
         String telefone = b.has("telefone") && !b.get("telefone").isJsonNull() ? b.get("telefone").getAsString().trim() : null;
 
         Integer idLogonErp = lerIdLogonErp(b);
+        int etapaAprovacao = lerEtapaAprovacao(b);
 
         if (logon.isEmpty() || nome.isEmpty() || senha.isEmpty()) { erro(resp, 400, "logon, nome e senha são obrigatórios"); return; }
 
-        String sql = "INSERT INTO fc_usuario (logon, nome, senha_hash, ativo, administrador, email, telefone, id_logon_erp) VALUES (UPPER(?),?,SHA2(?,256),?,?,?,?,?)";
+        String sql = "INSERT INTO fc_usuario (logon, nome, senha_hash, ativo, administrador, email, telefone, id_logon_erp, etapa_aprovacao) VALUES (UPPER(?),?,SHA2(?,256),?,?,?,?,?,?)";
         try (Connection c = conn(); PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, logon); ps.setString(2, nome); ps.setString(3, senha);
             ps.setString(4, ativo); ps.setString(5, admin);
             ps.setString(6, email); ps.setString(7, telefone);
             ps.setObject(8, idLogonErp);
+            ps.setInt(9, etapaAprovacao);
             ps.executeUpdate();
             json(resp, "{\"ok\":true,\"msg\":\"Usuário criado\"}");
         } catch (SQLException e) {
@@ -119,17 +122,19 @@ public class AdminServlet extends HttpServlet {
         String telefone = b.has("telefone") && !b.get("telefone").isJsonNull() ? b.get("telefone").getAsString().trim() : null;
         String senha    = b.has("senha") && !b.get("senha").isJsonNull() && !b.get("senha").getAsString().isEmpty() ? b.get("senha").getAsString() : null;
         Integer idLogonErp = lerIdLogonErp(b);
+        int etapaAprovacao = lerEtapaAprovacao(b);
 
         try (Connection c = conn()) {
             String sql = senha != null
-                ? "UPDATE fc_usuario SET nome=?,ativo=?,administrador=?,email=?,telefone=?,id_logon_erp=?,senha_hash=SHA2(?,256) WHERE id=?"
-                : "UPDATE fc_usuario SET nome=?,ativo=?,administrador=?,email=?,telefone=?,id_logon_erp=? WHERE id=?";
+                ? "UPDATE fc_usuario SET nome=?,ativo=?,administrador=?,email=?,telefone=?,id_logon_erp=?,etapa_aprovacao=?,senha_hash=SHA2(?,256) WHERE id=?"
+                : "UPDATE fc_usuario SET nome=?,ativo=?,administrador=?,email=?,telefone=?,id_logon_erp=?,etapa_aprovacao=? WHERE id=?";
             PreparedStatement ps = c.prepareStatement(sql);
             ps.setString(1, nome); ps.setString(2, ativo); ps.setString(3, admin);
             ps.setString(4, email); ps.setString(5, telefone);
             ps.setObject(6, idLogonErp);
-            if (senha != null) { ps.setString(7, senha); ps.setLong(8, id); }
-            else                { ps.setLong(7, id); }
+            ps.setInt(7, etapaAprovacao);
+            if (senha != null) { ps.setString(8, senha); ps.setLong(9, id); }
+            else                { ps.setLong(8, id); }
             ps.executeUpdate();
             json(resp, "{\"ok\":true,\"msg\":\"Usuário atualizado\"}");
         } catch (SQLException e) { erro(resp, 500, e.getMessage()); }
@@ -144,6 +149,18 @@ public class AdminServlet extends HttpServlet {
         if (!b.has("idLogonErp") || b.get("idLogonErp").isJsonNull()) return null;
         String v = b.get("idLogonErp").getAsString().trim();
         return v.isEmpty() ? null : Integer.valueOf(v);
+    }
+
+    /**
+     * Em que etapa da alçada a pessoa aprova: 1º ou 2º aprovador. São
+     * consultas diferentes no ERP (ver OrdemCompraPendenteDAO) — o 2º vê o
+     * que já passou pela aprovação intermediária. Só o alerta de ordens de
+     * compra usa; qualquer coisa fora de 1/2 vira 1.
+     */
+    private int lerEtapaAprovacao(JsonObject b) {
+        if (!b.has("etapaAprovacao") || b.get("etapaAprovacao").isJsonNull()) return 1;
+        String v = b.get("etapaAprovacao").getAsString().trim();
+        return "2".equals(v) ? 2 : 1;
     }
 
     private void excluirUsuario(HttpServletResponse resp, long id) throws IOException {

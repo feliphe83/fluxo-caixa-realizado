@@ -25,6 +25,12 @@ import java.util.logging.Logger;
  * como nas telas originais: 7871 (aprovação de cotação) e 8297 (ordem de
  * compra imediata).
  *
+ * São duas consultas, uma por etapa de aprovação, porque no ERP também são
+ * (ver {@link #montarSql}): a do primeiro aprovador pega o que ainda não
+ * passou pela aprovação intermediária, a do segundo pega justamente o que
+ * já passou. Qual usar vem do cadastro do usuário
+ * (fc_usuario.etapa_aprovacao).
+ *
  * Cada linha é um ITEM: uma ordem com três materiais devolve três linhas,
  * todas com o mesmo nr_solicitacao. Quem consome agrupa por
  * tipo + nr_solicitacao para montar uma mensagem por ordem.
@@ -37,9 +43,15 @@ public class OrdemCompraPendenteDAO {
 
     private static final Logger LOG = Logger.getLogger(OrdemCompraPendenteDAO.class.getName());
 
+    /** Primeiro aprovador — o padrão de quem não tem etapa marcada no cadastro. */
+    public static final int ETAPA_PRIMEIRO_APROVADOR = 1;
+    /** Segundo aprovador — vê o que já passou pela aprovação intermediária. */
+    public static final int ETAPA_SEGUNDO_APROVADOR = 2;
+
     /**
      * Os dois "?" são o mesmo id_logon (um em cada metade da união) — ver
-     * {@link #buscarPendentes(int)}.
+     * {@link #buscarPendentes(int, int)}. Os dois comentários /*FILTRO...*&#47;
+     * são substituídos por {@link #montarSql} conforme a etapa.
      */
     private static final String SQL = """
         select 'ORDEM DE COMPRA' tipo, nr_solicitacao, cod_material, cod_unidade, preco_unitario,
@@ -222,7 +234,7 @@ public class OrdemCompraPendenteDAO {
                     ?, tmp.cod_objetocusto, tmp.cod_empenho,
                     tmp.cod_familia, tmp.cod_grupomaterial, 7871,
                     tmp.nr_cotacao, tmp.cod_material, tmp.nr_solicitacao
-                ) = 'T' and possui_aprovacao_intermediaria < 1
+                ) = 'T' and possui_aprovacao_intermediaria /*FILTRO_ETAPA*/
             ) tmp
         ))
 
@@ -312,6 +324,7 @@ public class OrdemCompraPendenteDAO {
                               and    ordemcompraimediata.cod_grupoempresa      = 1
                               and    ordemcompraimediata.cod_empresa           = 1
                               and    ordemcompraimediata.cod_filial            = 1
+                              /*FILTRO_OCI_ETAPA*/
 
                               union  all
 
@@ -345,6 +358,7 @@ public class OrdemCompraPendenteDAO {
                               and    ordemcompraimediata.cod_grupoempresa      = 1
                               and    ordemcompraimediata.cod_empresa           = 1
                               and    ordemcompraimediata.cod_filial            = 1
+                              /*FILTRO_OCI_ETAPA*/
 
                               union  all
 
@@ -378,6 +392,7 @@ public class OrdemCompraPendenteDAO {
                               and    ordemcompraimediata.cod_grupoempresa      = 1
                               and    ordemcompraimediata.cod_empresa           = 1
                               and    ordemcompraimediata.cod_filial            = 1
+                              /*FILTRO_OCI_ETAPA*/
                             ) tmp
                        where  segurancanovo.fn_verificasupervisorde ( pn_cod_grupoempresa  => tmp.cod_grupoempresa
                                                                     , pn_cod_empresa       => tmp.cod_empresa
@@ -421,15 +436,51 @@ public class OrdemCompraPendenteDAO {
         )
         """;
 
+    /** Já montadas no carregamento da classe: a consulta não muda em execução. */
+    private static final String SQL_PRIMEIRO = montarSql(ETAPA_PRIMEIRO_APROVADOR);
+    private static final String SQL_SEGUNDO  = montarSql(ETAPA_SEGUNDO_APROVADOR);
+
+    /**
+     * A consulta da etapa pedida. O que muda entre as duas:
+     *
+     * - ordem de compra normal: o primeiro aprovador vê o que ainda não tem
+     *   aprovação intermediária ({@code < 1}), o segundo vê o que já tem
+     *   ({@code >= 1}) — são conjuntos complementares;
+     * - ordem de compra imediata: para o segundo aprovador entram só as que
+     *   têm etapa 1 registrada em material.aprovacao_oci_intermediaria. No
+     *   ERP isso é um join a mais nos três blocos da união; aqui virou um
+     *   EXISTS, que dá o mesmo conjunto (o join se apoiava no GROUP BY de
+     *   fora para desduplicar) sem mexer na lista de tabelas.
+     *
+     * Note que aqui a imediata não é complementar: uma OCI com etapa 1
+     * aparece para os dois aprovadores, porque a consulta do primeiro não
+     * filtra por etapa nenhuma. É assim no ERP.
+     */
+    private static String montarSql(int etapa) {
+        boolean segundo = etapa == ETAPA_SEGUNDO_APROVADOR;
+        return SQL
+                .replace("/*FILTRO_ETAPA*/", segundo ? ">= 1" : "< 1")
+                .replace("/*FILTRO_OCI_ETAPA*/", segundo
+                        ? """
+                          and exists (select 1
+                                      from   material.aprovacao_oci_intermediaria o
+                                      where  o.nroc_imediata  = ordemcompraimediata.nroc_imediata
+                                      and    o.etapaaprovacao = 1)"""
+                        : "");
+    }
+
     /**
      * Ordens pendentes de aprovação para um aprovador.
      *
      * @param idLogon id_logon do aprovador no ERP (o mesmo das telas de
      *                aprovação) — cadastrado em fc_usuario.id_logon_erp
+     * @param etapa   {@link #ETAPA_PRIMEIRO_APROVADOR} ou
+     *                {@link #ETAPA_SEGUNDO_APROVADOR}
      */
-    public List<Map<String, Object>> buscarPendentes(int idLogon) {
+    public List<Map<String, Object>> buscarPendentes(int idLogon, int etapa) {
         try (Connection conn = OracleConnectionUtil.getConnection();
-             PreparedStatement ps = conn.prepareStatement(SQL)) {
+             PreparedStatement ps = conn.prepareStatement(
+                     etapa == ETAPA_SEGUNDO_APROVADOR ? SQL_SEGUNDO : SQL_PRIMEIRO)) {
 
             // Mesmo id_logon nas duas metades da união (OC normal e imediata).
             ps.setInt(1, idLogon);
@@ -440,7 +491,8 @@ public class OrdemCompraPendenteDAO {
             }
 
         } catch (SQLException e) {
-            LOG.log(Level.SEVERE, "Erro ao buscar ordens de compra pendentes (idLogon=" + idLogon + "): " + e.getMessage(), e);
+            LOG.log(Level.SEVERE, "Erro ao buscar ordens de compra pendentes (idLogon=" + idLogon
+                    + ", etapa=" + etapa + "): " + e.getMessage(), e);
             throw new RuntimeException("Falha na consulta de ordens de compra pendentes: " + e.getMessage(), e);
         }
     }

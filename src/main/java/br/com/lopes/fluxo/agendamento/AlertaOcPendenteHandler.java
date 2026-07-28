@@ -31,7 +31,8 @@ import java.util.logging.Logger;
  * Cada destinatário precisa do "Código de logon no ERP" preenchido no
  * cadastro de usuário: é ele que diz quais ordens são daquele aprovador.
  * Quem não tiver é ignorado (com aviso no log), porque não há como saber o
- * que mandar.
+ * que mandar. O mesmo cadastro diz se a pessoa é 1º ou 2º aprovador — são
+ * consultas diferentes no ERP (ver {@link OrdemCompraPendenteDAO}).
  *
  * A exceção é o destinatário marcado como "recebe todas" no agendamento:
  * ele acompanha o grupo inteiro, recebendo tudo o que os aprovadores
@@ -85,7 +86,8 @@ public class AlertaOcPendenteHandler implements RelatorioAgendadoHandler {
                 continue;
             }
             try {
-                List<Map<String, Object>> itens = erp.buscarPendentes(((Number) idLogon).intValue());
+                List<Map<String, Object>> itens = erp.buscarPendentes(
+                        ((Number) idLogon).intValue(), etapaDe(destinatario));
                 for (Map<String, Object> item : itens) itensDeTodos.putIfAbsent(chaveDoItem(item), item);
                 totalAvisadas += avisar(destinatario, itens);
             } catch (Exception e) {
@@ -115,6 +117,17 @@ public class AlertaOcPendenteHandler implements RelatorioAgendadoHandler {
                 ? "Nenhuma compra pendente nova."
                 : totalAvisadas + " item(ns) avisado(s).";
         return semLogon > 0 ? resumo + " " + semLogon + " destinatário(s) sem código de logon do ERP." : resumo;
+    }
+
+    /**
+     * 1º ou 2º aprovador, do cadastro de usuário — decide qual das duas
+     * consultas do ERP roda para essa pessoa. Sem valor no cadastro, 1º.
+     */
+    private static int etapaDe(Map<String, Object> destinatario) {
+        Object etapa = destinatario.get("etapaAprovacao");
+        return etapa instanceof Number n && n.intValue() == OrdemCompraPendenteDAO.ETAPA_SEGUNDO_APROVADOR
+                ? OrdemCompraPendenteDAO.ETAPA_SEGUNDO_APROVADOR
+                : OrdemCompraPendenteDAO.ETAPA_PRIMEIRO_APROVADOR;
     }
 
     private static String chaveDoItem(Map<String, Object> item) {
