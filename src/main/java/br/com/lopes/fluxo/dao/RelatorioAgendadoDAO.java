@@ -116,7 +116,9 @@ public class RelatorioAgendadoDAO {
                    (SELECT e.data_execucao FROM fc_relatorio_agendado_execucao e
                      WHERE e.id_agendamento = a.id ORDER BY e.data_execucao DESC LIMIT 1) ultima_execucao,
                    (SELECT e.status FROM fc_relatorio_agendado_execucao e
-                     WHERE e.id_agendamento = a.id ORDER BY e.data_execucao DESC LIMIT 1) ultimo_status
+                     WHERE e.id_agendamento = a.id ORDER BY e.data_execucao DESC LIMIT 1) ultimo_status,
+                   (SELECT e.detalhe FROM fc_relatorio_agendado_execucao e
+                     WHERE e.id_agendamento = a.id ORDER BY e.data_execucao DESC LIMIT 1) ultimo_detalhe
             FROM fc_relatorio_agendado a
             ORDER BY a.dia_semana, a.hora_envio, a.nome
             """;
@@ -178,6 +180,10 @@ public class RelatorioAgendadoDAO {
             Timestamp ultima = rs.getTimestamp("ultima_execucao");
             m.put("ultimaExecucao", ultima == null ? null : ultima.toString());
             m.put("ultimoStatus", rs.getString("ultimo_status"));
+            // O que deu errado (ou o resumo do que foi enviado): sem isso a
+            // tela só mostra "(erro)" e não há como saber o motivo sem ir no
+            // banco ou no log do Tomcat.
+            m.put("ultimoDetalhe", rs.getString("ultimo_detalhe"));
         } catch (SQLException ignorado) {
             // colunas extras só existem na consulta de listar(); buscarPorId não as tem
         }

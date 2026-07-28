@@ -1457,6 +1457,20 @@ async function carregarRelatoriosAgendados() {
   }
 }
 
+/**
+ * "(ok)" ou "(erro)" da última execução. O detalhe (motivo do erro, ou o
+ * resumo do que foi enviado) vai no title e, no caso de erro, também num
+ * clique — senão a única saída é ir no log do Tomcat.
+ */
+function statusExecucaoWpp(a) {
+  const erro = a.ultimoStatus === 'erro';
+  const detalhe = a.ultimoDetalhe || (erro ? 'Sem detalhe registrado.' : 'Executado com sucesso.');
+  const cor = erro ? '#f87171' : '#4ade80';
+  return `<span style="color:${cor};cursor:pointer;text-decoration:underline dotted"
+                title="${esc(detalhe)}"
+                onclick="alert(${JSON.stringify(detalhe).replace(/"/g, '&quot;')})">(${erro ? 'erro' : 'ok'})</span>`;
+}
+
 function renderWpp() {
   if (RELATORIOS_WPP.length === 0) {
     document.getElementById('tbWpp').innerHTML =
@@ -1470,7 +1484,7 @@ function renderWpp() {
       <td>${a.intervaloMinutos ? 'A cada ' + a.intervaloMinutos + ' min' : DIAS_SEMANA_WPP[a.diaSemana] + ' às ' + esc(a.horaEnvio)}</td>
       <td>${a.qtdeDestinatarios}</td>
       <td class="muted">${a.ultimaExecucao
-        ? fmtDataHoraWpp(a.ultimaExecucao) + ' ' + (a.ultimoStatus === 'erro' ? '<span style="color:#f87171">(erro)</span>' : '<span style="color:#4ade80">(ok)</span>')
+        ? fmtDataHoraWpp(a.ultimaExecucao) + ' ' + statusExecucaoWpp(a)
         : '—'}</td>
       <td><button class="tog ${a.ativo?'on':''}" onclick="alternarAtivoWpp(${a.id}, ${!a.ativo})"></button></td>
       <td><div class="acts">
