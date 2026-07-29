@@ -174,7 +174,8 @@ public class AlertaVariacaoPrecoHandler implements RelatorioAgendadoHandler {
 
     /** Mesmo formato da aplicação que rodava fora do sistema. */
     private static String montarMensagem(Map<String, Object> item) {
-        return "📦 *Material:* " + str(item.get("cod_material")) + "\n"
+        return "🚨 ALERTA DE VARIAÇÃO DE PREÇO 🚨\n\n"
+             + "📦 *Material:* " + str(item.get("cod_material")) + "\n"
              + "📝 *Descrição:* " + str(item.get("descricao")) + "\n"
              + "🔢 *Cotação:* " + str(item.get("nr_cotacao")) + "\n"
              + "💲 *Preço Unitário:* R$ " + FormatoMensagem.valor(item.get("preco_unitario")) + "\n"
