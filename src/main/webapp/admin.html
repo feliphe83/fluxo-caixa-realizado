@@ -618,7 +618,23 @@
         <option value="oc_pendente">Alerta de Ordem de Compra pendente</option>
         <option value="variacao_preco">Alerta de Variação de Preço</option>
         <option value="divergencia_nf">Alerta de Divergência de NF</option>
+        <option value="contrato_limite">Alerta de Contrato no Limite</option>
       </select>
+    </div>
+
+    <div id="camposContratoWpp" style="display:none">
+      <div class="mf-grid">
+        <div class="mf">
+          <label>Percentual mínimo (%)</label>
+          <input type="number" id="mWppPercentualContrato" value="70" min="1" max="100" step="0.01">
+          <div class="hint">Avisa quando o contrato atingir esse percentual do valor total, e de novo a cada 10 pontos daí em diante.</div>
+        </div>
+        <div class="mf">
+          <label>Vencimento a partir de</label>
+          <input type="date" id="mWppDataVcto" value="2026-03-01">
+          <div class="hint">Só entram no cálculo as parcelas que vencem desta data em diante.</div>
+        </div>
+      </div>
     </div>
 
     <div id="camposVariacaoWpp" style="display:none">
@@ -1432,7 +1448,8 @@ async function excluirClasseOp(cod) {
 // ── Relatórios WhatsApp ───────────────────────────────────────────
 const DIAS_SEMANA_WPP = {1:'Segunda',2:'Terça',3:'Quarta',4:'Quinta',5:'Sexta',6:'Sábado',7:'Domingo'};
 const TIPOS_RELATORIO_WPP = {combustivel:'Combustível (PDF)', oc_pendente:'Alerta de Ordem de Compra',
-                             variacao_preco:'Alerta de Variação de Preço', divergencia_nf:'Alerta de Divergência de NF'};
+                             variacao_preco:'Alerta de Variação de Preço', divergencia_nf:'Alerta de Divergência de NF',
+                             contrato_limite:'Alerta de Contrato no Limite'};
 /** Data e hora da execução — o horário importa nos agendamentos que rodam de minuto em minuto.
  *  O backend manda "yyyy-MM-dd HH:mm:ss[.S]" (Timestamp.toString), que o Safari não aceita em
  *  new Date(); por isso o formato é montado na mão, sem depender do parser do navegador. */
@@ -1443,13 +1460,13 @@ function fmtDataHoraWpp(s) {
 }
 
 /** Tipos que rodam por intervalo (a cada N minutos) em vez de dia da semana + hora. */
-const TIPOS_RECORRENTES_WPP = ['oc_pendente', 'variacao_preco', 'divergencia_nf'];
+const TIPOS_RECORRENTES_WPP = ['oc_pendente', 'variacao_preco', 'divergencia_nf', 'contrato_limite'];
 /** Tipos que dependem do código de logon do ERP no cadastro do destinatário.
- *  Divergência de NF fica de fora de propósito: a consulta não tem alçada,
- *  todo destinatário recebe a mesma lista. */
+ *  Divergência de NF e contrato no limite ficam de fora de propósito: essas
+ *  consultas não têm alçada, todo destinatário recebe a mesma lista. */
 const TIPOS_COM_LOGON_ERP_WPP = ['oc_pendente', 'variacao_preco'];
 /** Intervalo sugerido ao criar cada tipo — só preenche o campo, dá pra mudar. */
-const INTERVALO_PADRAO_WPP = {oc_pendente: 10, variacao_preco: 30, divergencia_nf: 30};
+const INTERVALO_PADRAO_WPP = {oc_pendente: 10, variacao_preco: 30, divergencia_nf: 30, contrato_limite: 30};
 let RELATORIOS_WPP = [];
 let USUARIOS_WPP = [];
 
@@ -1622,6 +1639,7 @@ function atualizarCamposTipoWpp() {
   const recorrente = TIPOS_RECORRENTES_WPP.includes(tipo);
   document.getElementById('camposCombustivelWpp').style.display = tipo === 'combustivel' ? '' : 'none';
   document.getElementById('camposVariacaoWpp').style.display = tipo === 'variacao_preco' ? '' : 'none';
+  document.getElementById('camposContratoWpp').style.display = tipo === 'contrato_limite' ? '' : 'none';
   // Recorrente é configurado por intervalo; os demais, por dia da semana e hora.
   document.getElementById('camposSemanalWpp').style.display = recorrente ? 'none' : '';
   document.getElementById('camposIntervaloWpp').style.display = recorrente ? '' : 'none';
@@ -1644,6 +1662,8 @@ function abrirNovoWpp() {
   document.getElementById('mWppHora').value = '08:00';
   document.getElementById('mWppIntervalo').value = '10';
   document.getElementById('mWppVariacaoMinima').value = '10';
+  document.getElementById('mWppPercentualContrato').value = '70';
+  document.getElementById('mWppDataVcto').value = '2026-03-01';
   renderDestinatariosWpp([], []);
   atualizarCamposTipoWpp();
   document.getElementById('ovWpp').classList.add('open');
@@ -1668,6 +1688,8 @@ async function abrirEditarWpp(id) {
     document.getElementById('mWppHora').value = a.horaEnvio || '08:00';
     document.getElementById('mWppIntervalo').value = a.intervaloMinutos || 10;
     document.getElementById('mWppVariacaoMinima').value = p.variacaoMinima != null ? p.variacaoMinima : 10;
+    document.getElementById('mWppPercentualContrato').value = p.percentualMinimo != null ? p.percentualMinimo : 70;
+    document.getElementById('mWppDataVcto').value = p.dataVcto || '2026-03-01';
     renderDestinatariosWpp((a.destinatarios || []).map(d => d.id),
                            (a.destinatarios || []).filter(d => d.copia).map(d => d.id));
     atualizarCamposTipoWpp();
@@ -1692,6 +1714,7 @@ async function salvarWpp() {
   if (recorrente && (!intervaloMinutos || intervaloMinutos < 1)) { toast('Informe de quantos em quantos minutos verificar', 'red'); return; }
   if (!recorrente && !horaEnvio) { toast('Informe a hora de envio', 'red'); return; }
   if (tipoRelatorio === 'combustivel' && !dataIni) { toast('Informe a data de início do relatório', 'red'); return; }
+  if (tipoRelatorio === 'contrato_limite' && !document.getElementById('mWppDataVcto').value) { toast('Informe o vencimento a partir de', 'red'); return; }
   if (destinatarios.length === 0) { toast('Escolha ao menos um destinatário', 'red'); return; }
 
   const parametros =
@@ -1700,6 +1723,9 @@ async function salvarWpp() {
             combustivel: document.getElementById('mWppCombustivel').value.trim() || 'Diesel' }
     : tipoRelatorio === 'variacao_preco'
         ? { variacaoMinima: parseFloat(document.getElementById('mWppVariacaoMinima').value) || 0 }
+    : tipoRelatorio === 'contrato_limite'
+        ? { percentualMinimo: parseFloat(document.getElementById('mWppPercentualContrato').value) || 70,
+            dataVcto: document.getElementById('mWppDataVcto').value }
     : {};
 
   // Só um dos dois modos de recorrência vai no payload; o backend usa a
