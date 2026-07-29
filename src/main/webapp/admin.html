@@ -616,7 +616,16 @@
       <select id="mWppTipo" onchange="atualizarCamposTipoWpp()">
         <option value="combustivel">Relatório de Combustível (PDF)</option>
         <option value="oc_pendente">Alerta de Ordem de Compra pendente</option>
+        <option value="variacao_preco">Alerta de Variação de Preço</option>
       </select>
+    </div>
+
+    <div id="camposVariacaoWpp" style="display:none">
+      <div class="mf">
+        <label>Variação mínima (%)</label>
+        <input type="number" id="mWppVariacaoMinima" value="10" min="0" max="1000" step="0.01">
+        <div class="hint">Só avisa quando o preço da cotação liberada hoje ficar esse tanto acima da última compra, já corrigida pela inflação do período.</div>
+      </div>
     </div>
 
     <div id="camposCombustivelWpp">
@@ -1421,7 +1430,7 @@ async function excluirClasseOp(cod) {
 
 // ── Relatórios WhatsApp ───────────────────────────────────────────
 const DIAS_SEMANA_WPP = {1:'Segunda',2:'Terça',3:'Quarta',4:'Quinta',5:'Sexta',6:'Sábado',7:'Domingo'};
-const TIPOS_RELATORIO_WPP = {combustivel:'Combustível (PDF)', oc_pendente:'Alerta de Ordem de Compra'};
+const TIPOS_RELATORIO_WPP = {combustivel:'Combustível (PDF)', oc_pendente:'Alerta de Ordem de Compra', variacao_preco:'Alerta de Variação de Preço'};
 /** Data e hora da execução — o horário importa nos agendamentos que rodam de minuto em minuto.
  *  O backend manda "yyyy-MM-dd HH:mm:ss[.S]" (Timestamp.toString), que o Safari não aceita em
  *  new Date(); por isso o formato é montado na mão, sem depender do parser do navegador. */
@@ -1432,9 +1441,11 @@ function fmtDataHoraWpp(s) {
 }
 
 /** Tipos que rodam por intervalo (a cada N minutos) em vez de dia da semana + hora. */
-const TIPOS_RECORRENTES_WPP = ['oc_pendente'];
+const TIPOS_RECORRENTES_WPP = ['oc_pendente', 'variacao_preco'];
 /** Tipos que dependem do código de logon do ERP no cadastro do destinatário. */
-const TIPOS_COM_LOGON_ERP_WPP = ['oc_pendente'];
+const TIPOS_COM_LOGON_ERP_WPP = ['oc_pendente', 'variacao_preco'];
+/** Intervalo sugerido ao criar cada tipo — só preenche o campo, dá pra mudar. */
+const INTERVALO_PADRAO_WPP = {oc_pendente: 10, variacao_preco: 30};
 let RELATORIOS_WPP = [];
 let USUARIOS_WPP = [];
 
@@ -1606,9 +1617,15 @@ function atualizarCamposTipoWpp() {
   const tipo = document.getElementById('mWppTipo').value;
   const recorrente = TIPOS_RECORRENTES_WPP.includes(tipo);
   document.getElementById('camposCombustivelWpp').style.display = tipo === 'combustivel' ? '' : 'none';
+  document.getElementById('camposVariacaoWpp').style.display = tipo === 'variacao_preco' ? '' : 'none';
   // Recorrente é configurado por intervalo; os demais, por dia da semana e hora.
   document.getElementById('camposSemanalWpp').style.display = recorrente ? 'none' : '';
   document.getElementById('camposIntervaloWpp').style.display = recorrente ? '' : 'none';
+  // Ao criar, sugere o intervalo típico do tipo; ao editar, respeita o que está salvo.
+  const novo = !document.getElementById('mWppId').value;
+  if (novo && INTERVALO_PADRAO_WPP[tipo]) {
+    document.getElementById('mWppIntervalo').value = INTERVALO_PADRAO_WPP[tipo];
+  }
   renderDestinatariosWpp(destinatariosSelecionadosWpp(), copiasSelecionadasWpp());
 }
 
@@ -1622,6 +1639,7 @@ function abrirNovoWpp() {
   document.getElementById('mWppDiaSemana').value = '1';
   document.getElementById('mWppHora').value = '08:00';
   document.getElementById('mWppIntervalo').value = '10';
+  document.getElementById('mWppVariacaoMinima').value = '10';
   renderDestinatariosWpp([], []);
   atualizarCamposTipoWpp();
   document.getElementById('ovWpp').classList.add('open');
@@ -1645,6 +1663,7 @@ async function abrirEditarWpp(id) {
     document.getElementById('mWppDiaSemana').value = a.diaSemana || 1;
     document.getElementById('mWppHora').value = a.horaEnvio || '08:00';
     document.getElementById('mWppIntervalo').value = a.intervaloMinutos || 10;
+    document.getElementById('mWppVariacaoMinima').value = p.variacaoMinima != null ? p.variacaoMinima : 10;
     renderDestinatariosWpp((a.destinatarios || []).map(d => d.id),
                            (a.destinatarios || []).filter(d => d.copia).map(d => d.id));
     atualizarCamposTipoWpp();
@@ -1671,9 +1690,12 @@ async function salvarWpp() {
   if (tipoRelatorio === 'combustivel' && !dataIni) { toast('Informe a data de início do relatório', 'red'); return; }
   if (destinatarios.length === 0) { toast('Escolha ao menos um destinatário', 'red'); return; }
 
-  const parametros = tipoRelatorio === 'combustivel'
-    ? { dataIni,
-        combustivel: document.getElementById('mWppCombustivel').value.trim() || 'Diesel' }
+  const parametros =
+      tipoRelatorio === 'combustivel'
+        ? { dataIni,
+            combustivel: document.getElementById('mWppCombustivel').value.trim() || 'Diesel' }
+    : tipoRelatorio === 'variacao_preco'
+        ? { variacaoMinima: parseFloat(document.getElementById('mWppVariacaoMinima').value) || 0 }
     : {};
 
   // Só um dos dois modos de recorrência vai no payload; o backend usa a

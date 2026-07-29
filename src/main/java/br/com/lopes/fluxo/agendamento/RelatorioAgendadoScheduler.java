@@ -45,7 +45,8 @@ public class RelatorioAgendadoScheduler implements ServletContextListener {
 
     private static final Map<String, RelatorioAgendadoHandler> HANDLERS = Map.of(
             "combustivel", new CombustivelRelatorioAgendadoHandler(),
-            "oc_pendente", new AlertaOcPendenteHandler()
+            "oc_pendente", new AlertaOcPendenteHandler(),
+            "variacao_preco", new AlertaVariacaoPrecoHandler()
     );
 
     /** Execuções mais antigas que isso são descartadas — os recorrentes geram um registro por ciclo. */
