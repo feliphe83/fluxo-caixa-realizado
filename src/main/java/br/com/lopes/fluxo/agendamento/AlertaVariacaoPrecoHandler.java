@@ -5,16 +5,9 @@ import br.com.lopes.fluxo.dao.VariacaoPrecoDAO;
 import br.com.lopes.fluxo.util.EvolutionApiUtil;
 import com.google.gson.JsonObject;
 
-import java.sql.Timestamp;
-import java.text.NumberFormat;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
@@ -54,14 +47,6 @@ public class AlertaVariacaoPrecoHandler implements RelatorioAgendadoHandler {
 
     /** Teto de mensagens por destinatário em um ciclo, pra uma enxurrada não virar spam. */
     private static final int MAX_MENSAGENS_POR_CICLO = 15;
-
-    private static final NumberFormat VALOR = NumberFormat.getNumberInstance(Locale.forLanguageTag("pt-BR"));
-    private static final NumberFormat QTDE = NumberFormat.getNumberInstance(Locale.forLanguageTag("pt-BR"));
-    private static final DateTimeFormatter DATA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    static {
-        VALOR.setMinimumFractionDigits(2);
-        VALOR.setMaximumFractionDigits(2);
-    }
 
     private final AlertaOcPendenteDAO controle = new AlertaOcPendenteDAO();
     private final VariacaoPrecoDAO erp = new VariacaoPrecoDAO();
@@ -119,7 +104,7 @@ public class AlertaVariacaoPrecoHandler implements RelatorioAgendadoHandler {
         }
 
         String resumo = totalAvisadas == 0
-                ? "Nenhuma variação nova acima de " + VALOR.format(variacaoMinima) + "%."
+                ? "Nenhuma variação nova acima de " + FormatoMensagem.valor(variacaoMinima) + "%."
                 : totalAvisadas + " item(ns) avisado(s).";
         return semLogon > 0 ? resumo + " " + semLogon + " destinatário(s) sem código de logon do ERP." : resumo;
     }
@@ -192,31 +177,17 @@ public class AlertaVariacaoPrecoHandler implements RelatorioAgendadoHandler {
         return "📦 *Material:* " + str(item.get("cod_material")) + "\n"
              + "📝 *Descrição:* " + str(item.get("descricao")) + "\n"
              + "🔢 *Cotação:* " + str(item.get("nr_cotacao")) + "\n"
-             + "💲 *Preço Unitário:* R$ " + VALOR.format(num(item.get("preco_unitario"))) + "\n"
-             + "📦 *Quantidade:* " + QTDE.format(num(item.get("quantidade"))) + "\n"
+             + "💲 *Preço Unitário:* R$ " + FormatoMensagem.valor(item.get("preco_unitario")) + "\n"
+             + "📦 *Quantidade:* " + FormatoMensagem.quantidade(item.get("quantidade")) + "\n"
              + "🏢 *Fornecedor Atual:* " + str(item.get("nome")) + "\n"
-             + "📊 *Qtde Última Compra:* " + QTDE.format(num(item.get("qtade2"))) + "\n"
-             + "🗓️ *Data Última Compra:* " + data(item.get("data_ultima_compra")) + "\n"
+             + "📊 *Qtde Última Compra:* " + FormatoMensagem.quantidade(item.get("qtade2")) + "\n"
+             + "🗓️ *Data Última Compra:* " + FormatoMensagem.data(item.get("data_ultima_compra")) + "\n"
              + "🏭 *Fornecedor Anterior:* " + str(item.get("razao_social_ultima_compra")) + "\n"
-             + "📈 *Variação:* " + VALOR.format(num(item.get("variacao"))) + "%\n"
+             + "📈 *Variação:* " + FormatoMensagem.valor(item.get("variacao")) + "%\n"
              + "📝 *Observação para o aprovador:* " + str(item.get("observacaoparaaprovador"));
     }
 
     private static String str(Object v) {
-        return v == null ? "" : String.valueOf(v).trim();
-    }
-
-    private static double num(Object v) {
-        return v instanceof Number n ? n.doubleValue() : 0;
-    }
-
-    /** Datas do Oracle chegam como java.sql.Timestamp/Date; vazio quando não há última compra. */
-    private static String data(Object v) {
-        if (v instanceof Timestamp t) return t.toLocalDateTime().format(DATA);
-        if (v instanceof java.sql.Date d) return d.toLocalDate().format(DATA);
-        if (v instanceof LocalDateTime dt) return dt.format(DATA);
-        if (v instanceof LocalDate d) return d.format(DATA);
-        if (v instanceof Date d) return new Timestamp(d.getTime()).toLocalDateTime().format(DATA);
-        return str(v);
+        return FormatoMensagem.texto(v);
     }
 }

@@ -617,6 +617,7 @@
         <option value="combustivel">Relatório de Combustível (PDF)</option>
         <option value="oc_pendente">Alerta de Ordem de Compra pendente</option>
         <option value="variacao_preco">Alerta de Variação de Preço</option>
+        <option value="divergencia_nf">Alerta de Divergência de NF</option>
       </select>
     </div>
 
@@ -1430,7 +1431,8 @@ async function excluirClasseOp(cod) {
 
 // ── Relatórios WhatsApp ───────────────────────────────────────────
 const DIAS_SEMANA_WPP = {1:'Segunda',2:'Terça',3:'Quarta',4:'Quinta',5:'Sexta',6:'Sábado',7:'Domingo'};
-const TIPOS_RELATORIO_WPP = {combustivel:'Combustível (PDF)', oc_pendente:'Alerta de Ordem de Compra', variacao_preco:'Alerta de Variação de Preço'};
+const TIPOS_RELATORIO_WPP = {combustivel:'Combustível (PDF)', oc_pendente:'Alerta de Ordem de Compra',
+                             variacao_preco:'Alerta de Variação de Preço', divergencia_nf:'Alerta de Divergência de NF'};
 /** Data e hora da execução — o horário importa nos agendamentos que rodam de minuto em minuto.
  *  O backend manda "yyyy-MM-dd HH:mm:ss[.S]" (Timestamp.toString), que o Safari não aceita em
  *  new Date(); por isso o formato é montado na mão, sem depender do parser do navegador. */
@@ -1441,11 +1443,13 @@ function fmtDataHoraWpp(s) {
 }
 
 /** Tipos que rodam por intervalo (a cada N minutos) em vez de dia da semana + hora. */
-const TIPOS_RECORRENTES_WPP = ['oc_pendente', 'variacao_preco'];
-/** Tipos que dependem do código de logon do ERP no cadastro do destinatário. */
+const TIPOS_RECORRENTES_WPP = ['oc_pendente', 'variacao_preco', 'divergencia_nf'];
+/** Tipos que dependem do código de logon do ERP no cadastro do destinatário.
+ *  Divergência de NF fica de fora de propósito: a consulta não tem alçada,
+ *  todo destinatário recebe a mesma lista. */
 const TIPOS_COM_LOGON_ERP_WPP = ['oc_pendente', 'variacao_preco'];
 /** Intervalo sugerido ao criar cada tipo — só preenche o campo, dá pra mudar. */
-const INTERVALO_PADRAO_WPP = {oc_pendente: 10, variacao_preco: 30};
+const INTERVALO_PADRAO_WPP = {oc_pendente: 10, variacao_preco: 30, divergencia_nf: 30};
 let RELATORIOS_WPP = [];
 let USUARIOS_WPP = [];
 
