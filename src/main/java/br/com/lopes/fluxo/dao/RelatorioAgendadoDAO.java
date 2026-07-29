@@ -394,6 +394,64 @@ public class RelatorioAgendadoDAO {
         }
     }
 
+    // ── Painel de status (público) ────────────────────────────────────────
+
+    /** Últimas execuções de todos os agendamentos, da mais recente para a mais antiga. */
+    public List<Map<String, Object>> listarExecucoesRecentes(int limite) throws SQLException {
+        String sql = """
+            SELECT e.id, e.id_agendamento, e.data_execucao, e.status, e.detalhe,
+                   a.nome, a.tipo_relatorio
+            FROM fc_relatorio_agendado_execucao e
+            JOIN fc_relatorio_agendado a ON a.id = e.id_agendamento
+            ORDER BY e.data_execucao DESC, e.id DESC
+            LIMIT ?
+            """;
+        List<Map<String, Object>> lista = new ArrayList<>();
+        try (Connection c = conn();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, limite);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("id", rs.getInt("id"));
+                    m.put("idAgendamento", rs.getInt("id_agendamento"));
+                    m.put("nome", rs.getString("nome"));
+                    m.put("tipoRelatorio", rs.getString("tipo_relatorio"));
+                    Timestamp quando = rs.getTimestamp("data_execucao");
+                    m.put("dataExecucao", quando == null ? null : quando.toString());
+                    m.put("status", rs.getString("status"));
+                    m.put("detalhe", rs.getString("detalhe"));
+                    lista.add(m);
+                }
+            }
+        }
+        return lista;
+    }
+
+    /**
+     * Quantas execuções deram certo e quantas falharam nas últimas {@code horas}.
+     * Chaves: "sucesso" e "erro" — sempre presentes, com zero quando não houve.
+     */
+    public Map<String, Integer> resumoExecucoes(int horas) throws SQLException {
+        String sql = """
+            SELECT status, COUNT(*) qtde
+            FROM fc_relatorio_agendado_execucao
+            WHERE data_execucao >= DATE_SUB(NOW(), INTERVAL ? HOUR)
+            GROUP BY status
+            """;
+        Map<String, Integer> resumo = new LinkedHashMap<>();
+        resumo.put("sucesso", 0);
+        resumo.put("erro", 0);
+        try (Connection c = conn();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, horas);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) resumo.put(rs.getString("status"), rs.getInt("qtde"));
+            }
+        }
+        return resumo;
+    }
+
     public void registrarExecucao(int idAgendamento, String status, String detalhe) throws SQLException {
         String sql = "INSERT INTO fc_relatorio_agendado_execucao (id_agendamento, status, detalhe) VALUES (?,?,?)";
         try (Connection c = conn();
