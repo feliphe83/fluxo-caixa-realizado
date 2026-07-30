@@ -53,6 +53,12 @@ public class AuthFilter implements Filter {
             // partir do chat) — sem sessão, autenticada pelo token na URL,
             // que a própria API de PDF (/api/publico/*) valida ao carregar.
             uri.equals(ctx + "/ordem-compra-pdf.html")    ||
+            // Painel de status dos envios de WhatsApp: feito para ficar aberto
+            // num monitor, sem ninguém logado. Só mostra se os agendamentos
+            // rodaram e com que resultado — os dados vêm de
+            // /api/publico/status-envios, que já é liberado abaixo e devolve os
+            // telefones mascarados.
+            uri.equals(ctx + "/status-envios.html")       ||
             uri.startsWith(ctx + "/api/login")            ||
             uri.startsWith(ctx + "/api/esqueci-senha")     ||
             uri.startsWith(ctx + "/api/redefinir-senha")   ||
