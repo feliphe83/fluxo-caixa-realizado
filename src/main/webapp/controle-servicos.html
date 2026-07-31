@@ -278,6 +278,23 @@
 
   <div id="export-area" style="display:none">
     <div class="export-bar">
+      <div style="margin-right:auto;display:flex;align-items:center;gap:8px">
+        <label style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.4px">Comparar com</label>
+        <select id="selComparativo" onchange="aoTrocarComparativo()"
+                style="padding:7px 10px;border:1.5px solid #d8dfee;border-radius:8px;font-size:12.5px;
+                       color:#1a1a2e;background:white;outline:none;min-width:290px">
+          <option value="">Nenhuma gravação</option>
+        </select>
+        <button id="btnExcluirSnapshot" class="btn-export" onclick="excluirSnapshot()"
+                style="display:none;border-color:rgba(239,68,68,.5);color:#dc2626" title="Excluir esta gravação">
+          <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+        </button>
+      </div>
+      <button class="btn-export" id="btnGravar" onclick="gravarSnapshot()"
+              style="border-color:#1a3a7c;color:#1a3a7c;font-weight:700">
+        <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Gravar
+      </button>
       <button class="btn-export" onclick="exportarExcel()">
         <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
         Excel
@@ -306,6 +323,54 @@
 <script src="js/xlsx.full.min.js"></script>
 <script>
 let DADOS_RAW = [];
+
+// ── Comparação com uma gravação anterior ─────────────────────────────────
+// Snapshot escolhido no seletor: mapas de chave -> {qtd, valor} em cada um
+// dos quatro níveis da tabela, para a comparação valer em qualquer nível.
+let SNAPSHOTS = [];
+let COMPARATIVO = null;
+
+// As chaves precisam ser as MESMAS usadas para montar os grupos da tela,
+// senão a linha atual não encontra a gravada e tudo vira "novo".
+const chaveN1 = d => (d.descFornecedor || '—');
+const chaveN2 = d => chaveN1(d) + '||' + [d.tipo, d.origem, d.codFazendaOrigem].join('|');
+const chaveN3 = d => chaveN2(d) + '||' + [d.codServico, d.descServico].join('|');
+const chaveN4 = d => chaveN3(d) + '||' + (d.dataMovimento || '') + '|' + (d.codFuncionario || '');
+
+function agregarPor(itens, fnChave) {
+  const m = new Map();
+  itens.forEach(d => {
+    const k = fnChave(d);
+    const a = m.get(k) || { qtd: 0, valor: 0 };
+    a.qtd += Number(d.qtdApontada) || 0;
+    a.valor += Number(d.valorTotal) || 0;
+    m.set(k, a);
+  });
+  return m;
+}
+
+const ZERO = { qtd: 0, valor: 0 };
+const gravado = (mapa, chave) => (mapa && mapa.get(chave)) || ZERO;
+const comparando = () => COMPARATIVO !== null;
+
+/** Cabeçalhos extras das colunas de comparação. */
+function thsComp() {
+  return comparando()
+    ? '<th class="num">Qtd. Gravada</th><th class="num">Valor Gravado</th><th class="num">Diferença</th>'
+    : '';
+}
+
+/** Células extras: o que estava gravado e quanto entrou (ou saiu) depois. */
+function tdsComp(ref, valorAtual) {
+  if (!comparando()) return '';
+  const dif = valorAtual - ref.valor;
+  // Zero exato é comum (nada mudou) — só ganha cor quando houve movimento.
+  const cor = Math.abs(dif) < 0.005 ? '#94a0b8' : (dif > 0 ? '#15803d' : '#dc2626');
+  const sinal = dif > 0.005 ? '+' : '';
+  return `<td class="num">${fmtNum(ref.qtd)}</td>`
+       + `<td class="num">${fmtMoeda(ref.valor)}</td>`
+       + `<td class="num" style="color:${cor};font-weight:700">${sinal}${fmtMoeda(dif)}</td>`;
+}
 let GRUPOS = [];
 
 // Datas padrão: mês atual
@@ -356,6 +421,8 @@ async function gerarRelatorio() {
       const codigos = parseCodigos(fornecedor);
       DADOS_RAW = DADOS_RAW.filter(d => codigos.includes(String(d.codFornecedor)));
     }
+    // A lista de gravações é por período: muda o filtro, muda a lista.
+    await carregarSnapshots();
     montarGrupos();
     renderizarTabela();
 
@@ -386,6 +453,19 @@ function montarGrupos() {
     mapaForn[chaveForn].valorTotal += (d.valorTotal || 0);
     mapaForn[chaveForn].itens.push(d);
   });
+
+  // Comparando: quem estava na gravação e não aparece mais entra como linha
+  // zerada. Sem isso, um lançamento que foi cancelado depois simplesmente
+  // sumiria da tela — justamente a diferença que se quer enxergar.
+  if (COMPARATIVO) {
+    COMPARATIVO.n1.forEach((v, chave) => {
+      if (!mapaForn[chave]) {
+        mapaForn[chave] = {
+          descFornecedor: chave, qtdTotal: 0, valorTotal: 0, itens: [], somenteGravado: true
+        };
+      }
+    });
+  }
 
   GRUPOS = Object.values(mapaForn).sort((a, b) => {
     // Ordena por Fornecedor, depois Fazenda (conforme solicitado)
@@ -454,16 +534,22 @@ function renderizarTabela() {
   let totalQtd = 0, totalValor = 0;
   GRUPOS.forEach(g => { totalQtd += g.qtdTotal; totalValor += g.valorTotal; });
 
+  const nCols = comparando() ? 6 : 3;
   const linhas = GRUPOS.map((g, idx) => `
     <tr class="item-row" id="row-${idx}" onclick="toggleDetalhe(${idx})">
-      <td><span class="seta">▶</span>${escapeHtml(g.descFornecedor || '—')}</td>
+      <td><span class="seta">▶</span>${escapeHtml(g.descFornecedor || '—')}${
+        g.somenteGravado ? ' <span style="font-size:10px;font-weight:700;color:#dc2626">(saiu)</span>' : ''}</td>
       <td class="num">${fmtNum(g.qtdTotal)}</td>
       <td class="num">${fmtMoeda(g.valorTotal)}</td>
+      ${tdsComp(gravado(COMPARATIVO && COMPARATIVO.n1, chaveN1(g)), g.valorTotal)}
     </tr>
     <tr class="detalhe-row" id="det-${idx}" style="display:none">
-      <td colspan="3"><div class="detalhe-inner" id="det-inner-${idx}"></div></td>
+      <td colspan="${nCols}"><div class="detalhe-inner" id="det-inner-${idx}"></div></td>
     </tr>
   `).join('');
+
+  const refTotal = COMPARATIVO
+    ? { qtd: COMPARATIVO.totalQtd, valor: COMPARATIVO.totalValor } : ZERO;
 
   el.innerHTML = `
     <div class="resultado-card">
@@ -472,6 +558,7 @@ function renderizarTabela() {
           <tr>
             <th>Fornecedor/Proprietário</th>
             <th class="num">Qtd. Apontada</th><th class="num">Valor Total</th>
+            ${thsComp()}
           </tr>
         </thead>
         <tbody>${linhas}</tbody>
@@ -480,6 +567,7 @@ function renderizarTabela() {
             <td>TOTAL</td>
             <td class="num">${fmtNum(totalQtd)}</td>
             <td class="num">${fmtMoeda(totalValor)}</td>
+            ${tdsComp(refTotal, totalValor)}
           </tr>
         </tfoot>
       </table>
@@ -499,6 +587,7 @@ function toggleDetalhe(idx) {
   if (!aberto) return;
 
   const g = GRUPOS[idx];
+  const nCols2 = comparando() ? 8 : 5;
   const linhas = g.subgrupos.map((sg, sidx) => `
     <tr class="item-row2" id="row2-${idx}-${sidx}" onclick="toggleDetalhe2(${idx}, ${sidx})">
       <td><span class="seta2">▶</span>${escapeHtml(sg.tipo || '—')}</td>
@@ -506,9 +595,10 @@ function toggleDetalhe(idx) {
       <td>${escapeHtml(sg.descFazenda || '—')}</td>
       <td class="num">${fmtNum(sg.qtdTotal)}</td>
       <td class="num">${fmtMoeda(sg.valorTotal)}</td>
+      ${tdsComp(gravado(COMPARATIVO && COMPARATIVO.n2, chaveN2(sg.itens[0])), sg.valorTotal)}
     </tr>
     <tr class="detalhe-row2" id="det2-${idx}-${sidx}" style="display:none">
-      <td colspan="5"><div class="detalhe-inner2" id="det2-inner-${idx}-${sidx}"></div></td>
+      <td colspan="${nCols2}"><div class="detalhe-inner2" id="det2-inner-${idx}-${sidx}"></div></td>
     </tr>
   `).join('');
 
@@ -517,6 +607,7 @@ function toggleDetalhe(idx) {
       <thead><tr>
         <th>Tipo</th><th>Origem</th><th>Fazenda</th>
         <th class="num">Qtd.</th><th class="num">Valor</th>
+        ${thsComp()}
       </tr></thead>
       <tbody>${linhas}</tbody>
     </table>`;
@@ -531,15 +622,17 @@ function toggleDetalhe2(idx, sidx) {
   if (!aberto) return;
 
   const sg = GRUPOS[idx].subgrupos[sidx];
+  const nCols3 = comparando() ? 7 : 4;
   const linhas = sg.servicos.map((serv, vidx) => `
     <tr class="item-row3" id="row3-${idx}-${sidx}-${vidx}" onclick="toggleDetalhe3(${idx}, ${sidx}, ${vidx})">
       <td><span class="seta3">▶</span>${escapeHtml(serv.codServico || '—')}</td>
       <td>${escapeHtml(serv.descServico || '—')}</td>
       <td class="num">${fmtNum(serv.qtdTotal)}</td>
       <td class="num">${fmtMoeda(serv.valorTotal)}</td>
+      ${tdsComp(gravado(COMPARATIVO && COMPARATIVO.n3, chaveN3(serv.itens[0])), serv.valorTotal)}
     </tr>
     <tr class="detalhe-row3" id="det3-${idx}-${sidx}-${vidx}" style="display:none">
-      <td colspan="4"><div class="detalhe-inner3" id="det3-inner-${idx}-${sidx}-${vidx}"></div></td>
+      <td colspan="${nCols3}"><div class="detalhe-inner3" id="det3-inner-${idx}-${sidx}-${vidx}"></div></td>
     </tr>
   `).join('');
 
@@ -548,6 +641,7 @@ function toggleDetalhe2(idx, sidx) {
       <thead><tr>
         <th>Cód. Serviço</th><th>Descrição do Serviço</th>
         <th class="num">Qtd.</th><th class="num">Valor</th>
+        ${thsComp()}
       </tr></thead>
       <tbody>${linhas}</tbody>
     </table>`;
@@ -567,6 +661,7 @@ function toggleDetalhe3(idx, sidx, vidx) {
       <td>${formatarData(it.dataMovimento)}</td>
       <td class="num">${fmtNum(it.qtdApontada)}</td>
       <td class="num">${fmtMoeda(it.valorTotal)}</td>
+      ${tdsComp(gravado(COMPARATIVO && COMPARATIVO.n4, chaveN4(it)), Number(it.valorTotal) || 0)}
     </tr>
   `).join('');
 
@@ -574,9 +669,136 @@ function toggleDetalhe3(idx, sidx, vidx) {
     <table>
       <thead><tr>
         <th>Data</th><th class="num">Qtd.</th><th class="num">Valor</th>
+        ${thsComp()}
       </tr></thead>
       <tbody>${linhas}</tbody>
     </table>`;
+}
+
+// ── Gravação e comparação ────────────────────────────────────────────────
+
+function periodoAtual() {
+  return {
+    dataIni: document.getElementById('dataIni').value,
+    dataFim: document.getElementById('dataFim').value
+  };
+}
+
+/** Grava o que está na tela. O período é o do filtro, não o da gravação anterior. */
+async function gravarSnapshot() {
+  if (!DADOS_RAW || DADOS_RAW.length === 0) { alert('Gere o relatório antes de gravar.'); return; }
+  const { dataIni, dataFim } = periodoAtual();
+
+  const descricao = prompt(
+    'Gravar ' + DADOS_RAW.length + ' lançamento(s) do período ' +
+    formatarData(dataIni) + ' a ' + formatarData(dataFim) + '.\n\n' +
+    'Identificação desta gravação (opcional):', '');
+  if (descricao === null) return;   // cancelou
+
+  const btn = document.getElementById('btnGravar');
+  btn.disabled = true;
+  const rotuloOriginal = btn.innerHTML;
+  btn.textContent = 'Gravando…';
+  try {
+    const r = await fetch('api/controle-servicos/snapshot', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        dataIni, dataFim,
+        fazendas: document.getElementById('fazendas').value.trim(),
+        fornecedores: document.getElementById('fornecedor').value.trim(),
+        descricao: descricao.trim(),
+        itens: DADOS_RAW
+      })
+    });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro);
+    alert('Gravado: ' + j.itens + ' lançamento(s).');
+    await carregarSnapshots();
+  } catch(e) {
+    alert('Erro ao gravar: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = rotuloOriginal;
+  }
+}
+
+/** Gravações do MESMO período — comparar recortes diferentes não diz nada. */
+async function carregarSnapshots() {
+  const sel = document.getElementById('selComparativo');
+  const { dataIni, dataFim } = periodoAtual();
+  try {
+    const r = await fetch('api/controle-servicos/snapshot?dataIni=' + dataIni + '&dataFim=' + dataFim);
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro);
+    SNAPSHOTS = j.data || [];
+  } catch(e) {
+    SNAPSHOTS = [];
+  }
+  const selecionado = COMPARATIVO ? String(COMPARATIVO.id) : '';
+  sel.innerHTML = '<option value="">Nenhuma gravação</option>' +
+    SNAPSHOTS.map(sn => `<option value="${sn.id}">${escapeHtml(rotuloSnapshot(sn))}</option>`).join('');
+  if (selecionado && SNAPSHOTS.some(sn => String(sn.id) === selecionado)) sel.value = selecionado;
+  else if (COMPARATIVO) { COMPARATIVO = null; }
+  document.getElementById('btnExcluirSnapshot').style.display = sel.value ? '' : 'none';
+}
+
+function rotuloSnapshot(sn) {
+  const dh = String(sn.dataGravacao || '').replace('T', ' ');
+  const m = dh.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})/);
+  const quando = m ? `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}` : dh;
+  const quem = sn.nomeUsuario ? ' · ' + sn.nomeUsuario : '';
+  const desc = sn.descricao ? ' · ' + sn.descricao : '';
+  return quando + quem + desc + ' (' + sn.qtdeItens + ' lanç.)';
+}
+
+async function aoTrocarComparativo() {
+  const sel = document.getElementById('selComparativo');
+  const id = sel.value;
+  document.getElementById('btnExcluirSnapshot').style.display = id ? '' : 'none';
+
+  if (!id) { COMPARATIVO = null; montarGrupos(); renderizarTabela(); return; }
+
+  try {
+    const r = await fetch('api/controle-servicos/snapshot/' + id);
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro);
+    const itens = j.data || [];
+    const cab = SNAPSHOTS.find(sn => String(sn.id) === String(id)) || {};
+    COMPARATIVO = {
+      id: id,
+      rotulo: rotuloSnapshot(cab),
+      n1: agregarPor(itens, chaveN1),
+      n2: agregarPor(itens, chaveN2),
+      n3: agregarPor(itens, chaveN3),
+      n4: agregarPor(itens, chaveN4),
+      totalQtd: itens.reduce((a, d) => a + (Number(d.qtdApontada) || 0), 0),
+      totalValor: itens.reduce((a, d) => a + (Number(d.valorTotal) || 0), 0)
+    };
+    montarGrupos();
+    renderizarTabela();
+  } catch(e) {
+    alert('Erro ao carregar a gravação: ' + e.message);
+    sel.value = '';
+    COMPARATIVO = null;
+  }
+}
+
+async function excluirSnapshot() {
+  const id = document.getElementById('selComparativo').value;
+  if (!id) return;
+  if (!confirm('Excluir esta gravação? Esta ação não pode ser desfeita.')) return;
+  try {
+    const r = await fetch('api/controle-servicos/snapshot?id=' + id, { method: 'DELETE' });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro);
+    COMPARATIVO = null;
+    await carregarSnapshots();
+    montarGrupos();
+    renderizarTabela();
+  } catch(e) {
+    alert('Erro ao excluir: ' + e.message);
+  }
 }
 
 function formatarData(iso) {
