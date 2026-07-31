@@ -91,6 +91,12 @@
   thead th.grupo-terceiro { background: #2a4f9c; }
   thead th.grupo-total { background: #0f2460; }
   thead tr.linha-rotulos th:first-child { text-align: left; }
+  /* "% Diária x Salário" em uma linha só empurrava a tabela para ~1.520px de
+     largura natural, bem além do card — as colunas do Total Geral ficavam
+     fora da vista. Deixando os rótulos quebrarem em duas linhas, a tabela
+     cabe na tela. Os números do corpo seguem sem quebrar. */
+  thead tr.linha-rotulos th { white-space: normal; line-height: 1.25; }
+  thead tr.linha-rotulos th:first-child { white-space: nowrap; }
 
   tbody td { padding: 7px 10px; border-bottom: 1px solid #eef1f8; text-align: right; white-space: nowrap; }
   tbody td.rotulo { text-align: left; font-weight: 600; color: #0f2460; }
@@ -128,14 +134,30 @@
   .erro-state { color: #ef4444; }
 
   @media print {
-    .header, .filtros-card, .export-bar, .btn-voltar { display: none !important; }
+    /* O botão do menu lateral é injetado por js/sidebar-nav.js e ficava
+       impresso no canto da folha. */
+    .header, .filtros-card, .export-bar, .btn-voltar,
+    .snav-toggle, .snav-overlay, .snav-drawer { display: none !important; }
     body { background: white; margin: 0; }
     .conteudo { padding: 0; max-width: 100%; }
     .resultado-card { border: none; border-radius: 0; }
     #cabecalhoImpressao { display: block !important; }
-    table { font-size: 9.5px; }
-    thead th { padding: 5px 6px; font-size: 8.5px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    tbody td { padding: 4px 6px; }
+    /* No papel não há para onde rolar: o container precisa parar de recortar
+       e a tabela tem de caber na largura útil (~1.047px numa A4 deitada com
+       10mm de margem). Sem tirar o min-width de 1.100px daqui, o bloco do
+       Total Geral saía cortado na direita. */
+    .tabela-scroll { overflow: visible !important; }
+    .resultado-card { overflow: visible !important; }
+    table { font-size: 9.5px; min-width: 0 !important; table-layout: fixed; width: 100%; }
+    thead th { padding: 5px 4px; font-size: 8px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    tbody td { padding: 4px 4px; }
+    /* Coluna do nome da atividade: fica com o espaço que sobra e pode quebrar;
+       as 15 colunas de número dividem o resto em partes iguais. */
+    /* Com table-layout:fixed quem dita a largura das colunas é a PRIMEIRA
+       linha do cabeçalho (a dos três grupos), não a dos rótulos — por isso a
+       largura vai nas duas. */
+    thead th:first-child { white-space: normal; width: 19%; }
+    tbody td.rotulo { white-space: normal; }
     tbody tr.subtotal td, tbody tr.total-geral td { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     @page { margin: 10mm; size: landscape; }
   }
