@@ -11,11 +11,11 @@ import java.util.logging.Logger;
 
 /**
  * Cache em memória do de-para de Classe Operativa (fc_depara_classeoperativa
- * no MySQL): cod_equipamento (automotivo.equipamento no Oracle — a unidade
- * física, não o modelo abstrato) → classificação de Classe Operativa (ex.:
- * "Trator", "Caminhão Apoio", "Ônibus"). Usado pelo Dashboard de Combustível
- * na seção "Consumo Semanal por Classe Operativa". A coluna no MySQL ainda
- * se chama cod_modelo por compatibilidade com o de-para já importado.
+ * no MySQL): cod_tipoequipamento (automotivo.historico_tipoequipamento no
+ * Oracle) → classificação de Classe Operativa (ex.: "Trator", "Caminhão
+ * Apoio", "Ônibus"). Usado pelo Dashboard de Combustível na seção "Consumo
+ * Semanal por Classe Operativa". A coluna no MySQL continua se chamando
+ * cod_modelo, por compatibilidade com a tabela já existente.
  *
  * A tabela é gerenciada na tela de administração (aba "De-Para Classe
  * Operativa"), por importação em lote (colar do Excel). Recarrega sozinho a
@@ -37,11 +37,11 @@ public final class ClasseOperativaCache {
 
     private ClasseOperativaCache() {}
 
-    /** Classe Operativa para o cod_modelo, ou null se não mapeado. */
-    public static String buscar(String codModelo) {
-        if (codModelo == null || codModelo.isBlank()) return null;
+    /** Classe Operativa para o código do tipo de equipamento, ou null se não mapeado. */
+    public static String buscar(String codTipoEquipamento) {
+        if (codTipoEquipamento == null || codTipoEquipamento.isBlank()) return null;
         carregarSeNecessario();
-        return mapa.get(codModelo.trim());
+        return mapa.get(codTipoEquipamento.trim());
     }
 
     public static void invalidar() {

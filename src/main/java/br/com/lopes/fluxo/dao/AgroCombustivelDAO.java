@@ -55,9 +55,8 @@ public class AgroCombustivelDAO {
     // sem to_date()) — forma já validada em produção para esta coluna.
     private static final String SUBQUERY_DETALHE = """
         select tmp.*
-             -- Proprietário do equipamento pela função oficial do ERP (mesma
-             -- usada nas validações do financeiro), não mais pelo join manual
-             -- em histproprietarioequip — é ela que decide Próprio x Terceiro
+             -- Proprietário do equipamento pela função oficial do ERP (mesma usada
+             -- nas validações do financeiro) — é ela que decide Próprio x Terceiro
              -- no dashboard (Próprio = "USINA SANTA CLOTILDE S/A").
              , automotivo.fn_busca_nome_proprietario(1, tmp.cod_equipamento) nome_proprietario
              , posto.fn_busca_arvore_objetocusto(tmp.cod_objetocusto_detalhe,'C','NG')                   cod_negocio
@@ -179,6 +178,9 @@ public class AgroCombustivelDAO {
                         and    operacaoobjetocusto.cod_operacaoagricola =  operacaoagricola.cod_operacaoagricola
                         and    rownum <= 1
                         ) cod_objeto_tarefa
+                     -- Tipo do equipamento vigente na data do abastecimento — é a
+                     -- chave do de-para de Classe Operativa (fc_depara_classeoperativa).
+                     , t.cod_tipoequipamento cod_tipo_equip
                   from
                        financeiro.tipopagamento
                      , posto.bomba
@@ -188,19 +190,27 @@ public class AgroCombustivelDAO {
                      , rh.cidade
                      , agricola.fazenda
                      , automotivo.modeloequipamento
-                     , automotivo.equipamento
+                     , automotivo.equipamento equipamento
                      , material.material
                      , posto.tipocliente
                      , cspalm.palm
                      , posto.abastecimento abastecimento
                      , automotivo.histproprietarioequip proprietario
+                     , automotivo.historico_tipoequipamento t
                 where 1=1
 
                   and (proprietario.data_inicial        <= to_date(to_char(abastecimento.data,'dd/mm/rrrr')||' '||abastecimento.hora_ini,'dd/mm/rrrr hh24:mi:ss')
                     or abastecimento.cod_equipamento      is null)
+                  and equipamento.cod_equipamento = t.cod_equipamento
+                  and (t.data_inicio                   <= to_date(to_char(abastecimento.data,'dd/mm/rrrr')||' '||abastecimento.hora_ini,'dd/mm/rrrr hh24:mi:ss')
+                    or t.cod_equipamento                 is null)
                   and (proprietario.data_final         >= to_date(to_char(abastecimento.data,'dd/mm/rrrr')||' '||abastecimento.hora_ini,'dd/mm/rrrr hh24:mi:ss')
                     or proprietario.data_final            is null
                     or abastecimento.cod_equipamento      is null)
+                  and (t.data_fim                      >= to_date(to_char(abastecimento.data,'dd/mm/rrrr')||' '||abastecimento.hora_ini,'dd/mm/rrrr hh24:mi:ss')
+                    or t.data_fim                         is null
+                    or abastecimento.cod_equipamento      is null)
+
                   and proprietario.cod_equipamento  (+)= equipamento.cod_equipamento
                   and proprietario.cod_grupoempresa (+)= equipamento.cod_grupoempresa
 
