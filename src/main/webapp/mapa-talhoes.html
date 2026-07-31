@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mapa de Talhões · Usina Santa Clotilde</title>
+<link rel="stylesheet" href="css/leaflet.css">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    /* Slots categóricos na ordem canônica, atribuídos por cod_situacao —
+       a cor segue a identidade da situação, nunca a ordem em que ela
+       aparece na tela. Verde e vermelho não são usados aqui: seriam lidos
+       como "bom/ruim", e situação de talhão não tem esse juízo. */
+    --sit-1: #2a78d6;   /* Colheita   */
+    --sit-2: #eb6834;   /* Reforma    */
+    --sit-3: #1baf7a;   /* Expansão   */
+    --sit-4: #eda100;   /* Pousio     */
+    --sit-5: #e87ba4;   /* Improdutivo*/
+    --sit-0: #98a2b3;   /* sem cadastro na safra */
+    --ink: #0f2460;
+  }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    display: flex; flex-direction: column; background: #f4f6fb; color: #1a1a2e;
+  }
+
+  .header {
+    background: linear-gradient(135deg, #16342a 0%, #234f3b 100%);
+    color: white; padding: 12px 20px; display: flex; align-items: center;
+    justify-content: space-between; gap: 16px; flex-wrap: wrap; flex-shrink: 0;
+  }
+  .header-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .header-logo { width: 38px; height: 38px; border-radius: 8px; background: white;
+                 display: flex; align-items: center; justify-content: center; padding: 4px; flex-shrink: 0; }
+  .header-logo img { width: 100%; height: 100%; object-fit: contain; }
+  .header-title { font-size: 17px; font-weight: 800; }
+  .header-sub { font-size: 11.5px; opacity: .85; margin-top: 2px; }
+  .header-right { display: flex; align-items: center; gap: 10px; }
+  .header select, .header input {
+    padding: 6px 10px; border-radius: 7px; border: 1.5px solid rgba(255,255,255,.3);
+    background: rgba(255,255,255,.12); color: white; font-size: 12px; outline: none;
+  }
+  .header select option { color: #1a1a2e; }
+  .header input::placeholder { color: rgba(255,255,255,.6); }
+  .btn-topo {
+    display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 7px;
+    border: 1.5px solid rgba(255,255,255,.25); background: rgba(255,255,255,.12);
+    color: rgba(255,255,255,.9); font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap;
+  }
+  .btn-topo:hover { background: rgba(255,255,255,.22); }
+
+  .corpo { flex: 1; display: flex; min-height: 0; }
+  #mapa { flex: 1; min-width: 0; background: #dfe6f2; }
+
+  /* ── Painel lateral ── */
+  .painel {
+    width: 300px; flex-shrink: 0; background: white; border-left: 1px solid #e3e8f5;
+    display: flex; flex-direction: column; overflow-y: auto;
+  }
+  .painel h3 {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+    color: #64748b; padding: 14px 16px 8px;
+  }
+  .legenda-item {
+    display: flex; align-items: center; gap: 10px; padding: 8px 16px; cursor: pointer;
+    border-left: 3px solid transparent; font-size: 13px;
+  }
+  .legenda-item:hover { background: #f5f7fb; }
+  .legenda-item.oculta { opacity: .38; }
+  .legenda-item.oculta .nome { text-decoration: line-through; }
+  .caixa { width: 15px; height: 15px; border-radius: 4px; flex-shrink: 0; border: 1.5px solid rgba(0,0,0,.25); }
+  .legenda-item .nome { font-weight: 600; color: var(--ink); flex: 1; }
+  .legenda-item .qtde { font-size: 11.5px; color: #64748b; text-align: right; font-variant-numeric: tabular-nums; }
+
+  .resumo { padding: 10px 16px 16px; border-top: 1px solid #eef1f8; margin-top: 6px; }
+  .resumo .linha { display: flex; justify-content: space-between; font-size: 12.5px; padding: 3px 0; color: #475569; }
+  .resumo .linha b { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+  .aviso {
+    margin: 10px 16px; padding: 10px 12px; border-radius: 8px; font-size: 11.5px; line-height: 1.5;
+    background: #fffaf0; border-left: 3px solid #eda100; color: #52514e;
+  }
+
+  /* ── Popup ── */
+  .leaflet-popup-content { margin: 12px 14px; min-width: 240px; }
+  .pop-tit { font-size: 14px; font-weight: 800; color: var(--ink); }
+  .pop-faz { font-size: 11.5px; color: #64748b; margin-bottom: 8px; }
+  .pop-sit { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700;
+             padding: 3px 9px; border-radius: 999px; color: white; margin-bottom: 9px; }
+  .pop-tab { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .pop-tab td { padding: 3px 0; }
+  .pop-tab td:first-child { color: #64748b; padding-right: 12px; white-space: nowrap; }
+  .pop-tab td:last-child { text-align: right; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .pop-vazio { font-size: 12px; color: #94a0b8; font-style: italic; }
+
+  .carregando {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: rgba(244,246,251,.92); z-index: 1000; font-size: 13px; color: #475569; flex-direction: column; gap: 10px;
+  }
+  .spinner { width: 28px; height: 28px; border: 3px solid #e3e8f5; border-top-color: #1a3a7c;
+             border-radius: 50%; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 820px) {
+    .corpo { flex-direction: column; }
+    .painel { width: 100%; max-height: 40vh; border-left: none; border-top: 1px solid #e3e8f5; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="header-logo"><img src="img/logo.png" alt="USC"></div>
+    <div>
+      <div class="header-title">Mapa de Talhões</div>
+      <div class="header-sub">Situação atual por talhão · clique para ver os detalhes</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <select id="selSafra" onchange="carregarDados()"><option>…</option></select>
+    <input type="search" id="busca" placeholder="Buscar talhão ou fazenda…" oninput="aplicarFiltros()" style="width:190px">
+    <button class="btn-topo" onclick="enquadrarTudo()">Ver tudo</button>
+    <button class="btn-topo" onclick="window.location.href='hub.html'">← Hub</button>
+  </div>
+</div>
+
+<div class="corpo">
+  <div id="mapa" style="position:relative">
+    <div class="carregando" id="carregando"><div class="spinner"></div><span id="carregandoTxt">Carregando mapa…</span></div>
+  </div>
+  <div class="painel">
+    <h3>Situação do talhão</h3>
+    <div id="legenda"></div>
+    <div class="resumo" id="resumo"></div>
+    <div class="aviso" id="avisoSemDados" style="display:none"></div>
+  </div>
+</div>
+
+<script src="js/leaflet.js"></script>
+<script>
+// ── Situações (agricola.situacao_talhao) ─────────────────────────────────
+// A cor é atribuída pelo CÓDIGO, não pela ordem de exibição: filtrar ou
+// reordenar a legenda não pode repintar os talhões que continuam na tela.
+const SITUACOES = {
+  1: { nome: 'Colheita',    cor: '#2a78d6' },
+  2: { nome: 'Reforma',     cor: '#eb6834' },
+  3: { nome: 'Expansão',    cor: '#1baf7a' },
+  4: { nome: 'Pousio',      cor: '#eda100' },
+  5: { nome: 'Improdutivo', cor: '#e87ba4' }
+};
+const SEM_DADOS = { nome: 'Sem cadastro na safra', cor: '#98a2b3' };
+
+let MAPA, CAMADA, GEO = null, DADOS = {}, OCULTAS = new Set();
+
+const fmtNum = v => (Number(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtInt = v => (Number(v) || 0).toLocaleString('pt-BR');
+const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+function situacaoDe(chave) {
+  const d = DADOS[chave];
+  if (!d || d.cod_situacao == null) return { cod: 0, ...SEM_DADOS };
+  const s = SITUACOES[d.cod_situacao];
+  return s ? { cod: Number(d.cod_situacao), nome: d.desc_situacao || s.nome, cor: s.cor }
+           : { cod: Number(d.cod_situacao), nome: d.desc_situacao || ('Situação ' + d.cod_situacao), cor: SEM_DADOS.cor };
+}
+
+function estilo(feature) {
+  const s = situacaoDe(feature.properties.chave);
+  const escondido = OCULTAS.has(s.cod) || !passaBusca(feature);
+  return {
+    color: '#ffffff', weight: 1, opacity: escondido ? 0 : .9,
+    fillColor: s.cor, fillOpacity: escondido ? 0 : .68,
+    interactive: !escondido
+  };
+}
+
+function passaBusca(feature) {
+  const termo = (document.getElementById('busca').value || '').trim().toLowerCase();
+  if (!termo) return true;
+  const p = feature.properties;
+  const d = DADOS[p.chave] || {};
+  return [p.chave, p.nomeFazenda, d.desc_fazenda, d.desc_variedade, 'talhão ' + p.talhao]
+    .some(v => String(v || '').toLowerCase().includes(termo));
+}
+
+// ── Popup ────────────────────────────────────────────────────────────────
+function conteudoPopup(p) {
+  const d = DADOS[p.chave];
+  const s = situacaoDe(p.chave);
+  const linha = (rot, val) => val == null || val === '' ? ''
+      : `<tr><td>${rot}</td><td>${esc(val)}</td></tr>`;
+
+  const corpo = !d
+    ? `<div class="pop-vazio">Sem cadastro para este talhão na safra selecionada.</div>
+       <table class="pop-tab">${linha('Área (mapa)', fmtNum(p.areaShape) + ' ha')}</table>`
+    : `<table class="pop-tab">
+         ${linha('TCH estimado', d.tch_estimado ? fmtNum(d.tch_estimado) + ' t/ha' : null)}
+         ${linha('Variedade', d.desc_variedade)}
+         ${linha('Idade', d.desc_idade || (d.numerocorte != null ? d.numerocorte + 'º corte' : null))}
+         ${linha('Área de produção', d.areaproducao ? fmtNum(d.areaproducao) + ' ha' : null)}
+         ${linha('Área plantada', d.areaplantada ? fmtNum(d.areaplantada) + ' ha' : null)}
+         ${linha('Área (mapa)', fmtNum(p.areaShape) + ' ha')}
+         ${linha('Último corte', formatarData(d.data_ultimo_corte))}
+       </table>`;
+
+  return `
+    <div class="pop-tit">Talhão ${esc(p.talhao)} <span style="font-weight:400;color:#94a0b8">· zona ${esc(p.zona)}</span></div>
+    <div class="pop-faz">${esc((d && d.desc_fazenda) || p.nomeFazenda || 'Fazenda ' + p.fazenda)}</div>
+    <div class="pop-sit" style="background:${s.cor}">${esc(s.nome)}</div>
+    ${corpo}`;
+}
+
+function formatarData(v) {
+  if (!v) return null;
+  const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : String(v);
+}
+
+// ── Legenda e resumo ─────────────────────────────────────────────────────
+function montarLegenda() {
+  const cont = {}, area = {};
+  GEO.features.forEach(f => {
+    const s = situacaoDe(f.properties.chave);
+    cont[s.cod] = (cont[s.cod] || 0) + 1;
+    area[s.cod] = (area[s.cod] || 0) + (Number(f.properties.areaShape) || 0);
+  });
+
+  const ordem = Object.keys(SITUACOES).map(Number).filter(c => cont[c]);
+  if (cont[0]) ordem.push(0);
+
+  document.getElementById('legenda').innerHTML = ordem.map(cod => {
+    const s = cod === 0 ? SEM_DADOS : SITUACOES[cod];
+    return `<div class="legenda-item ${OCULTAS.has(cod) ? 'oculta' : ''}" onclick="alternarSituacao(${cod})"
+                 title="Clique para mostrar ou esconder">
+              <span class="caixa" style="background:${s.cor}"></span>
+              <span class="nome">${esc(s.nome)}</span>
+              <span class="qtde">${fmtInt(cont[cod])} talh.<br>${fmtNum(area[cod])} ha</span>
+            </div>`;
+  }).join('');
+
+  const totalTalhoes = GEO.features.length;
+  const totalArea = GEO.features.reduce((a, f) => a + (Number(f.properties.areaShape) || 0), 0);
+  const comDados = GEO.features.filter(f => DADOS[f.properties.chave]).length;
+  document.getElementById('resumo').innerHTML = `
+    <div class="linha"><span>Talhões no mapa</span><b>${fmtInt(totalTalhoes)}</b></div>
+    <div class="linha"><span>Área total</span><b>${fmtNum(totalArea)} ha</b></div>
+    <div class="linha"><span>Com cadastro na safra</span><b>${fmtInt(comDados)}</b></div>`;
+
+  const semGeo = Object.keys(DADOS).filter(k => !GEO.features.some(f => f.properties.chave === k)).length;
+  const aviso = document.getElementById('avisoSemDados');
+  if (semGeo > 0 || cont[0]) {
+    aviso.style.display = '';
+    aviso.innerHTML =
+      (cont[0] ? `<b>${fmtInt(cont[0])}</b> talhão(ões) desenhado(s) no mapa não têm cadastro nesta safra. ` : '') +
+      (semGeo ? `<b>${fmtInt(semGeo)}</b> talhão(ões) da safra não têm desenho no mapa — o shapefile precisa ser atualizado.` : '');
+  } else {
+    aviso.style.display = 'none';
+  }
+}
+
+function alternarSituacao(cod) {
+  if (OCULTAS.has(cod)) OCULTAS.delete(cod); else OCULTAS.add(cod);
+  montarLegenda();
+  aplicarFiltros();
+}
+
+function aplicarFiltros() {
+  if (CAMADA) CAMADA.setStyle(estilo);
+}
+
+function enquadrarTudo() {
+  if (CAMADA) MAPA.fitBounds(CAMADA.getBounds(), { padding: [20, 20] });
+}
+
+// ── Carga ────────────────────────────────────────────────────────────────
+function iniciarMapa() {
+  MAPA = L.map('mapa', { preferCanvas: true }).setView([-9.47, -35.85], 11);
+
+  const satelite = L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    { maxZoom: 19, attribution: 'Imagens: Esri, Maxar, Earthstar Geographics' });
+  const ruas = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    { maxZoom: 19, attribution: '© OpenStreetMap' });
+
+  satelite.addTo(MAPA);
+  L.control.layers({ 'Satélite': satelite, 'Mapa de ruas': ruas }, null, { position: 'topright' }).addTo(MAPA);
+  L.control.scale({ imperial: false }).addTo(MAPA);
+}
+
+async function carregarDados() {
+  const safra = document.getElementById('selSafra').value;
+  if (!safra) return;
+  mostrarCarregando('Consultando talhões da safra…');
+  try {
+    const r = await fetch('api/mapa-talhoes?safra=' + encodeURIComponent(safra));
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro);
+    DADOS = {};
+    (j.data || []).forEach(d => { DADOS[d.chave] = d; });
+    montarLegenda();
+    aplicarFiltros();
+  } catch(e) {
+    // O mapa continua útil sem o ERP: os talhões aparecem em cinza.
+    DADOS = {};
+    montarLegenda();
+    aplicarFiltros();
+    alert('Não foi possível carregar os dados da safra: ' + e.message);
+  } finally {
+    esconderCarregando();
+  }
+}
+
+function mostrarCarregando(txt) {
+  document.getElementById('carregandoTxt').textContent = txt;
+  document.getElementById('carregando').style.display = 'flex';
+}
+function esconderCarregando() { document.getElementById('carregando').style.display = 'none'; }
+
+(async function iniciar() {
+  iniciarMapa();
+
+  // 1. Geometria (estática, do shapefile da topografia)
+  mostrarCarregando('Carregando o desenho dos talhões…');
+  try {
+    const r = await fetch('mapas/talhoes.geojson');
+    GEO = await r.json();
+  } catch(e) {
+    esconderCarregando();
+    alert('Não foi possível carregar o desenho dos talhões: ' + e.message);
+    return;
+  }
+
+  CAMADA = L.geoJSON(GEO, {
+    style: estilo,
+    onEachFeature: (f, camada) => {
+      camada.bindPopup(() => conteudoPopup(f.properties), { maxWidth: 320 });
+      camada.on('mouseover', e => e.target.setStyle({ weight: 3 }));
+      camada.on('mouseout',  e => CAMADA.resetStyle(e.target));
+    }
+  }).addTo(MAPA);
+  enquadrarTudo();
+
+  // 2. Safras + dados do ERP
+  try {
+    const r = await fetch('api/mapa-talhoes/safras');
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro);
+    const safras = j.data || [];
+    const sel = document.getElementById('selSafra');
+    sel.innerHTML = safras.map(s =>
+      `<option value="${esc(s.cod_safra)}">Safra ${esc(s.cod_safra)}${s.atual === 'S' ? ' (atual)' : ''}</option>`).join('');
+    const atual = safras.find(s => s.atual === 'S') || safras[0];
+    if (atual) { sel.value = atual.cod_safra; await carregarDados(); }
+    else { esconderCarregando(); montarLegenda(); }
+  } catch(e) {
+    esconderCarregando();
+    montarLegenda();
+    document.getElementById('selSafra').innerHTML = '<option>—</option>';
+  }
+})();
+</script>
+</body>
+</html>
