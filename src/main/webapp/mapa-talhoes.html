@@ -154,7 +154,7 @@
     <select id="selSafra" onchange="carregarDados()"><option>…</option></select>
     <input type="search" id="busca" placeholder="Buscar talhão ou fazenda…" oninput="aplicarFiltros()" style="width:190px">
     <button class="btn-topo" id="btnGps" onclick="alternarGps()" title="Mostrar minha posição">📍 Onde estou</button>
-    <button class="btn-topo" id="btnOffline" onclick="prepararOffline()" title="Guardar para usar sem sinal">⬇ Offline</button>
+    <button class="btn-topo" id="btnOffline" onclick="prepararOffline()" title="Guardar agora, com sinal, para usar no campo sem internet">⬇ Offline</button>
     <button class="btn-topo" onclick="enquadrarTudo()">Ver tudo</button>
     <button class="btn-topo" onclick="window.location.href='hub.html'">← Hub</button>
   </div>
@@ -174,6 +174,7 @@
     <h3>Situação do talhão</h3>
     <div id="legenda"></div>
     <div class="resumo" id="resumo"></div>
+    <div class="aviso" id="idadeDados" style="display:none;background:#f5f7fb;border-left-color:#2a78d6"></div>
     <div class="aviso" id="avisoSemDados" style="display:none"></div>
   </div>
 </div>
@@ -436,10 +437,39 @@ function mostrarCartao(f, precisao) {
 function fecharCartao() { document.getElementById('cartaoGps').classList.remove('on'); }
 
 // ── Offline ──────────────────────────────────────────────────────────────
+function marcarTarja(txto) {
+  const t = document.getElementById('tarja');
+  t.textContent = txto;
+  t.classList.add('on');
+}
+
+/** Quando esta safra foi consultada pela última vez com sinal. */
+function dataDosDados(safra) {
+  safra = safra || document.getElementById('selSafra').value;
+  let iso = null;
+  try { iso = localStorage.getItem('mapaTalhoes.dadosEm.' + safra); } catch(e) {}
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d)) return null;
+  const p = n => String(n).padStart(2, '0');
+  return p(d.getDate()) + '/' + p(d.getMonth()+1) + ' às ' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
+
+function mostrarIdadeDados(safra, doCache) {
+  const quando = dataDosDados(safra);
+  const el = document.getElementById('idadeDados');
+  if (!el) return;
+  el.innerHTML = !quando ? ''
+    : (doCache ? '⚠ Dados guardados em <b>' + quando + '</b> — sem conexão para atualizar.'
+               : 'Dados atualizados em <b>' + quando + '</b>.');
+  el.style.display = quando ? '' : 'none';
+}
+
 function estadoRede() {
   const t = document.getElementById('tarja');
   if (!navigator.onLine) {
-    t.textContent = 'Sem conexão — mostrando o que foi guardado';
+    const quando = dataDosDados();
+    t.textContent = 'Sem conexão — dados de ' + (quando || 'uma consulta anterior');
     t.classList.add('on');
   } else {
     t.classList.remove('on');
@@ -460,9 +490,12 @@ async function prepararOffline() {
     await fetch('mapas/talhoes.geojson', { cache: 'reload' });
     const safra = document.getElementById('selSafra').value;
     if (safra) await fetch('api/mapa-talhoes?safra=' + encodeURIComponent(safra));
-    alert('Pronto. O mapa e os dados desta safra abrem sem sinal.\n\n' +
-          'As imagens de satélite só ficam disponíveis nas áreas que você já visitou na tela — ' +
-          'sem elas os talhões continuam aparecendo, sobre fundo liso.');
+    mostrarIdadeDados(safra, false);
+    alert('Pronto. O mapa e os dados desta safra abrem sem sinal — não precisa fazer login no campo.\n\n' +
+          'No iPhone, use o Safari e toque em Compartilhar → "Adicionar à Tela de Início". ' +
+          'Só assim o iOS mantém o que foi guardado; um atalho comum é apagado depois de alguns dias sem uso.\n\n' +
+          'As imagens de satélite só ficam nas áreas que você já visitou na tela — sem elas os ' +
+          'talhões continuam aparecendo, sobre fundo liso.');
   } catch(e) {
     alert('Não foi possível preparar o uso offline: ' + e.message);
   } finally {
@@ -497,11 +530,16 @@ async function carregarDados() {
     (j.data || []).forEach(d => { DADOS[d.chave] = d; });
     montarLegenda();
     aplicarFiltros();
+
+    // "De quando são estes dados" é a pergunta de quem está no campo sem
+    // sinal: sem isso, dado de uma semana atrás parece dado de agora.
     if (j.doCache) {
-      const t = document.getElementById('tarja');
-      t.textContent = 'Sem conexão — dados da última consulta';
-      t.classList.add('on');
+      marcarTarja('Sem conexão — dados de ' + (dataDosDados() || 'uma consulta anterior'));
+    } else {
+      try { localStorage.setItem('mapaTalhoes.dadosEm.' + safra, new Date().toISOString()); } catch(e) {}
+      document.getElementById('tarja').classList.remove('on');
     }
+    mostrarIdadeDados(safra, j.doCache);
   } catch(e) {
     // O mapa continua útil sem o ERP: os talhões aparecem em cinza.
     DADOS = {};
