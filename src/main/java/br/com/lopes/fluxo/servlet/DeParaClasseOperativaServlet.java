@@ -27,8 +27,8 @@ import java.sql.Statement;
  * Semanal por Classe Operativa").
  *
  * A tabela fc_depara_classeoperativa é criada automaticamente no MySQL na
- * primeira chamada (CREATE TABLE IF NOT EXISTS); a coluna chave continua se
- * chamando cod_modelo por compatibilidade com a tabela já existente, mas
+ * primeira chamada (CREATE TABLE IF NOT EXISTS); a coluna chave ainda se
+ * chama cod_modelo por compatibilidade com o de-para já importado, mas
  * guarda cod_equipamento.
  *
  * GET    /api/depara-classeoperativa           -> lista tudo

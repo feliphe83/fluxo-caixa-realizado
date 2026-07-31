@@ -547,23 +547,22 @@ public class CombustivelDashboardServlet extends HttpServlet {
     }
 
     /**
-     * O de-para (fc_depara_classeoperativa) é por TIPO DE EQUIPAMENTO
-     * (cod_tipoequipamento de automotivo.historico_tipoequipamento, vigente
-     * na data do abastecimento — a consulta traz como cod_tipo_equip). São
-     * poucas dezenas de tipos contra centenas de equipamentos, então o
-     * de-para fica curto e um equipamento novo já entra classificado, sem
-     * precisar ser cadastrado um a um.
-     *
-     * A coluna no MySQL continua se chamando cod_modelo, por compatibilidade
-     * com a tabela já existente.
+     * O de-para (fc_depara_classeoperativa) é por EQUIPAMENTO (cod_equipamento
+     * de automotivo.equipamento — cada unidade física, não o modelo abstrato:
+     * o mesmo modelo, ex. "JOHN DEERE 6190J", tem várias unidades com códigos
+     * de equipamento diferentes, cada uma podendo cair numa classe distinta).
+     * A coluna no MySQL ainda se chama cod_modelo por compatibilidade com o
+     * de-para já importado, mas guarda cod_equipamento.
      *
      * Já distingue próprio de terceiro no próprio nome da classe quando é o
      * caso (ex.: "Trator" x "Trator Terceiro", "Ônibus Terceiro") — sem
-     * sufixo automático somado por cima daqui.
+     * sufixo automático somado por cima daqui. Toda linha aqui já tem
+     * cod_equipamento (abastecimento sem equipamento é descartado antes,
+     * em doGet).
      */
     private static String classeOperativaDe(Map<String, Object> l) {
-        String codTipoEquipamento = strOf(l.get("cod_tipo_equip"));
-        String base = ClasseOperativaCache.buscar(codTipoEquipamento);
+        String codEquipamento = strOf(l.get("cod_equipamento"));
+        String base = ClasseOperativaCache.buscar(codEquipamento);
         return (base == null || base.isBlank()) ? "Não Classificado" : base;
     }
 
