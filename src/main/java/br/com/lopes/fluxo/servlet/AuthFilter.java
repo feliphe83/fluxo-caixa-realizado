@@ -59,6 +59,11 @@ public class AuthFilter implements Filter {
             // /api/publico/status-envios, que já é liberado abaixo e devolve os
             // telefones mascarados.
             uri.equals(ctx + "/status-envios.html")       ||
+            // Service worker e manifest do mapa de talhões: são arquivos
+            // estáticos, sem dado nenhum, e precisam responder mesmo com a
+            // sessão expirada — é o que mantém a tela funcionando no campo.
+            uri.equals(ctx + "/sw-mapa.js")               ||
+            uri.equals(ctx + "/mapa-talhoes.webmanifest") ||
             uri.startsWith(ctx + "/api/login")            ||
             uri.startsWith(ctx + "/api/esqueci-senha")     ||
             uri.startsWith(ctx + "/api/redefinir-senha")   ||

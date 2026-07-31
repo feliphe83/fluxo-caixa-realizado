@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mapa de Talhões · Usina Santa Clotilde</title>
 <link rel="stylesheet" href="css/leaflet.css">
+<link rel="manifest" href="mapa-talhoes.webmanifest">
+<meta name="theme-color" content="#16342a">
+<meta name="mobile-web-app-capable" content="yes">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -103,6 +106,34 @@
              border-radius: 50%; animation: spin .8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
+  /* ── Onde estou: cartão fixo do talhão sob o GPS ── */
+  .cartao-gps {
+    position: absolute; left: 12px; right: 12px; bottom: 12px; z-index: 900;
+    background: white; border-radius: 12px; box-shadow: 0 6px 24px rgba(15,36,96,.22);
+    padding: 12px 14px; display: none; max-width: 420px;
+  }
+  .cartao-gps.on { display: block; }
+  .cartao-gps .fechar { position: absolute; top: 8px; right: 10px; border: none; background: none;
+                        font-size: 18px; color: #94a0b8; cursor: pointer; line-height: 1; }
+  .cartao-gps .rot { font-size: 10px; font-weight: 700; text-transform: uppercase;
+                     letter-spacing: .5px; color: #64748b; }
+  .cartao-gps .fora { font-size: 13px; color: #52514e; margin-top: 4px; }
+
+  /* Estado da conexão e do GPS */
+  .tarja {
+    position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 900;
+    background: #fffaf0; border: 1.5px solid #eda100; color: #52514e;
+    padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 600;
+    display: none; white-space: nowrap; box-shadow: 0 2px 10px rgba(0,0,0,.12);
+  }
+  .tarja.on { display: block; }
+  .btn-topo.ativo { background: white; color: #16342a; border-color: white; }
+
+  .marca-eu {
+    width: 18px; height: 18px; border-radius: 50%; background: #2a78d6;
+    border: 3px solid white; box-shadow: 0 0 0 1px rgba(0,0,0,.3);
+  }
+
   @media (max-width: 820px) {
     .corpo { flex-direction: column; }
     .painel { width: 100%; max-height: 40vh; border-left: none; border-top: 1px solid #e3e8f5; }
@@ -122,6 +153,8 @@
   <div class="header-right">
     <select id="selSafra" onchange="carregarDados()"><option>…</option></select>
     <input type="search" id="busca" placeholder="Buscar talhão ou fazenda…" oninput="aplicarFiltros()" style="width:190px">
+    <button class="btn-topo" id="btnGps" onclick="alternarGps()" title="Mostrar minha posição">📍 Onde estou</button>
+    <button class="btn-topo" id="btnOffline" onclick="prepararOffline()" title="Guardar para usar sem sinal">⬇ Offline</button>
     <button class="btn-topo" onclick="enquadrarTudo()">Ver tudo</button>
     <button class="btn-topo" onclick="window.location.href='hub.html'">← Hub</button>
   </div>
@@ -130,6 +163,12 @@
 <div class="corpo">
   <div id="mapa" style="position:relative">
     <div class="carregando" id="carregando"><div class="spinner"></div><span id="carregandoTxt">Carregando mapa…</span></div>
+    <div class="tarja" id="tarja"></div>
+    <div class="cartao-gps" id="cartaoGps">
+      <button class="fechar" onclick="fecharCartao()">×</button>
+      <div class="rot">Você está em</div>
+      <div id="cartaoConteudo"></div>
+    </div>
   </div>
   <div class="painel">
     <h3>Situação do talhão</h3>
@@ -154,6 +193,7 @@ const SITUACOES = {
 const SEM_DADOS = { nome: 'Sem cadastro na safra', cor: '#98a2b3' };
 
 let MAPA, CAMADA, GEO = null, DADOS = {}, OCULTAS = new Set();
+let GPS = null, MARCA_EU = null, CIRCULO_EU = null, TALHAO_ATUAL = null, SEGUINDO = true;
 
 const fmtNum = v => (Number(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtInt = v => (Number(v) || 0).toLocaleString('pt-BR');
@@ -275,6 +315,161 @@ function enquadrarTudo() {
   if (CAMADA) MAPA.fitBounds(CAMADA.getBounds(), { padding: [20, 20] });
 }
 
+// ── Em qual talhão eu estou ──────────────────────────────────────────────
+// Raio horizontal: conta quantas vezes a semirreta que sai do ponto cruza o
+// anel. Ímpar = dentro. Coordenadas em grau servem direto — o teste é
+// topológico, não métrico.
+function pontoEmAnel(lng, lat, anel) {
+  let dentro = false;
+  for (let i = 0, j = anel.length - 1; i < anel.length; j = i++) {
+    const xi = anel[i][0], yi = anel[i][1], xj = anel[j][0], yj = anel[j][1];
+    if (((yi > lat) !== (yj > lat)) && (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi)) dentro = !dentro;
+  }
+  return dentro;
+}
+
+function pontoEmGeometria(lng, lat, geom) {
+  const poligonos = geom.type === 'Polygon' ? [geom.coordinates] : geom.coordinates;
+  for (const pol of poligonos) {
+    if (!pontoEmAnel(lng, lat, pol[0])) continue;        // fora do contorno
+    let emBuraco = false;                                 // anéis seguintes são furos
+    for (let i = 1; i < pol.length; i++) {
+      if (pontoEmAnel(lng, lat, pol[i])) { emBuraco = true; break; }
+    }
+    if (!emBuraco) return true;
+  }
+  return false;
+}
+
+/** Caixa envolvente pré-calculada: descarta quase tudo antes do teste caro. */
+function caixaDe(f) {
+  if (f._caixa) return f._caixa;
+  let x1 = 180, y1 = 90, x2 = -180, y2 = -90;
+  const polys = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
+  polys.forEach(pol => pol[0].forEach(c => {
+    if (c[0] < x1) x1 = c[0]; if (c[0] > x2) x2 = c[0];
+    if (c[1] < y1) y1 = c[1]; if (c[1] > y2) y2 = c[1];
+  }));
+  f._caixa = [x1, y1, x2, y2];
+  return f._caixa;
+}
+
+function talhaoEm(lng, lat) {
+  if (!GEO) return null;
+  for (const f of GEO.features) {
+    const [x1, y1, x2, y2] = caixaDe(f);
+    if (lng < x1 || lng > x2 || lat < y1 || lat > y2) continue;
+    if (pontoEmGeometria(lng, lat, f.geometry)) return f;
+  }
+  return null;
+}
+
+// ── GPS ──────────────────────────────────────────────────────────────────
+function alternarGps() {
+  if (GPS) { pararGps(); return; }
+  if (!navigator.geolocation) { alert('Este aparelho não informa a localização.'); return; }
+  // Navegadores só liberam a posição em HTTPS (ou localhost).
+  if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+    alert('A localização só funciona em HTTPS. Abra a intranet pelo endereço https://.');
+    return;
+  }
+  document.getElementById('btnGps').classList.add('ativo');
+  SEGUINDO = true;
+  GPS = navigator.geolocation.watchPosition(aoPosicionar, erroGps,
+        { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+  // Arrastar o mapa desliga o "seguir", senão a tela briga com o usuário.
+  MAPA.on('dragstart', () => { SEGUINDO = false; });
+}
+
+function pararGps() {
+  if (GPS !== null) navigator.geolocation.clearWatch(GPS);
+  GPS = null; TALHAO_ATUAL = null;
+  document.getElementById('btnGps').classList.remove('ativo');
+  if (MARCA_EU) { MAPA.removeLayer(MARCA_EU); MARCA_EU = null; }
+  if (CIRCULO_EU) { MAPA.removeLayer(CIRCULO_EU); CIRCULO_EU = null; }
+  fecharCartao();
+}
+
+function erroGps(e) {
+  pararGps();
+  alert(e.code === 1 ? 'Permissão de localização negada. Libere no navegador para usar "Onde estou".'
+                     : 'Não foi possível obter a localização: ' + e.message);
+}
+
+function aoPosicionar(pos) {
+  const lat = pos.coords.latitude, lng = pos.coords.longitude;
+  const precisao = pos.coords.accuracy || 0;
+  const p = [lat, lng];
+
+  if (!MARCA_EU) {
+    MARCA_EU = L.marker(p, { icon: L.divIcon({ className: '', html: '<div class="marca-eu"></div>',
+                             iconSize: [18, 18], iconAnchor: [9, 9] }), zIndexOffset: 1000 }).addTo(MAPA);
+    CIRCULO_EU = L.circle(p, { radius: precisao, color: '#2a78d6', weight: 1,
+                               fillColor: '#2a78d6', fillOpacity: .12 }).addTo(MAPA);
+  } else {
+    MARCA_EU.setLatLng(p);
+    CIRCULO_EU.setLatLng(p).setRadius(precisao);
+  }
+  if (SEGUINDO) MAPA.setView(p, Math.max(MAPA.getZoom(), 16));
+
+  const f = talhaoEm(lng, lat);
+  const chave = f ? f.properties.chave : null;
+  if (chave !== TALHAO_ATUAL) {          // só redesenha ao mudar de talhão
+    TALHAO_ATUAL = chave;
+    mostrarCartao(f, precisao);
+  }
+}
+
+function mostrarCartao(f, precisao) {
+  const cartao = document.getElementById('cartaoGps');
+  const alvo = document.getElementById('cartaoConteudo');
+  if (!f) {
+    alvo.innerHTML = `<div class="fora">Fora dos talhões mapeados${
+      precisao ? ' · precisão de ' + Math.round(precisao) + ' m' : ''}</div>`;
+  } else {
+    alvo.innerHTML = conteudoPopup(f.properties) +
+      (precisao > 25 ? `<div class="fora" style="margin-top:6px">Precisão do GPS: ${Math.round(precisao)} m — pode estar no talhão vizinho.</div>` : '');
+  }
+  cartao.classList.add('on');
+}
+
+function fecharCartao() { document.getElementById('cartaoGps').classList.remove('on'); }
+
+// ── Offline ──────────────────────────────────────────────────────────────
+function estadoRede() {
+  const t = document.getElementById('tarja');
+  if (!navigator.onLine) {
+    t.textContent = 'Sem conexão — mostrando o que foi guardado';
+    t.classList.add('on');
+  } else {
+    t.classList.remove('on');
+  }
+}
+window.addEventListener('online', estadoRede);
+window.addEventListener('offline', estadoRede);
+
+async function prepararOffline() {
+  const btn = document.getElementById('btnOffline');
+  const rotulo = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Guardando…';
+  try {
+    if (!('serviceWorker' in navigator)) throw new Error('Este navegador não guarda páginas para uso offline.');
+    await navigator.serviceWorker.register('sw-mapa.js');
+    await navigator.serviceWorker.ready;
+    // Reaquece a casca e os dados da safra atual passando pelo worker.
+    await fetch('mapas/talhoes.geojson', { cache: 'reload' });
+    const safra = document.getElementById('selSafra').value;
+    if (safra) await fetch('api/mapa-talhoes?safra=' + encodeURIComponent(safra));
+    alert('Pronto. O mapa e os dados desta safra abrem sem sinal.\n\n' +
+          'As imagens de satélite só ficam disponíveis nas áreas que você já visitou na tela — ' +
+          'sem elas os talhões continuam aparecendo, sobre fundo liso.');
+  } catch(e) {
+    alert('Não foi possível preparar o uso offline: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = rotulo;
+  }
+}
+
 // ── Carga ────────────────────────────────────────────────────────────────
 function iniciarMapa() {
   MAPA = L.map('mapa', { preferCanvas: true }).setView([-9.47, -35.85], 11);
@@ -302,6 +497,11 @@ async function carregarDados() {
     (j.data || []).forEach(d => { DADOS[d.chave] = d; });
     montarLegenda();
     aplicarFiltros();
+    if (j.doCache) {
+      const t = document.getElementById('tarja');
+      t.textContent = 'Sem conexão — dados da última consulta';
+      t.classList.add('on');
+    }
   } catch(e) {
     // O mapa continua útil sem o ERP: os talhões aparecem em cinza.
     DADOS = {};
@@ -321,6 +521,12 @@ function esconderCarregando() { document.getElementById('carregando').style.disp
 
 (async function iniciar() {
   iniciarMapa();
+  estadoRede();
+  // Registro silencioso: quem já abriu a tela uma vez com sinal passa a ter
+  // a casca guardada, mesmo sem clicar em "Offline".
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw-mapa.js').catch(() => {});
+  }
 
   // 1. Geometria (estática, do shapefile da topografia)
   mostrarCarregando('Carregando o desenho dos talhões…');
