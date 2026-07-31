@@ -1660,19 +1660,42 @@ function encontrarPeriodo(dataPgtoStr) {
 }
 
 // ─── Agrupamento ──────────────────────────────────────────────────────────
+/**
+ * Texto comparável: sem espaços nas pontas, sem espaços repetidos no meio.
+ *
+ * Os lançamentos manuais gravam a descrição a partir de
+ * `<option>.text`, que o navegador devolve já com os espaços removidos e
+ * comprimidos (regra do HTML). O mesmo item vindo do ERP traz o texto cru do
+ * Oracle, que costuma vir preenchido com espaços. Os dois são idênticos na
+ * tela e diferentes como string — comparar sem normalizar fazia o item
+ * aparecer em duas linhas, uma com os títulos a pagar e outra só com o
+ * lançamento manual.
+ */
+function norm(v) {
+  return String(v == null ? '' : v).trim().replace(/\s+/g, ' ');
+}
+
+/** Código quando existe (é a identidade), texto normalizado como reserva. */
+function chaveCodigo(cod, texto, prefixo) {
+  const c = norm(cod);
+  if (c) return prefixo + ':' + c;
+  const t = norm(texto).toUpperCase();
+  return t ? 'd:' + t : 'sem';
+}
+
 function getChave(d, ag) {
-  if (ag === 'descricao')      return d.descricaoConta || d.codContaFluxo || 'sem';
-  if (ag === 'empenho_grupo')  return d.descEmpenho || d.codEmpenho || 'sem';
-  if (ag === 'empenho')        return (d.codEmpenho || '') + '|' + (d.descEmpenho || '');
+  if (ag === 'descricao')      return chaveCodigo(d.codContaFluxo, d.descricaoConta, 'c');
+  if (ag === 'empenho_grupo')  return norm(d.descEmpenho).toUpperCase() || norm(d.codEmpenho) || 'sem';
+  if (ag === 'empenho')        return chaveCodigo(d.codEmpenho, d.descEmpenho, 'e');
   if (ag === 'fornecedor')     return d.codFornecedor || 'sem';
-  return d.descricaoConta || d.codContaFluxo || 'sem';
+  return chaveCodigo(d.codContaFluxo, d.descricaoConta, 'c');
 }
 function getLabel(d, ag) {
-  if (ag === 'descricao')      return d.descricaoConta || String(d.codContaFluxo) || '(sem descrição)';
-  if (ag === 'empenho_grupo')  return d.descEmpenho || d.codEmpenho || '(sem empenho)';
-  if (ag === 'empenho')        return d.descEmpenho || d.codEmpenho || '(sem empenho)';
+  if (ag === 'descricao')      return norm(d.descricaoConta) || norm(d.codContaFluxo) || '(sem descrição)';
+  if (ag === 'empenho_grupo')  return norm(d.descEmpenho) || norm(d.codEmpenho) || '(sem empenho)';
+  if (ag === 'empenho')        return norm(d.descEmpenho) || norm(d.codEmpenho) || '(sem empenho)';
   if (ag === 'fornecedor')     return d.nome || '(sem fornecedor)';
-  return d.descricaoConta || String(d.codContaFluxo) || '(sem descrição)';
+  return norm(d.descricaoConta) || norm(d.codContaFluxo) || '(sem descrição)';
 }
 
 // ─── Formatação ───────────────────────────────────────────────────────────
