@@ -1685,7 +1685,13 @@ function norm(v) {
  * o que tem o mesmo nome.
  */
 function chaveTexto(v) {
-  return norm(v).toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  return norm(v)
+    .toUpperCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')  // tira acentos
+    // Sobra só letra e número: pontuação, espaço e caracteres invisíveis
+    // (espaço fino, largura-zero, marca de ordenação) somem. Sem isso, um
+    // único caractere que não se vê na tela mantém duas linhas separadas.
+    .replace(/[^A-Z0-9]/g, '');
 }
 
 function getChave(d, ag) {
