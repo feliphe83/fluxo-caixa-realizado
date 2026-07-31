@@ -904,13 +904,18 @@ function secaoClasseOperativa(j) {
   const ultimasSemanas = semanas.slice(-n);
   const theadCols = ultimasSemanas.map(s => `<th>${s.label}</th>`).join('');
 
+  // Só entram classes com consumo nas últimas semanas. Uma classe que só
+  // aparece na média histórica (total zerado) vira uma linha inteira de
+  // traços, que ocupa espaço sem dizer nada sobre o período em foco.
   const linhas = co.linhas.map(l => {
     const ultimas = l.porSemana.slice(-n);
     const resto = l.porSemana.slice(0, l.porSemana.length - n);
     const media = resto.length ? resto.reduce((a,b) => a+b, 0) / resto.length : 0;
     const total = ultimas.reduce((a,b) => a+b, 0);
+    return { nome: l.nome, media, total, ultimas };
+  }).filter(l => Math.round(l.total) !== 0).map(l => {
     const celula = v => `<td>${v ? fmtInt.format(Math.round(v)) : '-'}</td>`;
-    return `<tr><td>${escapeHtml(l.nome)}</td><td>${media ? fmtInt.format(Math.round(media)) : '-'}</td>${ultimas.map(celula).join('')}<td class="num" style="font-weight:700">${fmtInt.format(Math.round(total))}</td></tr>`;
+    return `<tr><td>${escapeHtml(l.nome)}</td><td>${l.media ? fmtInt.format(Math.round(l.media)) : '-'}</td>${l.ultimas.map(celula).join('')}<td class="num" style="font-weight:700">${fmtInt.format(Math.round(l.total))}</td></tr>`;
   }).join('');
 
   const totalUltimas = co.totalPorSemana.slice(-n);
@@ -933,9 +938,6 @@ function secaoClasseOperativa(j) {
         </tbody>
       </table>
     </div>
-    ${co.linhas.some(l => l.nome === 'Não Classificado')
-      ? '<div class="insight-box"><span class="insight-icone">!</span><div>Há modelos de equipamento sem Classe Operativa cadastrada — complete o de-para em <b>Administração → De-Para Classe Operativa</b> para refinar esta visão.</div></div>'
-      : ''}
   </div>`;
 }
 
