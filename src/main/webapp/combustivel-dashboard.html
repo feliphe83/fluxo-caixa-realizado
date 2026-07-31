@@ -333,8 +333,21 @@ function preset(semanas) {
 }
 
 (function initDatas() {
-  document.getElementById('dataIni').value = '2026-03-02';
-  document.getElementById('dataFim').value = fmt8(new Date());
+  // O envio automático por WhatsApp abre esta página com o período na URL
+  // (ver CombustivelRelatorioAgendadoHandler, que usa data fim = ontem). Sem
+  // ler esses parâmetros, o PDF sairia sempre com o período padrão daqui e
+  // não bateria com a legenda da mensagem.
+  const q = new URLSearchParams(location.search);
+  const dataDaUrl = nome => {
+    const v = q.get(nome);
+    return v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null;
+  };
+
+  document.getElementById('dataIni').value = dataDaUrl('dataIni') || '2026-03-02';
+  document.getElementById('dataFim').value = dataDaUrl('dataFim') || fmt8(new Date());
+  const combustivel = (q.get('combustivel') || '').trim();
+  if (combustivel) document.getElementById('fCombustivel').value = combustivel;
+
   const hoje = new Date();
   document.getElementById('headerEmitido').textContent =
     fmt8(hoje).split('-').reverse().join('/');
