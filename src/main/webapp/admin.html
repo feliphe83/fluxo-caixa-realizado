@@ -385,9 +385,22 @@
       <div class="panel">
         <div class="ph">
           <div class="ph-title">Registros do De-Para (<span id="classeOpTotal">0</span>)</div>
-          <div class="search-wrap">
-            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input class="search-inp" id="searchClasseOp" placeholder="Buscar…" oninput="renderClasseOp()">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="search-wrap">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input class="search-inp" id="searchClasseOp" placeholder="Buscar…" oninput="renderClasseOp()">
+            </div>
+            <button id="btnLimparClasseOp" onclick="excluirTodosClasseOp()"
+                    style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:7px;
+                           border:1.5px solid rgba(239,68,68,0.55);background:rgba(239,68,68,0.10);
+                           color:#f87171;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap"
+                    title="Apaga o de-para inteiro">
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+                <path d="M10 11v6M14 11v6M9 6V4h6v2"/>
+              </svg>
+              Excluir Todos
+            </button>
           </div>
         </div>
         <table>
@@ -1458,6 +1471,33 @@ async function excluirClasseOp(cod) {
     carregarClasseOp();
   } catch(e) {
     toast('Erro: ' + e.message, 'red');
+  }
+}
+
+/**
+ * Apaga o de-para inteiro. Duas confirmações porque não há desfazer e a
+ * consequência não é óbvia: sem de-para, a tabela de Classe Operativa do
+ * Dashboard de Combustível cai toda em "Não Classificado".
+ */
+async function excluirTodosClasseOp() {
+  const total = (CLASSEOP || []).length;
+  if (total === 0) { toast('O de-para já está vazio', 'yellow'); return; }
+  if (!confirm('Excluir TODOS os ' + total + ' registros do de-para de Classe Operativa?\n\n' +
+               'Sem o de-para, o Dashboard de Combustível mostra tudo como "Não Classificado".')) return;
+  if (!confirm('Confirma? Esta ação não pode ser desfeita.')) return;
+
+  const btn = document.getElementById('btnLimparClasseOp');
+  btn.disabled = true;
+  try {
+    const r = await fetch('api/depara-classeoperativa?todos=1', { method: 'DELETE' });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro);
+    toast(j.removidas + ' registro(s) excluído(s)', 'yellow');
+    carregarClasseOp();
+  } catch(e) {
+    toast('Erro: ' + e.message, 'red');
+  } finally {
+    btn.disabled = false;
   }
 }
 

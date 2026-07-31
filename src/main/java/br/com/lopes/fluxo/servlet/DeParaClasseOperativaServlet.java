@@ -37,6 +37,7 @@ import java.sql.Statement;
  *          linha por registro: COD_EQUIPAMENTO / CLASSE_OPERATIVA. Linhas
  *          sem um número válido na 1ª coluna (ex.: cabeçalho) são ignoradas.
  * DELETE /api/depara-classeoperativa?cod=N     -> remove um registro
+ * DELETE /api/depara-classeoperativa?todos=1   -> limpa o de-para inteiro
  *
  * Todas as rotas exigem sessão de administrador.
  */
@@ -153,6 +154,21 @@ public class DeParaClasseOperativaServlet extends HttpServlet {
     @Override
     protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         if (!isAdmin(req)) { erro(resp, 403, "Acesso restrito a administradores"); return; }
+
+        // Limpeza total ("Excluir Todos" da tela). Exige o parâmetro explícito
+        // em vez de tratar a ausência de "cod" como "apaga tudo": um bug de
+        // front que esquecesse o código apagaria o de-para inteiro sem querer.
+        if ("1".equals(req.getParameter("todos"))) {
+            try (Connection c = conn();
+                 PreparedStatement ps = c.prepareStatement("DELETE FROM fc_depara_classeoperativa")) {
+                int removidas = ps.executeUpdate();
+                ClasseOperativaCache.invalidar();
+                json(resp, "{\"ok\":true,\"removidas\":" + removidas + "}");
+            } catch (SQLException e) {
+                erro(resp, 500, e.getMessage());
+            }
+            return;
+        }
 
         String cod = req.getParameter("cod");
         if (cod == null || !cod.matches("\\d+")) { erro(resp, 400, "Parâmetro cod é obrigatório e numérico"); return; }
