@@ -963,6 +963,18 @@ function novoChart(id, config) {
   if (charts[id]) charts[id].destroy();
   const canvas = document.getElementById(id);
   if (!canvas) return;
+  // Sem animação, sempre. O Chart.js anima por padrão (barras crescendo do
+  // zero, linha subindo), e tanto o preview de impressão quanto o Chromium
+  // --print-to-pdf que gera o relatório enviado capturam a página sem esperar
+  // a animação terminar — o gráfico saía com os eixos certos e as barras
+  // ainda deitadas na base, com os rótulos colados no zero. Também vale para
+  // a re-renderização disparada ao entrar no modo de impressão, que reiniciava
+  // a animação mesmo num gráfico já desenhado.
+  config.options = config.options || {};
+  config.options.animation = false;
+  config.options.transitions = Object.assign({}, config.options.transitions, {
+    resize: { animation: { duration: 0 } }
+  });
   charts[id] = new Chart(canvas, config);
 }
 
