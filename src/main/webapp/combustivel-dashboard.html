@@ -247,6 +247,27 @@
     .nota-box { padding: 6px 12px; font-size: 9.5px; margin-top: 8px !important; }
     .insight-box { padding: 6px 10px; margin-top: 6px; font-size: 9.5px; }
     .legenda-manual { margin-top: 4px; font-size: 9px; gap: 10px; }
+
+    /* Tabelas largas: na tela elas rolam na horizontal dentro do container,
+       mas no papel não há para onde rolar — o container simplesmente cortava
+       as últimas colunas (as semanas mais recentes da matriz, o consumo médio
+       dos rankings) e ainda imprimia a barra de rolagem. No papel o container
+       deixa de recortar e a tabela encolhe para a largura útil da página. */
+    .matriz-scroll, .tabela-scroll { overflow: visible !important; }
+
+    table.matriz { min-width: 0 !important; font-size: 8px; }
+    table.matriz thead th { padding: 4px 3px; font-size: 7px; }
+    table.matriz thead th:first-child { min-width: 0 !important; }
+    table.matriz tbody td { padding: 3px; }
+    /* Só o nome da classe pode quebrar em duas linhas; número quebrado não se lê. */
+    table.matriz tbody td:first-child { white-space: normal; }
+
+    table.ranking { font-size: 8.5px; }
+    table.ranking thead th { padding: 4px 5px; font-size: 7.5px; }
+    table.ranking tbody td { padding: 4px 5px; white-space: normal; }
+    table.ranking tbody td.num { white-space: nowrap; }
+    .posicao-badge { width: 15px; height: 15px; font-size: 8px; }
+    .barra-participacao { width: 34px; }
   }
 </style>
 </head>
