@@ -1675,20 +1675,25 @@ function norm(v) {
   return String(v == null ? '' : v).trim().replace(/\s+/g, ' ');
 }
 
-/** Código quando existe (é a identidade), texto normalizado como reserva. */
-function chaveCodigo(cod, texto, prefixo) {
-  const c = norm(cod);
-  if (c) return prefixo + ':' + c;
-  const t = norm(texto).toUpperCase();
-  return t ? 'd:' + t : 'sem';
+/**
+ * Chave de comparação de um texto: sem espaços sobrando, sem acento, em
+ * maiúsculas. É o que faz "FOLHA DE PESSOAL   " (título vindo do Oracle) e
+ * "Folha de Pessoal" (lançamento manual) caírem na mesma linha.
+ *
+ * O agrupamento é por DESCRIÇÃO, não por código: o código da conta pode
+ * divergir entre as duas origens, e o que o usuário pediu na tela foi juntar
+ * o que tem o mesmo nome.
+ */
+function chaveTexto(v) {
+  return norm(v).toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
 
 function getChave(d, ag) {
-  if (ag === 'descricao')      return chaveCodigo(d.codContaFluxo, d.descricaoConta, 'c');
-  if (ag === 'empenho_grupo')  return norm(d.descEmpenho).toUpperCase() || norm(d.codEmpenho) || 'sem';
-  if (ag === 'empenho')        return chaveCodigo(d.codEmpenho, d.descEmpenho, 'e');
+  if (ag === 'descricao')      return chaveTexto(d.descricaoConta) || norm(d.codContaFluxo) || 'sem';
+  if (ag === 'empenho_grupo')  return chaveTexto(d.descEmpenho) || norm(d.codEmpenho) || 'sem';
+  if (ag === 'empenho')        return chaveTexto(d.descEmpenho) || norm(d.codEmpenho) || 'sem';
   if (ag === 'fornecedor')     return d.codFornecedor || 'sem';
-  return chaveCodigo(d.codContaFluxo, d.descricaoConta, 'c');
+  return chaveTexto(d.descricaoConta) || norm(d.codContaFluxo) || 'sem';
 }
 function getLabel(d, ag) {
   if (ag === 'descricao')      return norm(d.descricaoConta) || norm(d.codContaFluxo) || '(sem descrição)';
