@@ -27,7 +27,10 @@ const CASCA = [
   'js/leaflet.js',
   'css/leaflet.css',
   'mapas/talhoes.geojson',
-  'img/logo.png'
+  'img/logo.png',
+  'img/mapa-talhoes-180.png',
+  'img/mapa-talhoes-192.png',
+  'img/mapa-talhoes-512.png'
 ];
 
 /**

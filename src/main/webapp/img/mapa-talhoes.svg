@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="fundo" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1d4232"/>
+      <stop offset="100%" stop-color="#16342a"/>
+    </linearGradient>
+    <filter id="sombra" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#000" flood-opacity=".35"/>
+    </filter>
+  </defs>
+
+  <rect width="512" height="512" fill="url(#fundo)"/>
+
+  <!-- Talhões vistos de cima, nas cores da legenda. Tudo dentro da zona
+       segura (80% central), porque o Android recorta o ícone em círculo. -->
+  <g stroke="#ffffff" stroke-width="7" stroke-linejoin="round">
+    <path d="M104 214 L214 176 L246 246 L136 288 Z" fill="#2a78d6"/>
+    <path d="M222 168 L330 132 L370 196 L256 238 Z" fill="#1baf7a"/>
+    <path d="M254 250 L372 206 L410 274 L292 320 Z" fill="#eb6834"/>
+    <path d="M146 300 L256 258 L288 328 L178 372 Z" fill="#eda100"/>
+    <path d="M300 330 L392 292 L416 344 L326 382 Z" fill="#2a78d6" opacity=".85"/>
+  </g>
+
+  <!-- Marcador: é o que diz "onde estou", o coração da tela -->
+  <g filter="url(#sombra)" transform="translate(256 252)">
+    <path d="M0 -96 C 44 -96 78 -62 78 -20 C 78 30 22 82 0 108 C -22 82 -78 30 -78 -20 C -78 -62 -44 -96 0 -96 Z"
+          fill="#ffffff"/>
+    <circle cx="0" cy="-20" r="31" fill="#16342a"/>
+  </g>
+</svg>

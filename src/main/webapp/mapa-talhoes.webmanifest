@@ -9,7 +9,8 @@
   "background_color": "#16342a",
   "theme_color": "#16342a",
   "icons": [
-    { "src": "img/logo.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "img/logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+    { "src": "img/mapa-talhoes-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "img/mapa-talhoes-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "img/mapa-talhoes-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }
