@@ -18,8 +18,9 @@ const CACHE_CASCA = VERSAO + '-casca';
 const CACHE_DADOS = VERSAO + '-dados';
 const CACHE_TILES = VERSAO + '-tiles';
 
-/** Teto de imagens guardadas — cada uma tem ~20 KB. */
-const MAX_TILES = 3000;
+/** Teto de imagens guardadas — ~22 KB cada. Comporta os ~870 da
+ *  pré-carga sobre os talhões mais o que for visitado navegando. */
+const MAX_TILES = 4000;
 
 const CASCA = [
   'mapa-talhoes.html',

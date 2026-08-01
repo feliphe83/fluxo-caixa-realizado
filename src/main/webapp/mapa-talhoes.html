@@ -156,6 +156,8 @@
     <button class="btn-topo" id="btnGps" onclick="alternarGps()" title="Mostrar minha posição">📍 Onde estou</button>
     <button class="btn-topo" id="btnOffline" onclick="prepararOffline()"
             title="O mapa é guardado sozinho sempre que há rede. Toque para atualizar agora.">⬇ Offline</button>
+    <button class="btn-topo" id="btnImagens" onclick="baixarImagens()"
+            title="Guardar as imagens de satélite da área dos talhões, no Wi-Fi">🛰 Imagens</button>
     <button class="btn-topo" onclick="enquadrarTudo()">Ver tudo</button>
     <button class="btn-topo" onclick="window.location.href='hub.html'">← Hub</button>
   </div>
@@ -197,6 +199,10 @@ const SEM_DADOS = { nome: 'Sem cadastro na safra', cor: '#98a2b3' };
 let MAPA, CAMADA, GEO = null, DADOS = {}, OCULTAS = new Set();
 let GPS = null, MARCA_EU = null, CIRCULO_EU = null, TALHAO_ATUAL = null, SEGUINDO = true;
 let SAFRAS = [];
+
+/** Nível mais fundo de imagem guardado; acima disso o Leaflet amplia. */
+const ZOOM_MAX_IMAGEM = 16;
+const ZOOM_MIN_IMAGEM = 12;
 
 const fmtNum = v => (Number(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtInt = v => (Number(v) || 0).toLocaleString('pt-BR');
@@ -363,6 +369,10 @@ function alternarGps() {
   }
   document.getElementById('btnGps').classList.add('ativo');
   SEGUINDO = true;
+  // Zera para o cartão ser montado na primeira leitura, mesmo que a pessoa
+  // já esteja no mesmo talhão de antes — quem toca no botão quer ver a
+  // informação agora, não só quando mudar de talhão.
+  TALHAO_ATUAL = undefined;
   GPS = navigator.geolocation.watchPosition(aoPosicionar, erroGps,
         { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
   // Arrastar o mapa desliga o "seguir", senão a tela briga com o usuário.
@@ -552,6 +562,75 @@ async function baixarAutomatico(safras) {
   }
 }
 
+/** Ladrilhos que cobrem a caixa de um talhão, num nível de zoom. */
+function ladrilhosDaCaixa(x1, y1, x2, y2, z) {
+  const n = Math.pow(2, z);
+  const px = lon => Math.floor((lon + 180) / 360 * n);
+  const py = lat => {
+    const r = lat * Math.PI / 180;
+    return Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n);
+  };
+  const saida = [];
+  for (let x = px(x1); x <= px(x2); x++)
+    for (let y = py(y2); y <= py(y1); y++) saida.push([z, x, y]);
+  return saida;
+}
+
+/** Só os ladrilhos que realmente cobrem talhão — não a região inteira. */
+function ladrilhosDosTalhoes() {
+  if (!GEO) return [];
+  const vistos = new Set(), lista = [];
+  GEO.features.forEach(f => {
+    const [x1, y1, x2, y2] = caixaDe(f);
+    for (let z = ZOOM_MIN_IMAGEM; z <= ZOOM_MAX_IMAGEM; z++) {
+      ladrilhosDaCaixa(x1, y1, x2, y2, z).forEach(t => {
+        const k = t.join('/');
+        if (!vistos.has(k)) { vistos.add(k); lista.push(t); }
+      });
+    }
+  });
+  return lista;
+}
+
+/**
+ * Guarda as imagens de satélite da área dos talhões. Bounded de propósito:
+ * só onde há talhão e até o zoom 16 — não é espelhar o acervo do provedor,
+ * é guardar a área de trabalho de quem vai a campo.
+ */
+async function baixarImagens() {
+  const lista = ladrilhosDosTalhoes();
+  if (!lista.length) { alert('Carregue o mapa antes de baixar as imagens.'); return; }
+  const mb = Math.round(lista.length * 22 / 1024);
+  if (!confirm('Baixar as imagens de satélite da área dos talhões?\n\n' +
+               lista.length + ' imagens, cerca de ' + mb + ' MB.\n' +
+               'Faça isso no Wi-Fi. Depois o mapa aproxima sem sinal.')) return;
+
+  const btn = document.getElementById('btnOffline');
+  const rotulo = btn.textContent;
+  btn.disabled = true;
+  let feitos = 0, falhas = 0;
+  const url = ([z, x, y]) =>
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/' + z + '/' + y + '/' + x;
+
+  // Seis por vez: rápido sem sufocar a rede do celular.
+  const fila = lista.slice();
+  async function trabalhar() {
+    while (fila.length) {
+      const t = fila.shift();
+      try { await fetch(url(t), { mode: 'no-cors' }); } catch(e) { falhas++; }
+      if (++feitos % 20 === 0) btn.textContent = '⬇ ' + Math.round(feitos * 100 / lista.length) + '%';
+    }
+  }
+  try {
+    await Promise.all(Array.from({ length: 6 }, trabalhar));
+    alert('Imagens guardadas: ' + (lista.length - falhas) + ' de ' + lista.length +
+          (falhas ? '\n\n' + falhas + ' falharam — repita no Wi-Fi para completar.' : ''));
+  } finally {
+    btn.disabled = false; btn.textContent = rotulo;
+    conferirOffline();
+  }
+}
+
 async function prepararOffline() {
   const btn = document.getElementById('btnOffline');
   const rotulo = btn.textContent;
@@ -565,8 +644,7 @@ async function prepararOffline() {
     alert('Pronto. O mapa e os dados desta safra abrem sem sinal — não precisa fazer login no campo.\n\n' +
           'No iPhone, use o Safari e toque em Compartilhar → "Adicionar à Tela de Início". ' +
           'Só assim o iOS mantém o que foi guardado; um atalho comum é apagado depois de alguns dias sem uso.\n\n' +
-          'As imagens de satélite só ficam nas áreas que você já visitou na tela — sem elas os ' +
-          'talhões continuam aparecendo, sobre fundo liso.');
+          'Para o satélite aparecer ao aproximar sem sinal, toque também em 🛰 Imagens.');
   } catch(e) {
     alert('Não foi possível preparar o uso offline: ' + e.message);
   } finally {
@@ -578,11 +656,16 @@ async function prepararOffline() {
 function iniciarMapa() {
   MAPA = L.map('mapa', { preferCanvas: true }).setView([-9.47, -35.85], 11);
 
+  // maxNativeZoom: acima de ZOOM_MAX_IMAGEM o Leaflet reaproveita o ladrilho
+  // desse nível, ampliado, em vez de pedir um que não existe no cache. É o
+  // que faz o mapa continuar aparecendo ao aproximar sem sinal — fica menos
+  // nítido, mas o contorno dos talhões é vetor e continua exato.
   const satelite = L.tileLayer(
     'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    { maxZoom: 19, attribution: 'Imagens: Esri, Maxar, Earthstar Geographics' });
+    { maxZoom: 20, maxNativeZoom: ZOOM_MAX_IMAGEM,
+      attribution: 'Imagens: Esri, Maxar, Earthstar Geographics' });
   const ruas = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    { maxZoom: 19, attribution: '© OpenStreetMap' });
+    { maxZoom: 20, maxNativeZoom: 18, attribution: '© OpenStreetMap' });
 
   satelite.addTo(MAPA);
   L.control.layers({ 'Satélite': satelite, 'Mapa de ruas': ruas }, null, { position: 'topright' }).addTo(MAPA);
