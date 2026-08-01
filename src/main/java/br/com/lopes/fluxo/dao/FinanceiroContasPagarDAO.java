@@ -121,8 +121,13 @@ public class FinanceiroContasPagarDAO {
                     tabela.cod_situacao,
                     tabela.num_lancamentobancario,
                     tabela.valorparcela vlr_indice,
+                    -- Parcela em aberto é indexada pela DATA DE ENTRADA, não
+                    -- pelo vencimento. Os dois usos de
+                    -- consulta_jurosdescontoparcela abaixo seguem pelo
+                    -- vencimento, de propósito: juros e desconto correm até
+                    -- vencer, a indexação vale desde a entrada.
                     decode(tabela.datapgto, null,
-                        (tabela.valorparcela * financeiro.busca_indicefinanceiro(tabela.cod_indicefinanceiro, nvl(NULL, tabela.datavcto))),
+                        (tabela.valorparcela * financeiro.busca_indicefinanceiro(tabela.cod_indicefinanceiro, nvl(NULL, tabela.dataentrada))),
                         financeiro.Busca_BaixaParcelaVr_Liquido(tabela.COD_GRUPOEMPRESA, tabela.COD_TIPOCONTASPAGAR, tabela.DOCUMENTO, tabela.PARCELA)
                     ) valorparcela,
                     financeiro.busca_baixaparcelavr_liquido(tabela.cod_grupoempresa, tabela.cod_tipocontaspagar, tabela.documento, tabela.parcela) vlr_baixa,
