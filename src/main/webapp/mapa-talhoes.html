@@ -154,7 +154,8 @@
     <select id="selSafra" onchange="carregarDados()"><option>…</option></select>
     <input type="search" id="busca" placeholder="Buscar talhão ou fazenda…" oninput="aplicarFiltros()" style="width:190px">
     <button class="btn-topo" id="btnGps" onclick="alternarGps()" title="Mostrar minha posição">📍 Onde estou</button>
-    <button class="btn-topo" id="btnOffline" onclick="prepararOffline()" title="Guardar agora, com sinal, para usar no campo sem internet">⬇ Offline</button>
+    <button class="btn-topo" id="btnOffline" onclick="prepararOffline()"
+            title="O mapa é guardado sozinho sempre que há rede. Toque para atualizar agora.">⬇ Offline</button>
     <button class="btn-topo" onclick="enquadrarTudo()">Ver tudo</button>
     <button class="btn-topo" onclick="window.location.href='hub.html'">← Hub</button>
   </div>
@@ -174,9 +175,6 @@
     <h3>Situação do talhão</h3>
     <div id="legenda"></div>
     <div class="resumo" id="resumo"></div>
-    <div class="aviso" id="seloOffline" style="display:none"></div>
-    <div class="aviso" id="idadeDados" style="display:none;background:#f5f7fb;border-left-color:#2a78d6"></div>
-    <div class="aviso" id="avisoSemDados" style="display:none"></div>
   </div>
 </div>
 
@@ -196,6 +194,7 @@ const SEM_DADOS = { nome: 'Sem cadastro na safra', cor: '#98a2b3' };
 
 let MAPA, CAMADA, GEO = null, DADOS = {}, OCULTAS = new Set();
 let GPS = null, MARCA_EU = null, CIRCULO_EU = null, TALHAO_ATUAL = null, SEGUINDO = true;
+let SAFRAS = [];
 
 const fmtNum = v => (Number(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtInt = v => (Number(v) || 0).toLocaleString('pt-BR');
@@ -283,24 +282,9 @@ function montarLegenda() {
             </div>`;
   }).join('');
 
-  const totalTalhoes = GEO.features.length;
   const totalArea = GEO.features.reduce((a, f) => a + (Number(f.properties.areaShape) || 0), 0);
-  const comDados = GEO.features.filter(f => DADOS[f.properties.chave]).length;
-  document.getElementById('resumo').innerHTML = `
-    <div class="linha"><span>Talhões no mapa</span><b>${fmtInt(totalTalhoes)}</b></div>
-    <div class="linha"><span>Área total</span><b>${fmtNum(totalArea)} ha</b></div>
-    <div class="linha"><span>Com cadastro na safra</span><b>${fmtInt(comDados)}</b></div>`;
-
-  const semGeo = Object.keys(DADOS).filter(k => !GEO.features.some(f => f.properties.chave === k)).length;
-  const aviso = document.getElementById('avisoSemDados');
-  if (semGeo > 0 || cont[0]) {
-    aviso.style.display = '';
-    aviso.innerHTML =
-      (cont[0] ? `<b>${fmtInt(cont[0])}</b> talhão(ões) desenhado(s) no mapa não têm cadastro nesta safra. ` : '') +
-      (semGeo ? `<b>${fmtInt(semGeo)}</b> talhão(ões) da safra não têm desenho no mapa — o shapefile precisa ser atualizado.` : '');
-  } else {
-    aviso.style.display = 'none';
-  }
+  document.getElementById('resumo').innerHTML =
+    `<div class="linha"><span>Área total</span><b>${fmtNum(totalArea)} ha</b></div>`;
 }
 
 function alternarSituacao(cod) {
@@ -456,14 +440,10 @@ function dataDosDados(safra) {
   return p(d.getDate()) + '/' + p(d.getMonth()+1) + ' às ' + p(d.getHours()) + ':' + p(d.getMinutes());
 }
 
+/** A idade do dado agora vive no título do botão e na tarja, não no painel. */
 function mostrarIdadeDados(safra, doCache) {
   const quando = dataDosDados(safra);
-  const el = document.getElementById('idadeDados');
-  if (!el) return;
-  el.innerHTML = !quando ? ''
-    : (doCache ? '⚠ Dados guardados em <b>' + quando + '</b> — sem conexão para atualizar.'
-               : 'Dados atualizados em <b>' + quando + '</b>.');
-  el.style.display = quando ? '' : 'none';
+  if (doCache) marcarTarja('Sem conexão — dados de ' + (quando || 'uma consulta anterior'));
 }
 
 function estadoRede() {
@@ -487,29 +467,52 @@ window.addEventListener('offline', estadoRede);
  * nunca foi guardada — e a falha só aparece no meio do talhão, quando não
  * há como corrigir.
  */
+/**
+ * Diz, no próprio botão, se a tela já abre sem sinal. O que decide não é o
+ * worker estar registrado, e sim a PÁGINA e o desenho estarem no cache — um
+ * atalho criado a partir do login abre uma tela que nunca foi guardada, e a
+ * falha só apareceria no meio do talhão.
+ */
 async function conferirOffline() {
-  const el = document.getElementById('seloOffline');
-  if (!el) return false;
+  const btn = document.getElementById('btnOffline');
   let pronto = false;
   try {
     const c = await caches.open('mapa-talhoes-v1-casca');
-    const pagina = await c.match('mapa-talhoes.html');
-    const geo = await c.match('mapas/talhoes.geojson');
-    pronto = !!(pagina && geo);
+    pronto = !!(await c.match('mapa-talhoes.html')) && !!(await c.match('mapas/talhoes.geojson'));
   } catch(e) { pronto = false; }
 
-  const instalado = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-  el.style.display = '';
-  if (pronto) {
-    el.style.background = '#f0fdf4'; el.style.borderLeftColor = '#0ca30c';
-    el.innerHTML = '✔ <b>Pronto para uso sem sinal.</b>' +
-      (instalado ? '' : '<br>Falta instalar: no iPhone, Safari → Compartilhar → <b>Adicionar à Tela de Início</b>, ' +
-                        'com esta tela aberta. O atalho precisa ser criado <b>aqui</b>, não no login.');
-  } else {
-    el.style.background = '#fef2f2'; el.style.borderLeftColor = '#d03b3b';
-    el.innerHTML = '✖ <b>Ainda não funciona sem sinal.</b><br>Toque em <b>⬇ Offline</b> agora, enquanto há internet.';
-  }
+  if (!btn) return pronto;
+  const quando = dataDosDados();
+  btn.textContent = pronto ? '✔ Offline' : '⬇ Offline';
+  btn.classList.toggle('ativo', pronto);
+  btn.title = pronto
+    ? 'Funciona sem sinal' + (quando ? ' · dados de ' + quando : '') + '. Toque para atualizar agora.'
+    : 'Ainda não funciona sem sinal — toque para guardar agora.';
   return pronto;
+}
+
+/**
+ * Guarda tudo sozinho quando há rede: o desenho dos talhões e os dados das
+ * duas safras mais recentes. Sem depender de alguém lembrar de apertar um
+ * botão antes de sair — que é justamente o que não acontece na correria.
+ */
+async function baixarAutomatico(safras) {
+  if (!navigator.onLine || !('serviceWorker' in navigator)) return;
+  try {
+    await navigator.serviceWorker.ready;
+    // Passa pelo worker para as respostas entrarem no cache.
+    await fetch('mapas/talhoes.geojson');
+    for (const s of (safras || []).slice(0, 2)) {
+      try {
+        await fetch('api/mapa-talhoes?safra=' + encodeURIComponent(s.cod_safra));
+        try { localStorage.setItem('mapaTalhoes.dadosEm.' + s.cod_safra, new Date().toISOString()); } catch(e) {}
+      } catch(e) { /* uma safra que falhe não pode impedir a outra */ }
+    }
+  } catch(e) {
+    // Sem worker o mapa continua funcionando online; só não guarda.
+  } finally {
+    conferirOffline();
+  }
 }
 
 async function prepararOffline() {
@@ -520,11 +523,7 @@ async function prepararOffline() {
     if (!('serviceWorker' in navigator)) throw new Error('Este navegador não guarda páginas para uso offline.');
     await navigator.serviceWorker.register('sw-mapa.js');
     await navigator.serviceWorker.ready;
-    // Reaquece a casca e os dados da safra atual passando pelo worker.
-    await fetch('mapas/talhoes.geojson', { cache: 'reload' });
-    const safra = document.getElementById('selSafra').value;
-    if (safra) await fetch('api/mapa-talhoes?safra=' + encodeURIComponent(safra));
-    mostrarIdadeDados(safra, false);
+    await baixarAutomatico(SAFRAS);
     await conferirOffline();
     alert('Pronto. O mapa e os dados desta safra abrem sem sinal — não precisa fazer login no campo.\n\n' +
           'No iPhone, use o Safari e toque em Compartilhar → "Adicionar à Tela de Início". ' +
@@ -600,7 +599,7 @@ function esconderCarregando() { document.getElementById('carregando').style.disp
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw-mapa.js')
       .then(() => navigator.serviceWorker.ready)
-      .then(() => setTimeout(conferirOffline, 1500))
+      .then(() => conferirOffline())
       .catch(() => { conferirOffline(); });
   }
 
@@ -631,12 +630,16 @@ function esconderCarregando() { document.getElementById('carregando').style.disp
     const j = await r.json();
     if (!j.ok) throw new Error(j.erro);
     const safras = j.data || [];
+    SAFRAS = safras;
     const sel = document.getElementById('selSafra');
     sel.innerHTML = safras.map(s =>
       `<option value="${esc(s.cod_safra)}">Safra ${esc(s.cod_safra)}${s.atual === 'S' ? ' (atual)' : ''}</option>`).join('');
     const atual = safras.find(s => s.atual === 'S') || safras[0];
     if (atual) { sel.value = atual.cod_safra; await carregarDados(); }
     else { esconderCarregando(); montarLegenda(); }
+
+    // Sem esperar e sem travar a tela: guarda as duas safras mais recentes.
+    baixarAutomatico(safras);
   } catch(e) {
     esconderCarregando();
     montarLegenda();
