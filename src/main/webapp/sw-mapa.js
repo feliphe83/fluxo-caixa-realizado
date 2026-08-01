@@ -117,7 +117,12 @@ self.addEventListener('fetch', evento => {
           return new Response(JSON.stringify(corpo),
             { headers: { 'Content-Type': 'application/json;charset=UTF-8' } });
         }
-        throw e;
+        // Nunca relançar: um throw aqui vira "FetchEvent.respondWith received
+        // an error: TypeError: Load failed" na tela, que não diz nada a quem
+        // está no campo. Uma resposta JSON deixa a página tratar sozinha.
+        return new Response(JSON.stringify({ ok: false, offline: true,
+                              erro: 'Sem conexão e sem cópia guardada desta consulta.' }),
+          { status: 503, headers: { 'Content-Type': 'application/json;charset=UTF-8' } });
       }
     })());
     return;

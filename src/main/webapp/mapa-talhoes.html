@@ -439,6 +439,25 @@ function marcarTarja(txto) {
   t.classList.add('on');
 }
 
+/**
+ * Cópia dos dados no localStorage, além do cache do service worker.
+ *
+ * São duas redes de segurança de propósito: o Cache API pode ser descartado
+ * pelo navegador (o iOS é agressivo com isso), e o worker só responde se a
+ * requisição passar por ele. O localStorage sobrevive aos dois casos, e é
+ * ele que garante que a tela abre com dado no meio do talhão.
+ */
+function guardarLocal(chave, valor) {
+  try { localStorage.setItem('mapaTalhoes.' + chave, JSON.stringify(valor)); return true; }
+  catch(e) { return false; }   // cota estourada: segue sem a cópia
+}
+function lerLocal(chave) {
+  try {
+    const v = localStorage.getItem('mapaTalhoes.' + chave);
+    return v ? JSON.parse(v) : null;
+  } catch(e) { return null; }
+}
+
 /** Quando esta safra foi consultada pela última vez com sinal. */
 function dataDosDados(safra) {
   safra = safra || document.getElementById('selSafra').value;
@@ -508,17 +527,24 @@ async function conferirOffline() {
  * botão antes de sair — que é justamente o que não acontece na correria.
  */
 async function baixarAutomatico(safras) {
-  if (!navigator.onLine || !('serviceWorker' in navigator)) return;
+  if (!navigator.onLine) return;
   try {
-    await navigator.serviceWorker.ready;
+    // Sem worker ainda dá pra guardar a cópia local, que é a rede de
+    // segurança que realmente importa — por isso o ready não é obrigatório.
+    if (navigator.serviceWorker) await navigator.serviceWorker.ready;
     // Passa pelo worker para as respostas entrarem no cache.
     await fetch('mapas/talhoes.geojson');
     for (const s of (safras || []).slice(0, 2)) {
       try {
-        await fetch('api/mapa-talhoes?safra=' + encodeURIComponent(s.cod_safra));
-        try { localStorage.setItem('mapaTalhoes.dadosEm.' + s.cod_safra, new Date().toISOString()); } catch(e) {}
+        const r = await fetch('api/mapa-talhoes?safra=' + encodeURIComponent(s.cod_safra));
+        const j = await r.json();
+        if (j && j.ok && !j.doCache) {
+          guardarLocal('dados.' + s.cod_safra, j.data || []);
+          try { localStorage.setItem('mapaTalhoes.dadosEm.' + s.cod_safra, new Date().toISOString()); } catch(e) {}
+        }
       } catch(e) { /* uma safra que falhe não pode impedir a outra */ }
     }
+    guardarLocal('safras', safras || []);
   } catch(e) {
     // Sem worker o mapa continua funcionando online; só não guarda.
   } finally {
@@ -531,7 +557,7 @@ async function prepararOffline() {
   const rotulo = btn.textContent;
   btn.disabled = true; btn.textContent = 'Guardando…';
   try {
-    if (!('serviceWorker' in navigator)) throw new Error('Este navegador não guarda páginas para uso offline.');
+    if (!navigator.serviceWorker) throw new Error('Este navegador não guarda páginas para uso offline.');
     await navigator.serviceWorker.register('sw-mapa.js');
     await navigator.serviceWorker.ready;
     await baixarAutomatico(SAFRAS);
@@ -570,10 +596,11 @@ async function carregarDados() {
   try {
     const r = await fetch('api/mapa-talhoes?safra=' + encodeURIComponent(safra));
     const j = await r.json();
-    if (!j.ok) throw new Error(j.erro);
+    if (!j.ok) throw new Error(j.erro || 'Consulta recusada');
     limparErro();
     DADOS = {};
     (j.data || []).forEach(d => { DADOS[d.chave] = d; });
+    if (!j.doCache) guardarLocal('dados.' + safra, j.data || []);
     montarLegenda();
     aplicarFiltros();
 
@@ -587,11 +614,19 @@ async function carregarDados() {
     }
     mostrarIdadeDados(safra, j.doCache);
   } catch(e) {
-    // O mapa continua útil sem o ERP: os talhões aparecem em cinza.
+    // Última rede: a cópia local. Só se ela também faltar é que a tela fica
+    // sem dado — e aí o motivo aparece escrito.
+    const local = lerLocal('dados.' + safra);
     DADOS = {};
+    if (local && local.length) {
+      local.forEach(d => { DADOS[d.chave] = d; });
+      limparErro();
+      marcarTarja('Sem conexão — dados de ' + (dataDosDados(safra) || 'uma consulta anterior'));
+    } else {
+      mostrarErro('Não foi possível carregar os talhões da safra ' + safra, e);
+    }
     montarLegenda();
     aplicarFiltros();
-    mostrarErro('Não foi possível carregar os talhões da safra ' + safra, e);
   } finally {
     esconderCarregando();
   }
@@ -608,11 +643,21 @@ function esconderCarregando() { document.getElementById('carregando').style.disp
   estadoRede();
   // Registro silencioso: quem já abriu a tela uma vez com sinal passa a ter
   // a casca guardada, mesmo sem clicar em "Offline".
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw-mapa.js')
-      .then(() => navigator.serviceWorker.ready)
-      .then(() => conferirOffline())
-      .catch(() => { conferirOffline(); });
+  // "'serviceWorker' in navigator" não basta: no Safari em navegação privada
+  // e em contexto não seguro a propriedade existe valendo undefined, e o
+  // .register estoura. Como isto roda dentro da função async de início, um
+  // throw aqui abortava todo o resto — mapa em "Carregando…" para sempre.
+  try {
+    if (navigator.serviceWorker) {
+      navigator.serviceWorker.register('sw-mapa.js')
+        .then(() => navigator.serviceWorker.ready)
+        .then(() => conferirOffline())
+        .catch(() => conferirOffline());
+    } else {
+      conferirOffline();
+    }
+  } catch(e) {
+    conferirOffline();
   }
 
   // 1. Geometria (estática, do shapefile da topografia)
@@ -637,11 +682,27 @@ function esconderCarregando() { document.getElementById('carregando').style.disp
   enquadrarTudo();
 
   // 2. Safras + dados do ERP
+  let safras = null;
   try {
     const r = await fetch('api/mapa-talhoes/safras');
     const j = await r.json();
-    if (!j.ok) throw new Error(j.erro);
-    const safras = j.data || [];
+    if (!j.ok) throw new Error(j.erro || 'Consulta recusada');
+    safras = j.data || [];
+    if (!j.doCache) guardarLocal('safras', safras);
+  } catch(e) {
+    // Sem a lista, a tela não sabe o que carregar e nada aparece — por isso
+    // ela também tem cópia local. O erro só vai à tela se as duas faltarem.
+    safras = lerLocal('safras');
+    if (!safras || !safras.length) {
+      esconderCarregando();
+      montarLegenda();
+      document.getElementById('selSafra').innerHTML = '<option>—</option>';
+      mostrarErro('Não foi possível listar as safras', e);
+      return;
+    }
+  }
+
+  try {
     SAFRAS = safras;
     const sel = document.getElementById('selSafra');
     sel.innerHTML = safras.map(s =>
@@ -655,8 +716,7 @@ function esconderCarregando() { document.getElementById('carregando').style.disp
   } catch(e) {
     esconderCarregando();
     montarLegenda();
-    document.getElementById('selSafra').innerHTML = '<option>—</option>';
-    mostrarErro('Não foi possível listar as safras', e);
+    mostrarErro('Falha ao montar a lista de safras', e);
   }
 })();
 </script>
