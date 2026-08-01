@@ -174,6 +174,7 @@
     <h3>Situação do talhão</h3>
     <div id="legenda"></div>
     <div class="resumo" id="resumo"></div>
+    <div class="aviso" id="seloOffline" style="display:none"></div>
     <div class="aviso" id="idadeDados" style="display:none;background:#f5f7fb;border-left-color:#2a78d6"></div>
     <div class="aviso" id="avisoSemDados" style="display:none"></div>
   </div>
@@ -478,6 +479,39 @@ function estadoRede() {
 window.addEventListener('online', estadoRede);
 window.addEventListener('offline', estadoRede);
 
+/**
+ * Diz, com sinal ainda, se a tela realmente abre sem ele.
+ *
+ * Não basta o worker estar registrado: o que decide é a PÁGINA estar no
+ * cache. Um atalho criado a partir do login ou do hub abre uma tela que
+ * nunca foi guardada — e a falha só aparece no meio do talhão, quando não
+ * há como corrigir.
+ */
+async function conferirOffline() {
+  const el = document.getElementById('seloOffline');
+  if (!el) return false;
+  let pronto = false;
+  try {
+    const c = await caches.open('mapa-talhoes-v1-casca');
+    const pagina = await c.match('mapa-talhoes.html');
+    const geo = await c.match('mapas/talhoes.geojson');
+    pronto = !!(pagina && geo);
+  } catch(e) { pronto = false; }
+
+  const instalado = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  el.style.display = '';
+  if (pronto) {
+    el.style.background = '#f0fdf4'; el.style.borderLeftColor = '#0ca30c';
+    el.innerHTML = '✔ <b>Pronto para uso sem sinal.</b>' +
+      (instalado ? '' : '<br>Falta instalar: no iPhone, Safari → Compartilhar → <b>Adicionar à Tela de Início</b>, ' +
+                        'com esta tela aberta. O atalho precisa ser criado <b>aqui</b>, não no login.');
+  } else {
+    el.style.background = '#fef2f2'; el.style.borderLeftColor = '#d03b3b';
+    el.innerHTML = '✖ <b>Ainda não funciona sem sinal.</b><br>Toque em <b>⬇ Offline</b> agora, enquanto há internet.';
+  }
+  return pronto;
+}
+
 async function prepararOffline() {
   const btn = document.getElementById('btnOffline');
   const rotulo = btn.textContent;
@@ -491,6 +525,7 @@ async function prepararOffline() {
     const safra = document.getElementById('selSafra').value;
     if (safra) await fetch('api/mapa-talhoes?safra=' + encodeURIComponent(safra));
     mostrarIdadeDados(safra, false);
+    await conferirOffline();
     alert('Pronto. O mapa e os dados desta safra abrem sem sinal — não precisa fazer login no campo.\n\n' +
           'No iPhone, use o Safari e toque em Compartilhar → "Adicionar à Tela de Início". ' +
           'Só assim o iOS mantém o que foi guardado; um atalho comum é apagado depois de alguns dias sem uso.\n\n' +
@@ -563,7 +598,10 @@ function esconderCarregando() { document.getElementById('carregando').style.disp
   // Registro silencioso: quem já abriu a tela uma vez com sinal passa a ter
   // a casca guardada, mesmo sem clicar em "Offline".
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw-mapa.js').catch(() => {});
+    navigator.serviceWorker.register('sw-mapa.js')
+      .then(() => navigator.serviceWorker.ready)
+      .then(() => setTimeout(conferirOffline, 1500))
+      .catch(() => { conferirOffline(); });
   }
 
   // 1. Geometria (estática, do shapefile da topografia)
