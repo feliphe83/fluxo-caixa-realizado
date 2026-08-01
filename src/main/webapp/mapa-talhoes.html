@@ -165,6 +165,8 @@
   <div id="mapa" style="position:relative">
     <div class="carregando" id="carregando"><div class="spinner"></div><span id="carregandoTxt">Carregando mapa…</span></div>
     <div class="tarja" id="tarja"></div>
+    <div class="tarja" id="tarjaErro" style="background:#fef2f2;border-color:#d03b3b;color:#991b1b;
+         max-width:min(560px,92%);white-space:normal;text-align:center;line-height:1.45"></div>
     <div class="cartao-gps" id="cartaoGps">
       <button class="fechar" onclick="fecharCartao()">×</button>
       <div class="rot">Você está em</div>
@@ -422,6 +424,15 @@ function mostrarCartao(f, precisao) {
 function fecharCartao() { document.getElementById('cartaoGps').classList.remove('on'); }
 
 // ── Offline ──────────────────────────────────────────────────────────────
+/** Falha do ERP fica na tela, não num alerta que se fecha e some. */
+function mostrarErro(onde, e) {
+  const t = document.getElementById('tarjaErro');
+  t.innerHTML = '<b>' + onde + '</b><br>' + esc(e && e.message ? e.message : String(e));
+  t.classList.add('on');
+  console.error('[mapa-talhoes] ' + onde, e);
+}
+function limparErro() { document.getElementById('tarjaErro').classList.remove('on'); }
+
 function marcarTarja(txto) {
   const t = document.getElementById('tarja');
   t.textContent = txto;
@@ -560,6 +571,7 @@ async function carregarDados() {
     const r = await fetch('api/mapa-talhoes?safra=' + encodeURIComponent(safra));
     const j = await r.json();
     if (!j.ok) throw new Error(j.erro);
+    limparErro();
     DADOS = {};
     (j.data || []).forEach(d => { DADOS[d.chave] = d; });
     montarLegenda();
@@ -579,7 +591,7 @@ async function carregarDados() {
     DADOS = {};
     montarLegenda();
     aplicarFiltros();
-    alert('Não foi possível carregar os dados da safra: ' + e.message);
+    mostrarErro('Não foi possível carregar os talhões da safra ' + safra, e);
   } finally {
     esconderCarregando();
   }
@@ -644,6 +656,7 @@ function esconderCarregando() { document.getElementById('carregando').style.disp
     esconderCarregando();
     montarLegenda();
     document.getElementById('selSafra').innerHTML = '<option>—</option>';
+    mostrarErro('Não foi possível listar as safras', e);
   }
 })();
 </script>

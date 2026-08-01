@@ -61,8 +61,13 @@ public class MapaTalhaoServlet extends HttpServlet {
         } catch (Exception e) {
             LOG.log(Level.SEVERE, "Erro no mapa de talhões", e);
             resp.setStatus(500);
-            json(resp, "{\"ok\":false,\"erro\":\"" + String.valueOf(e.getMessage())
-                    .replace("\"", "'").replace("\n", " ") + "\"}");
+            // Desembrulha até a causa raiz: o DAO envolve a SQLException num
+            // RuntimeException, e sem isso a mensagem do Oracle (ORA-...) —
+            // a única que diz o que de fato quebrou — não chega na tela.
+            Throwable raiz = e;
+            while (raiz.getCause() != null && raiz.getCause() != raiz) raiz = raiz.getCause();
+            String msg = raiz.getMessage() == null ? raiz.getClass().getSimpleName() : raiz.getMessage();
+            json(resp, "{\"ok\":false,\"erro\":\"" + msg.replace("\"", "'").replace("\n", " ") + "\"}");
         }
     }
 }
