@@ -543,7 +543,7 @@ async function conferirOffline() {
   const btn = document.getElementById('btnOffline');
   let pronto = false;
   try {
-    const c = await caches.open('mapa-talhoes-v1-casca');
+    const c = await caches.open('mapa-talhoes-v2-casca');
     pronto = !!(await c.match('mapa-talhoes.html')) && !!(await c.match('mapas/talhoes.geojson'));
   } catch(e) { pronto = false; }
 
@@ -758,8 +758,25 @@ function esconderCarregando() { document.getElementById('carregando').style.disp
   // throw aqui abortava todo o resto — mapa em "Carregando…" para sempre.
   try {
     if (navigator.serviceWorker) {
-      navigator.serviceWorker.register('sw-mapa.js')
-        .then(() => navigator.serviceWorker.ready)
+      // Já havia um worker no comando? Então uma troca de controlador
+      // significa versão nova, e a tela precisa recarregar para usá-la. Sem
+      // esse guarda, a primeira instalação (que também troca o controlador)
+      // recarregaria à toa.
+      const jaControlado = !!navigator.serviceWorker.controller;
+      let recarregando = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!jaControlado || recarregando) return;
+        recarregando = true;
+        location.reload();
+      });
+
+      // updateViaCache 'none': o próprio sw-mapa.js não pode vir do cache do
+      // navegador, senão uma versão nova pode demorar até 24h para ser vista.
+      navigator.serviceWorker.register('sw-mapa.js', { updateViaCache: 'none' })
+        .then(reg => {
+          if (navigator.onLine) reg.update().catch(() => {});
+          return navigator.serviceWorker.ready;
+        })
         .then(() => conferirOffline())
         .catch(() => conferirOffline());
     } else {
