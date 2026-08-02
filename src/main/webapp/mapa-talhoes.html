@@ -512,18 +512,39 @@ function mostrarIdadeDados(safra, doCache) {
   if (doCache) marcarTarja('Sem conexão — dados de ' + (quando || 'uma consulta anterior'));
 }
 
-function estadoRede() {
-  const t = document.getElementById('tarja');
-  if (!navigator.onLine) {
-    const quando = dataDosDados();
-    t.textContent = 'Sem conexão — dados de ' + (quando || 'uma consulta anterior');
-    t.classList.add('on');
-  } else {
-    t.classList.remove('on');
-  }
+/**
+ * navigator.onLine NÃO decide nada aqui.
+ *
+ * Em app instalado no iOS ele mente com frequência: fica falso com 5G
+ * ligado, e aí a tela se declarava offline e o download automático nem
+ * tentava. Quem diz se há rede é a requisição: se ela volta, há; se falha,
+ * não há. A tarja passa a ser consequência do que aconteceu de fato, não
+ * de um palpite do sistema.
+ */
+function avisarSemConexao(safra) {
+  marcarTarja('Sem conexão — dados de ' + (dataDosDados(safra) || 'uma consulta anterior'));
 }
-window.addEventListener('online', estadoRede);
-window.addEventListener('offline', estadoRede);
+
+/** Voltar para o app é o momento natural de buscar dado novo: em modo
+ *  aplicativo a página costuma ser retomada, não recarregada. */
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) return;
+  const safra = document.getElementById('selSafra').value;
+  if (safra) carregarDados();
+  // Em modo aplicativo a página é retomada, não recarregada — então é aqui
+  // que se pergunta ao navegador se há versão nova do app.
+  try {
+    if (navigator.serviceWorker) {
+      navigator.serviceWorker.getRegistration()
+        .then(reg => reg && reg.update())
+        .catch(() => {});
+    }
+  } catch(e) {}
+});
+window.addEventListener('online', () => {
+  const safra = document.getElementById('selSafra').value;
+  if (safra) carregarDados();
+});
 
 /**
  * Diz, com sinal ainda, se a tela realmente abre sem ele.
@@ -563,7 +584,9 @@ async function conferirOffline() {
  * botão antes de sair — que é justamente o que não acontece na correria.
  */
 async function baixarAutomatico(safras) {
-  if (!navigator.onLine) return;
+  // Sem porteiro: tenta sempre. Se não houver rede, cada fetch falha
+  // sozinho e o catch de dentro cuida — é mais confiável que perguntar ao
+  // sistema se há conexão.
   try {
     // Sem worker ainda dá pra guardar a cópia local, que é a rede de
     // segurança que realmente importa — por isso o ready não é obrigatório.
@@ -674,7 +697,7 @@ async function prepararOffline() {
   } catch(e) {
     alert('Não foi possível preparar o uso offline: ' + e.message);
   } finally {
-    btn.disabled = false; btn.textContent = rotulo;
+    btn.disabled = false; btn.innerHTML = rotulo;
   }
 }
 
@@ -716,7 +739,7 @@ async function carregarDados() {
     // "De quando são estes dados" é a pergunta de quem está no campo sem
     // sinal: sem isso, dado de uma semana atrás parece dado de agora.
     if (j.doCache) {
-      marcarTarja('Sem conexão — dados de ' + (dataDosDados() || 'uma consulta anterior'));
+      avisarSemConexao(safra);
     } else {
       try { localStorage.setItem('mapaTalhoes.dadosEm.' + safra, new Date().toISOString()); } catch(e) {}
       document.getElementById('tarja').classList.remove('on');
@@ -730,7 +753,7 @@ async function carregarDados() {
     if (local && local.length) {
       local.forEach(d => { DADOS[d.chave] = d; });
       limparErro();
-      marcarTarja('Sem conexão — dados de ' + (dataDosDados(safra) || 'uma consulta anterior'));
+      avisarSemConexao(safra);
     } else {
       mostrarErro('Não foi possível carregar os talhões da safra ' + safra, e);
     }
@@ -749,7 +772,6 @@ function esconderCarregando() { document.getElementById('carregando').style.disp
 
 (async function iniciar() {
   iniciarMapa();
-  estadoRede();
   // Registro silencioso: quem já abriu a tela uma vez com sinal passa a ter
   // a casca guardada, mesmo sem clicar em "Offline".
   // "'serviceWorker' in navigator" não basta: no Safari em navegação privada
@@ -774,7 +796,7 @@ function esconderCarregando() { document.getElementById('carregando').style.disp
       // navegador, senão uma versão nova pode demorar até 24h para ser vista.
       navigator.serviceWorker.register('sw-mapa.js', { updateViaCache: 'none' })
         .then(reg => {
-          if (navigator.onLine) reg.update().catch(() => {});
+          reg.update().catch(() => {});
           return navigator.serviceWorker.ready;
         })
         .then(() => conferirOffline())
