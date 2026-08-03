@@ -182,8 +182,8 @@
     <button class="btn-topo" id="btnGps" onclick="alternarGps()" title="Mostrar minha posição">📍<span class="rotulo"> Onde estou</span></button>
     <button class="btn-topo" id="btnOffline" onclick="prepararOffline()"
             title="O mapa é guardado sozinho sempre que há rede. Toque para atualizar agora.">⬇<span class="rotulo"> Offline</span></button>
-    <button class="btn-topo" id="btnImagens" onclick="baixarImagens()"
-            title="Guardar as imagens de satélite da área dos talhões, no Wi-Fi">🛰<span class="rotulo"> Imagens</span></button>
+    <button class="btn-topo" id="btnImagens" onclick="atualizarTudo()"
+            title="Atualizar os dados e guardar as imagens de satélite">🛰<span class="rotulo"> Atualizar</span></button>
     <button class="btn-topo" onclick="enquadrarTudo()" title="Enquadrar todos os talhões">⤢<span class="rotulo"> Ver tudo</span></button>
     <button class="btn-topo" onclick="window.location.href='hub.html'" title="Voltar ao Hub">←<span class="rotulo"> Hub</span></button>
   </div>
@@ -192,7 +192,6 @@
 <div class="corpo">
   <div id="mapa" style="position:relative">
     <div class="carregando" id="carregando"><div class="spinner"></div><span id="carregandoTxt">Carregando mapa…</span></div>
-    <div class="tarja" id="tarja"></div>
     <div class="tarja" id="tarjaErro" style="background:#fef2f2;border-color:#d03b3b;color:#991b1b;
          max-width:min(560px,92%);white-space:normal;text-align:center;line-height:1.45"></div>
     <div class="cartao-gps" id="cartaoGps">
@@ -469,12 +468,6 @@ function mostrarErro(onde, e) {
 }
 function limparErro() { document.getElementById('tarjaErro').classList.remove('on'); }
 
-function marcarTarja(txto) {
-  const t = document.getElementById('tarja');
-  t.textContent = txto;
-  t.classList.add('on');
-}
-
 /**
  * Cópia dos dados no localStorage, além do cache do service worker.
  *
@@ -506,24 +499,17 @@ function dataDosDados(safra) {
   return p(d.getDate()) + '/' + p(d.getMonth()+1) + ' às ' + p(d.getHours()) + ':' + p(d.getMinutes());
 }
 
-/** A idade do dado agora vive no título do botão e na tarja, não no painel. */
+/** A idade do dado vive no título dos botões, não em faixa na tela. */
 function mostrarIdadeDados(safra, doCache) {
-  const quando = dataDosDados(safra);
-  if (doCache) marcarTarja('Sem conexão — dados de ' + (quando || 'uma consulta anterior'));
+  conferirOffline();
 }
 
-/**
- * navigator.onLine NÃO decide nada aqui.
- *
- * Em app instalado no iOS ele mente com frequência: fica falso com 5G
- * ligado, e aí a tela se declarava offline e o download automático nem
- * tentava. Quem diz se há rede é a requisição: se ela volta, há; se falha,
- * não há. A tarja passa a ser consequência do que aconteceu de fato, não
- * de um palpite do sistema.
+/*
+ * navigator.onLine não decide nada aqui: em app instalado no iOS ele mente
+ * com frequência, ficando falso com 5G ligado. Quem diz se há rede é a
+ * própria requisição — se volta, há; se falha, entra o que está guardado,
+ * em silêncio. A atualização é do usuário: o botão 🛰.
  */
-function avisarSemConexao(safra) {
-  marcarTarja('Sem conexão — dados de ' + (dataDosDados(safra) || 'uma consulta anterior'));
-}
 
 /** Voltar para o app é o momento natural de buscar dado novo: em modo
  *  aplicativo a página costuma ser retomada, não recarregada. */
@@ -646,13 +632,45 @@ function ladrilhosDosTalhoes() {
  * só onde há talhão e até o zoom 16 — não é espelhar o acervo do provedor,
  * é guardar a área de trabalho de quem vai a campo.
  */
-async function baixarImagens() {
+/**
+ * Atualização manual, no comando do usuário: busca os dados da safra e, se
+ * ele quiser, guarda as imagens de satélite da área dos talhões.
+ *
+ * É o único ponto em que a tela pede rede de forma explícita — no resto do
+ * tempo ela usa o que tem e não incomoda com aviso de conexão.
+ */
+async function atualizarTudo() {
+  const btnA = document.getElementById('btnImagens');
+  const rotuloA = btnA.innerHTML;
+  btnA.disabled = true;
+  btnA.innerHTML = '🛰<span class="rotulo"> Buscando…</span>';
+
+  let dadosOk = false;
+  try {
+    await carregarSafras();          // lista de safras
+    await carregarDados();           // talhões da safra selecionada
+    dadosOk = !!Object.keys(DADOS).length;
+  } catch(e) {
+    dadosOk = false;
+  } finally {
+    btnA.disabled = false;
+    btnA.innerHTML = rotuloA;
+  }
+
+  const quando = dataDosDados();
+  if (!dadosOk) {
+    alert('Não foi possível buscar os dados agora.\n\n' +
+          'A tela segue com o que estava guardado' + (quando ? ' (de ' + quando + ')' : '') + '.');
+    return;
+  }
+
   const lista = ladrilhosDosTalhoes();
-  if (!lista.length) { alert('Carregue o mapa antes de baixar as imagens.'); return; }
+  if (!lista.length) { alert('Dados atualizados.'); return; }
   const mb = Math.round(lista.length * 22 / 1024);
-  if (!confirm('Baixar as imagens de satélite da área dos talhões?\n\n' +
-               lista.length + ' imagens, cerca de ' + mb + ' MB.\n' +
-               'Faça isso no Wi-Fi. Depois o mapa aproxima sem sinal.')) return;
+  if (!confirm('Dados atualizados' + (quando ? ' (' + quando + ')' : '') + '.\n\n' +
+               'Guardar também as imagens de satélite da área dos talhões?\n' +
+               lista.length + ' imagens, cerca de ' + mb + ' MB — de preferência no Wi-Fi.\n' +
+               'Com elas o mapa aproxima sem sinal.')) return;
 
   const btn = document.getElementById('btnOffline');
   const rotulo = btn.innerHTML;
@@ -721,6 +739,54 @@ function iniciarMapa() {
   L.control.scale({ imperial: false }).addTo(MAPA);
 }
 
+/**
+ * Lista de safras e carga da safra selecionada. Extraída da inicialização
+ * para o botão 🛰 poder repetir tudo quando o usuário mandar atualizar.
+ *
+ * Preserva a safra já escolhida: quem estava olhando uma safra antiga não
+ * pode ser jogado de volta para a atual só por ter pedido atualização.
+ */
+async function carregarSafras() {
+  const sel = document.getElementById('selSafra');
+  const escolhida = sel.value;
+  let safras = null;
+  try {
+    const r = await fetch('api/mapa-talhoes/safras');
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro || 'Consulta recusada');
+    safras = j.data || [];
+    if (!j.doCache) guardarLocal('safras', safras);
+  } catch(e) {
+    // Sem a lista, a tela não sabe o que carregar e nada aparece — por isso
+    // ela também tem cópia local. O erro só vai à tela se as duas faltarem.
+    safras = lerLocal('safras');
+    if (!safras || !safras.length) {
+      esconderCarregando();
+      montarLegenda();
+      sel.innerHTML = '<option>—</option>';
+      mostrarErro('Não foi possível listar as safras', e);
+      return;
+    }
+  }
+
+  try {
+    SAFRAS = safras;
+    sel.innerHTML = safras.map(s =>
+      `<option value="${esc(s.cod_safra)}">Safra ${esc(s.cod_safra)}${s.atual === 'S' ? ' (atual)' : ''}</option>`).join('');
+    const manter = safras.some(s => String(s.cod_safra) === String(escolhida)) ? escolhida : null;
+    const alvo = manter || (safras.find(s => s.atual === 'S') || safras[0] || {}).cod_safra;
+    if (alvo) { sel.value = alvo; await carregarDados(); }
+    else { esconderCarregando(); montarLegenda(); }
+
+    // Sem esperar e sem travar a tela: guarda as duas safras mais recentes.
+    baixarAutomatico(safras);
+  } catch(e) {
+    esconderCarregando();
+    montarLegenda();
+    mostrarErro('Falha ao montar a lista de safras', e);
+  }
+}
+
 async function carregarDados() {
   const safra = document.getElementById('selSafra').value;
   if (!safra) return;
@@ -739,7 +805,8 @@ async function carregarDados() {
     // "De quando são estes dados" é a pergunta de quem está no campo sem
     // sinal: sem isso, dado de uma semana atrás parece dado de agora.
     if (j.doCache) {
-      avisarSemConexao(safra);
+      // Veio do que estava guardado. Sem aviso na tela — a data da última
+      // atualização fica no título do botão 🛰, para quem quiser conferir.
     } else {
       try { localStorage.setItem('mapaTalhoes.dadosEm.' + safra, new Date().toISOString()); } catch(e) {}
       document.getElementById('tarja').classList.remove('on');
@@ -753,7 +820,6 @@ async function carregarDados() {
     if (local && local.length) {
       local.forEach(d => { DADOS[d.chave] = d; });
       limparErro();
-      avisarSemConexao(safra);
     } else {
       mostrarErro('Não foi possível carregar os talhões da safra ' + safra, e);
     }
@@ -830,42 +896,7 @@ function esconderCarregando() { document.getElementById('carregando').style.disp
   enquadrarTudo();
 
   // 2. Safras + dados do ERP
-  let safras = null;
-  try {
-    const r = await fetch('api/mapa-talhoes/safras');
-    const j = await r.json();
-    if (!j.ok) throw new Error(j.erro || 'Consulta recusada');
-    safras = j.data || [];
-    if (!j.doCache) guardarLocal('safras', safras);
-  } catch(e) {
-    // Sem a lista, a tela não sabe o que carregar e nada aparece — por isso
-    // ela também tem cópia local. O erro só vai à tela se as duas faltarem.
-    safras = lerLocal('safras');
-    if (!safras || !safras.length) {
-      esconderCarregando();
-      montarLegenda();
-      document.getElementById('selSafra').innerHTML = '<option>—</option>';
-      mostrarErro('Não foi possível listar as safras', e);
-      return;
-    }
-  }
-
-  try {
-    SAFRAS = safras;
-    const sel = document.getElementById('selSafra');
-    sel.innerHTML = safras.map(s =>
-      `<option value="${esc(s.cod_safra)}">Safra ${esc(s.cod_safra)}${s.atual === 'S' ? ' (atual)' : ''}</option>`).join('');
-    const atual = safras.find(s => s.atual === 'S') || safras[0];
-    if (atual) { sel.value = atual.cod_safra; await carregarDados(); }
-    else { esconderCarregando(); montarLegenda(); }
-
-    // Sem esperar e sem travar a tela: guarda as duas safras mais recentes.
-    baixarAutomatico(safras);
-  } catch(e) {
-    esconderCarregando();
-    montarLegenda();
-    mostrarErro('Falha ao montar a lista de safras', e);
-  }
+  await carregarSafras();
 })();
 </script>
 </body>
