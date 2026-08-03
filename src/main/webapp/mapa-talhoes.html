@@ -136,6 +136,16 @@
   .tarja.on { display: block; }
   .btn-topo.ativo { background: white; color: #16342a; border-color: white; }
 
+  /* Rótulo sobre o talhão: sem caixa, para não tapar a imagem. A leitura
+     vem do contorno escuro, que funciona tanto sobre cana quanto sobre
+     solo exposto. */
+  .rot-talhao {
+    color: #fff; font-size: 11px; font-weight: 700; line-height: 1.15;
+    text-align: center; white-space: nowrap; pointer-events: none;
+    text-shadow: 0 0 3px rgba(0,0,0,.95), 0 1px 2px rgba(0,0,0,.9);
+  }
+  .rot-talhao .area { font-size: 10px; font-weight: 600; opacity: .95; }
+
   .marca-eu {
     width: 18px; height: 18px; border-radius: 50%; background: #2a78d6;
     border: 3px solid white; box-shadow: 0 0 0 1px rgba(0,0,0,.3);
@@ -224,6 +234,14 @@ const SEM_DADOS = { nome: 'Sem cadastro na safra', cor: '#98a2b3' };
 let MAPA, CAMADA, GEO = null, DADOS = {}, OCULTAS = new Set();
 let GPS = null, MARCA_EU = null, CIRCULO_EU = null, TALHAO_ATUAL = null, SEGUINDO = true;
 let SAFRAS = [];
+
+/** A partir daqui os rótulos aparecem. Abaixo disso a mediana de 8,5 ha
+ *  vira um amontoado ilegível — melhor mostrar nada. */
+const ZOOM_ROTULOS = 15;
+/** Teto por segurança: com o mapa muito aberto num monitor grande, desenhar
+ *  centenas de rótulos trava a rolagem. */
+const MAX_ROTULOS = 400;
+let ROTULOS = null;
 
 /** Nível mais fundo de imagem guardado; acima disso o Leaflet amplia. */
 const ZOOM_MAX_IMAGEM = 16;
@@ -328,6 +346,7 @@ function alternarSituacao(cod) {
 
 function aplicarFiltros() {
   if (CAMADA) CAMADA.setStyle(estilo);
+  desenharRotulos();          // esconder uma situação esconde os rótulos dela
 }
 
 function enquadrarTudo() {
@@ -381,6 +400,112 @@ function talhaoEm(lng, lat) {
     if (pontoEmGeometria(lng, lat, f.geometry)) return f;
   }
   return null;
+}
+
+// ── Rótulos sobre os talhões ─────────────────────────────────────────────
+
+/** Área do anel pela fórmula do laço (sinal indica o sentido). */
+function areaAnel(anel) {
+  let s = 0;
+  for (let i = 0; i < anel.length - 1; i++) {
+    s += anel[i][0] * anel[i+1][1] - anel[i+1][0] * anel[i][1];
+  }
+  return s / 2;
+}
+
+/**
+ * Ponto onde o rótulo é escrito: centroide do MAIOR anel do talhão.
+ *
+ * O centro da caixa envolvente seria mais simples, mas cai fora da figura
+ * em talhão curvo — e talhão que contorna estrada ou córrego é comum aqui.
+ */
+function centroDe(f) {
+  if (f._centro) return f._centro;
+  const polys = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
+  let anel = null, maior = -1;
+  polys.forEach(pol => {
+    const a = Math.abs(areaAnel(pol[0]));
+    if (a > maior) { maior = a; anel = pol[0]; }
+  });
+  let cx = 0, cy = 0, a2 = 0;
+  for (let i = 0; i < anel.length - 1; i++) {
+    const c = anel[i][0] * anel[i+1][1] - anel[i+1][0] * anel[i][1];
+    a2 += c;
+    cx += (anel[i][0] + anel[i+1][0]) * c;
+    cy += (anel[i][1] + anel[i+1][1]) * c;
+  }
+  const cxa = caixaDe(f);
+  let lng, lat;
+  if (a2 === 0) { lng = (cxa[0] + cxa[2]) / 2; lat = (cxa[1] + cxa[3]) / 2; }
+  else          { lng = cx / (3 * a2);         lat = cy / (3 * a2); }
+
+  // Talhão côncavo — o que contorna estrada ou córrego — tem o centroide
+  // fora da própria figura, e o rótulo ficaria boiando no vizinho. Nesses
+  // casos, procura um ponto de dentro na mesma altura.
+  if (!pontoEmGeometria(lng, lat, f.geometry)) {
+    const p = pontoInterno(f, lat);
+    if (p) { lng = p[0]; lat = p[1]; }
+  }
+  f._centro = [lat, lng];
+  return f._centro;
+}
+
+/**
+ * Ponto dentro do talhão na altura dada: corta a figura com uma reta
+ * horizontal e devolve o meio do maior trecho interno. Simples e suficiente
+ * — o objetivo é só pousar o rótulo em cima do talhão certo.
+ */
+function pontoInterno(f, lat) {
+  const polys = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
+  const cortes = [];
+  polys.forEach(pol => pol.forEach(anel => {
+    for (let i = 0, j = anel.length - 1; i < anel.length; j = i++) {
+      const [xi, yi] = anel[i], [xj, yj] = anel[j];
+      if ((yi > lat) !== (yj > lat)) cortes.push(xi + (lat - yi) * (xj - xi) / (yj - yi));
+    }
+  }));
+  if (cortes.length < 2) return null;
+  cortes.sort((a, b) => a - b);
+  let melhor = null, maior = 0;
+  for (let i = 0; i + 1 < cortes.length; i++) {
+    const meio = (cortes[i] + cortes[i+1]) / 2;
+    const larg = cortes[i+1] - cortes[i];
+    if (larg > maior && pontoEmGeometria(meio, lat, f.geometry)) { maior = larg; melhor = [meio, lat]; }
+  }
+  return melhor;
+}
+
+/** Área que vai no rótulo: a de produção do ERP quando há cadastro; sem ele,
+ *  a área do próprio desenho, que existe sempre. */
+function areaDoRotulo(p) {
+  const d = DADOS[p.chave];
+  const a = d && Number(d.areaproducao) ? Number(d.areaproducao) : Number(p.areaShape);
+  return a ? fmtNum(a) + ' ha' : '';
+}
+
+function desenharRotulos() {
+  if (!CAMADA) return;
+  if (!ROTULOS) ROTULOS = L.layerGroup().addTo(MAPA);
+  ROTULOS.clearLayers();
+  if (MAPA.getZoom() < ZOOM_ROTULOS) return;
+
+  const vista = MAPA.getBounds();
+  let postos = 0;
+  for (const f of GEO.features) {
+    if (postos >= MAX_ROTULOS) break;
+    const s = situacaoDe(f.properties.chave);
+    if (OCULTAS.has(s.cod) || !passaBusca(f)) continue;      // segue o filtro da tela
+    const c = centroDe(f);
+    if (!vista.contains(c)) continue;                         // só o que está à vista
+
+    const p = f.properties;
+    const area = areaDoRotulo(p);
+    L.marker(c, { interactive: false, keyboard: false,
+      icon: L.divIcon({ className: 'rot-talhao', iconSize: null,
+        html: esc(p.fazenda) + '-' + esc(p.talhao) + (area ? '<div class="area">' + area + '</div>' : '') })
+    }).addTo(ROTULOS);
+    postos++;
+  }
 }
 
 // ── GPS ──────────────────────────────────────────────────────────────────
@@ -733,6 +858,9 @@ function iniciarMapa() {
       attribution: 'Imagens: Esri, Maxar, Earthstar Geographics' });
   const ruas = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
     { maxZoom: 20, maxNativeZoom: 18, attribution: '© OpenStreetMap' });
+
+  // Mover ou aproximar muda o que está à vista, e o rótulo acompanha.
+  MAPA.on('moveend zoomend', desenharRotulos);
 
   satelite.addTo(MAPA);
   L.control.layers({ 'Satélite': satelite, 'Mapa de ruas': ruas }, null, { position: 'topright' }).addTo(MAPA);
