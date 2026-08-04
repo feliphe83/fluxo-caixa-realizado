@@ -968,7 +968,11 @@ function secaoRanking(num, titulo, subtitulo, lista, tipo) {
     <div class="tabela-scroll" style="overflow-x:auto">
       <table class="ranking">
         <thead><tr>
-          <th>#</th><th>${ehProprio?'Equipamento':'Proprietário / Empresa'}</th><th>Obj. Custo</th>
+          <!-- Na frota própria a coluna traz o modelo (r.modelo || r.equipamento)
+               e a seguinte, o grupo do equipamento — os rótulos anteriores
+               ("Equipamento" e "Obj. Custo") não descreviam o que estava ali. -->
+          <th>#</th><th>${ehProprio?'Modelo':'Proprietário / Empresa'}</th>
+          <th>${ehProprio?'Grupo Equipamento':'Obj. Custo'}</th>
           <th class="num">Volume (L)</th>
           <th class="num">Custo (R$)</th>
           <th class="num">Part.%</th>
@@ -1033,7 +1037,7 @@ function exportarExcel() {
   const classeLinhas = DADOS.porClasseOperativa.linhas.map(l => [l.nome, ...l.porSemana, l.total]);
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([classeHeader, ...classeLinhas]), 'Classe Operativa');
 
-  const proprios = [['#','Equipamento','Modelo','Obj. Custo','Volume (L)','Custo (R$)','Consumo Médio','Unidade','Participação (%)'],
+  const proprios = [['#','Equipamento','Modelo','Grupo Equipamento','Volume (L)','Custo (R$)','Consumo Médio','Unidade','Participação (%)'],
     ...DADOS.topProprios.map(r => [r.posicao, r.equipamento, r.modelo, r.grupo, r.volume, r.custo, r.consumoMedio, r.unidadeConsumo, r.participacao])];
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(proprios), 'Top Próprios');
 
