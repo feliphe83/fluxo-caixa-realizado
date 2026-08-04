@@ -522,6 +522,10 @@ function iniciarTrilha() {
     alert('A localização só funciona em HTTPS. Abra a intranet pelo endereço https://.');
     return;
   }
+  // Pergunta depois das checagens: não faz sentido pedir confirmação para
+  // depois avisar que o aparelho não vai gravar de qualquer jeito.
+  if (!confirm('Deseja gravar a trilha do caminho percorrido?')) return;
+
   TRILHA = {
     idLocal: 't' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
     inicio: new Date().toISOString(),
