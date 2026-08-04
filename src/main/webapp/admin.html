@@ -187,6 +187,10 @@
       <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
       De-Para Classe Operativa
     </div>
+    <div class="sb-item" id="nav-parametros" onclick="setSec('parametros')">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9c.14.36.46.63.85.74H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      Parâmetros gerais
+    </div>
     <div class="sb-item" id="nav-whatsapp" onclick="setSec('whatsapp')">
       <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
       Relatórios WhatsApp
@@ -234,6 +238,7 @@
       <button class="tab"    id="tab-depara"      onclick="setSec('depara')">🔄 De-Para Serviços</button>
       <button class="tab"    id="tab-classeoperativa" onclick="setSec('classeoperativa')">🚜 De-Para Classe Operativa</button>
       <button class="tab"    id="tab-whatsapp"    onclick="setSec('whatsapp')">📱 Relatórios WhatsApp</button>
+      <button class="tab"    id="tab-parametros"  onclick="setSec('parametros')">⚙️ Parâmetros gerais</button>
     </div>
 
     <div class="sec on" id="sec-usuarios">
@@ -443,6 +448,38 @@
             <tr><td colspan="7" style="text-align:center;padding:28px;color:var(--text3)">Carregando…</td></tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <div class="sec" id="sec-parametros">
+      <div class="panel">
+        <div class="ph">
+          <div class="ph-title">Parâmetros gerais</div>
+        </div>
+        <div style="padding:14px 18px 0;font-size:12.5px;color:var(--text2);line-height:1.6">
+          Configuração que vale para <b>toda a intranet</b>, não para uma tela só. A safra padrão é a que
+          as telas abrem quando ninguém escolhe outra — mapa de talhões, insumos, produtividade e o que
+          vier depois leem daqui, para não haver duas respostas diferentes sobre qual safra está corrente.
+        </div>
+        <div style="padding:16px 18px 18px;max-width:620px">
+          <div class="mf-grid">
+            <div class="mf">
+              <label>Safra padrão</label>
+              <input type="number" id="pSafraPadrao" min="1" max="9999" step="1" placeholder="76">
+              <div class="hint">Código da safra no ERP, como <b>76</b>. É a que já vem selecionada ao abrir as telas.</div>
+            </div>
+            <div class="mf">
+              <label>Safras na lista</label>
+              <input type="number" id="pSafraQuantidade" min="1" max="20" step="1" placeholder="4">
+              <div class="hint">Quantas safras recentes aparecem para escolher — e quantas o mapa guarda no
+                celular para funcionar sem sinal. Mais safras ocupam mais espaço no aparelho.</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
+            <button class="btn-primary" style="padding:9px 18px;font-size:13px" onclick="salvarParametros()">Salvar</button>
+            <span id="pAviso" style="font-size:12.5px"></span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -795,10 +832,59 @@ function setSec(s) {
     document.getElementById('tsub').textContent='Agende o envio automático de relatórios em PDF por WhatsApp';
     document.getElementById('btnAcao').style.display='none';
     carregarRelatoriosAgendados();
+  } else if(s==='parametros'){
+    document.getElementById('ttitle').textContent='Parâmetros gerais';
+    document.getElementById('tsub').textContent='Configuração que vale para toda a intranet';
+    document.getElementById('btnAcao').style.display='none';
+    carregarParametros();
   } else {
     document.getElementById('ttitle').textContent='Permissões';
     document.getElementById('tsub').textContent='Defina quais módulos cada usuário pode acessar';
     document.getElementById('btnAcao').style.display='none';
+  }
+}
+
+// ── Parâmetros gerais ─────────────────────────────────────────────
+function avisoParametros(texto, cor) {
+  const el = document.getElementById('pAviso');
+  el.textContent = texto || '';
+  el.style.color = cor || 'var(--text3)';
+}
+
+async function carregarParametros() {
+  avisoParametros('Carregando…');
+  try {
+    const r = await fetch('api/parametros', { headers: { 'Accept': 'application/json' } });
+    if (r.status === 401) { location.href = 'login.html'; return; }
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro || 'Consulta recusada');
+    document.getElementById('pSafraPadrao').value     = j.data['safra.padrao']     || '';
+    document.getElementById('pSafraQuantidade').value = j.data['safra.quantidade'] || '';
+    avisoParametros('');
+  } catch(e) {
+    avisoParametros('Não foi possível carregar: ' + e.message, 'var(--red,#d03b3b)');
+  }
+}
+
+async function salvarParametros() {
+  const corpo = {
+    'safra.padrao':     document.getElementById('pSafraPadrao').value.trim(),
+    'safra.quantidade': document.getElementById('pSafraQuantidade').value.trim()
+  };
+  avisoParametros('Salvando…');
+  try {
+    const r = await fetch('api/parametros', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify(corpo)
+    });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro || 'Gravação recusada');
+    // Quem já está com o mapa aberto só vê a mudança na próxima abertura —
+    // dizer isso agora evita a dúvida de "salvei e não mudou nada".
+    avisoParametros('Salvo. As telas passam a usar na próxima vez que forem abertas.', 'var(--green,#0ca30c)');
+  } catch(e) {
+    avisoParametros(e.message, 'var(--red,#d03b3b)');
   }
 }
 

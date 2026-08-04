@@ -1147,8 +1147,11 @@ async function conferirOffline() {
 
 /**
  * Guarda tudo sozinho quando há rede: o desenho dos talhões e os dados das
- * duas safras mais recentes. Sem depender de alguém lembrar de apertar um
+ * safras que estão à escolha. Sem depender de alguém lembrar de apertar um
  * botão antes de sair — que é justamente o que não acontece na correria.
+ *
+ * Recebe a lista já recortada: o que fica guardado é exatamente o que dá para
+ * abrir, sem baixar safra que a pessoa nem vê na tela.
  */
 async function baixarAutomatico(safras) {
   // Sem porteiro: tenta sempre. Se não houver rede, cada fetch falha
@@ -1160,7 +1163,7 @@ async function baixarAutomatico(safras) {
     if (navigator.serviceWorker) await navigator.serviceWorker.ready;
     // Passa pelo worker para as respostas entrarem no cache.
     await fetch('mapas/talhoes.geojson');
-    for (const s of (safras || []).slice(0, 2)) {
+    for (const s of (safras || [])) {
       try {
         const r = await fetch('api/mapa-talhoes?safra=' + encodeURIComponent(s.cod_safra));
         const j = await r.json();
@@ -1330,6 +1333,54 @@ function iniciarMapa() {
  * Preserva a safra já escolhida: quem estava olhando uma safra antiga não
  * pode ser jogado de volta para a atual só por ter pedido atualização.
  */
+// ── Parâmetros gerais (safra padrão e quantas safras aparecem) ───────────
+//
+// Vêm da Administração, não daqui: qual safra está corrente é assunto da
+// empresa, e telas diferentes lendo isso de lugares diferentes é como se
+// chega a duas respostas para a mesma pergunta. A cópia local existe porque
+// no campo não há rede para consultar — e sem ela a lista abriria diferente
+// justamente onde ninguém pode conferir.
+
+const PARAM_PADRAO = { 'safra.padrao': '76', 'safra.quantidade': '4' };
+let PARAMETROS = PARAM_PADRAO;
+
+async function carregarParametros() {
+  PARAMETROS = Object.assign({}, PARAM_PADRAO, lerLocal('parametros') || {});
+  try {
+    const r = await fetch('api/parametros', { headers: { 'Accept': 'application/json' } });
+    if (!r.ok) return;
+    const j = await r.json();
+    if (!j || !j.ok || !j.data) return;
+    PARAMETROS = Object.assign({}, PARAM_PADRAO, j.data);
+    guardarLocal('parametros', j.data);
+  } catch(e) { /* sem rede: fica com a última cópia, ou com o padrão */ }
+}
+
+/** Quantas safras ficam à escolha. Valor inválido não derruba a tela. */
+function quantasSafras() {
+  const n = parseInt(PARAMETROS['safra.quantidade'], 10);
+  return (n >= 1 && n <= 20) ? n : 4;
+}
+
+/**
+ * As N safras mais recentes. As antigas somem da lista de vez — com sinal ou
+ * sem ele, porque uma lista que muda de tamanho conforme a rede é pior do que
+ * uma lista curta.
+ */
+function recortarSafras(safras) {
+  return (safras || [])
+    .slice()
+    .sort((a, b) => Number(b.cod_safra) - Number(a.cod_safra))
+    .slice(0, quantasSafras());
+}
+
+/** Safra com que a tela abre: a configurada, se estiver na lista. */
+function safraDeAbertura(safras) {
+  const padrao = String(PARAMETROS['safra.padrao'] || '').trim();
+  if (padrao && safras.some(s => String(s.cod_safra) === padrao)) return padrao;
+  return (safras.find(s => s.atual === 'S') || safras[0] || {}).cod_safra;
+}
+
 async function carregarSafras() {
   const sel = document.getElementById('selSafra');
   const escolhida = sel.value;
@@ -1354,15 +1405,16 @@ async function carregarSafras() {
   }
 
   try {
+    safras = recortarSafras(safras);
     SAFRAS = safras;
     sel.innerHTML = safras.map(s =>
       `<option value="${esc(s.cod_safra)}">Safra ${esc(s.cod_safra)}${s.atual === 'S' ? ' (atual)' : ''}</option>`).join('');
     const manter = safras.some(s => String(s.cod_safra) === String(escolhida)) ? escolhida : null;
-    const alvo = manter || (safras.find(s => s.atual === 'S') || safras[0] || {}).cod_safra;
+    const alvo = manter || safraDeAbertura(safras);
     if (alvo) { sel.value = alvo; await carregarDados(); }
     else { esconderCarregando(); montarLegenda(); }
 
-    // Sem esperar e sem travar a tela: guarda as duas safras mais recentes.
+    // Sem esperar e sem travar a tela: guarda as safras que estão à escolha.
     baixarAutomatico(safras);
   } catch(e) {
     esconderCarregando();
@@ -1568,7 +1620,9 @@ window.addEventListener('focus', () => conferirVersao());
   }).addTo(MAPA);
   enquadrarTudo();
 
-  // 2. Safras + dados do ERP
+  // 2. Safras + dados do ERP. Os parâmetros vêm antes porque decidem quais
+  // safras entram na lista e com qual delas a tela abre.
+  await carregarParametros();
   await carregarSafras();
 
   // 3. Trilhas com o servidor. Depois do resto de propósito: sobe o que ficou
