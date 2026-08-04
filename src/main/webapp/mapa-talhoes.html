@@ -146,6 +146,39 @@
   }
   .rot-talhao .area { font-size: 10px; font-weight: 600; opacity: .95; }
 
+  /* Painel da gravação: fica visível o tempo todo enquanto grava, porque é
+     o que diz que o aparelho ainda está registrando.
+     Abaixo do controle de zoom (que ocupa o canto até uns 70px) e longe do
+     rodapé, onde o cartão "Você está em" abre — e ele abre justamente durante
+     a gravação, porque gravar trilha liga o GPS junto. */
+  .grav {
+    position: absolute; left: 12px; top: 84px; z-index: 900;
+    background: rgba(255,255,255,.96); border-radius: 12px; padding: 10px 14px;
+    box-shadow: 0 4px 18px rgba(15,36,96,.25); display: none; min-width: 172px;
+  }
+  .grav.on { display: block; }
+  .grav .tit { display: flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 800;
+               text-transform: uppercase; letter-spacing: .5px; color: #d03b3b; }
+  .grav .bolha { width: 9px; height: 9px; border-radius: 50%; background: #d03b3b;
+                 animation: pulsa 1.4s ease-in-out infinite; }
+  @keyframes pulsa { 0%,100%{opacity:1} 50%{opacity:.25} }
+  .grav .num { font-size: 20px; font-weight: 800; color: var(--ink);
+               font-variant-numeric: tabular-nums; margin-top: 5px; }
+  .grav .sub { font-size: 11.5px; color: #64748b; font-variant-numeric: tabular-nums; }
+  .grav .acoes { display: flex; gap: 6px; margin-top: 9px; }
+  .grav button { flex: 1; padding: 6px 8px; border-radius: 7px; border: 1.5px solid #d8dfee;
+                 background: white; font-size: 12px; font-weight: 700; cursor: pointer; color: #475569; }
+  .grav button.parar { background: #d03b3b; border-color: #d03b3b; color: white; }
+
+  /* Lista de trilhas no painel lateral */
+  .trilha-item { display: flex; align-items: center; gap: 8px; padding: 7px 16px;
+                 font-size: 12.5px; border-top: 1px solid #f1f4fa; }
+  .trilha-item .nome { flex: 1; min-width: 0; color: var(--ink); font-weight: 600;
+                       overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+  .trilha-item .med { color: #64748b; font-size: 11.5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .trilha-item .ico { border: none; background: none; cursor: pointer; font-size: 13px; padding: 2px 4px; color: #94a0b8; }
+  .trilha-item.pendente .nome::after { content: ' ⏳'; }
+
   .marca-eu {
     width: 18px; height: 18px; border-radius: 50%; background: #2a78d6;
     border: 3px solid white; box-shadow: 0 0 0 1px rgba(0,0,0,.3);
@@ -192,6 +225,8 @@
     <button class="btn-topo" id="btnGps" onclick="alternarGps()" title="Mostrar minha posição">📍<span class="rotulo"> Onde estou</span></button>
     <button class="btn-topo" id="btnOffline" onclick="prepararOffline()"
             title="O mapa é guardado sozinho sempre que há rede. Toque para atualizar agora.">⬇<span class="rotulo"> Offline</span></button>
+    <button class="btn-topo" id="btnTrilha" onclick="alternarTrilha()"
+            title="Gravar o caminho percorrido">⏺<span class="rotulo"> Trilha</span></button>
     <button class="btn-topo" id="btnImagens" onclick="atualizarTudo()"
             title="Atualizar os dados e guardar as imagens de satélite">🛰<span class="rotulo"> Atualizar</span></button>
     <button class="btn-topo" onclick="enquadrarTudo()" title="Enquadrar todos os talhões">⤢<span class="rotulo"> Ver tudo</span></button>
@@ -204,6 +239,15 @@
     <div class="carregando" id="carregando"><div class="spinner"></div><span id="carregandoTxt">Carregando mapa…</span></div>
     <div class="tarja" id="tarjaErro" style="background:#fef2f2;border-color:#d03b3b;color:#991b1b;
          max-width:min(560px,92%);white-space:normal;text-align:center;line-height:1.45"></div>
+    <div class="grav" id="painelGrav">
+      <div class="tit"><span class="bolha"></span> Gravando trilha</div>
+      <div class="num" id="gravDist">0 m</div>
+      <div class="sub"><span id="gravTempo">00:00</span> · <span id="gravPontos">0</span> pontos</div>
+      <div class="acoes">
+        <button onclick="pararTrilha(true)">Salvar</button>
+        <button class="parar" onclick="pararTrilha(false)">Descartar</button>
+      </div>
+    </div>
     <div class="cartao-gps" id="cartaoGps">
       <button class="fechar" onclick="fecharCartao()">×</button>
       <div class="rot">Você está em</div>
@@ -211,6 +255,8 @@
     </div>
   </div>
   <div class="painel">
+    <h3>Minhas trilhas</h3>
+    <div id="listaTrilhas"></div>
     <h3>Situação do talhão</h3>
     <div id="legenda"></div>
     <div class="resumo" id="resumo"></div>
@@ -400,6 +446,320 @@ function talhaoEm(lng, lat) {
     if (pontoEmGeometria(lng, lat, f.geometry)) return f;
   }
   return null;
+}
+
+// ── Trilha de GPS ────────────────────────────────────────────────────────
+//
+// Grava no aparelho e sobe depois. No campo não há rede para depender, e
+// perder o percurso de uma manhã por causa disso seria o pior resultado
+// possível — por isso cada ponto vai para o localStorage na hora, e o envio
+// ao servidor é uma etapa separada, que pode falhar e ser repetida.
+
+let TRILHA = null;          // gravação em andamento
+let LINHA_TRILHA = null;    // traço da gravação em andamento
+let LINHA_VISTA = null;     // traço de uma trilha antiga aberta pelo usuário
+let RELOGIO_TRILHA = null;
+
+/** Precisão pior que isto entra como ruído e distorce a distância. */
+const PRECISAO_MAX_M = 35;
+/** Abaixo disso é tremor do GPS parado, não deslocamento. */
+const PASSO_MIN_M = 6;
+
+/** Distância entre dois pontos na superfície da Terra, em metros. */
+function distanciaM(lat1, lng1, lat2, lng2) {
+  const R = 6371000, rad = Math.PI / 180;
+  const dLat = (lat2 - lat1) * rad, dLng = (lng2 - lng1) * rad;
+  const a = Math.sin(dLat/2)**2 +
+            Math.cos(lat1*rad) * Math.cos(lat2*rad) * Math.sin(dLng/2)**2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+
+const fmtDist = m => m < 1000 ? Math.round(m) + ' m' : (m/1000).toFixed(2).replace('.', ',') + ' km';
+const fmtDur = s => {
+  const h = Math.floor(s/3600), mi = Math.floor((s%3600)/60), se = Math.floor(s%60);
+  const dd = n => String(n).padStart(2,'0');
+  return (h ? h + ':' : '') + dd(mi) + ':' + dd(se);
+};
+
+function trilhasLocais() { return lerLocal('trilhas') || []; }
+function gravarTrilhasLocais(v) { return guardarLocal('trilhas', v); }
+
+/**
+ * As trilhas prontas, da mais recente para a mais antiga.
+ *
+ * A ordenação vive aqui e não em cada tela porque a lista da barra lateral e
+ * os índices usados por verTrilha/excluirTrilha precisam ser exatamente a
+ * mesma sequência — do contrário o lixo de uma linha apaga a trilha de outra.
+ */
+function trilhasEncerradas() {
+  return trilhasLocais().filter(t => t.encerrada)
+         .sort((a, b) => String(b.inicio).localeCompare(String(a.inicio)));
+}
+
+function alternarTrilha() {
+  if (TRILHA) { pararTrilha(true); return; }
+  iniciarTrilha();
+}
+
+function iniciarTrilha() {
+  if (!navigator.geolocation) { alert('Este aparelho não informa a localização.'); return; }
+  if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+    alert('A localização só funciona em HTTPS. Abra a intranet pelo endereço https://.');
+    return;
+  }
+  TRILHA = {
+    idLocal: 't' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+    inicio: new Date().toISOString(),
+    pontos: [],            // [lat, lng, segundos desde o início]
+    distancia: 0,
+    vigia: null
+  };
+  LINHA_TRILHA = L.polyline([], { color: '#d03b3b', weight: 4, opacity: .9 }).addTo(MAPA);
+
+  document.getElementById('painelGrav').classList.add('on');
+  document.getElementById('btnTrilha').classList.add('ativo');
+  atualizarPainelTrilha();
+  RELOGIO_TRILHA = setInterval(atualizarPainelTrilha, 1000);
+
+  TRILHA.vigia = navigator.geolocation.watchPosition(aoPontoTrilha,
+      e => { if (e.code === 1) { alert('Permissão de localização negada.'); pararTrilha(false); } },
+      { enableHighAccuracy: true, maximumAge: 2000, timeout: 30000 });
+
+  // Liga o "onde estou" junto: quem grava trilha quer se ver no mapa.
+  if (!GPS) alternarGps();
+}
+
+function aoPontoTrilha(pos) {
+  if (!TRILHA) return;
+  const { latitude: lat, longitude: lng, accuracy: prec } = pos.coords;
+  if (prec && prec > PRECISAO_MAX_M) return;              // leitura ruim, descarta
+
+  const ult = TRILHA.pontos[TRILHA.pontos.length - 1];
+  if (ult) {
+    const d = distanciaM(ult[0], ult[1], lat, lng);
+    if (d < PASSO_MIN_M) return;                          // parado: não anda no traço
+    TRILHA.distancia += d;
+  }
+  TRILHA.pontos.push([
+    Number(lat.toFixed(6)), Number(lng.toFixed(6)),
+    Math.round((Date.now() - new Date(TRILHA.inicio).getTime()) / 1000)
+  ]);
+  LINHA_TRILHA.addLatLng([lat, lng]);
+
+  // Grava a cada ponto: se o app for fechado ou o celular desligar, o que
+  // já foi percorrido não se perde.
+  salvarRascunho();
+  atualizarPainelTrilha();
+}
+
+function salvarRascunho() {
+  const lista = trilhasLocais().filter(t => t.idLocal !== TRILHA.idLocal);
+  lista.unshift(resumoTrilha(TRILHA, false));
+  gravarTrilhasLocais(lista);
+}
+
+function resumoTrilha(t, encerrada) {
+  const fim = encerrada ? new Date().toISOString() : null;
+  return {
+    idLocal: t.idLocal, nome: t.nome || null,
+    inicio: t.inicio, fim: fim,
+    duracaoS: Math.round(((fim ? new Date(fim) : new Date()) - new Date(t.inicio)) / 1000),
+    distanciaM: Math.round(t.distancia),
+    pontos: t.pontos,
+    encerrada: encerrada, enviada: false
+  };
+}
+
+function atualizarPainelTrilha() {
+  if (!TRILHA) return;
+  document.getElementById('gravDist').textContent = fmtDist(TRILHA.distancia);
+  document.getElementById('gravPontos').textContent = TRILHA.pontos.length;
+  document.getElementById('gravTempo').textContent =
+      fmtDur((Date.now() - new Date(TRILHA.inicio).getTime()) / 1000);
+}
+
+async function pararTrilha(salvar) {
+  if (!TRILHA) return;
+  if (!salvar && TRILHA.pontos.length &&
+      !confirm('Descartar esta trilha? O percurso gravado será perdido.')) return;
+
+  if (TRILHA.vigia !== null) navigator.geolocation.clearWatch(TRILHA.vigia);
+  clearInterval(RELOGIO_TRILHA);
+  document.getElementById('painelGrav').classList.remove('on');
+  document.getElementById('btnTrilha').classList.remove('ativo');
+  if (LINHA_TRILHA) { MAPA.removeLayer(LINHA_TRILHA); LINHA_TRILHA = null; }
+
+  const t = TRILHA;
+  TRILHA = null;
+
+  let lista = trilhasLocais().filter(x => x.idLocal !== t.idLocal);
+  if (!salvar || t.pontos.length < 2) {
+    gravarTrilhasLocais(lista);
+    if (salvar && t.pontos.length < 2) alert('Trilha curta demais para guardar.');
+    renderTrilhas();
+    return;
+  }
+
+  const nome = prompt('Nome desta trilha (opcional):',
+      'Trilha ' + new Date(t.inicio).toLocaleDateString('pt-BR'));
+  if (nome === null) { /* cancelou o nome, mas a trilha fica guardada mesmo assim */ }
+  t.nome = (nome || '').trim() || null;
+
+  const reg = resumoTrilha(t, true);
+  lista.unshift(reg);
+  if (!gravarTrilhasLocais(lista)) {
+    alert('Não foi possível guardar a trilha no aparelho: memória cheia.');
+  }
+  renderTrilhas();
+  enviarPendentes();
+}
+
+/** Sobe o que ainda não subiu. Falhar aqui é normal — tenta de novo depois. */
+async function enviarPendentes() {
+  const lista = trilhasLocais();
+  const pendentes = lista.filter(t => t.encerrada && !t.enviada);
+  if (!pendentes.length) return;
+  let mudou = false;
+  for (const t of pendentes) {
+    try {
+      const r = await fetch('api/trilha-gps', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ idLocal: t.idLocal, nome: t.nome, inicio: t.inicio, fim: t.fim,
+                               duracaoS: t.duracaoS, distanciaM: t.distanciaM, pontos: t.pontos })
+      });
+      const j = await r.json();
+      if (j && j.ok) { t.enviada = true; t.id = j.id; mudou = true; }
+    } catch(e) { /* sem rede: fica pendente e sobe na próxima */ }
+  }
+  if (mudou) { gravarTrilhasLocais(lista); renderTrilhas(); }
+}
+
+/**
+ * Traz as trilhas deste usuário que estão no servidor e não neste aparelho.
+ *
+ * É isto que faz "cada um ter as suas": quem gravou pelo celular abre pelo
+ * computador e continua vendo o que andou. Vêm só os resumos — os pontos, que
+ * são o volume, ficam para quando a trilha for de fato aberta no mapa.
+ *
+ * Sem rede não faz nada e não avisa: a lista local já está na tela.
+ */
+async function baixarTrilhas() {
+  let j;
+  try {
+    const r = await fetch('api/trilha-gps', { headers: { 'Accept': 'application/json' } });
+    if (!r.ok) return;
+    j = await r.json();
+  } catch(e) { return; }
+  if (!j || !j.ok || !Array.isArray(j.data)) return;
+
+  const lista = trilhasLocais();
+  const daqui = new Set(lista.map(t => t.idLocal));
+  let mudou = false;
+  j.data.forEach(s => {
+    if (!s.idLocal || daqui.has(s.idLocal)) return;
+    lista.push({ idLocal: s.idLocal, id: s.id, nome: s.nome,
+                 inicio: s.inicio, fim: s.fim, duracaoS: s.duracaoS,
+                 distanciaM: s.distanciaM, qtdePontos: s.qtdePontos,
+                 pontos: null,            // baixados sob demanda em verTrilha
+                 encerrada: true, enviada: true });
+    mudou = true;
+  });
+  if (mudou) { gravarTrilhasLocais(lista); renderTrilhas(); }
+}
+
+/**
+ * Gravação que ficou aberta — o app foi fechado, a bateria acabou ou o
+ * navegador matou a aba no meio do percurso.
+ *
+ * O rascunho no localStorage tem tudo até o último ponto recebido. Encerrar
+ * aqui transforma isso numa trilha normal, que aparece na lista e sobe na
+ * próxima rede. Deixar o rascunho aberto seria perder justamente o caso em
+ * que a gravação mais precisa ter valido a pena.
+ */
+function recuperarRascunho() {
+  const lista = trilhasLocais();
+  const antes = lista.length;
+  let mudou = false;
+  const mantidas = lista.filter(t => {
+    if (t.encerrada) return true;
+    if (!t.pontos || t.pontos.length < 2) return false;   // nada de útil
+    t.encerrada = true;
+    t.enviada = false;
+    t.fim = t.fim || new Date(new Date(t.inicio).getTime() + (t.duracaoS || 0) * 1000).toISOString();
+    t.nome = t.nome || 'Trilha interrompida';
+    mudou = true;
+    return true;
+  });
+  if (mudou || mantidas.length !== antes) gravarTrilhasLocais(mantidas);
+}
+
+function renderTrilhas() {
+  const el = document.getElementById('listaTrilhas');
+  if (!el) return;
+  const lista = trilhasEncerradas();
+  if (!lista.length) {
+    el.innerHTML = '<div style="padding:2px 16px 10px;font-size:12px;color:#94a0b8">' +
+                   'Nenhuma trilha gravada. Toque em ⏺ para começar.</div>';
+    return;
+  }
+  el.innerHTML = lista.map((t, i) => {
+    const d = new Date(t.inicio);
+    const quando = String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') +
+                   ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+    return `<div class="trilha-item ${t.enviada ? '' : 'pendente'}">
+      <span class="nome" onclick="verTrilha(${i})" title="${t.enviada ? 'Enviada' : 'Aguardando rede para enviar'}">${esc(t.nome || quando)}</span>
+      <span class="med">${fmtDist(t.distanciaM)}</span>
+      <button class="ico" onclick="excluirTrilha(${i})" title="Excluir">🗑</button>
+    </div>`;
+  }).join('');
+}
+
+/** Busca no servidor os pontos de uma trilha que veio só como resumo. */
+async function pontosDaTrilha(t) {
+  if (t.pontos && t.pontos.length >= 2) return t.pontos;
+  if (!t.id) return null;
+  try {
+    const r = await fetch('api/trilha-gps/' + t.id, { headers: { 'Accept': 'application/json' } });
+    const j = await r.json();
+    if (!j || !j.ok || !Array.isArray(j.pontos) || j.pontos.length < 2) return null;
+    // Guarda no aparelho: aberta uma vez com rede, abre sempre sem ela.
+    const lista = trilhasLocais();
+    const alvo = lista.find(x => x.idLocal === t.idLocal);
+    if (alvo) { alvo.pontos = j.pontos; gravarTrilhasLocais(lista); }
+    return j.pontos;
+  } catch(e) { return null; }
+}
+
+async function verTrilha(i) {
+  const t = trilhasEncerradas()[i];
+  if (!t) return;
+  const pontos = await pontosDaTrilha(t);
+  if (!pontos) {
+    alert('Esta trilha está guardada no servidor e ainda não foi baixada para este aparelho. Abra-a uma vez com rede.');
+    return;
+  }
+  t.pontos = pontos;
+  if (LINHA_VISTA) MAPA.removeLayer(LINHA_VISTA);
+  LINHA_VISTA = L.polyline(t.pontos.map(p => [p[0], p[1]]),
+      { color: '#4a3aa7', weight: 4, opacity: .9, dashArray: '1,0' }).addTo(MAPA);
+  LINHA_VISTA.bindPopup(esc(t.nome || 'Trilha') + '<br>' + fmtDist(t.distanciaM) +
+                        ' · ' + fmtDur(t.duracaoS));
+  MAPA.fitBounds(LINHA_VISTA.getBounds(), { padding: [30, 30] });
+}
+
+async function excluirTrilha(i) {
+  const t = trilhasEncerradas()[i];
+  if (!t) return;
+  if (!confirm('Excluir a trilha "' + (t.nome || 'sem nome') + '"?')) return;
+
+  if (t.enviada && t.id) {
+    try { await fetch('api/trilha-gps?id=' + t.id,
+              { method: 'DELETE', headers: { 'Accept': 'application/json' } }); } catch(e) {}
+  }
+  gravarTrilhasLocais(trilhasLocais().filter(x => x.idLocal !== t.idLocal));
+  if (LINHA_VISTA) { MAPA.removeLayer(LINHA_VISTA); LINHA_VISTA = null; }
+  renderTrilhas();
 }
 
 // ── Rótulos sobre os talhões ─────────────────────────────────────────────
@@ -966,6 +1326,11 @@ function esconderCarregando() { document.getElementById('carregando').style.disp
 
 (async function iniciar() {
   iniciarMapa();
+
+  // Trilhas antes de tudo: são dados do próprio aparelho, aparecem na hora e
+  // não dependem de rede nem do desenho dos talhões ter carregado.
+  recuperarRascunho();
+  renderTrilhas();
   // Registro silencioso: quem já abriu a tela uma vez com sinal passa a ter
   // a casca guardada, mesmo sem clicar em "Offline".
   // "'serviceWorker' in navigator" não basta: no Safari em navegação privada
@@ -1025,6 +1390,14 @@ function esconderCarregando() { document.getElementById('carregando').style.disp
 
   // 2. Safras + dados do ERP
   await carregarSafras();
+
+  // 3. Trilhas com o servidor. Depois do resto de propósito: sobe o que ficou
+  // pendente e traz o que foi gravado em outro aparelho. Falhar aqui é normal
+  // — sem rede, a lista local já está na tela desde o início.
+  // Um depois do outro: os dois mexem na mesma lista do localStorage, e em
+  // paralelo a última gravação apagaria o resultado da outra.
+  await enviarPendentes();
+  await baixarTrilhas();
 })();
 </script>
 </body>
