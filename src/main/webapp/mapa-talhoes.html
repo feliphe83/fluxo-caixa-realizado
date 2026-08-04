@@ -266,7 +266,7 @@
     <button class="btn-topo btn-trilha" id="btnTrilha" onclick="alternarTrilha()"
             title="Gravar o caminho percorrido"><span class="ponto"></span><span class="rotulo">Trilha</span></button>
     <button class="btn-topo" id="btnImagens" onclick="atualizarTudo()"
-            title="Atualizar os dados e guardar as imagens de satélite">🛰<span class="rotulo"> Atualizar</span></button>
+            title="Atualizar o app, os dados e as imagens de satélite">🛰<span class="rotulo"> Atualizar</span></button>
     <button class="btn-topo" onclick="enquadrarTudo()" title="Enquadrar todos os talhões">⤢<span class="rotulo"> Ver tudo</span></button>
     <button class="btn-topo" onclick="window.location.href='hub.html'" title="Voltar ao Hub">←<span class="rotulo"> Hub</span></button>
   </div>
@@ -1228,6 +1228,12 @@ async function atualizarTudo() {
   const rotuloA = btnA.innerHTML;
   btnA.disabled = true;
   btnA.innerHTML = '🛰<span class="rotulo"> Buscando…</span>';
+
+  // Antes dos dados: se saiu versão nova do app, recarrega e tudo vem com
+  // ela. Este é o caminho manual para o iPhone, onde o app fica suspenso e
+  // pode não ter recarregado sozinho — e o único caminho para quem está com
+  // uma versão antiga demais para conferir a versão por conta própria.
+  await conferirVersao(true);
 
   let dadosOk = false;
   try {
