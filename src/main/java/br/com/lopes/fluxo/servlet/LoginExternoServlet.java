@@ -26,6 +26,11 @@ import java.util.logging.Logger;
  * usa para manter quem entrou por aqui dentro do módulo de manobra — sem ela,
  * uma sessão válida é uma sessão válida, e a empresa de manobra chegaria no
  * fluxo de caixa.
+ *
+ * Não há checagem de contrato na entrada: o contrato é informado à mão no
+ * boletim, e o cadastro de quem entra é conferido pela usina quando a empresa
+ * é liberada. Barrar aqui por falta de contrato cadastrado deixaria alguém
+ * sem trabalhar por causa de um cadastro que não é dele.
  */
 @WebServlet("/api/externo/login")
 public class LoginExternoServlet extends HttpServlet {
@@ -73,17 +78,6 @@ public class LoginExternoServlet extends HttpServlet {
             }
 
             int id = (Integer) u.get("id");
-            List<Map<String, Object>> contratos = dao.contratosDe(id);
-
-            // Sem contrato liberado não há o que fazer aqui dentro. Barrar na
-            // porta com uma mensagem clara é melhor que deixar entrar numa
-            // tela vazia que ninguém sabe interpretar.
-            if (contratos.isEmpty()) {
-                resp.setStatus(403);
-                json(resp, "{\"ok\":false,\"semContrato\":true,\"erro\":"
-                        + "\"Não há contrato liberado para este usuário. Procure o setor responsável na usina.\"}");
-                return;
-            }
 
             HttpSession s = req.getSession(true);
             s.setAttribute("externo",       Boolean.TRUE);
@@ -100,7 +94,7 @@ public class LoginExternoServlet extends HttpServlet {
             LOG.info("Acesso externo: " + u.get("logon") + " da empresa " + u.get("cnpj"));
             json(resp, "{\"ok\":true,\"nome\":" + GSON.toJson(u.get("nome"))
                     + ",\"empresa\":" + GSON.toJson(u.get("razaoSocial"))
-                    + ",\"contratos\":" + GSON.toJson(contratos)
+                    + ",\"contratos\":" + GSON.toJson(dao.contratosDe(id))
                     + ",\"equipamentos\":" + GSON.toJson(dao.equipamentosDe(id)) + "}");
 
         } catch (SQLException e) {

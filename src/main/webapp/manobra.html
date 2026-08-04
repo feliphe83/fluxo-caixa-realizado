@@ -183,7 +183,13 @@
         </div>
         <div class="campo">
           <label for="contrato">Contrato</label>
-          <select id="contrato"></select>
+          <!-- Digitado à mão: a usina não confere contrato na entrada, e
+               prender o campo a uma lista deixaria alguém sem lançar o dia
+               por causa de um cadastro que não é dele. O que estiver
+               liberado aparece como sugestão. -->
+          <input type="text" id="contrato" list="listaContratos" maxlength="30"
+                 placeholder="Nº do contrato" autocomplete="off">
+          <datalist id="listaContratos"></datalist>
         </div>
         <div class="campo">
           <label for="horaIni">Hora inicial</label>
@@ -394,7 +400,7 @@ async function salvar() {
     data:            document.getElementById('data').value,
     codEquipamento:  document.getElementById('veiculo').value,
     descEquipamento: textoSel('veiculo'),
-    codContrato:     document.getElementById('contrato').value,
+    codContrato:     document.getElementById('contrato').value.trim(),
     horaInicial:     document.getElementById('horaIni').value,
     horaFinal:       document.getElementById('horaFim').value,
     kmInicial:       document.getElementById('kmIni').value,
@@ -431,6 +437,7 @@ function textoSel(id) {
 
 function limparFormulario() {
   document.getElementById('corpoTrechos').innerHTML = '';
+  // Contrato e veículo ficam: quem lança um extra costuma lançar do mesmo.
   ['horaIni','horaFim','kmIni','kmFim','observacao','justificativa'].forEach(
       id => document.getElementById(id).value = '');
   document.getElementById('obsKm').textContent = '';
@@ -486,8 +493,11 @@ async function carregarLista() {
   document.getElementById('veiculo').innerHTML =
       opcoes(INICIO.equipamentos || [], x => x.descricao || x.cod,
              (INICIO.equipamentos || []).length ? null : 'Nenhum veículo liberado');
-  document.getElementById('contrato').innerHTML =
-      opcoes(INICIO.contratos || [], x => x.descricao ? (x.cod + ' — ' + x.descricao) : x.cod);
+  const contratos = INICIO.contratos || [];
+  document.getElementById('listaContratos').innerHTML = contratos.map(x =>
+      `<option value="${esc(x.cod)}">${esc(x.descricao || '')}</option>`).join('');
+  // Um contrato só liberado: já vem preenchido, mas continua editável.
+  if (contratos.length === 1) document.getElementById('contrato').value = contratos[0].cod;
 
   if (INICIO.erroFazendas) {
     tarja('Aviso', esc(INICIO.erroFazendas) +
