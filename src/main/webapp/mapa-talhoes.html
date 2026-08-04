@@ -1344,6 +1344,90 @@ function mostrarCarregando(txt) {
 }
 function esconderCarregando() { document.getElementById('carregando').style.display = 'none'; }
 
+// ── Versão nova publicada no servidor ────────────────────────────────────
+//
+// No iPhone o app instalado na tela de início não recarrega quando é
+// reaberto: o iOS suspende a página e devolve o mesmo contexto de volta. Não
+// há navegação, não há requisição, e o deploy feito ontem nunca chega em quem
+// deixou o app aberto — e ninguém fecha app de celular. Era isso que fazia a
+// tela continuar velha por dias depois de publicar.
+//
+// A conferência é um HEAD no próprio HTML. Requisição que não é GET passa
+// direto pelo service worker (ele só trata GET), então o Last-Modified vem do
+// servidor sem cache no caminho — e sem precisar de número de versão escrito
+// à mão em lugar nenhum, já que o arquivo muda de data a cada deploy.
+
+let VERSAO_TELA = null;          // marca do HTML com que esta tela está rodando
+let ULTIMA_CONFERIDA = 0;
+
+/** Marca da versão publicada agora, ou null se não deu para saber. */
+async function versaoPublicada() {
+  try {
+    const r = await fetch('mapa-talhoes.html', { method: 'HEAD', cache: 'no-store' });
+    // redirected = sessão caiu e veio o login; a data seria a do login.html
+    if (!r.ok || r.redirected) return null;
+    const lm = r.headers.get('Last-Modified');
+    if (lm) { const d = new Date(lm); if (!isNaN(d)) return { texto: lm, ms: d.getTime() }; }
+    const et = r.headers.get('ETag');
+    return et ? { texto: et, ms: null } : null;
+  } catch(e) { return null; }    // sem rede: segue com o que está na tela
+}
+
+/** Data do HTML que o navegador de fato carregou (vale para o do cache). */
+function versaoDaTelaCarregada() {
+  const d = new Date(document.lastModified);
+  return isNaN(d) ? null : d.getTime();
+}
+
+function recarregarPorVersaoNova(marca) {
+  // Uma vez por versão. Se algo impedir a tela nova de subir, é melhor ficar
+  // na antiga do que entrar em ciclo de recarregamento no meio do talhão.
+  try {
+    if (sessionStorage.getItem('mapaTalhoes.recarregouPara') === marca) return;
+    sessionStorage.setItem('mapaTalhoes.recarregouPara', marca);
+  } catch(e) {}
+  if (navigator.serviceWorker) {
+    navigator.serviceWorker.getRegistration()
+      .then(reg => reg && reg.update())
+      .catch(() => {})
+      .then(() => location.reload());
+    return;
+  }
+  location.reload();
+}
+
+async function conferirVersao(forcar) {
+  const agora = Date.now();
+  if (!forcar && agora - ULTIMA_CONFERIDA < 10000) return;
+  ULTIMA_CONFERIDA = agora;
+
+  // Gravando trilha, ninguém recarrega a tela por baixo da pessoa. A checagem
+  // volta a valer quando ela parar — e é justamente durante a gravação que
+  // uma recarga seria mais cara.
+  if (TRILHA) return;
+
+  const v = await versaoPublicada();
+  if (!v) return;
+
+  if (VERSAO_TELA === null) {
+    // Primeira conferência: além de guardar a marca, dá para pegar o caso de
+    // a tela ter aberto com HTML velho vindo do cache.
+    const daTela = versaoDaTelaCarregada();
+    VERSAO_TELA = v.texto;
+    if (daTela && v.ms && v.ms - daTela > 2000) recarregarPorVersaoNova(v.texto);
+    return;
+  }
+  if (v.texto !== VERSAO_TELA) recarregarPorVersaoNova(v.texto);
+}
+
+// Voltar para o app é o momento em que a versão velha aparece — e no iOS é o
+// único, porque não houve navegação nenhuma no meio.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') conferirVersao();
+});
+window.addEventListener('pageshow', e => { if (e.persisted) conferirVersao(true); });
+window.addEventListener('focus', () => conferirVersao());
+
 (async function iniciar() {
   iniciarMapa();
 
@@ -1418,6 +1502,9 @@ function esconderCarregando() { document.getElementById('carregando').style.disp
   // paralelo a última gravação apagaria o resultado da outra.
   await enviarPendentes();
   await baixarTrilhas();
+
+  // 4. Marca da versão publicada, para reconhecer o deploy que vier depois.
+  conferirVersao(true);
 })();
 </script>
 </body>
