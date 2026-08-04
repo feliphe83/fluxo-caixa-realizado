@@ -185,6 +185,29 @@
                  background: white; font-size: 12px; font-weight: 700; cursor: pointer; color: #475569; }
   .grav button.parar { background: #d03b3b; border-color: #d03b3b; color: white; }
 
+  /* Diálogo de nome ao salvar a trilha.
+     Feito na própria tela em vez de prompt(): no iPhone, com o app instalado
+     na tela de início, o prompt do navegador não aparece — a trilha era salva
+     sem nome e sem ninguém entender por quê. */
+  .modal { position: fixed; inset: 0; z-index: 2000; display: none;
+           align-items: center; justify-content: center; padding: 20px;
+           background: rgba(15,36,96,.45); }
+  .modal.on { display: flex; }
+  .modal .cx { background: white; border-radius: 14px; padding: 18px 18px 16px;
+               width: 100%; max-width: 380px; box-shadow: 0 12px 40px rgba(15,36,96,.35); }
+  .modal h4 { font-size: 15px; font-weight: 800; color: var(--ink); }
+  .modal .resumo { font-size: 12.5px; color: #64748b; margin-top: 3px;
+                   font-variant-numeric: tabular-nums; }
+  .modal input { width: 100%; margin-top: 13px; padding: 11px 12px; font-size: 16px;
+                 border: 1.5px solid #d8dfee; border-radius: 9px; color: var(--ink);
+                 font-family: inherit; box-sizing: border-box; }
+  .modal input:focus { outline: none; border-color: #2a78d6; }
+  .modal .acoes { display: flex; gap: 8px; margin-top: 14px; }
+  .modal button { flex: 1; padding: 11px 10px; border-radius: 9px; font-size: 13.5px;
+                  font-weight: 700; cursor: pointer; border: 1.5px solid #d8dfee;
+                  background: white; color: #475569; font-family: inherit; }
+  .modal button.pri { background: #16342a; border-color: #16342a; color: white; }
+
   /* Lista de trilhas no painel lateral */
   .trilha-item { display: flex; align-items: center; gap: 8px; padding: 7px 16px;
                  font-size: 12.5px; border-top: 1px solid #f1f4fa; }
@@ -259,7 +282,7 @@
       <div class="num" id="gravDist">0 m</div>
       <div class="sub"><span id="gravTempo">00:00</span> · <span id="gravPontos">0</span> pontos</div>
       <div class="acoes">
-        <button onclick="pararTrilha(true)">Salvar</button>
+        <button onclick="pedirNomeDaTrilha()">Salvar</button>
         <button class="parar" onclick="pararTrilha(false)">Descartar</button>
       </div>
     </div>
@@ -275,6 +298,23 @@
     <h3>Situação do talhão</h3>
     <div id="legenda"></div>
     <div class="resumo" id="resumo"></div>
+  </div>
+</div>
+
+<!-- No nível do body, e não dentro do #mapa: position:fixed é relativo à
+     viewport até alguém pôr um transform num ancestral — e aí o diálogo
+     passaria a ficar preso à moldura do mapa, sem cobrir o painel lateral. -->
+<div class="modal" id="modalNome">
+  <div class="cx">
+    <h4>Salvar trilha</h4>
+    <div class="resumo" id="nomeResumo"></div>
+    <input type="text" id="nomeTrilha" maxlength="80" placeholder="Nome da trilha"
+           autocomplete="off" autocapitalize="sentences"
+           onkeydown="if(event.key==='Enter'){event.preventDefault();salvarComNome()}">
+    <div class="acoes">
+      <button onclick="fecharNomeDaTrilha()">Continuar gravando</button>
+      <button class="pri" onclick="salvarComNome()">Salvar</button>
+    </div>
   </div>
 </div>
 
@@ -512,8 +552,45 @@ function trilhasEncerradas() {
 }
 
 function alternarTrilha() {
-  if (TRILHA) { pararTrilha(true); return; }
+  if (TRILHA) { pedirNomeDaTrilha(); return; }
   iniciarTrilha();
+}
+
+/**
+ * Pede o nome antes de encerrar — e a gravação continua correndo enquanto o
+ * diálogo está aberto. Assim "Continuar gravando" é de fato voltar ao que
+ * estava, sem buraco no percurso, e nenhum caminho daqui joga fora o que já
+ * foi andado.
+ */
+function pedirNomeDaTrilha() {
+  if (!TRILHA) return;
+  if (TRILHA.pontos.length < 2) {
+    alert('Ainda não há percurso suficiente para guardar. Ande um pouco e tente de novo.');
+    return;
+  }
+  const d = new Date(TRILHA.inicio);
+  const p = n => String(n).padStart(2, '0');
+  document.getElementById('nomeResumo').textContent =
+      fmtDist(TRILHA.distancia) + ' · ' + fmtDur((Date.now() - d.getTime()) / 1000) +
+      ' · ' + TRILHA.pontos.length + ' pontos';
+
+  const campo = document.getElementById('nomeTrilha');
+  campo.value = 'Trilha ' + p(d.getDate()) + '/' + p(d.getMonth() + 1) +
+                ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  document.getElementById('modalNome').classList.add('on');
+  // O foco vem depois de a caixa estar visível: no iOS, focar num elemento
+  // ainda escondido não abre o teclado.
+  setTimeout(() => { campo.focus(); campo.select(); }, 60);
+}
+
+function fecharNomeDaTrilha() {
+  document.getElementById('modalNome').classList.remove('on');
+}
+
+function salvarComNome() {
+  const nome = (document.getElementById('nomeTrilha').value || '').trim();
+  fecharNomeDaTrilha();
+  pararTrilha(true, nome || null);
 }
 
 function iniciarTrilha() {
@@ -597,10 +674,12 @@ function atualizarPainelTrilha() {
       fmtDur((Date.now() - new Date(TRILHA.inicio).getTime()) / 1000);
 }
 
-async function pararTrilha(salvar) {
+/** @param nome nome escolhido no diálogo; null guarda a trilha sem nome */
+async function pararTrilha(salvar, nome) {
   if (!TRILHA) return;
   if (!salvar && TRILHA.pontos.length &&
       !confirm('Descartar esta trilha? O percurso gravado será perdido.')) return;
+  fecharNomeDaTrilha();
 
   if (TRILHA.vigia !== null) navigator.geolocation.clearWatch(TRILHA.vigia);
   clearInterval(RELOGIO_TRILHA);
@@ -619,9 +698,6 @@ async function pararTrilha(salvar) {
     return;
   }
 
-  const nome = prompt('Nome desta trilha (opcional):',
-      'Trilha ' + new Date(t.inicio).toLocaleDateString('pt-BR'));
-  if (nome === null) { /* cancelou o nome, mas a trilha fica guardada mesmo assim */ }
   t.nome = (nome || '').trim() || null;
 
   const reg = resumoTrilha(t, true);
