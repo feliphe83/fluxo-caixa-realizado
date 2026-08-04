@@ -187,6 +187,10 @@
       <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
       De-Para Classe Operativa
     </div>
+    <div class="sb-item" id="nav-externo" onclick="setSec('externo')">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><rect x="2" y="7" width="13" height="10" rx="2"/><path d="M15 10h4l3 3v4h-7z"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="19" r="2"/></svg>
+      Empresas Externas
+    </div>
     <div class="sb-item" id="nav-parametros" onclick="setSec('parametros')">
       <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9c.14.36.46.63.85.74H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
       Parâmetros gerais
@@ -238,6 +242,7 @@
       <button class="tab"    id="tab-depara"      onclick="setSec('depara')">🔄 De-Para Serviços</button>
       <button class="tab"    id="tab-classeoperativa" onclick="setSec('classeoperativa')">🚜 De-Para Classe Operativa</button>
       <button class="tab"    id="tab-whatsapp"    onclick="setSec('whatsapp')">📱 Relatórios WhatsApp</button>
+      <button class="tab"    id="tab-externo"     onclick="setSec('externo')">🚛 Empresas Externas</button>
       <button class="tab"    id="tab-parametros"  onclick="setSec('parametros')">⚙️ Parâmetros gerais</button>
     </div>
 
@@ -451,6 +456,49 @@
       </div>
     </div>
 
+    <div class="sec" id="sec-externo">
+      <div class="panel">
+        <div class="ph">
+          <div class="ph-title">Empresas contratadas</div>
+          <button class="btn-primary" style="padding:7px 14px;font-size:13px" onclick="abrirEmpresa()">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nova Empresa
+          </button>
+        </div>
+        <div style="padding:14px 18px 0;font-size:12.5px;color:var(--text2);line-height:1.6">
+          Empresas que entram pelo portal de manobra em <b>bdo.usinasclotilde.com.br</b>. Cada pessoa
+          tem seu próprio usuário e senha — a senha nunca é por CNPJ, para que dê para saber quem lançou
+          cada boletim. Desativar a empresa corta o acesso de todo mundo dela de uma vez.
+        </div>
+        <table>
+          <thead><tr><th>CNPJ</th><th>Razão social</th><th>Usuários</th><th>Situação</th><th></th></tr></thead>
+          <tbody id="tbEmpresas">
+            <tr><td colspan="5" style="text-align:center;padding:28px;color:var(--text3)">Carregando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="panel" style="margin-top:16px">
+        <div class="ph">
+          <div class="ph-title">Pessoas com acesso</div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <select id="filtroEmpresa" class="search-inp" style="width:auto;padding-left:10px"
+                    onchange="carregarUsuariosExternos()"></select>
+            <button class="btn-primary" style="padding:7px 14px;font-size:13px" onclick="abrirUsuarioExterno()">
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Nova Pessoa
+            </button>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>Usuário</th><th>Nome</th><th>Matrícula</th><th>Empresa</th><th>Liberações</th><th>Situação</th><th></th></tr></thead>
+          <tbody id="tbUsuariosExternos">
+            <tr><td colspan="7" style="text-align:center;padding:28px;color:var(--text3)">Carregando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <div class="sec" id="sec-parametros">
       <div class="panel">
         <div class="ph">
@@ -483,6 +531,116 @@
       </div>
     </div>
 
+  </div>
+</div>
+
+<!-- MODAL EMPRESA EXTERNA -->
+<div class="ov" id="ovEmp">
+  <div class="modal">
+    <div class="modal-title" id="mEmpTitle">Nova Empresa</div>
+    <div class="modal-sub">Empresa contratada que acessa o portal de manobra</div>
+    <input type="hidden" id="mEmpId">
+    <div class="mf">
+      <label>CNPJ</label>
+      <input type="text" id="mEmpCnpj" maxlength="18" placeholder="00.000.000/0000-00">
+      <div class="hint">É com ele que a pessoa entra no portal, junto do usuário e da senha.</div>
+    </div>
+    <div class="mf">
+      <label>Razão social</label>
+      <input type="text" id="mEmpRazao" maxlength="150" placeholder="Ex: C.E.A de Mendonça Transportes Ltda">
+    </div>
+    <div class="mf-grid">
+      <div class="mf">
+        <label>Nome curto</label>
+        <input type="text" id="mEmpCurto" maxlength="60" placeholder="Ex: C.E.A Mendonça">
+      </div>
+      <div class="mf">
+        <label>Situação</label>
+        <select id="mEmpAtivo"><option value="S">Ativa</option><option value="N">Inativa</option></select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="fecharModal('ovEmp')">Cancelar</button>
+      <button class="btn-primary" onclick="salvarEmpresa()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PESSOA DA EMPRESA -->
+<div class="ov" id="ovUsx">
+  <div class="modal">
+    <div class="modal-title" id="mUsxTitle">Nova Pessoa</div>
+    <div class="modal-sub">Quem lança boletim pela empresa contratada</div>
+    <input type="hidden" id="mUsxId">
+    <div class="mf">
+      <label>Empresa</label>
+      <select id="mUsxEmpresa"></select>
+    </div>
+    <div class="mf-grid">
+      <div class="mf">
+        <label>Usuário</label>
+        <input type="text" id="mUsxLogon" maxlength="60" placeholder="Ex: EDUARDO.SILVA">
+      </div>
+      <div class="mf">
+        <label>Matrícula</label>
+        <input type="text" id="mUsxMatricula" maxlength="20" placeholder="Ex: 90683">
+      </div>
+    </div>
+    <div class="mf">
+      <label>Nome completo</label>
+      <input type="text" id="mUsxNome" maxlength="150">
+      <div class="hint">Vai para o boletim como nome do motorista, sem que ele possa trocar.</div>
+    </div>
+    <div class="mf-grid">
+      <div class="mf">
+        <label>CPF</label>
+        <input type="text" id="mUsxCpf" maxlength="14" placeholder="000.000.000-00">
+      </div>
+      <div class="mf">
+        <label>Situação</label>
+        <select id="mUsxAtivo"><option value="S">Ativo</option><option value="N">Inativo</option></select>
+      </div>
+    </div>
+    <div class="mf">
+      <label>Senha</label>
+      <input type="password" id="mUsxSenha" autocomplete="new-password">
+      <div class="hint" id="mUsxSenhaHint">Obrigatória no cadastro.</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="fecharModal('ovUsx')">Cancelar</button>
+      <button class="btn-primary" onclick="salvarUsuarioExterno()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL LIBERAÇÕES -->
+<div class="ov" id="ovLib">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-title">Liberações</div>
+    <div class="modal-sub" id="mLibQuem"></div>
+    <input type="hidden" id="mLibId">
+    <div class="mf">
+      <label>Equipamentos</label>
+      <div class="hint" style="margin:0 0 7px">
+        O que a pessoa pode escolher como veículo no boletim. Sem nenhum, ela entra mas não lança.
+      </div>
+      <div id="mLibEquip"></div>
+      <button class="btn-ghost" style="padding:6px 12px;font-size:12px;margin-top:7px"
+              onclick="linhaLib('mLibEquip')">+ Adicionar equipamento</button>
+    </div>
+    <div class="mf">
+      <label>Contratos</label>
+      <div class="hint" style="margin:0 0 7px">
+        Aparecem como sugestão no boletim; o contrato pode ser digitado à mão, então isto não bloqueia nada.
+      </div>
+      <div id="mLibContr"></div>
+      <button class="btn-ghost" style="padding:6px 12px;font-size:12px;margin-top:7px"
+              onclick="linhaLib('mLibContr')">+ Adicionar contrato</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="fecharModal('ovLib')">Cancelar</button>
+      <button class="btn-primary" onclick="salvarLiberacoes()">Salvar</button>
+    </div>
   </div>
 </div>
 
@@ -832,6 +990,11 @@ function setSec(s) {
     document.getElementById('tsub').textContent='Agende o envio automático de relatórios em PDF por WhatsApp';
     document.getElementById('btnAcao').style.display='none';
     carregarRelatoriosAgendados();
+  } else if(s==='externo'){
+    document.getElementById('ttitle').textContent='Empresas Externas';
+    document.getElementById('tsub').textContent='Acesso das empresas contratadas ao portal de manobra';
+    document.getElementById('btnAcao').style.display='none';
+    carregarEmpresas();
   } else if(s==='parametros'){
     document.getElementById('ttitle').textContent='Parâmetros gerais';
     document.getElementById('tsub').textContent='Configuração que vale para toda a intranet';
@@ -843,6 +1006,234 @@ function setSec(s) {
     document.getElementById('btnAcao').style.display='none';
   }
 }
+
+// ── Empresas externas (portal de manobra) ─────────────────────────────
+let EMPRESAS = [], USUARIOS_EXT = [];
+
+const escX = v => String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+                   .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+/** 12345678000199 -> 12.345.678/0001-99 */
+function fmtCnpj(v){
+  const d=String(v||'').replace(/\D/g,'');
+  if(d.length!==14) return v||'';
+  return `${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5,8)}/${d.slice(8,12)}-${d.slice(12)}`;
+}
+
+function fecharModal(id){ document.getElementById(id).style.display='none'; }
+function abrirModal(id){ document.getElementById(id).style.display='flex'; }
+
+async function apiExterno(rota, opcoes){
+  const r = await fetch('api/admin/externo/'+rota,
+    Object.assign({ headers:{ 'Content-Type':'application/json', 'Accept':'application/json' } }, opcoes||{}));
+  if(r.status===401){ location.href='login.html'; throw new Error('sessão'); }
+  const j = await r.json();
+  if(!j.ok) throw new Error(j.erro||'Operação recusada');
+  return j;
+}
+
+async function carregarEmpresas(){
+  try{
+    const j = await apiExterno('empresas');
+    EMPRESAS = j.data;
+    document.getElementById('tbEmpresas').innerHTML = EMPRESAS.length ? EMPRESAS.map(e=>`
+      <tr>
+        <td style="font-family:monospace">${escX(fmtCnpj(e.cnpj))}</td>
+        <td><b>${escX(e.razaoSocial)}</b>${e.nomeCurto?`<div class="muted">${escX(e.nomeCurto)}</div>`:''}</td>
+        <td>${e.usuarios}</td>
+        <td><span class="badge ${e.ativo==='S'?'badge-green':'badge-red'}"><span class="bdot"></span>${e.ativo==='S'?'Ativa':'Inativa'}</span></td>
+        <td style="text-align:right">
+          <button class="btn-ghost" style="padding:5px 10px;font-size:12px" onclick="abrirEmpresa(${e.id})">Editar</button>
+        </td>
+      </tr>`).join('')
+      : '<tr><td colspan="5" style="text-align:center;padding:28px;color:var(--text3)">Nenhuma empresa cadastrada.</td></tr>';
+
+    const sel = document.getElementById('filtroEmpresa');
+    const antes = sel.value;
+    sel.innerHTML = '<option value="">Todas as empresas</option>' +
+      EMPRESAS.map(e=>`<option value="${e.id}">${escX(e.nomeCurto||e.razaoSocial)}</option>`).join('');
+    sel.value = antes;
+    carregarUsuariosExternos();
+  }catch(err){
+    document.getElementById('tbEmpresas').innerHTML =
+      `<tr><td colspan="5" style="text-align:center;padding:24px;color:#f87171">${escX(err.message)}</td></tr>`;
+  }
+}
+
+function abrirEmpresa(id){
+  const e = EMPRESAS.find(x=>x.id===id) || {};
+  document.getElementById('mEmpTitle').textContent = id?'Editar Empresa':'Nova Empresa';
+  document.getElementById('mEmpId').value    = id||'';
+  document.getElementById('mEmpCnpj').value  = fmtCnpj(e.cnpj);
+  document.getElementById('mEmpRazao').value = e.razaoSocial||'';
+  document.getElementById('mEmpCurto').value = e.nomeCurto||'';
+  document.getElementById('mEmpAtivo').value = e.ativo||'S';
+  abrirModal('ovEmp');
+}
+
+async function salvarEmpresa(){
+  const corpo = {
+    id:          document.getElementById('mEmpId').value || null,
+    cnpj:        document.getElementById('mEmpCnpj').value.replace(/\D/g,''),
+    razaoSocial: document.getElementById('mEmpRazao').value.trim(),
+    nomeCurto:   document.getElementById('mEmpCurto').value.trim(),
+    ativo:       document.getElementById('mEmpAtivo').value
+  };
+  if(corpo.cnpj.length!==14){ alert('O CNPJ precisa ter 14 dígitos.'); return; }
+  if(!corpo.razaoSocial){ alert('Informe a razão social.'); return; }
+  try{
+    await apiExterno('empresas', { method:'POST', body:JSON.stringify(corpo) });
+    fecharModal('ovEmp');
+    carregarEmpresas();
+  }catch(err){ alert(err.message); }
+}
+
+async function carregarUsuariosExternos(){
+  const idEmpresa = document.getElementById('filtroEmpresa').value;
+  try{
+    const j = await apiExterno('usuarios' + (idEmpresa?('?idEmpresa='+idEmpresa):''));
+    USUARIOS_EXT = j.data;
+    document.getElementById('tbUsuariosExternos').innerHTML = USUARIOS_EXT.length ? USUARIOS_EXT.map(u=>`
+      <tr>
+        <td><b>${escX(u.logon)}</b></td>
+        <td>${escX(u.nome)}</td>
+        <td>${escX(u.matricula||'—')}</td>
+        <td class="muted">${escX(u.razaoSocial)}</td>
+        <td>
+          <span class="badge ${u.equipamentos?'badge-blue':'badge-red'}">${u.equipamentos} equip.</span>
+          <span class="badge badge-blue">${u.contratos} contr.</span>
+        </td>
+        <td><span class="badge ${u.ativo==='S'?'badge-green':'badge-red'}"><span class="bdot"></span>${u.ativo==='S'?'Ativo':'Inativo'}</span></td>
+        <td style="text-align:right;white-space:nowrap">
+          <button class="btn-ghost" style="padding:5px 10px;font-size:12px" onclick="abrirLiberacoes(${u.id})">Liberações</button>
+          <button class="btn-ghost" style="padding:5px 10px;font-size:12px" onclick="abrirUsuarioExterno(${u.id})">Editar</button>
+          <button class="btn-ghost" style="padding:5px 10px;font-size:12px;color:#f87171" onclick="excluirUsuarioExterno(${u.id})">Excluir</button>
+        </td>
+      </tr>`).join('')
+      : '<tr><td colspan="7" style="text-align:center;padding:28px;color:var(--text3)">Nenhuma pessoa cadastrada.</td></tr>';
+  }catch(err){
+    document.getElementById('tbUsuariosExternos').innerHTML =
+      `<tr><td colspan="7" style="text-align:center;padding:24px;color:#f87171">${escX(err.message)}</td></tr>`;
+  }
+}
+
+function abrirUsuarioExterno(id){
+  if(!EMPRESAS.length){ alert('Cadastre uma empresa antes.'); return; }
+  const u = USUARIOS_EXT.find(x=>x.id===id) || {};
+  document.getElementById('mUsxTitle').textContent = id?'Editar Pessoa':'Nova Pessoa';
+  document.getElementById('mUsxId').value        = id||'';
+  document.getElementById('mUsxEmpresa').innerHTML =
+    EMPRESAS.map(e=>`<option value="${e.id}">${escX(e.razaoSocial)}</option>`).join('');
+  document.getElementById('mUsxEmpresa').value   = u.idEmpresa || document.getElementById('filtroEmpresa').value || EMPRESAS[0].id;
+  document.getElementById('mUsxLogon').value     = u.logon||'';
+  document.getElementById('mUsxMatricula').value = u.matricula||'';
+  document.getElementById('mUsxNome').value      = u.nome||'';
+  document.getElementById('mUsxCpf').value       = u.cpf||'';
+  document.getElementById('mUsxAtivo').value     = u.ativo||'S';
+  document.getElementById('mUsxSenha').value     = '';
+  document.getElementById('mUsxSenhaHint').textContent = id
+    ? 'Deixe em branco para manter a senha atual.'
+    : 'Obrigatória no cadastro.';
+  abrirModal('ovUsx');
+}
+
+async function salvarUsuarioExterno(){
+  const id = document.getElementById('mUsxId').value;
+  const corpo = {
+    id:        id||null,
+    idEmpresa: document.getElementById('mUsxEmpresa').value,
+    logon:     document.getElementById('mUsxLogon').value.trim(),
+    nome:      document.getElementById('mUsxNome').value.trim(),
+    cpf:       document.getElementById('mUsxCpf').value.replace(/\D/g,''),
+    matricula: document.getElementById('mUsxMatricula').value.trim(),
+    senha:     document.getElementById('mUsxSenha').value,
+    ativo:     document.getElementById('mUsxAtivo').value
+  };
+  if(!corpo.logon){ alert('Informe o usuário.'); return; }
+  if(!corpo.nome){ alert('Informe o nome completo.'); return; }
+  if(!id && !corpo.senha){ alert('Informe a senha.'); return; }
+  try{
+    await apiExterno('usuarios', { method:'POST', body:JSON.stringify(corpo) });
+    fecharModal('ovUsx');
+    carregarEmpresas();
+  }catch(err){ alert(err.message); }
+}
+
+async function excluirUsuarioExterno(id){
+  const u = USUARIOS_EXT.find(x=>x.id===id);
+  if(!u) return;
+  if(!confirm(`Excluir ${u.nome}? As liberações dela também serão apagadas.\n\nOs boletins já lançados permanecem.`)) return;
+  try{
+    await apiExterno('usuarios?id='+id, { method:'DELETE' });
+    carregarEmpresas();
+  }catch(err){ alert(err.message); }
+}
+
+// ── Liberações ────────────────────────────────────────────────────────
+
+function linhaLib(onde, cod, descricao){
+  const cx = document.getElementById(onde);
+  const div = document.createElement('div');
+  div.style.cssText = 'display:flex;gap:6px;margin-bottom:6px';
+  div.innerHTML =
+    `<input type="text" class="cod" placeholder="Código" style="flex:0 0 110px" value="${escX(cod||'')}">
+     <input type="text" class="des" placeholder="Descrição" value="${escX(descricao||'')}">
+     <button class="btn-ghost" style="padding:6px 10px;font-size:12px" title="Remover">×</button>`;
+  div.querySelector('button').onclick = () => div.remove();
+  cx.appendChild(div);
+}
+
+function lerLib(onde){
+  return [...document.getElementById(onde).children].map(d=>({
+    cod: d.querySelector('.cod').value.trim(),
+    descricao: d.querySelector('.des').value.trim()
+  })).filter(x=>x.cod);
+}
+
+async function abrirLiberacoes(id){
+  const u = USUARIOS_EXT.find(x=>x.id===id);
+  if(!u) return;
+  document.getElementById('mLibId').value = id;
+  document.getElementById('mLibQuem').textContent = u.nome + ' — ' + u.razaoSocial;
+  document.getElementById('mLibEquip').innerHTML = '';
+  document.getElementById('mLibContr').innerHTML = '';
+  abrirModal('ovLib');
+  try{
+    const j = await apiExterno('liberacoes?id='+id);
+    j.equipamentos.forEach(e=>linhaLib('mLibEquip', e.cod, e.descricao));
+    j.contratos.forEach(c=>linhaLib('mLibContr', c.cod, c.descricao));
+    if(!j.equipamentos.length) linhaLib('mLibEquip');
+    if(!j.contratos.length) linhaLib('mLibContr');
+  }catch(err){ alert(err.message); }
+}
+
+async function salvarLiberacoes(){
+  const corpo = {
+    id: document.getElementById('mLibId').value,
+    equipamentos: lerLib('mLibEquip'),
+    contratos: lerLib('mLibContr')
+  };
+  try{
+    await apiExterno('liberacoes', { method:'POST', body:JSON.stringify(corpo) });
+    fecharModal('ovLib');
+    carregarEmpresas();
+  }catch(err){ alert(err.message); }
+}
+
+// máscara de CNPJ no cadastro, igual à do portal
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('mEmpCnpj');
+  if(!el) return;
+  el.addEventListener('input', () => {
+    const d = el.value.replace(/\D/g,'').slice(0,14);
+    let v = d;
+    if(d.length>12) v=`${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5,8)}/${d.slice(8,12)}-${d.slice(12)}`;
+    else if(d.length>8) v=`${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5,8)}/${d.slice(8)}`;
+    else if(d.length>5) v=`${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5)}`;
+    else if(d.length>2) v=`${d.slice(0,2)}.${d.slice(2)}`;
+    el.value = v;
+  });
+});
 
 // ── Parâmetros gerais ─────────────────────────────────────────────
 function avisoParametros(texto, cor) {
