@@ -132,7 +132,8 @@ public class AdminExternoServlet extends HttpServlet {
                     Integer idEmpresa = inteiro(b, "idEmpresa");
                     if (idEmpresa == null) { erro(resp, 400, "Empresa é obrigatória"); return; }
                     int id = dao.salvarUsuario(inteiro(b, "id"), idEmpresa, texto(b, "logon"),
-                            texto(b, "nome"), texto(b, "cpf"), texto(b, "senha"), simNao(b, "ativo"));
+                            texto(b, "nome"), texto(b, "cpf"), texto(b, "matricula"),
+                            texto(b, "senha"), simNao(b, "ativo"));
                     json(resp, "{\"ok\":true,\"id\":" + id + "}");
                 }
                 case "liberacoes" -> {

@@ -57,6 +57,7 @@ public class AcessoExternoDAO {
                   logon VARCHAR(60) NOT NULL,
                   nome VARCHAR(150) NOT NULL,
                   cpf VARCHAR(11),
+                  matricula VARCHAR(20),
                   senha_hash VARCHAR(64) NOT NULL,
                   ativo CHAR(1) NOT NULL DEFAULT 'S',
                   ultimo_acesso TIMESTAMP NULL,
@@ -83,6 +84,14 @@ public class AcessoExternoDAO {
                   PRIMARY KEY (id_usuario_externo, cod_contrato)
                 )
                 """);
+            // Coluna acrescentada depois: instalação que já tenha a tabela
+            // criada não recebe o CREATE de novo.
+            try {
+                st.execute("ALTER TABLE fc_usuario_externo ADD COLUMN matricula VARCHAR(20)");
+            } catch (SQLException e) {
+                String es = e.getSQLState();
+                if (!"42S21".equals(es) && !"42000".equals(es)) throw e;   // já existe
+            }
         }
         return c;
     }
@@ -110,7 +119,7 @@ public class AcessoExternoDAO {
      */
     public Map<String, Object> autenticar(String cnpj, String logon, String senha) throws SQLException {
         String sql = """
-            SELECT u.id, u.nome, u.logon, e.id id_empresa, e.cnpj, e.razao_social, e.nome_curto
+            SELECT u.id, u.nome, u.logon, u.matricula, e.id id_empresa, e.cnpj, e.razao_social, e.nome_curto
             FROM   fc_usuario_externo u
             JOIN   fc_empresa_externa e ON e.id = u.id_empresa
             WHERE  e.cnpj = ? AND u.logon = UPPER(?)
@@ -128,6 +137,7 @@ public class AcessoExternoDAO {
                 m.put("id", rs.getInt("id"));
                 m.put("nome", rs.getString("nome"));
                 m.put("logon", rs.getString("logon"));
+                m.put("matricula", rs.getString("matricula"));
                 m.put("idEmpresa", rs.getInt("id_empresa"));
                 m.put("cnpj", rs.getString("cnpj"));
                 m.put("razaoSocial", rs.getString("razao_social"));
@@ -288,7 +298,7 @@ public class AcessoExternoDAO {
     public List<Map<String, Object>> usuarios(Integer idEmpresa) throws SQLException {
         List<Map<String, Object>> lista = new ArrayList<>();
         String sql = """
-            SELECT u.id, u.id_empresa, u.logon, u.nome, u.cpf, u.ativo, u.ultimo_acesso,
+            SELECT u.id, u.id_empresa, u.logon, u.nome, u.cpf, u.matricula, u.ativo, u.ultimo_acesso,
                    e.razao_social, e.cnpj,
                    (SELECT COUNT(*) FROM fc_acesso_equipamento a WHERE a.id_usuario_externo = u.id) equipamentos,
                    (SELECT COUNT(*) FROM fc_acesso_contrato    a WHERE a.id_usuario_externo = u.id) contratos
@@ -309,6 +319,7 @@ public class AcessoExternoDAO {
                     m.put("logon", rs.getString("logon"));
                     m.put("nome", rs.getString("nome"));
                     m.put("cpf", rs.getString("cpf"));
+                    m.put("matricula", rs.getString("matricula"));
                     m.put("ativo", rs.getString("ativo"));
                     m.put("ultimoAcesso", rs.getTimestamp("ultimo_acesso") == null ? null
                             : rs.getTimestamp("ultimo_acesso").toInstant().toString());
@@ -325,21 +336,22 @@ public class AcessoExternoDAO {
 
     /** @param senha nula ou vazia mantém a senha atual (edição sem trocar senha) */
     public int salvarUsuario(Integer id, int idEmpresa, String logon, String nome,
-                             String cpf, String senha, String ativo) throws SQLException {
+                             String cpf, String matricula, String senha, String ativo) throws SQLException {
         String log = logon == null ? "" : logon.trim().toUpperCase();
         if (log.isBlank()) throw new SQLException("Usuário é obrigatório");
         try (Connection c = conn()) {
             if (id == null) {
                 if (senha == null || senha.isBlank()) throw new SQLException("Senha é obrigatória no cadastro");
                 try (PreparedStatement ps = c.prepareStatement(
-                        "INSERT INTO fc_usuario_externo (id_empresa, logon, nome, cpf, senha_hash, ativo) "
-                      + "VALUES (?,?,?,?,SHA2(?,256),?)", Statement.RETURN_GENERATED_KEYS)) {
+                        "INSERT INTO fc_usuario_externo (id_empresa, logon, nome, cpf, matricula, senha_hash, ativo) "
+                      + "VALUES (?,?,?,?,?,SHA2(?,256),?)", Statement.RETURN_GENERATED_KEYS)) {
                     ps.setInt(1, idEmpresa);
                     ps.setString(2, log);
                     ps.setString(3, nome);
                     ps.setString(4, soDigitos(cpf));
-                    ps.setString(5, senha);
-                    ps.setString(6, ativo);
+                    ps.setString(5, matricula);
+                    ps.setString(6, senha);
+                    ps.setString(7, ativo);
                     ps.executeUpdate();
                     try (ResultSet rs = ps.getGeneratedKeys()) {
                         return rs.next() ? rs.getInt(1) : 0;
@@ -348,16 +360,17 @@ public class AcessoExternoDAO {
             }
             boolean trocaSenha = senha != null && !senha.isBlank();
             String sql = trocaSenha
-                ? "UPDATE fc_usuario_externo SET id_empresa=?, logon=?, nome=?, cpf=?, ativo=?, senha_hash=SHA2(?,256) WHERE id=?"
-                : "UPDATE fc_usuario_externo SET id_empresa=?, logon=?, nome=?, cpf=?, ativo=? WHERE id=?";
+                ? "UPDATE fc_usuario_externo SET id_empresa=?, logon=?, nome=?, cpf=?, matricula=?, ativo=?, senha_hash=SHA2(?,256) WHERE id=?"
+                : "UPDATE fc_usuario_externo SET id_empresa=?, logon=?, nome=?, cpf=?, matricula=?, ativo=? WHERE id=?";
             try (PreparedStatement ps = c.prepareStatement(sql)) {
                 ps.setInt(1, idEmpresa);
                 ps.setString(2, log);
                 ps.setString(3, nome);
                 ps.setString(4, soDigitos(cpf));
-                ps.setString(5, ativo);
-                if (trocaSenha) { ps.setString(6, senha); ps.setInt(7, id); }
-                else ps.setInt(6, id);
+                ps.setString(5, matricula);
+                ps.setString(6, ativo);
+                if (trocaSenha) { ps.setString(7, senha); ps.setInt(8, id); }
+                else ps.setInt(7, id);
                 ps.executeUpdate();
             }
             return id;

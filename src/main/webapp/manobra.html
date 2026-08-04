@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Boletim Diário de Operação — Usina Santa Clotilde</title>
+<link rel="icon" href="img/logo.png">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --verde: #16342a; --verde-2: #1f4a3a; --ink: #16233f; --ink-2: #64748b;
+    --ink-3: #94a0b8; --linha: #dfe5f0; --fundo: #f4f6fb;
+    --vermelho: #d03b3b; --ambar: #eda100; --verde-ok: #0ca30c;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--fundo); color: var(--ink); padding-bottom: 40px;
+  }
+
+  header {
+    background: linear-gradient(140deg, var(--verde) 0%, var(--verde-2) 100%);
+    color: white; padding: 12px 16px;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  header img { width: 34px; height: 34px; border-radius: 8px; }
+  header .tit { font-size: 15px; font-weight: 800; line-height: 1.25; }
+  header .sub { font-size: 11.5px; opacity: .85; }
+  header .dir { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  header .quem { font-size: 11.5px; text-align: right; line-height: 1.35; opacity: .95; }
+  header a.sair {
+    color: white; text-decoration: none; border: 1.5px solid rgba(255,255,255,.35);
+    padding: 6px 12px; border-radius: 7px; font-size: 12px; font-weight: 600;
+  }
+
+  main { max-width: 1000px; margin: 0 auto; padding: 16px; }
+  .abas { display: flex; gap: 6px; margin-bottom: 14px; }
+  .abas button {
+    flex: 1; padding: 10px; border: 1.5px solid var(--linha); background: white;
+    border-radius: 9px; font-size: 13.5px; font-weight: 700; color: var(--ink-2);
+    font-family: inherit; cursor: pointer;
+  }
+  .abas button.on { background: var(--verde); border-color: var(--verde); color: white; }
+
+  .cartao {
+    background: white; border: 1px solid var(--linha); border-radius: 12px;
+    padding: 16px; margin-bottom: 14px;
+  }
+  .cartao h2 {
+    font-size: 11px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase;
+    color: var(--ink-2); margin-bottom: 12px;
+  }
+  .grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .campo label {
+    display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .5px;
+    text-transform: uppercase; color: var(--ink-2); margin-bottom: 5px;
+  }
+  .campo input, .campo select, .campo textarea {
+    width: 100%; padding: 10px 11px; border: 1.5px solid var(--linha);
+    border-radius: 8px; font-size: 15px; font-family: inherit; color: var(--ink);
+    background: white;
+  }
+  .campo input:focus, .campo select:focus, .campo textarea:focus {
+    outline: none; border-color: var(--verde-2);
+  }
+  .campo input[readonly] { background: #f7f9fc; color: var(--ink-2); }
+  .campo textarea { resize: vertical; min-height: 62px; }
+  .campo .obs { font-size: 11px; color: var(--ink-3); margin-top: 4px; }
+
+  table.trechos { width: 100%; border-collapse: collapse; }
+  table.trechos th {
+    font-size: 10px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase;
+    color: var(--ink-2); text-align: left; padding: 0 6px 7px; white-space: nowrap;
+  }
+  table.trechos td { padding: 3px 4px; vertical-align: middle; }
+  table.trechos select, table.trechos input {
+    width: 100%; padding: 9px 8px; border: 1.5px solid var(--linha);
+    border-radius: 7px; font-size: 14px; font-family: inherit; color: var(--ink); background: white;
+  }
+  table.trechos .n { width: 34px; color: var(--ink-3); font-size: 12px; text-align: center; }
+  table.trechos .qt { width: 78px; }
+  table.trechos .lixo {
+    width: 34px; border: none; background: none; cursor: pointer;
+    font-size: 15px; color: var(--ink-3); padding: 4px;
+  }
+  .add {
+    margin-top: 10px; padding: 9px 14px; border: 1.5px dashed var(--linha);
+    background: white; border-radius: 8px; font-size: 13px; font-weight: 700;
+    color: var(--verde-2); font-family: inherit; cursor: pointer;
+  }
+
+  .acoes { display: flex; gap: 10px; align-items: center; margin-top: 4px; }
+  .principal {
+    padding: 13px 26px; border: none; border-radius: 9px; background: var(--verde);
+    color: white; font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer;
+  }
+  .principal:disabled { opacity: .55; cursor: default; }
+
+  .tarja {
+    padding: 11px 14px; border-radius: 9px; font-size: 13px; line-height: 1.55;
+    margin-bottom: 14px; display: none;
+  }
+  .tarja.on { display: block; }
+  .tarja.erro  { background: #fef2f2; border: 1px solid #f3c9c9; color: #8f2a2a; }
+  .tarja.aviso { background: #fffaf0; border: 1px solid #f0dcb4; color: #7a5a10; }
+  .tarja.bom   { background: #f1fbf1; border: 1px solid #bfe6bf; color: #1f6b1f; }
+
+  .lista-item {
+    display: flex; align-items: center; gap: 12px; padding: 12px 4px;
+    border-top: 1px solid #eef2f8; font-size: 13.5px;
+  }
+  .lista-item .data { font-weight: 700; min-width: 92px; }
+  .lista-item .meio { flex: 1; min-width: 0; color: var(--ink-2); font-size: 12.5px; }
+  .lista-item .marca {
+    font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px;
+    padding: 3px 8px; border-radius: 20px; background: #fff3d6; color: #7a5a10;
+  }
+  .vazio { padding: 18px 4px; color: var(--ink-3); font-size: 13px; }
+
+  @media (max-width: 700px) {
+    header .quem { display: none; }
+    table.trechos thead { display: none; }
+    table.trechos, table.trechos tbody, table.trechos tr, table.trechos td { display: block; width: 100%; }
+    table.trechos tr {
+      border: 1px solid var(--linha); border-radius: 10px; padding: 8px; margin-bottom: 10px;
+      position: relative;
+    }
+    table.trechos td::before {
+      content: attr(data-rot); display: block; font-size: 10px; font-weight: 800;
+      letter-spacing: .5px; text-transform: uppercase; color: var(--ink-2); margin-bottom: 4px;
+    }
+    table.trechos .n { text-align: left; font-weight: 800; color: var(--ink-2); }
+    table.trechos .n::before { content: none; }
+    table.trechos .qt { width: 100%; }
+    table.trechos .lixo { position: absolute; top: 6px; right: 6px; width: auto; }
+    table.trechos .lixo::before { content: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <img src="img/logo.png" alt="">
+  <div>
+    <div class="tit">Boletim Diário de Operação</div>
+    <div class="sub">Movimentação de Transporte · Divisão Operacional</div>
+  </div>
+  <div class="dir">
+    <div class="quem" id="quem"></div>
+    <a class="sair" href="api/externo/login">Sair</a>
+  </div>
+</header>
+
+<main>
+  <div class="tarja erro"  id="tarjaErro"></div>
+  <div class="tarja aviso" id="tarjaAviso"></div>
+  <div class="tarja bom"   id="tarjaBom"></div>
+
+  <div class="abas">
+    <button id="abaNovo" class="on" onclick="mostrar('novo')">Novo boletim</button>
+    <button id="abaLista" onclick="mostrar('lista')">Boletins lançados</button>
+  </div>
+
+  <!-- ── Novo boletim ─────────────────────────────────────────────────── -->
+  <section id="secNovo">
+    <div class="cartao">
+      <h2>Cabeçalho do dia</h2>
+      <div class="grade">
+        <div class="campo">
+          <label for="data">Data</label>
+          <input type="date" id="data" onchange="conferirDia()">
+        </div>
+        <div class="campo">
+          <label for="motorista">Nome do motorista</label>
+          <input type="text" id="motorista" readonly>
+        </div>
+        <div class="campo">
+          <label for="matricula">Matrícula</label>
+          <input type="text" id="matricula" readonly>
+        </div>
+        <div class="campo">
+          <label for="veiculo">Nº do veículo</label>
+          <select id="veiculo"></select>
+        </div>
+        <div class="campo">
+          <label for="contrato">Contrato</label>
+          <select id="contrato"></select>
+        </div>
+        <div class="campo">
+          <label for="horaIni">Hora inicial</label>
+          <input type="time" id="horaIni">
+        </div>
+        <div class="campo">
+          <label for="horaFim">Hora final</label>
+          <input type="time" id="horaFim">
+        </div>
+        <div class="campo">
+          <label for="kmIni">KM inicial</label>
+          <input type="number" id="kmIni" inputmode="numeric" min="0" oninput="conferirKm()">
+        </div>
+        <div class="campo">
+          <label for="kmFim">KM final</label>
+          <input type="number" id="kmFim" inputmode="numeric" min="0" oninput="conferirKm()">
+          <div class="obs" id="obsKm"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cartao" id="cxExtra" style="display:none">
+      <h2>Boletim extra</h2>
+      <div class="tarja aviso on" style="margin-bottom:12px">
+        Já existe boletim lançado para esta data. Este será registrado como
+        <b>boletim extra</b> — conte o que houve para que a usina entenda o motivo.
+      </div>
+      <div class="campo">
+        <label for="justificativa">Justificativa</label>
+        <textarea id="justificativa" maxlength="500"
+                  placeholder="Ex.: retorno à Usina no fim do dia para transporte de emergência do Dept. Técnico."></textarea>
+      </div>
+    </div>
+
+    <div class="cartao">
+      <h2>Trechos percorridos</h2>
+      <table class="trechos">
+        <thead>
+          <tr>
+            <th class="n">#</th>
+            <th>Cód. de operação</th>
+            <th>Faz. origem</th>
+            <th>Faz. destino</th>
+            <th class="qt">Qtde.</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="corpoTrechos"></tbody>
+      </table>
+      <button class="add" onclick="novoTrecho()">+ Adicionar trecho</button>
+    </div>
+
+    <div class="cartao">
+      <h2>Observação</h2>
+      <div class="campo">
+        <textarea id="observacao" maxlength="500"
+                  placeholder="Ex.: Dept. Técnico p/ Santa Edwirges — Thiago O. Santos, matr. 150072."></textarea>
+      </div>
+    </div>
+
+    <div class="acoes">
+      <button class="principal" id="btnSalvar" onclick="salvar()">Salvar boletim</button>
+      <span id="statusSalvar" style="font-size:12.5px;color:var(--ink-2)"></span>
+    </div>
+  </section>
+
+  <!-- ── Boletins lançados ────────────────────────────────────────────── -->
+  <section id="secLista" style="display:none">
+    <div class="cartao">
+      <h2>Boletins lançados</h2>
+      <div id="lista"><div class="vazio">Carregando…</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+const esc = s => String(s == null ? '' : s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+let INICIO = null;
+
+function tarja(qual, texto) {
+  ['Erro','Aviso','Bom'].forEach(t => document.getElementById('tarja'+t).classList.remove('on'));
+  if (!qual) return;
+  const el = document.getElementById('tarja' + qual);
+  el.innerHTML = texto;
+  el.classList.add('on');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function mostrar(qual) {
+  const novo = qual === 'novo';
+  document.getElementById('secNovo').style.display  = novo ? '' : 'none';
+  document.getElementById('secLista').style.display = novo ? 'none' : '';
+  document.getElementById('abaNovo').classList.toggle('on', novo);
+  document.getElementById('abaLista').classList.toggle('on', !novo);
+  if (!novo) carregarLista();
+}
+
+function opcoes(lista, textoDe, vazio) {
+  return (vazio ? `<option value="">${esc(vazio)}</option>` : '')
+       + lista.map(x => `<option value="${esc(x.cod)}">${esc(textoDe(x))}</option>`).join('');
+}
+
+// ── Trechos ───────────────────────────────────────────────────────────────
+
+function novoTrecho(dados) {
+  const corpo = document.getElementById('corpoTrechos');
+  const tr = document.createElement('tr');
+  const fz = INICIO ? INICIO.fazendas : [];
+  const op = INICIO ? INICIO.operacoes : [];
+  tr.innerHTML = `
+    <td class="n" data-rot=""></td>
+    <td data-rot="Cód. de operação">
+      <select class="op">${opcoes(op, x => x.cod + ' — ' + x.descricao, 'Selecione…')}</select></td>
+    <td data-rot="Faz. origem">
+      <select class="ori">${opcoes(fz, x => x.descricao, 'Selecione…')}</select></td>
+    <td data-rot="Faz. destino">
+      <select class="des">${opcoes(fz, x => x.descricao, 'Selecione…')}</select></td>
+    <td class="qt" data-rot="Qtde.">
+      <input type="number" class="qtd" inputmode="numeric" min="0" placeholder="—"></td>
+    <td><button class="lixo" title="Remover trecho" onclick="this.closest('tr').remove();numerar()">🗑</button></td>`;
+  if (dados) {
+    tr.querySelector('.op').value  = dados.codOperacao || '';
+    tr.querySelector('.ori').value = dados.codOrigem   || '';
+    tr.querySelector('.des').value = dados.codDestino  || '';
+    tr.querySelector('.qtd').value = dados.quantidade  ?? '';
+  } else {
+    // Encadeia: o destino do trecho anterior é a origem deste, que é como o
+    // percurso realmente acontece — e poupa metade dos toques no celular.
+    const ultimo = corpo.lastElementChild;
+    if (ultimo) tr.querySelector('.ori').value = ultimo.querySelector('.des').value || '';
+  }
+  corpo.appendChild(tr);
+  numerar();
+}
+
+function numerar() {
+  [...document.querySelectorAll('#corpoTrechos tr')].forEach((tr, i) => {
+    tr.querySelector('.n').textContent = (i + 1) + 'º';
+  });
+}
+
+function lerTrechos() {
+  return [...document.querySelectorAll('#corpoTrechos tr')].map(tr => {
+    const op  = tr.querySelector('.op');
+    const ori = tr.querySelector('.ori');
+    const des = tr.querySelector('.des');
+    const qtd = tr.querySelector('.qtd').value.trim();
+    return {
+      codOperacao:  op.value || null,
+      descOperacao: op.value ? op.options[op.selectedIndex].text : null,
+      codOrigem:    ori.value || null,
+      descOrigem:   ori.value ? ori.options[ori.selectedIndex].text : null,
+      codDestino:   des.value || null,
+      descDestino:  des.value ? des.options[des.selectedIndex].text : null,
+      quantidade:   qtd === '' ? null : qtd
+    };
+  });
+}
+
+// ── Conferências que o papel não fazia ────────────────────────────────────
+
+function conferirKm() {
+  const ini = document.getElementById('kmIni').value;
+  const fim = document.getElementById('kmFim').value;
+  const obs = document.getElementById('obsKm');
+  if (ini !== '' && fim !== '' && Number(fim) < Number(ini)) {
+    obs.textContent = 'O KM final está menor que o inicial.';
+    obs.style.color = 'var(--vermelho)';
+    return false;
+  }
+  obs.textContent = (ini !== '' && fim !== '')
+      ? 'Rodou ' + (Number(fim) - Number(ini)).toLocaleString('pt-BR') + ' km.' : '';
+  obs.style.color = 'var(--ink-3)';
+  return true;
+}
+
+/** Um boletim por dia: o segundo é extra e precisa de justificativa. */
+async function conferirDia() {
+  const data = document.getElementById('data').value;
+  if (!data) return;
+  try {
+    const r = await fetch('api/manobra/boletins?de=' + data + '&ate=' + data,
+                          { headers: { 'Accept': 'application/json' } });
+    const j = await r.json();
+    const jaTem = j.ok && (j.data || []).length > 0;
+    document.getElementById('cxExtra').style.display = jaTem ? '' : 'none';
+  } catch(e) { /* sem rede: o servidor decide na hora de gravar */ }
+}
+
+// ── Gravação ──────────────────────────────────────────────────────────────
+
+async function salvar() {
+  const btn = document.getElementById('btnSalvar');
+  const trechos = lerTrechos();
+
+  if (!document.getElementById('data').value) { tarja('Erro', 'Informe a data.'); return; }
+  if (!trechos.length) { tarja('Erro', 'Adicione ao menos um trecho.'); return; }
+  const incompleto = trechos.findIndex(t => !t.codOrigem || !t.codDestino);
+  if (incompleto >= 0) {
+    tarja('Erro', 'No <b>' + (incompleto+1) + 'º trecho</b>, informe a fazenda de origem e a de destino.');
+    return;
+  }
+  if (!conferirKm()) { tarja('Erro', 'O KM final está menor que o inicial. Confira antes de salvar.'); return; }
+
+  const corpo = {
+    data:            document.getElementById('data').value,
+    codEquipamento:  document.getElementById('veiculo').value,
+    descEquipamento: textoSel('veiculo'),
+    codContrato:     document.getElementById('contrato').value,
+    horaInicial:     document.getElementById('horaIni').value,
+    horaFinal:       document.getElementById('horaFim').value,
+    kmInicial:       document.getElementById('kmIni').value,
+    kmFinal:         document.getElementById('kmFim').value,
+    observacao:      document.getElementById('observacao').value.trim(),
+    justificativa:   document.getElementById('justificativa').value.trim(),
+    trechos:         trechos
+  };
+
+  btn.disabled = true;
+  document.getElementById('statusSalvar').textContent = 'Salvando…';
+  try {
+    const r = await fetch('api/manobra/boletins', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify(corpo)
+    });
+    const j = await r.json();
+    if (!j.ok) { tarja('Erro', esc(j.erro || 'Não foi possível salvar.')); return; }
+    tarja('Bom', 'Boletim <b>nº ' + j.id + '</b> salvo' + (j.extra ? ' como <b>extra</b>' : '') + '.');
+    limparFormulario();
+  } catch(e) {
+    tarja('Erro', 'Sem conexão com a usina. O boletim <b>não</b> foi salvo — tente de novo.');
+  } finally {
+    btn.disabled = false;
+    document.getElementById('statusSalvar').textContent = '';
+  }
+}
+
+function textoSel(id) {
+  const el = document.getElementById(id);
+  return el.selectedIndex >= 0 ? el.options[el.selectedIndex].text : '';
+}
+
+function limparFormulario() {
+  document.getElementById('corpoTrechos').innerHTML = '';
+  ['horaIni','horaFim','kmIni','kmFim','observacao','justificativa'].forEach(
+      id => document.getElementById(id).value = '');
+  document.getElementById('obsKm').textContent = '';
+  novoTrecho();
+  conferirDia();
+}
+
+// ── Boletins lançados ─────────────────────────────────────────────────────
+
+async function carregarLista() {
+  const el = document.getElementById('lista');
+  el.innerHTML = '<div class="vazio">Carregando…</div>';
+  try {
+    const r = await fetch('api/manobra/boletins', { headers: { 'Accept': 'application/json' } });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro || 'Consulta recusada');
+    if (!j.data.length) { el.innerHTML = '<div class="vazio">Nenhum boletim lançado ainda.</div>'; return; }
+    el.innerHTML = j.data.map(b => {
+      const [a, m, d] = String(b.data).split('-');
+      const km = (b.kmInicial != null && b.kmFinal != null)
+               ? (b.kmFinal - b.kmInicial).toLocaleString('pt-BR') + ' km · ' : '';
+      return `<div class="lista-item">
+        <span class="data">${d}/${m}/${a}</span>
+        <span class="meio">${esc(b.descEquipamento || '—')} · ${km}${b.qtdeTrechos} trecho${b.qtdeTrechos === 1 ? '' : 's'}</span>
+        ${b.extra === 'S' ? '<span class="marca">Extra</span>' : ''}
+      </div>`;
+    }).join('');
+  } catch(e) {
+    el.innerHTML = '<div class="vazio">Não foi possível carregar os boletins.</div>';
+  }
+}
+
+// ── Abertura ──────────────────────────────────────────────────────────────
+
+(async function iniciar() {
+  try {
+    const r = await fetch('api/manobra/inicio', { headers: { 'Accept': 'application/json' } });
+    if (r.status === 401) { location.href = 'manobra-login.html'; return; }
+    INICIO = await r.json();
+    if (!INICIO.ok) throw new Error(INICIO.erro || 'Não foi possível abrir o boletim');
+  } catch(e) {
+    tarja('Erro', 'Não foi possível abrir a tela: ' + esc(e.message));
+    return;
+  }
+
+  document.getElementById('quem').innerHTML =
+      esc(INICIO.nome) + '<br>' + esc(INICIO.empresa || '');
+  document.getElementById('motorista').value = INICIO.nome || '';
+  document.getElementById('matricula').value = INICIO.matricula || '';
+  document.getElementById('data').value = INICIO.hoje;
+  document.getElementById('data').max = INICIO.hoje;
+
+  document.getElementById('veiculo').innerHTML =
+      opcoes(INICIO.equipamentos || [], x => x.descricao || x.cod,
+             (INICIO.equipamentos || []).length ? null : 'Nenhum veículo liberado');
+  document.getElementById('contrato').innerHTML =
+      opcoes(INICIO.contratos || [], x => x.descricao ? (x.cod + ' — ' + x.descricao) : x.cod);
+
+  if (INICIO.erroFazendas) {
+    tarja('Aviso', esc(INICIO.erroFazendas) +
+          ' Sem a lista de fazendas não dá para lançar trechos — tente de novo em alguns minutos.');
+  }
+  if (!(INICIO.equipamentos || []).length) {
+    tarja('Aviso', 'Nenhum veículo está liberado para o seu usuário. Procure o setor responsável na usina.');
+  }
+
+  novoTrecho();
+  conferirDia();
+})();
+</script>
+</body>
+</html>

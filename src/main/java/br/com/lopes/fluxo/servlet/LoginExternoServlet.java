@@ -90,6 +90,7 @@ public class LoginExternoServlet extends HttpServlet {
             s.setAttribute("idExterno",     id);
             s.setAttribute("nome",          u.get("nome"));
             s.setAttribute("logonExterno",  u.get("logon"));
+            s.setAttribute("matricula",     u.get("matricula"));
             s.setAttribute("idEmpresa",     u.get("idEmpresa"));
             s.setAttribute("cnpj",          u.get("cnpj"));
             s.setAttribute("razaoSocial",   u.get("razaoSocial"));
