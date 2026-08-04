@@ -115,10 +115,39 @@ public class ManobraDAO {
 
     // ── Fazendas (Oracle) ─────────────────────────────────────────────────
 
+    /**
+     * Fazendas com o tipo vigente hoje.
+     *
+     * O tipo não fica em agricola.fazenda: fica em historico_fazenda, que é
+     * histórico por período — a mesma fazenda pode ter sido de fornecedor e
+     * depois própria. Por isso a linha escolhida é a mais recente até hoje,
+     * e não simplesmente "a" linha do histórico.
+     *
+     * LEFT JOIN nos dois lados: fazenda sem histórico continua aparecendo,
+     * como "Não informado". Sumir da lista seria pior — a manobra passou por
+     * ela de qualquer jeito, e o boletim precisa poder registrar isso.
+     *
+     * row_number() garante uma linha por fazenda mesmo que o histórico tenha
+     * duas com a mesma data de início.
+     */
     private static final String SQL_FAZENDAS = """
-        select fazenda.cod_fazenda, fazenda.descricao
-        from   agricola.fazenda
-        order  by fazenda.descricao
+        select cod_fazenda, descricao, cod_tipofazenda, desc_tipofazenda
+        from (
+          select f.cod_fazenda
+               , f.descricao
+               , nvl(tf.cod_tipofazenda, 0)              cod_tipofazenda
+               , nvl(tf.descricao, 'Não informado')      desc_tipofazenda
+               , row_number() over (partition by f.cod_fazenda
+                                    order by hf.data_inicio desc nulls last) rn
+          from       agricola.fazenda f
+          left join  agricola.historico_fazenda hf
+                 on  hf.cod_fazenda   = f.cod_fazenda
+                and  hf.data_inicio  <= sysdate
+          left join  agricola.tipofazenda tf
+                 on  tf.cod_tipofazenda = hf.cod_tipofazenda
+        )
+        where rn = 1
+        order by desc_tipofazenda, descricao
         """;
 
     /**
@@ -135,6 +164,8 @@ public class ManobraDAO {
                 Map<String, Object> m = new LinkedHashMap<>();
                 m.put("cod", rs.getString("cod_fazenda"));
                 m.put("descricao", rs.getString("descricao"));
+                m.put("codTipo", rs.getString("cod_tipofazenda"));
+                m.put("descTipo", rs.getString("desc_tipofazenda"));
                 lista.add(m);
             }
         }

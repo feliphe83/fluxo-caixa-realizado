@@ -226,6 +226,12 @@
 
     <div class="cartao">
       <h2>Trechos percorridos</h2>
+      <div class="campo" style="max-width:320px;margin-bottom:14px">
+        <label for="tipoFazenda">Tipo de fazenda</label>
+        <select id="tipoFazenda" onchange="filtrarFazendas()"></select>
+        <div class="obs">Encurta as listas de origem e destino. A manobra que passa por
+          tipos diferentes fica com <b>Todos os tipos</b>.</div>
+      </div>
       <table class="trechos">
         <thead>
           <tr>
@@ -294,12 +300,40 @@ function opcoes(lista, textoDe, vazio) {
        + lista.map(x => `<option value="${esc(x.cod)}">${esc(textoDe(x))}</option>`).join('');
 }
 
+/** Fazendas do tipo escolhido — ou todas, quando nenhum tipo está marcado. */
+function fazendasVisiveis() {
+  const todas = INICIO ? INICIO.fazendas : [];
+  const tipo = document.getElementById('tipoFazenda').value;
+  return tipo ? todas.filter(f => String(f.codTipo) === tipo) : todas;
+}
+
+/**
+ * Redesenha as listas de fazenda com o filtro em vigor.
+ *
+ * O que já estava escolhido continua na lista mesmo fora do filtro: trocar o
+ * tipo não pode apagar em silêncio um trecho que a pessoa já preencheu.
+ */
+function filtrarFazendas() {
+  const visiveis = fazendasVisiveis();
+  const todas = INICIO ? INICIO.fazendas : [];
+  document.querySelectorAll('#corpoTrechos .ori, #corpoTrechos .des').forEach(sel => {
+    const atual = sel.value;
+    let lista = visiveis;
+    if (atual && !visiveis.some(f => String(f.cod) === atual)) {
+      const fora = todas.find(f => String(f.cod) === atual);
+      if (fora) lista = [fora].concat(visiveis);
+    }
+    sel.innerHTML = opcoes(lista, x => x.descricao, 'Selecione…');
+    sel.value = atual;
+  });
+}
+
 // ── Trechos ───────────────────────────────────────────────────────────────
 
 function novoTrecho(dados) {
   const corpo = document.getElementById('corpoTrechos');
   const tr = document.createElement('tr');
-  const fz = INICIO ? INICIO.fazendas : [];
+  const fz = fazendasVisiveis();
   const op = INICIO ? INICIO.operacoes : [];
   tr.innerHTML = `
     <td class="n" data-rot=""></td>
@@ -498,6 +532,16 @@ async function carregarLista() {
       `<option value="${esc(x.cod)}">${esc(x.descricao || '')}</option>`).join('');
   // Um contrato só liberado: já vem preenchido, mas continua editável.
   if (contratos.length === 1) document.getElementById('contrato').value = contratos[0].cod;
+
+  // Tipos que de fato existem na lista — nada de oferecer um tipo vazio.
+  const tipos = [];
+  (INICIO.fazendas || []).forEach(f => {
+    if (!tipos.some(t => String(t.cod) === String(f.codTipo)))
+      tipos.push({ cod: f.codTipo, descricao: f.descTipo });
+  });
+  document.getElementById('tipoFazenda').innerHTML =
+      '<option value="">Todos os tipos</option>' +
+      tipos.map(t => `<option value="${esc(t.cod)}">${esc(t.descricao)}</option>`).join('');
 
   if (INICIO.erroFazendas) {
     tarja('Aviso', esc(INICIO.erroFazendas) +
