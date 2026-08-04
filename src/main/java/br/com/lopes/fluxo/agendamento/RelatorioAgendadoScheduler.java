@@ -82,6 +82,7 @@ public class RelatorioAgendadoScheduler implements ServletContextListener {
             // Parâmetros gerais: a tabela precisa existir e estar semeada
             // antes de qualquer tela perguntar qual é a safra padrão.
             new br.com.lopes.fluxo.dao.ParametroDAO().garantirEstrutura();
+            new br.com.lopes.fluxo.dao.AcessoExternoDAO().garantirEstrutura();
         } catch (Exception e) {
             LOG.log(Level.SEVERE, "Não foi possível preparar as tabelas dos agendamentos", e);
         }

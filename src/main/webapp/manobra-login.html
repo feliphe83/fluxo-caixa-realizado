@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Controle de Manobra — Usina Santa Clotilde</title>
+<link rel="icon" href="img/logo.png">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root { --verde: #16342a; --verde-2: #1f4a3a; --ink: #16233f; --ink-2: #64748b;
+          --linha: #dfe5f0; --vermelho: #d03b3b; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(150deg, var(--verde) 0%, var(--verde-2) 100%);
+    padding: 24px; color: var(--ink);
+  }
+  .cartao {
+    background: white; border-radius: 16px; padding: 30px 28px 26px;
+    width: 100%; max-width: 400px; box-shadow: 0 18px 50px rgba(0,0,0,.28);
+  }
+  .topo { text-align: center; margin-bottom: 22px; }
+  .topo img { width: 58px; height: 58px; border-radius: 13px; }
+  .topo h1 { font-size: 19px; font-weight: 800; margin-top: 12px; }
+  .topo p { font-size: 12.5px; color: var(--ink-2); margin-top: 3px; }
+  .campo { margin-bottom: 14px; }
+  .campo label {
+    display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .6px;
+    text-transform: uppercase; color: var(--ink-2); margin-bottom: 5px;
+  }
+  .campo input {
+    width: 100%; padding: 12px 13px; border: 1.5px solid var(--linha);
+    border-radius: 9px; font-size: 16px; font-family: inherit; color: var(--ink);
+  }
+  .campo input:focus { outline: none; border-color: var(--verde-2); }
+  button {
+    width: 100%; padding: 13px; border: none; border-radius: 9px; margin-top: 6px;
+    background: var(--verde); color: white; font-size: 15px; font-weight: 700;
+    font-family: inherit; cursor: pointer;
+  }
+  button:disabled { opacity: .6; cursor: default; }
+  .aviso {
+    display: none; margin-top: 14px; padding: 11px 13px; border-radius: 9px;
+    font-size: 13px; line-height: 1.5; background: #fef2f2;
+    border: 1px solid #f3c9c9; color: #8f2a2a;
+  }
+  .aviso.on { display: block; }
+  .rodape { margin-top: 18px; text-align: center; font-size: 11.5px; color: var(--ink-2); line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<div class="cartao">
+  <div class="topo">
+    <img src="img/logo.png" alt="">
+    <h1>Controle de Manobra</h1>
+    <p>Acesso para empresas contratadas</p>
+  </div>
+
+  <form id="form" autocomplete="on">
+    <div class="campo">
+      <label for="cnpj">CNPJ da empresa</label>
+      <!-- inputmode numérico: no celular abre o teclado de números direto,
+           e a máscara é aplicada enquanto digita -->
+      <input type="text" id="cnpj" inputmode="numeric" maxlength="18"
+             placeholder="00.000.000/0000-00" autocomplete="organization" required>
+    </div>
+    <div class="campo">
+      <label for="logon">Usuário</label>
+      <input type="text" id="logon" maxlength="60" autocapitalize="characters"
+             autocomplete="username" required>
+    </div>
+    <div class="campo">
+      <label for="senha">Senha</label>
+      <input type="password" id="senha" autocomplete="current-password" required>
+    </div>
+    <button type="submit" id="btn">Entrar</button>
+  </form>
+
+  <div class="aviso" id="aviso"></div>
+
+  <div class="rodape">
+    Usina Santa Clotilde S/A<br>
+    Cada pessoa tem seu próprio usuário e senha — não os compartilhe.
+  </div>
+</div>
+
+<script>
+const cnpjEl = document.getElementById('cnpj');
+
+/** Máscara do CNPJ conforme digita; o servidor recebe só os dígitos. */
+cnpjEl.addEventListener('input', () => {
+  const d = cnpjEl.value.replace(/\D/g, '').slice(0, 14);
+  let v = d;
+  if (d.length > 12) v = `${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5,8)}/${d.slice(8,12)}-${d.slice(12)}`;
+  else if (d.length > 8) v = `${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5,8)}/${d.slice(8)}`;
+  else if (d.length > 5) v = `${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5)}`;
+  else if (d.length > 2) v = `${d.slice(0,2)}.${d.slice(2)}`;
+  cnpjEl.value = v;
+});
+
+function mostrarAviso(texto) {
+  const el = document.getElementById('aviso');
+  el.textContent = texto;
+  el.classList.add('on');
+}
+
+document.getElementById('form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = document.getElementById('btn');
+  document.getElementById('aviso').classList.remove('on');
+  btn.disabled = true;
+  btn.textContent = 'Entrando…';
+
+  try {
+    const corpo = new URLSearchParams({
+      cnpj:  cnpjEl.value.replace(/\D/g, ''),
+      logon: document.getElementById('logon').value.trim(),
+      senha: document.getElementById('senha').value
+    });
+    const r = await fetch('api/externo/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json' },
+      body: corpo
+    });
+    const j = await r.json();
+    if (j.ok) { location.href = 'manobra.html'; return; }
+    mostrarAviso(j.erro || 'Não foi possível entrar.');
+  } catch (err) {
+    mostrarAviso('Sem conexão com a usina. Verifique a internet e tente de novo.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Entrar';
+  }
+});
+</script>
+</body>
+</html>

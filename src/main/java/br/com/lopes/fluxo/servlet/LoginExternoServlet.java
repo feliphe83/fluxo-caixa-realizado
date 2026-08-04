@@ -1,0 +1,118 @@
+package br.com.lopes.fluxo.servlet;
+
+import br.com.lopes.fluxo.dao.AcessoExternoDAO;
+import com.google.gson.Gson;
+
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+import java.io.IOException;
+import java.sql.SQLException;
+import java.util.List;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+/**
+ * Entrada das empresas de fora, pelo portal de manobra.
+ *
+ * POST /api/externo/login   cnpj + logon + senha
+ * GET  /api/externo/login   encerra a sessão
+ *
+ * A sessão criada aqui é marcada como externa. É essa marca que o AuthFilter
+ * usa para manter quem entrou por aqui dentro do módulo de manobra — sem ela,
+ * uma sessão válida é uma sessão válida, e a empresa de manobra chegaria no
+ * fluxo de caixa.
+ */
+@WebServlet("/api/externo/login")
+public class LoginExternoServlet extends HttpServlet {
+
+    private static final Logger LOG = Logger.getLogger(LoginExternoServlet.class.getName());
+    private static final Gson GSON = new Gson();
+
+    private final AcessoExternoDAO dao = new AcessoExternoDAO();
+
+    private void json(HttpServletResponse resp, String body) throws IOException {
+        resp.setContentType("application/json;charset=UTF-8");
+        resp.setHeader("Cache-Control", "no-store");
+        resp.getWriter().print(body);
+        resp.getWriter().flush();
+    }
+
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp)
+            throws ServletException, IOException {
+        String cnpj  = req.getParameter("cnpj");
+        String logon = req.getParameter("logon");
+        String senha = req.getParameter("senha");
+
+        if (cnpj == null || cnpj.isBlank() || logon == null || logon.isBlank()
+                || senha == null || senha.isBlank()) {
+            resp.setStatus(400);
+            json(resp, "{\"ok\":false,\"erro\":\"CNPJ, usuário e senha são obrigatórios\"}");
+            return;
+        }
+        if (AcessoExternoDAO.soDigitos(cnpj).length() != 14) {
+            resp.setStatus(400);
+            json(resp, "{\"ok\":false,\"erro\":\"CNPJ inválido\"}");
+            return;
+        }
+
+        try {
+            Map<String, Object> u = dao.autenticar(cnpj, logon, senha);
+            if (u == null) {
+                // Mensagem única para os três casos (CNPJ, usuário, senha):
+                // dizer qual deles errou conta a quem tenta se a empresa
+                // existe e se aquele usuário existe nela.
+                resp.setStatus(401);
+                json(resp, "{\"ok\":false,\"erro\":\"CNPJ, usuário ou senha incorretos\"}");
+                return;
+            }
+
+            int id = (Integer) u.get("id");
+            List<Map<String, Object>> contratos = dao.contratosDe(id);
+
+            // Sem contrato liberado não há o que fazer aqui dentro. Barrar na
+            // porta com uma mensagem clara é melhor que deixar entrar numa
+            // tela vazia que ninguém sabe interpretar.
+            if (contratos.isEmpty()) {
+                resp.setStatus(403);
+                json(resp, "{\"ok\":false,\"semContrato\":true,\"erro\":"
+                        + "\"Não há contrato liberado para este usuário. Procure o setor responsável na usina.\"}");
+                return;
+            }
+
+            HttpSession s = req.getSession(true);
+            s.setAttribute("externo",       Boolean.TRUE);
+            s.setAttribute("idExterno",     id);
+            s.setAttribute("nome",          u.get("nome"));
+            s.setAttribute("logonExterno",  u.get("logon"));
+            s.setAttribute("idEmpresa",     u.get("idEmpresa"));
+            s.setAttribute("cnpj",          u.get("cnpj"));
+            s.setAttribute("razaoSocial",   u.get("razaoSocial"));
+            s.setMaxInactiveInterval(60 * 60 * 4);
+            dao.marcarAcesso(id);
+
+            LOG.info("Acesso externo: " + u.get("logon") + " da empresa " + u.get("cnpj"));
+            json(resp, "{\"ok\":true,\"nome\":" + GSON.toJson(u.get("nome"))
+                    + ",\"empresa\":" + GSON.toJson(u.get("razaoSocial"))
+                    + ",\"contratos\":" + GSON.toJson(contratos)
+                    + ",\"equipamentos\":" + GSON.toJson(dao.equipamentosDe(id)) + "}");
+
+        } catch (SQLException e) {
+            LOG.log(Level.SEVERE, "Erro no login externo", e);
+            resp.setStatus(500);
+            json(resp, "{\"ok\":false,\"erro\":\"Falha ao verificar o acesso\"}");
+        }
+    }
+
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        HttpSession s = req.getSession(false);
+        if (s != null) s.invalidate();
+        resp.sendRedirect(req.getContextPath() + "/manobra-login.html");
+    }
+}
