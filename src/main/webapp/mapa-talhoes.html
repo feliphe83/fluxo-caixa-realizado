@@ -136,6 +136,21 @@
   .tarja.on { display: block; }
   .btn-topo.ativo { background: white; color: #16342a; border-color: white; }
 
+  /* Gravar trilha: bolinha vermelha de verdade, não o glifo ⏺, que desenha
+     como um círculo preto qualquer e some no meio dos outros botões — abaixo
+     de 560px os rótulos saem e sobra só o ícone para distinguir. Gravando, o
+     botão inteiro fica vermelho e a bolinha pulsa: é o sinal, visível de
+     relance, de que o aparelho ainda está registrando. */
+  .btn-trilha .ponto {
+    width: 11px; height: 11px; border-radius: 50%; flex: none; display: inline-block;
+    background: #ff5a5a; box-shadow: 0 0 0 2px rgba(255,90,90,.30);
+  }
+  .btn-topo.btn-trilha.ativo { background: #d03b3b; border-color: #d03b3b; color: white; }
+  .btn-topo.btn-trilha.ativo .ponto {
+    background: white; box-shadow: 0 0 0 2px rgba(255,255,255,.40);
+    animation: pulsa 1.4s ease-in-out infinite;
+  }
+
   /* Rótulo sobre o talhão: sem caixa, para não tapar a imagem. A leitura
      vem do contorno escuro, que funciona tanto sobre cana quanto sobre
      solo exposto. */
@@ -225,8 +240,8 @@
     <button class="btn-topo" id="btnGps" onclick="alternarGps()" title="Mostrar minha posição">📍<span class="rotulo"> Onde estou</span></button>
     <button class="btn-topo" id="btnOffline" onclick="prepararOffline()"
             title="O mapa é guardado sozinho sempre que há rede. Toque para atualizar agora.">⬇<span class="rotulo"> Offline</span></button>
-    <button class="btn-topo" id="btnTrilha" onclick="alternarTrilha()"
-            title="Gravar o caminho percorrido">⏺<span class="rotulo"> Trilha</span></button>
+    <button class="btn-topo btn-trilha" id="btnTrilha" onclick="alternarTrilha()"
+            title="Gravar o caminho percorrido"><span class="ponto"></span><span class="rotulo">Trilha</span></button>
     <button class="btn-topo" id="btnImagens" onclick="atualizarTudo()"
             title="Atualizar os dados e guardar as imagens de satélite">🛰<span class="rotulo"> Atualizar</span></button>
     <button class="btn-topo" onclick="enquadrarTudo()" title="Enquadrar todos os talhões">⤢<span class="rotulo"> Ver tudo</span></button>
@@ -700,7 +715,8 @@ function renderTrilhas() {
   const lista = trilhasEncerradas();
   if (!lista.length) {
     el.innerHTML = '<div style="padding:2px 16px 10px;font-size:12px;color:#94a0b8">' +
-                   'Nenhuma trilha gravada. Toque em ⏺ para começar.</div>';
+                   'Nenhuma trilha gravada. Toque no botão vermelho <b>Trilha</b>, ' +
+                   'no topo da tela, para começar.</div>';
     return;
   }
   el.innerHTML = lista.map((t, i) => {
