@@ -61,13 +61,6 @@
 
   <form id="form" autocomplete="on">
     <div class="campo">
-      <label for="cnpj">CNPJ da empresa</label>
-      <!-- inputmode numérico: no celular abre o teclado de números direto,
-           e a máscara é aplicada enquanto digita -->
-      <input type="text" id="cnpj" inputmode="numeric" maxlength="18"
-             placeholder="00.000.000/0000-00" autocomplete="organization" required>
-    </div>
-    <div class="campo">
       <label for="logon">Usuário</label>
       <input type="text" id="logon" maxlength="60" autocapitalize="characters"
              autocomplete="username" required>
@@ -88,19 +81,6 @@
 </div>
 
 <script>
-const cnpjEl = document.getElementById('cnpj');
-
-/** Máscara do CNPJ conforme digita; o servidor recebe só os dígitos. */
-cnpjEl.addEventListener('input', () => {
-  const d = cnpjEl.value.replace(/\D/g, '').slice(0, 14);
-  let v = d;
-  if (d.length > 12) v = `${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5,8)}/${d.slice(8,12)}-${d.slice(12)}`;
-  else if (d.length > 8) v = `${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5,8)}/${d.slice(8)}`;
-  else if (d.length > 5) v = `${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5)}`;
-  else if (d.length > 2) v = `${d.slice(0,2)}.${d.slice(2)}`;
-  cnpjEl.value = v;
-});
-
 function mostrarAviso(texto) {
   const el = document.getElementById('aviso');
   el.textContent = texto;
@@ -116,7 +96,6 @@ document.getElementById('form').addEventListener('submit', async e => {
 
   try {
     const corpo = new URLSearchParams({
-      cnpj:  cnpjEl.value.replace(/\D/g, ''),
       logon: document.getElementById('logon').value.trim(),
       senha: document.getElementById('senha').value
     });
@@ -135,6 +114,8 @@ document.getElementById('form').addEventListener('submit', async e => {
     btn.textContent = 'Entrar';
   }
 });
+
+document.getElementById('logon').focus();
 </script>
 </body>
 </html>

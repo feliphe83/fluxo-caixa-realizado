@@ -149,7 +149,7 @@ public class AdminExternoServlet extends HttpServlet {
             // Chave duplicada tem mensagem própria: "Duplicate entry" não diz
             // nada a quem está na tela de cadastro.
             String msg = e.getMessage() != null && e.getMessage().contains("Duplicate entry")
-                    ? "Já existe registro com esse CNPJ ou esse usuário nesta empresa"
+                    ? "Já existe registro com esse CNPJ, ou esse usuário já está em uso por outra pessoa"
                     : e.getMessage();
             erro(resp, 400, msg);
         } catch (Exception e) {

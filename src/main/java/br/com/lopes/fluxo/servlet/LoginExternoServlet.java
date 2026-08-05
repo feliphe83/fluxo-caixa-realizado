@@ -19,7 +19,7 @@ import java.util.logging.Logger;
 /**
  * Entrada das empresas de fora, pelo portal de manobra.
  *
- * POST /api/externo/login   cnpj + logon + senha
+ * POST /api/externo/login   logon + senha
  * GET  /api/externo/login   encerra a sessão
  *
  * A sessão criada aqui é marcada como externa. É essa marca que o AuthFilter
@@ -50,30 +50,22 @@ public class LoginExternoServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
-        String cnpj  = req.getParameter("cnpj");
         String logon = req.getParameter("logon");
         String senha = req.getParameter("senha");
 
-        if (cnpj == null || cnpj.isBlank() || logon == null || logon.isBlank()
-                || senha == null || senha.isBlank()) {
+        if (logon == null || logon.isBlank() || senha == null || senha.isBlank()) {
             resp.setStatus(400);
-            json(resp, "{\"ok\":false,\"erro\":\"CNPJ, usuário e senha são obrigatórios\"}");
-            return;
-        }
-        if (AcessoExternoDAO.soDigitos(cnpj).length() != 14) {
-            resp.setStatus(400);
-            json(resp, "{\"ok\":false,\"erro\":\"CNPJ inválido\"}");
+            json(resp, "{\"ok\":false,\"erro\":\"Usuário e senha são obrigatórios\"}");
             return;
         }
 
         try {
-            Map<String, Object> u = dao.autenticar(cnpj, logon, senha);
+            Map<String, Object> u = dao.autenticar(logon, senha);
             if (u == null) {
-                // Mensagem única para os três casos (CNPJ, usuário, senha):
-                // dizer qual deles errou conta a quem tenta se a empresa
-                // existe e se aquele usuário existe nela.
+                // Mensagem única para os dois casos: dizer qual deles errou
+                // conta a quem tenta se aquele usuário existe.
                 resp.setStatus(401);
-                json(resp, "{\"ok\":false,\"erro\":\"CNPJ, usuário ou senha incorretos\"}");
+                json(resp, "{\"ok\":false,\"erro\":\"Usuário ou senha incorretos\"}");
                 return;
             }
 

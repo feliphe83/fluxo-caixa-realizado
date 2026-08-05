@@ -62,7 +62,7 @@ public class AcessoExternoDAO {
                   ativo CHAR(1) NOT NULL DEFAULT 'S',
                   ultimo_acesso TIMESTAMP NULL,
                   criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                  UNIQUE KEY uk_empresa_logon (id_empresa, logon),
+                  UNIQUE KEY uk_logon (logon),
                   INDEX idx_empresa (id_empresa)
                 )
                 """);
@@ -92,6 +92,20 @@ public class AcessoExternoDAO {
                 String es = e.getSQLState();
                 if (!"42S21".equals(es) && !"42000".equals(es)) throw e;   // já existe
             }
+            // Instalação anterior tinha o usuário único só dentro da empresa,
+            // porque o CNPJ completava a identificação no login. Sem o CNPJ na
+            // tela, o usuário passa a identificar a pessoa sozinho.
+            try {
+                st.execute("ALTER TABLE fc_usuario_externo ADD UNIQUE KEY uk_logon (logon)");
+            } catch (SQLException e) {
+                // Já existe, ou há usuário repetido entre empresas. No segundo
+                // caso o cadastro precisa ser acertado à mão — avisar é melhor
+                // que impedir a aplicação de subir.
+                if (!"42000".equals(e.getSQLState()) && !"23000".equals(e.getSQLState())) throw e;
+                if ("23000".equals(e.getSQLState()))
+                    LOG.severe("Há usuários externos repetidos entre empresas; "
+                             + "acerte o cadastro para que o login sem CNPJ funcione: " + e.getMessage());
+            }
         }
         return c;
     }
@@ -109,7 +123,10 @@ public class AcessoExternoDAO {
     }
 
     /**
-     * Confere CNPJ + usuário + senha.
+     * Confere usuário + senha.
+     *
+     * Sem CNPJ: quem entra digita o que sabe de cor. A empresa vem do cadastro
+     * do próprio usuário, e por isso o usuário é único na intranet inteira.
      *
      * A empresa precisa estar ativa e a pessoa também: desligar a empresa
      * corta todo mundo dela de uma vez, que é o que se quer quando um
@@ -117,20 +134,19 @@ public class AcessoExternoDAO {
      *
      * @return dados da sessão, ou null quando não confere
      */
-    public Map<String, Object> autenticar(String cnpj, String logon, String senha) throws SQLException {
+    public Map<String, Object> autenticar(String logon, String senha) throws SQLException {
         String sql = """
             SELECT u.id, u.nome, u.logon, u.matricula, e.id id_empresa, e.cnpj, e.razao_social, e.nome_curto
             FROM   fc_usuario_externo u
             JOIN   fc_empresa_externa e ON e.id = u.id_empresa
-            WHERE  e.cnpj = ? AND u.logon = UPPER(?)
+            WHERE  u.logon = UPPER(?)
             AND    u.senha_hash = SHA2(?, 256)
             AND    u.ativo = 'S' AND e.ativo = 'S'
             """;
         try (Connection c = conn();
              PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, soDigitos(cnpj));
-            ps.setString(2, logon == null ? "" : logon.trim());
-            ps.setString(3, senha);
+            ps.setString(1, logon == null ? "" : logon.trim());
+            ps.setString(2, senha);
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) return null;
                 Map<String, Object> m = new LinkedHashMap<>();
