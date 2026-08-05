@@ -8,12 +8,14 @@
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   :root { --verde: #16342a; --verde-2: #1f4a3a; --ink: #16233f; --ink-2: #64748b;
-          --linha: #dfe5f0; --vermelho: #d03b3b; }
+          --linha: #dfe5f0; --vermelho: #d03b3b;
+          --topo-seguro: env(safe-area-inset-top, 0px);
+          --rodape-seguro: env(safe-area-inset-bottom, 0px); }
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     min-height: 100vh; display: flex; align-items: center; justify-content: center;
     background: linear-gradient(150deg, var(--verde) 0%, var(--verde-2) 100%);
-    padding: 24px; color: var(--ink);
+    padding: calc(24px + var(--topo-seguro)) 24px calc(24px + var(--rodape-seguro)); color: var(--ink);
   }
   .cartao {
     background: white; border-radius: 16px; padding: 30px 28px 26px;
