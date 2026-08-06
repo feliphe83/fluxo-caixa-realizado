@@ -43,6 +43,8 @@ const CASCA = [
   'mapa-talhoes.html',
   'js/leaflet.js',
   'css/leaflet.css',
+  // Guardado na instalação como os demais, mas servido por regra própria
+  // (cache primeiro) — é o maior arquivo de todos, por larga margem.
   'mapas/talhoes.geojson',
   'img/logo.png',
   'img/mapa-talhoes-180.png',
@@ -149,8 +151,42 @@ self.addEventListener('fetch', evento => {
     return;
   }
 
+  // ── Desenho dos talhões: cache primeiro ────────────────────────────────
+  //
+  // 1,2 MB, e estava na mesma regra da casca: rede primeiro com 5 segundos de
+  // paciência. Numa conexão lenta o arquivo não chega nesse tempo, e na
+  // primeira visita não há cópia guardada para servir de reserva — a
+  // requisição falhava de vez e a tela abria com "Load failed".
+  //
+  // A geometria vem do shapefile da topografia e muda uma vez por ano, então
+  // servir o que está guardado na hora e revalidar por trás é melhor em todos
+  // os casos: abre instantâneo, e a versão nova entra na próxima abertura.
+  if (url.pathname.endsWith('mapas/talhoes.geojson')) {
+    evento.respondWith((async () => {
+      const c = await caches.open(CACHE_CASCA);
+      const guardado = await c.match(req, { ignoreSearch: true });
+      const daRede = fetch(req.clone())
+        .then(resp => {
+          if (resp && resp.ok && !resp.redirected) c.put(req, resp.clone());
+          return resp;
+        })
+        .catch(() => null);
+
+      // Com cópia: entrega na hora e deixa a atualização correndo por trás.
+      if (guardado) { evento.waitUntil(daRede); return guardado; }
+
+      // Sem cópia, espera a rede o tempo que for — é a única fonte, e um
+      // limite aqui só transformaria lentidão em falha.
+      const resp = await daRede;
+      if (resp) return resp;
+      return new Response(JSON.stringify({ erro: 'sem conexão' }),
+        { status: 503, headers: { 'Content-Type': 'application/json' } });
+    })());
+    return;
+  }
+
   // ── Casca: rede primeiro ───────────────────────────────────────────────
-  if (CASCA.some(p => url.pathname.endsWith(p))) {
+  if (CASCA.some(p => url.pathname.endsWith(p))) {   // geojson já tratado acima
     evento.respondWith((async () => {
       try {
         const resp = await comTempoLimite(fetch(req.clone()), LIMITE_CASCA_MS);

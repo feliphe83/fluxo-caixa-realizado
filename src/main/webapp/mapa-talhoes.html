@@ -1606,13 +1606,31 @@ window.addEventListener('focus', () => conferirVersao());
   }
 
   // 1. Geometria (estática, do shapefile da topografia)
+  //
+  // É 1,2 MB e é a única coisa sem a qual a tela não existe — sem o desenho
+  // não há mapa. Por isso três tentativas antes de desistir: uma falha de
+  // rede aqui apagava a tela inteira, e tentar de novo custa segundos contra
+  // um "Load failed" que não deixa nada na mão de quem está no campo.
   mostrarCarregando('Carregando o desenho dos talhões…');
-  try {
-    const r = await fetch('mapas/talhoes.geojson');
-    GEO = await r.json();
-  } catch(e) {
+  let erroGeo = null;
+  for (let tentativa = 1; tentativa <= 3 && !GEO; tentativa++) {
+    try {
+      if (tentativa > 1) {
+        mostrarCarregando('Carregando o desenho dos talhões… (tentativa ' + tentativa + ' de 3)');
+        await new Promise(r => setTimeout(r, tentativa * 1500));
+      }
+      const r = await fetch('mapas/talhoes.geojson');
+      if (!r.ok) throw new Error('o servidor respondeu ' + r.status);
+      const j = await r.json();
+      if (!j || !Array.isArray(j.features)) throw new Error('arquivo incompleto');
+      GEO = j;
+    } catch(e) {
+      erroGeo = e;
+    }
+  }
+  if (!GEO) {
     esconderCarregando();
-    alert('Não foi possível carregar o desenho dos talhões: ' + e.message);
+    mostrarErro('Não foi possível carregar o desenho dos talhões', erroGeo);
     return;
   }
 
