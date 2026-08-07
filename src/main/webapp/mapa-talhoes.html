@@ -292,12 +292,12 @@
       <div id="cartaoConteudo"></div>
     </div>
   </div>
+  <!-- Só as trilhas: a situação e a área total saíram para dar espaço ao
+       mapa, que é o que se veio ver. A cor de cada talhão continua contando
+       a situação, e o detalhe está no toque sobre o talhão. -->
   <div class="painel">
     <h3>Minhas trilhas</h3>
     <div id="listaTrilhas"></div>
-    <h3>Situação do talhão</h3>
-    <div id="legenda"></div>
-    <div class="resumo" id="resumo"></div>
   </div>
 </div>
 
@@ -414,6 +414,13 @@ function formatarData(v) {
 
 // ── Legenda e resumo ─────────────────────────────────────────────────────
 function montarLegenda() {
+  // O painel de situação saiu da tela. A função continua existindo porque é
+  // chamada de vários pontos do carregamento — e voltar a exibir o painel é
+  // só devolver os dois elementos ao HTML.
+  const elLegenda = document.getElementById('legenda');
+  const elResumo  = document.getElementById('resumo');
+  if (!elLegenda && !elResumo) return;
+
   const cont = {}, area = {};
   GEO.features.forEach(f => {
     const s = situacaoDe(f.properties.chave);
@@ -424,7 +431,7 @@ function montarLegenda() {
   const ordem = Object.keys(SITUACOES).map(Number).filter(c => cont[c]);
   if (cont[0]) ordem.push(0);
 
-  document.getElementById('legenda').innerHTML = ordem.map(cod => {
+  if (elLegenda) elLegenda.innerHTML = ordem.map(cod => {
     const s = cod === 0 ? SEM_DADOS : SITUACOES[cod];
     return `<div class="legenda-item ${OCULTAS.has(cod) ? 'oculta' : ''}" onclick="alternarSituacao(${cod})"
                  title="Clique para mostrar ou esconder">
@@ -434,9 +441,11 @@ function montarLegenda() {
             </div>`;
   }).join('');
 
-  const totalArea = GEO.features.reduce((a, f) => a + (Number(f.properties.areaShape) || 0), 0);
-  document.getElementById('resumo').innerHTML =
-    `<div class="linha"><span>Área total</span><b>${fmtNum(totalArea)} ha</b></div>`;
+  if (elResumo) {
+    const totalArea = GEO.features.reduce((a, f) => a + (Number(f.properties.areaShape) || 0), 0);
+    elResumo.innerHTML =
+      `<div class="linha"><span>Área total</span><b>${fmtNum(totalArea)} ha</b></div>`;
+  }
 }
 
 function alternarSituacao(cod) {
@@ -452,6 +461,36 @@ function aplicarFiltros() {
 
 function enquadrarTudo() {
   if (CAMADA) MAPA.fitBounds(CAMADA.getBounds(), { padding: [20, 20] });
+}
+
+/**
+ * Enquadramento de abertura: o miolo dos talhões, não a extensão total.
+ *
+ * Enquadrar tudo obriga a caber o talhão mais distante de cada lado, e como
+ * há alguns bem afastados do bloco principal, a tela abria em escala de
+ * 10 km com a lavoura toda espremida no meio — longe demais para reconhecer
+ * qualquer coisa.
+ *
+ * Aqui a caixa é a dos 5% aos 95% dos centroides em cada eixo: o corpo da
+ * lavoura ocupa a tela, e os poucos talhões de fora ficam a um arrastar de
+ * distância — ou num toque em "Ver tudo", que continua fazendo o que fazia.
+ */
+function enquadrarPrincipal() {
+  if (!CAMADA || !GEO || !GEO.features.length) return;
+  const lats = [], lngs = [];
+  GEO.features.forEach(f => {
+    const c = centroDe(f);
+    if (c && isFinite(c[0]) && isFinite(c[1])) { lats.push(c[0]); lngs.push(c[1]); }
+  });
+  if (lats.length < 10) { enquadrarTudo(); return; }   // poucos: não há o que recortar
+
+  lats.sort((a, b) => a - b);
+  lngs.sort((a, b) => a - b);
+  const faixa = v => [v[Math.floor(v.length * 0.05)], v[Math.floor(v.length * 0.95)]];
+  const [lat1, lat2] = faixa(lats);
+  const [lng1, lng2] = faixa(lngs);
+
+  MAPA.fitBounds([[lat1, lng1], [lat2, lng2]], { padding: [24, 24] });
 }
 
 // ── Em qual talhão eu estou ──────────────────────────────────────────────
@@ -1726,7 +1765,7 @@ async function aoVoltar(forcar) {
       camada.on('mouseout',  e => CAMADA.resetStyle(e.target));
     }
   }).addTo(MAPA);
-  enquadrarTudo();
+  enquadrarPrincipal();
 
   // 2. Safras + dados do ERP. Os parâmetros vêm antes porque decidem quais
   // safras entram na lista e com qual delas a tela abre.
