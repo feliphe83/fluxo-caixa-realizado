@@ -710,24 +710,67 @@ async function pararTrilha(salvar, nome) {
 }
 
 /** Sobe o que ainda não subiu. Falhar aqui é normal — tenta de novo depois. */
-async function enviarPendentes() {
+let ENVIANDO = false;
+
+/**
+ * Sobe o que ainda não subiu.
+ *
+ * @param manual quando true, conta o resultado na tela — inclusive o motivo
+ *        da falha. No automático o silêncio é proposital: falhar sem rede é
+ *        o normal, e avisar a cada vez viraria ruído no meio do talhão.
+ */
+async function enviarPendentes(manual) {
   const lista = trilhasLocais();
   const pendentes = lista.filter(t => t.encerrada && !t.enviada);
-  if (!pendentes.length) return;
-  let mudou = false;
-  for (const t of pendentes) {
-    try {
-      const r = await fetch('api/trilha-gps', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({ idLocal: t.idLocal, nome: t.nome, inicio: t.inicio, fim: t.fim,
-                               duracaoS: t.duracaoS, distanciaM: t.distanciaM, pontos: t.pontos })
-      });
-      const j = await r.json();
-      if (j && j.ok) { t.enviada = true; t.id = j.id; mudou = true; }
-    } catch(e) { /* sem rede: fica pendente e sobe na próxima */ }
+  if (!pendentes.length) {
+    if (manual) mostrarAviso('Não há trilha esperando envio.');
+    return { enviadas: 0, faltando: 0 };
   }
-  if (mudou) { gravarTrilhasLocais(lista); renderTrilhas(); }
+  if (ENVIANDO) return { enviadas: 0, faltando: pendentes.length };
+  ENVIANDO = true;
+  renderTrilhas();
+
+  let enviadas = 0, mudou = false, motivo = null, sessaoCaiu = false;
+  try {
+    for (const t of pendentes) {
+      try {
+        const r = await fetch('api/trilha-gps', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ idLocal: t.idLocal, nome: t.nome, inicio: t.inicio, fim: t.fim,
+                                 duracaoS: t.duracaoS, distanciaM: t.distanciaM, pontos: t.pontos })
+        });
+        // 401 é o caso que mais engana: a trilha está inteira no aparelho, a
+        // rede está boa, e o que falta é login. Sem dizer isso, a pessoa fica
+        // olhando a ampulheta sem entender.
+        if (r.status === 401) { sessaoCaiu = true; break; }
+        const j = await r.json();
+        if (j && j.ok) { t.enviada = true; t.id = j.id; mudou = true; enviadas++; }
+        else motivo = (j && j.erro) || ('o servidor respondeu ' + r.status);
+      } catch(e) {
+        motivo = 'sem conexão com a usina';
+      }
+    }
+  } finally {
+    ENVIANDO = false;
+    if (mudou) gravarTrilhasLocais(lista);
+    renderTrilhas();
+  }
+
+  const faltando = pendentes.length - enviadas;
+  if (manual) {
+    if (sessaoCaiu) {
+      mostrarAviso('Sua sessão expirou. Entre de novo na intranet e toque em enviar outra vez — ' +
+                   'nenhuma trilha foi perdida, todas estão guardadas neste aparelho.');
+    } else if (faltando === 0) {
+      mostrarAviso(enviadas + (enviadas === 1 ? ' trilha enviada.' : ' trilhas enviadas.'));
+    } else {
+      mostrarAviso((enviadas ? enviadas + ' enviada(s), ' : '') + faltando +
+                   ' ainda esperando' + (motivo ? ' — ' + motivo : '') +
+                   '. As trilhas continuam guardadas aqui.');
+    }
+  }
+  return { enviadas, faltando };
 }
 
 /**
@@ -793,13 +836,29 @@ function renderTrilhas() {
   const el = document.getElementById('listaTrilhas');
   if (!el) return;
   const lista = trilhasEncerradas();
+
+  // Botão só aparece quando há o que enviar: botão que nunca faz nada ensina
+  // a ignorar botão. No iPhone o app fica suspenso e não recarrega, então
+  // sem esta saída manual a trilha podia ficar dias esperando a abertura da
+  // tela que nunca vinha.
+  const pendentes = lista.filter(t => !t.enviada).length;
+  const botao = !pendentes ? '' :
+    `<div style="padding:2px 16px 10px">
+       <button id="btnEnviarTrilhas" onclick="enviarPendentes(true)" ${ENVIANDO ? 'disabled' : ''}
+         style="width:100%;padding:9px;border-radius:8px;border:1.5px solid #16342a;
+                background:${ENVIANDO ? '#8ba39a' : '#16342a'};color:#fff;font-size:12.5px;
+                font-weight:700;font-family:inherit;cursor:pointer">
+         ${ENVIANDO ? 'Enviando…' : '⬆ Enviar ' + pendentes + (pendentes === 1 ? ' trilha' : ' trilhas') + ' ao servidor'}
+       </button>
+     </div>`;
+
   if (!lista.length) {
     el.innerHTML = '<div style="padding:2px 16px 10px;font-size:12px;color:#94a0b8">' +
                    'Nenhuma trilha gravada. Toque no botão vermelho <b>Trilha</b>, ' +
                    'no topo da tela, para começar.</div>';
     return;
   }
-  el.innerHTML = lista.map((t, i) => {
+  el.innerHTML = botao + lista.map((t, i) => {
     const d = new Date(t.inicio);
     const quando = String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') +
                    ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
@@ -1041,6 +1100,16 @@ function fecharCartao() { document.getElementById('cartaoGps').classList.remove(
 
 // ── Offline ──────────────────────────────────────────────────────────────
 /** Falha do ERP fica na tela, não num alerta que se fecha e some. */
+/** Recado curto na tarja — o que a pessoa precisa saber, sem alert. */
+function mostrarAviso(texto) {
+  const t = document.getElementById('tarjaErro');
+  t.style.background = '#fffaf0'; t.style.borderColor = '#eda100'; t.style.color = '#52514e';
+  t.innerHTML = esc(texto);
+  t.classList.add('on');
+  clearTimeout(mostrarAviso._t);
+  mostrarAviso._t = setTimeout(() => t.classList.remove('on'), 9000);
+}
+
 function mostrarErro(onde, e) {
   const t = document.getElementById('tarjaErro');
   t.innerHTML = '<b>' + onde + '</b><br>' + esc(e && e.message ? e.message : String(e));
@@ -1557,10 +1626,25 @@ async function conferirVersao(forcar) {
 // Voltar para o app é o momento em que a versão velha aparece — e no iOS é o
 // único, porque não houve navegação nenhuma no meio.
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') conferirVersao();
+  if (document.visibilityState === 'visible') aoVoltar();
 });
-window.addEventListener('pageshow', e => { if (e.persisted) conferirVersao(true); });
-window.addEventListener('focus', () => conferirVersao());
+window.addEventListener('pageshow', e => { if (e.persisted) aoVoltar(true); });
+window.addEventListener('focus', () => aoVoltar());
+// Reencontrar rede é o melhor momento para tentar de novo: o aparelho saiu
+// da área e voltou, que é exatamente o percurso de quem grava no campo.
+window.addEventListener('online', () => enviarPendentes());
+
+/**
+ * Volta ao primeiro plano.
+ *
+ * Sobe as trilhas ANTES de conferir a versão, porque conferir a versão pode
+ * recarregar a página — e uma recarga no meio do envio deixaria a trilha
+ * pendente de novo, que é o problema que se está resolvendo.
+ */
+async function aoVoltar(forcar) {
+  try { await enviarPendentes(); } catch(e) {}
+  conferirVersao(forcar);
+}
 
 (async function iniciar() {
   iniciarMapa();
