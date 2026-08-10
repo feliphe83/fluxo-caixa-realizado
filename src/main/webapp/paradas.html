@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Controle de Paradas da Moagem — Usina Santa Clotilde</title>
+<link rel="icon" href="img/logo.png">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --verde: #16342a; --verde-2: #1f4a3a; --ink: #16233f; --ink-2: #64748b;
+    --ink-3: #94a0b8; --linha: #dfe5f0; --fundo: #f4f6fb;
+    --vermelho: #d03b3b; --vermelho-fundo: #fef2f2; --ambar: #eda100;
+    --ok: #0ca30c; --ok-fundo: #f1fbf1;
+    --topo-seguro: env(safe-area-inset-top, 0px);
+    --rodape-seguro: env(safe-area-inset-bottom, 0px);
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--fundo); color: var(--ink);
+    padding-bottom: calc(40px + var(--rodape-seguro));
+  }
+  header {
+    background: linear-gradient(140deg, var(--verde) 0%, var(--verde-2) 100%);
+    color: white; padding: calc(12px + var(--topo-seguro)) 16px 12px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  header img { width: 34px; height: 34px; border-radius: 8px; }
+  header .tit { font-size: 15px; font-weight: 800; }
+  header .sub { font-size: 11.5px; opacity: .85; }
+  header .dir { margin-left: auto; display: flex; gap: 8px; flex: none; }
+  header a {
+    color: white; text-decoration: none; border: 1.5px solid rgba(255,255,255,.35);
+    padding: 6px 12px; border-radius: 7px; font-size: 12px; font-weight: 600; white-space: nowrap;
+  }
+
+  main { max-width: 780px; margin: 0 auto; padding: 16px; }
+
+  /* Estado da moagem: é a primeira coisa que a pessoa precisa ver, e de
+     longe — a tela costuma ficar aberta num monitor da indústria. */
+  .estado {
+    border-radius: 14px; padding: 20px; margin-bottom: 16px; text-align: center;
+    border: 2px solid transparent;
+  }
+  .estado.rodando { background: var(--ok-fundo); border-color: #bfe6bf; }
+  .estado.parada  { background: var(--vermelho-fundo); border-color: #f3c9c9; }
+  .estado .rot {
+    font-size: 11px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--ink-2);
+  }
+  .estado .titulo { font-size: 26px; font-weight: 800; margin-top: 4px; }
+  .estado.rodando .titulo { color: #147a14; }
+  .estado.parada  .titulo { color: #a32020; }
+  .estado .relogio {
+    font-size: 40px; font-weight: 800; margin-top: 8px; letter-spacing: 1px;
+    font-variant-numeric: tabular-nums; color: #a32020;
+  }
+  .estado .detalhe { font-size: 13.5px; color: #3a3352; margin-top: 10px; line-height: 1.6; }
+  .estado .detalhe b { color: var(--ink); }
+  .bolha {
+    width: 11px; height: 11px; border-radius: 50%; background: var(--vermelho);
+    display: inline-block; margin-right: 7px; vertical-align: 0;
+    animation: pulsa 1.4s ease-in-out infinite;
+  }
+  @keyframes pulsa { 0%,100%{opacity:1} 50%{opacity:.25} }
+
+  .cartao {
+    background: white; border: 1px solid var(--linha); border-radius: 12px;
+    padding: 16px; margin-bottom: 14px;
+  }
+  .cartao h2 {
+    font-size: 11px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase;
+    color: var(--ink-2); margin-bottom: 12px;
+  }
+  .grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+  .campo label {
+    display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .5px;
+    text-transform: uppercase; color: var(--ink-2); margin-bottom: 5px;
+  }
+  .campo input, .campo select, .campo textarea {
+    width: 100%; padding: 11px 12px; border: 1.5px solid var(--linha);
+    border-radius: 8px; font-size: 16px; font-family: inherit; color: var(--ink); background: white;
+  }
+  .campo textarea { min-height: 64px; resize: vertical; }
+  .campo input:focus, .campo select:focus, .campo textarea:focus {
+    outline: none; border-color: var(--verde-2);
+  }
+  .campo .obs { font-size: 11px; color: var(--ink-3); margin-top: 4px; }
+
+  .botao {
+    width: 100%; padding: 16px; border: none; border-radius: 10px; margin-top: 14px;
+    font-size: 16px; font-weight: 800; font-family: inherit; cursor: pointer; color: white;
+    letter-spacing: .3px;
+  }
+  .botao.parar   { background: var(--vermelho); }
+  .botao.voltar  { background: var(--ok); }
+  .botao:disabled { opacity: .55; cursor: default; }
+
+  .previa {
+    background: #f7f9fc; border: 1px dashed var(--linha); border-radius: 10px;
+    padding: 12px 14px; margin-top: 14px; font-size: 13px; line-height: 1.7;
+    white-space: pre-wrap; color: #3a3352;
+  }
+  .previa .rot {
+    display: block; font-size: 10px; font-weight: 800; letter-spacing: .6px;
+    text-transform: uppercase; color: var(--ink-3); margin-bottom: 6px;
+  }
+
+  .tarja { padding: 12px 14px; border-radius: 9px; font-size: 13px; line-height: 1.55;
+           margin-bottom: 14px; display: none; }
+  .tarja.on { display: block; }
+  .tarja.erro { background: var(--vermelho-fundo); border: 1px solid #f3c9c9; color: #8f2a2a; }
+  .tarja.bom  { background: var(--ok-fundo); border: 1px solid #bfe6bf; color: #1f6b1f; }
+  .tarja.aviso{ background: #fffaf0; border: 1px solid #f0dcb4; color: #7a5a10; }
+
+  table.hist { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.hist th {
+    text-align: left; font-size: 10px; font-weight: 800; letter-spacing: .6px;
+    text-transform: uppercase; color: var(--ink-2); padding: 0 8px 8px; white-space: nowrap;
+  }
+  table.hist td { padding: 9px 8px; border-top: 1px solid #eef2f8; vertical-align: top; }
+  table.hist td.n { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  table.hist tr.aberta td { background: var(--vermelho-fundo); }
+  .vazio { padding: 18px 8px; color: var(--ink-3); font-size: 13px; }
+
+  @media (max-width: 620px) {
+    header .sub { display: none; }
+    .estado .relogio { font-size: 34px; }
+    table.hist .esconde { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <img src="img/logo.png" alt="">
+  <div>
+    <div class="tit">Controle de Paradas</div>
+    <div class="sub">Moagem · Área Industrial</div>
+  </div>
+  <div class="dir">
+    <a href="hub.html">← Hub</a>
+  </div>
+</header>
+
+<main>
+  <div class="tarja erro"  id="tarjaErro"></div>
+  <div class="tarja bom"   id="tarjaBom"></div>
+  <div class="tarja aviso" id="tarjaAviso"></div>
+
+  <div class="estado rodando" id="estado">
+    <div class="rot">Situação da moagem</div>
+    <div class="titulo" id="estadoTitulo">Carregando…</div>
+    <div class="relogio" id="relogio" style="display:none"></div>
+    <div class="detalhe" id="estadoDetalhe"></div>
+  </div>
+
+  <!-- ── Registrar parada ─────────────────────────────────────────────── -->
+  <div class="cartao" id="cxParar" style="display:none">
+    <h2>Registrar parada</h2>
+    <div class="grade">
+      <div class="campo">
+        <label for="inicio">Parou em</label>
+        <input type="datetime-local" id="inicio" oninput="previa()">
+        <div class="obs">Já vem com a hora de agora — corrija se parou antes.</div>
+      </div>
+      <div class="campo">
+        <label for="parte">Parte</label>
+        <select id="parte" onchange="previa()"></select>
+      </div>
+    </div>
+    <div class="campo" style="margin-top:12px">
+      <label for="motivo">Motivo</label>
+      <textarea id="motivo" maxlength="255" oninput="previa()"
+                placeholder="Ex.: Pressão baixa (Falha operacional)."></textarea>
+    </div>
+    <div class="campo" style="margin-top:12px">
+      <label for="previsao">Previsão de parada</label>
+      <input type="text" id="previsao" maxlength="60" oninput="previa()"
+             list="previsoes" placeholder="Deixe em branco para “Não informada”">
+      <datalist id="previsoes">
+        <option value="30 minutos"><option value="1 hora"><option value="2 horas">
+        <option value="4 horas"><option value="Restante do turno">
+      </datalist>
+    </div>
+
+    <div class="previa" id="previaParada"><span class="rot">Mensagem que será enviada</span></div>
+    <button class="botao parar" id="btnParar" onclick="parar()">🛑 Gravar parada e avisar</button>
+  </div>
+
+  <!-- ── Registrar retorno ────────────────────────────────────────────── -->
+  <div class="cartao" id="cxRetornar" style="display:none">
+    <h2>Registrar retorno</h2>
+    <div class="campo">
+      <label for="retorno">Voltou em</label>
+      <input type="datetime-local" id="retorno" oninput="previaRetorno()">
+      <div class="obs" id="obsRetorno"></div>
+    </div>
+    <div class="previa" id="previaRetorno"><span class="rot">Mensagem que será enviada</span></div>
+    <button class="botao voltar" id="btnRetornar" onclick="retornar()">🟢 Gravar retorno e avisar</button>
+  </div>
+
+  <div class="cartao">
+    <h2>Últimas paradas</h2>
+    <div id="historico"><div class="vazio">Carregando…</div></div>
+  </div>
+</main>
+
+<script>
+const esc = s => String(s == null ? '' : s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+let SITUACAO = null, RELOGIO = null;
+
+// ── Datas ─────────────────────────────────────────────────────────────────
+
+/** "yyyy-MM-ddTHH:mm" no fuso local — o que o input datetime-local espera. */
+function agoraLocal() {
+  const d = new Date();
+  const p = n => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate())
+       + 'T' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
+
+/** Aceita o "yyyy-MM-dd HH:mm:ss" do banco e o "…THH:mm" do formulário. */
+function paraData(v) {
+  if (!v) return null;
+  const d = new Date(String(v).replace(' ', 'T'));
+  return isNaN(d) ? null : d;
+}
+
+const dd = n => String(n).padStart(2, '0');
+function fmtData(d) { return d ? dd(d.getDate()) + '/' + dd(d.getMonth()+1) + '/' + d.getFullYear() : '—'; }
+function fmtHora(d) { return d ? dd(d.getHours()) + ':' + dd(d.getMinutes()) + ':' + dd(d.getSeconds()) : '—'; }
+
+/** "0h 9min" — o mesmo formato do servidor, para a tela não discordar dele. */
+function tempoParado(ini, fim) {
+  if (!ini || !fim) return '—';
+  const min = Math.max(0, Math.floor((fim - ini) / 60000));
+  return Math.floor(min/60) + 'h ' + (min%60) + 'min';
+}
+
+function tarja(qual, texto) {
+  ['Erro','Bom','Aviso'].forEach(t => document.getElementById('tarja'+t).classList.remove('on'));
+  if (!qual) return;
+  const el = document.getElementById('tarja' + qual);
+  el.innerHTML = texto;
+  el.classList.add('on');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── Prévia das mensagens ──────────────────────────────────────────────────
+//
+// A mensagem vai para um grupo com diretoria dentro. Ver o texto exato antes
+// de tocar em "Gravar" é o que evita o aviso sair com o motivo pela metade —
+// e depois de enviado, não há como voltar atrás.
+
+function previa() {
+  const d = paraData(document.getElementById('inicio').value);
+  const motivo = document.getElementById('motivo').value.trim() || 'Não informado';
+  const parte  = document.getElementById('parte').value || 'Não informada';
+  const prev   = document.getElementById('previsao').value.trim() || 'Não informada';
+  document.getElementById('previaParada').innerHTML =
+    '<span class="rot">Mensagem que será enviada</span>' + esc(
+      '🛑🔴 PAROU A MOAGEM 🛑🔴\n\n' +
+      '📅 Data: ' + fmtData(d) + '\n' +
+      '⏰ Hora: ' + fmtHora(d) + '\n' +
+      '📝 Motivo: ' + motivo + '\n' +
+      '⚙️ Parte: ' + parte + '\n' +
+      '⏳ Previsão parada: ' + prev);
+}
+
+function previaRetorno() {
+  if (!SITUACAO || !SITUACAO.aberta) return;
+  const ini = paraData(SITUACAO.aberta.inicio);
+  const ret = paraData(document.getElementById('retorno').value);
+  const obs = document.getElementById('obsRetorno');
+  if (ini && ret && ret < ini) {
+    obs.textContent = 'O retorno está antes do início da parada.';
+    obs.style.color = 'var(--vermelho)';
+  } else {
+    obs.textContent = ini && ret ? 'Parada de ' + tempoParado(ini, ret) + '.' : '';
+    obs.style.color = 'var(--ink-3)';
+  }
+  document.getElementById('previaRetorno').innerHTML =
+    '<span class="rot">Mensagem que será enviada</span>' + esc(
+      '🟢✅ RETORNO A MOAGEM 🟢✅\n\n' +
+      '📅 Data: ' + fmtData(ini) + '\n' +
+      '⏰ Hora início: ' + fmtHora(ini) + '\n' +
+      '⏱️ Hora retorno: ' + fmtHora(ret) + '\n' +
+      '⏳ Tempo parado: ' + tempoParado(ini, ret) + '\n\n' +
+      '📝 Motivo: ' + (SITUACAO.aberta.motivo || 'Não informado') + '\n' +
+      '⚙️ Parte: ' + (SITUACAO.aberta.parte || 'Não informada'));
+}
+
+// ── Estado ────────────────────────────────────────────────────────────────
+
+function desenharEstado() {
+  const est = document.getElementById('estado');
+  const aberta = SITUACAO && SITUACAO.aberta;
+  clearInterval(RELOGIO);
+
+  document.getElementById('cxParar').style.display    = aberta ? 'none' : '';
+  document.getElementById('cxRetornar').style.display = aberta ? '' : 'none';
+
+  if (!aberta) {
+    est.className = 'estado rodando';
+    document.getElementById('estadoTitulo').textContent = 'Moagem rodando';
+    document.getElementById('relogio').style.display = 'none';
+    document.getElementById('estadoDetalhe').innerHTML =
+      'Nenhuma parada em aberto. Registre abaixo se a moagem parar.';
+    document.getElementById('inicio').value = agoraLocal();
+    previa();
+    return;
+  }
+
+  const ini = paraData(aberta.inicio);
+  est.className = 'estado parada';
+  document.getElementById('estadoTitulo').innerHTML = '<span class="bolha"></span>Moagem parada';
+  document.getElementById('estadoDetalhe').innerHTML =
+    'Desde <b>' + fmtData(ini) + ' às ' + fmtHora(ini) + '</b><br>' +
+    '📝 ' + esc(aberta.motivo || '—') + '<br>' +
+    '⚙️ ' + esc(aberta.parte || 'Não informada') + '<br>' +
+    '⏳ Previsão: ' + esc(aberta.previsao || 'Não informada') +
+    (aberta.nomeUsuarioInicio ? '<br><span style="color:var(--ink-3);font-size:12px">registrada por '
+      + esc(aberta.nomeUsuarioInicio) + '</span>' : '');
+
+  const rel = document.getElementById('relogio');
+  rel.style.display = '';
+  const tique = () => { rel.textContent = tempoParado(ini, new Date()); };
+  tique();
+  RELOGIO = setInterval(tique, 10000);
+
+  document.getElementById('retorno').value = agoraLocal();
+  previaRetorno();
+}
+
+// ── Ações ─────────────────────────────────────────────────────────────────
+
+async function parar() {
+  const inicio = document.getElementById('inicio').value;
+  const motivo = document.getElementById('motivo').value.trim();
+  if (!inicio) { tarja('Erro', 'Informe a data e a hora em que parou.'); return; }
+  if (!motivo) { tarja('Erro', 'Informe o motivo da parada.'); return; }
+  if (!confirm('Gravar a parada e avisar no WhatsApp?')) return;
+
+  const btn = document.getElementById('btnParar');
+  btn.disabled = true; btn.textContent = 'Gravando e enviando…';
+  try {
+    const j = await api('parar', { inicio, motivo,
+      parte: document.getElementById('parte').value,
+      previsao: document.getElementById('previsao').value.trim() });
+    if (!j.ok) { tarja('Erro', esc(j.erro)); return; }
+    document.getElementById('motivo').value = '';
+    document.getElementById('previsao').value = '';
+    tarja('Bom', '<b>Parada registrada.</b><br>' + esc(j.aviso));
+    await carregar();
+  } catch(e) {
+    tarja('Erro', 'Sem conexão com o servidor. A parada <b>não</b> foi registrada.');
+  } finally {
+    btn.disabled = false; btn.textContent = '🛑 Gravar parada e avisar';
+  }
+}
+
+async function retornar() {
+  const retorno = document.getElementById('retorno').value;
+  if (!retorno) { tarja('Erro', 'Informe a data e a hora do retorno.'); return; }
+  if (!confirm('Gravar o retorno da moagem e avisar no WhatsApp?')) return;
+
+  const btn = document.getElementById('btnRetornar');
+  btn.disabled = true; btn.textContent = 'Gravando e enviando…';
+  try {
+    const j = await api('retornar', { retorno });
+    if (!j.ok) { tarja('Erro', esc(j.erro)); return; }
+    tarja('Bom', '<b>Retorno registrado.</b><br>' + esc(j.aviso));
+    await carregar();
+  } catch(e) {
+    tarja('Erro', 'Sem conexão com o servidor. O retorno <b>não</b> foi registrado.');
+  } finally {
+    btn.disabled = false; btn.textContent = '🟢 Gravar retorno e avisar';
+  }
+}
+
+async function api(rota, corpo) {
+  const r = await fetch('api/parada/' + rota, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify(corpo)
+  });
+  if (r.status === 401) { location.href = 'login.html'; throw new Error('sessão'); }
+  return r.json();
+}
+
+// ── Histórico ─────────────────────────────────────────────────────────────
+
+async function carregarHistorico() {
+  const el = document.getElementById('historico');
+  try {
+    const r = await fetch('api/parada/paradas', { headers: { 'Accept': 'application/json' } });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro || 'Consulta recusada');
+    if (!j.data.length) { el.innerHTML = '<div class="vazio">Nenhuma parada registrada.</div>'; return; }
+    el.innerHTML = `<table class="hist">
+      <thead><tr><th>Início</th><th>Retorno</th><th>Parada</th>
+                 <th class="esconde">Motivo</th><th class="esconde">Parte</th></tr></thead>
+      <tbody>` + j.data.map(p => {
+        const i = paraData(p.inicio), r2 = paraData(p.retorno);
+        return `<tr class="${p.retorno ? '' : 'aberta'}">
+          <td>${fmtData(i)}<br><span style="color:var(--ink-2)">${fmtHora(i)}</span></td>
+          <td>${p.retorno ? fmtData(r2) + '<br><span style="color:var(--ink-2)">' + fmtHora(r2) + '</span>'
+                          : '<b style="color:var(--vermelho)">em aberto</b>'}</td>
+          <td class="n">${p.retorno ? tempoParado(i, r2) : tempoParado(i, new Date())}</td>
+          <td class="esconde">${esc(p.motivo || '—')}</td>
+          <td class="esconde">${esc(p.parte || '—')}</td>
+        </tr>`;
+      }).join('') + '</tbody></table>';
+  } catch(e) {
+    el.innerHTML = '<div class="vazio">Não foi possível carregar o histórico.</div>';
+  }
+}
+
+// ── Abertura ──────────────────────────────────────────────────────────────
+
+async function carregar() {
+  try {
+    const r = await fetch('api/parada/situacao', { headers: { 'Accept': 'application/json' } });
+    if (r.status === 401) { location.href = 'login.html'; return; }
+    SITUACAO = await r.json();
+    if (!SITUACAO.ok) throw new Error(SITUACAO.erro || 'Consulta recusada');
+  } catch(e) {
+    tarja('Erro', 'Não foi possível carregar a situação da moagem: ' + esc(e.message));
+    return;
+  }
+
+  const sel = document.getElementById('parte');
+  const atual = sel.value;
+  sel.innerHTML = (SITUACAO.partes || []).map(p =>
+    `<option value="${esc(p.descricao)}">${esc(p.descricao)}</option>`).join('');
+  if (atual) sel.value = atual;
+
+  // Sem ninguém na lista, gravar a parada não avisa ninguém — e é melhor
+  // saber disso antes de contar com o aviso do que depois.
+  if (!(SITUACAO.destinatarios || []).length) {
+    tarja('Aviso', 'Nenhum destinatário cadastrado para receber os avisos. ' +
+          (SITUACAO.admin ? 'Cadastre em <b>Administração → Paradas da Moagem</b>.'
+                          : 'Peça ao administrador para cadastrar.'));
+  }
+
+  desenharEstado();
+  carregarHistorico();
+}
+
+// Em monitor da indústria a tela fica aberta o dia inteiro: sem isto, quem
+// olha de longe veria a situação de horas atrás.
+setInterval(carregar, 120000);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') carregar();
+});
+
+carregar();
+</script>
+</body>
+</html>
