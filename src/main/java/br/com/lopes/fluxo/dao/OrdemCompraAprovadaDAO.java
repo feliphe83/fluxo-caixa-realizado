@@ -20,10 +20,15 @@ import java.util.logging.Logger;
  * outra para o plano informado manualmente, que busca o vencimento em
  * ordemcomprapagamento).
  *
- * O limite é aplicado sobre o total da ORDEM, não do item:
- * vlr_total_por_numero_processo soma os itens por número de processo antes do
- * filtro — uma ordem de dez itens pequenos que somem mais que o limite entra
- * inteira no alerta.
+ * O limite é aplicado sobre o total da ORDEM, não do item, e esse total é
+ * somado DEPOIS do GROUP BY que junta as parcelas. O nível
+ * de dentro tem uma linha por data de pagamento (PP1.DATAPGTO está no group by
+ * de lá), então uma ordem de 70 mil paga em três parcelas chegava ao WhatsApp
+ * como 210 mil — o mesmo item somado três vezes.
+ *
+ * vlr_total_por_numero_processo soma cada item UMA vez por número de processo,
+ * e o filtro do valor mínimo vem depois dela — uma ordem de dez itens pequenos
+ * que somem mais que o limite entra inteira no alerta.
  *
  * Como os demais alertas de contrato e divergência, não filtra por aprovador:
  * todo destinatário do agendamento recebe a mesma lista.
@@ -50,11 +55,16 @@ public class OrdemCompraAprovadaDAO {
 
     /** Bind único: o valor total mínimo da ordem — ver {@link #buscarAprovadasAcimaDe(double)}. */
     private static final String SQL = """
+        SELECT * FROM (
+          SELECT item_unico.*
+               , SUM(item_unico.VLRTOTAL)
+                   OVER (PARTITION BY item_unico.NUMERO_PROCESSO) AS VLR_TOTAL_POR_NUMERO_PROCESSO
+          FROM (
         SELECT APROVADOR, COD_APROVADOR, TIPO, DATA_PROCESSO, NUMERO_PROCESSO, COD_ETAPA,
                COD_MATERIAL, COD_REQUISITANTE, REQUISITANTE, QTDESOLICITADA, DATA_APROVACAO,
                DESC_MATERIAL, NR_SOLICITACAO, VLRTOTAL, ITEM, COD_ALMOXARIFADO, DESC_ALMOXARIFADO,
                DESC_OBJETOCUSTO, PRECO, ULTIMA_COMPRA, COD_FORNECEDOR, NOME_FORNECEDOR,
-               VLR_TOTAL_POR_NUMERO_PROCESSO, VARIACAO_PERCENTUAL, COD_UNIDADE,
+               VARIACAO_PERCENTUAL, COD_UNIDADE,
                (SELECT LISTAGG(DISTINCT TO_CHAR(ordemcomprapagamento.datapgto,'DD/MM/YYYY'), ', ')
                          WITHIN GROUP (ORDER BY TO_CHAR(ordemcomprapagamento.datapgto,'DD/MM/YYYY'))
                   FROM material.ordemcomprapagamento ordemcomprapagamento
@@ -89,7 +99,6 @@ public class OrdemCompraAprovadaDAO {
                  , tmp.ultima_compra
                  , tmp.cod_fornecedor
                  , material.fn_buscanomefornec(tmp.cod_fornecedor, SYSDATE) AS nome_fornecedor
-                 , SUM(tmp.vlrtotal) OVER (PARTITION BY tmp.numero) AS vlr_total_por_numero_processo
                  , ROUND((tmp.preco - tmp.ultima_compra) / NULLIF(tmp.ultima_compra, 0) * 100, 2) AS variacao_percentual
                  , tmp.cod_unidade
             FROM (
@@ -328,12 +337,14 @@ public class OrdemCompraAprovadaDAO {
                        , oc1.cod_fornecedor, material.cod_unidade, PP1.DATAPGTO
             ) tmp
         ) resultado
-        WHERE resultado.vlr_total_por_numero_processo > ?
         GROUP BY APROVADOR, COD_APROVADOR, TIPO, DATA_PROCESSO, NUMERO_PROCESSO, COD_ETAPA,
                  COD_MATERIAL, COD_REQUISITANTE, REQUISITANTE, QTDESOLICITADA, DATA_APROVACAO,
                  DESC_MATERIAL, NR_SOLICITACAO, VLRTOTAL, ITEM, COD_ALMOXARIFADO, DESC_ALMOXARIFADO,
                  DESC_OBJETOCUSTO, PRECO, ULTIMA_COMPRA, COD_FORNECEDOR, NOME_FORNECEDOR,
-                 VLR_TOTAL_POR_NUMERO_PROCESSO, VARIACAO_PERCENTUAL, COD_UNIDADE
+                 VARIACAO_PERCENTUAL, COD_UNIDADE
+          ) item_unico
+        )
+        WHERE VLR_TOTAL_POR_NUMERO_PROCESSO > ?
         ORDER BY aprovador, tipo, numero_processo, item, data_processo
         """;
 
