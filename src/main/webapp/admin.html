@@ -875,7 +875,7 @@
     <div id="camposOcAprovadaWpp" style="display:none">
       <div class="mf">
         <label>Valor mínimo da ordem (R$)</label>
-        <input type="number" id="mWppValorMinimoOc" value="30000" min="0" step="0.01">
+        <input type="number" id="mWppValorMinimoOc" value="30000" min="0.01" step="0.01">
         <div class="hint">Avisa as ordens aprovadas hoje cujo total passe deste valor. O limite vale para a ordem inteira, não para o item.</div>
       </div>
     </div>
@@ -898,7 +898,7 @@
     <div id="camposVariacaoWpp" style="display:none">
       <div class="mf">
         <label>Variação mínima (%)</label>
-        <input type="number" id="mWppVariacaoMinima" value="10" min="0" max="1000" step="0.01">
+        <input type="number" id="mWppVariacaoMinima" value="10" min="0.01" max="1000" step="0.01">
         <div class="hint">Só avisa quando o preço da cotação liberada hoje ficar esse tanto acima da última compra, já corrigida pela inflação do período.</div>
       </div>
     </div>
@@ -2377,17 +2377,26 @@ async function salvarWpp() {
   if (tipoRelatorio === 'contrato_limite' && !document.getElementById('mWppDataVcto').value) { toast('Informe o vencimento a partir de', 'red'); return; }
   if (destinatarios.length === 0) { toast('Escolha ao menos um destinatário', 'red'); return; }
 
+  // Campo vazio dá NaN no parseFloat, e "NaN || 0" virava ZERO — o limite
+  // mais perigoso que existe, porque zero faz o alerta mandar tudo. Aqui o
+  // vazio cai no padrão do próprio alerta, e um número digitado é respeitado
+  // como está.
+  const numeroOu = (id, padrao) => {
+    const v = parseFloat(document.getElementById(id).value);
+    return Number.isFinite(v) ? v : padrao;
+  };
+
   const parametros =
       tipoRelatorio === 'combustivel'
         ? { dataIni,
             combustivel: document.getElementById('mWppCombustivel').value.trim() || 'Diesel' }
     : tipoRelatorio === 'variacao_preco'
-        ? { variacaoMinima: parseFloat(document.getElementById('mWppVariacaoMinima').value) || 0 }
+        ? { variacaoMinima: numeroOu('mWppVariacaoMinima', 10) }
     : tipoRelatorio === 'contrato_limite'
-        ? { percentualMinimo: parseFloat(document.getElementById('mWppPercentualContrato').value) || 70,
+        ? { percentualMinimo: numeroOu('mWppPercentualContrato', 70),
             dataVcto: document.getElementById('mWppDataVcto').value }
     : tipoRelatorio === 'oc_aprovada_alto_valor'
-        ? { valorMinimo: parseFloat(document.getElementById('mWppValorMinimoOc').value) || 0 }
+        ? { valorMinimo: numeroOu('mWppValorMinimoOc', 30000) }
     : {};
 
   // Só um dos dois modos de recorrência vai no payload; o backend usa a

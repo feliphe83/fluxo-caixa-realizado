@@ -114,7 +114,17 @@ public class AlertaVariacaoPrecoHandler implements RelatorioAgendadoHandler {
             return VARIACAO_MINIMA_PADRAO;
         }
         try {
-            return parametros.get("variacaoMinima").getAsDouble();
+            double v = parametros.get("variacaoMinima").getAsDouble();
+            // Zero ou negativo faz o alerta mandar TUDO. Nunca é o que se
+            // quis: é o agendamento gravado por uma tela que transformava
+            // campo vazio em zero. Cair no padrão evita inundar o WhatsApp
+            // de quem só descobriria o problema recebendo as mensagens.
+            if (!(v > 0)) {
+                LOG.warning("variacaoMinima=" + v + " no agendamento é inválido; usando "
+                          + VARIACAO_MINIMA_PADRAO + "% para não avisar de tudo.");
+                return VARIACAO_MINIMA_PADRAO;
+            }
+            return v;
         } catch (Exception e) {
             LOG.warning("variacaoMinima inválida no agendamento, usando " + VARIACAO_MINIMA_PADRAO + "%: " + e.getMessage());
             return VARIACAO_MINIMA_PADRAO;

@@ -87,7 +87,17 @@ public class AlertaOrdemCompraAprovadaHandler implements RelatorioAgendadoHandle
             return VALOR_MINIMO_PADRAO;
         }
         try {
-            return parametros.get("valorMinimo").getAsDouble();
+            double v = parametros.get("valorMinimo").getAsDouble();
+            // Zero ou negativo faz o alerta mandar TUDO. Nunca é o que se
+            // quis: é o agendamento gravado por uma tela que transformava
+            // campo vazio em zero. Cair no padrão evita inundar o WhatsApp
+            // de quem só descobriria o problema recebendo as mensagens.
+            if (!(v > 0)) {
+                LOG.warning("valorMinimo=" + v + " no agendamento é inválido; usando "
+                          + VALOR_MINIMO_PADRAO + " para não avisar de tudo.");
+                return VALOR_MINIMO_PADRAO;
+            }
+            return v;
         } catch (Exception e) {
             LOG.warning("valorMinimo inválido no agendamento, usando " + VALOR_MINIMO_PADRAO + ": " + e.getMessage());
             return VALOR_MINIMO_PADRAO;
