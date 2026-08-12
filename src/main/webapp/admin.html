@@ -870,6 +870,7 @@
         <option value="contrato_vencendo">Alerta de Contrato de Arrendamento a Vencer</option>
         <option value="oc_aprovada_alto_valor">Alerta de Ordem de Compra Aprovada de Alto Valor</option>
           <option value="contrato_aprovacao">Alerta de Contrato Aguardando Aprovação</option>
+          <option value="parcela_contrato_aprovacao">Alerta de Parcela de Contrato Aguardando Aprovação</option>
       </select>
     </div>
 
@@ -892,6 +893,21 @@
           <label>Vencimento a partir de</label>
           <input type="date" id="mWppDataVcto" value="2026-03-01">
           <div class="hint">Só entram no cálculo as parcelas que vencem desta data em diante.</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="camposParcelaContratoWpp" style="display:none">
+      <div class="mf-grid">
+        <div class="mf">
+          <label>Vencimento a partir de</label>
+          <input type="date" id="mWppDataVctoParcela" value="2026-08-01">
+          <div class="hint">Só entram parcelas vencendo nesta data ou depois.</div>
+        </div>
+        <div class="mf">
+          <label>Aprovador (opcional)</label>
+          <input type="number" id="mWppFuncAprovador" value="0" min="0" step="1">
+          <div class="hint">Código do funcionário aprovador do contrato. <b>Zero não filtra</b> — cada destinatário recebe o que ele mesmo aprova.</div>
         </div>
       </div>
     </div>
@@ -2130,17 +2146,19 @@ function fmtDataHoraWpp(s) {
 
 /** Tipos que rodam por intervalo (a cada N minutos) em vez de dia da semana + hora. */
 const TIPOS_RECORRENTES_WPP = ['oc_pendente', 'variacao_preco', 'divergencia_nf', 'contrato_limite',
-                               'contrato_vencendo', 'oc_aprovada_alto_valor', 'contrato_aprovacao'];
+                               'contrato_vencendo', 'oc_aprovada_alto_valor', 'contrato_aprovacao',
+                               'parcela_contrato_aprovacao'];
 /** Tipos que dependem do código de logon do ERP no cadastro do destinatário.
  *  Divergência de NF e contrato no limite ficam de fora de propósito: essas
  *  consultas não têm alçada, todo destinatário recebe a mesma lista. */
-const TIPOS_COM_LOGON_ERP_WPP = ['oc_pendente', 'variacao_preco', 'contrato_aprovacao'];
+const TIPOS_COM_LOGON_ERP_WPP = ['oc_pendente', 'variacao_preco', 'contrato_aprovacao',
+                                 'parcela_contrato_aprovacao'];
 /** Intervalo sugerido ao criar cada tipo — só preenche o campo, dá pra mudar. */
 // O contrato de arrendamento entra numa janela de 90 dias: não muda de um
 // minuto pro outro, uma verificação por dia basta.
 const INTERVALO_PADRAO_WPP = {oc_pendente: 10, variacao_preco: 30, divergencia_nf: 30,
                               contrato_limite: 30, contrato_vencendo: 1440, oc_aprovada_alto_valor: 30,
-                              contrato_aprovacao: 30};
+                              contrato_aprovacao: 30, parcela_contrato_aprovacao: 30};
 let RELATORIOS_WPP = [];
 let USUARIOS_WPP = [];
 
@@ -2316,6 +2334,7 @@ function atualizarCamposTipoWpp() {
   document.getElementById('camposContratoWpp').style.display = tipo === 'contrato_limite' ? '' : 'none';
   document.getElementById('camposOcAprovadaWpp').style.display = tipo === 'oc_aprovada_alto_valor' ? '' : 'none';
   document.getElementById('camposContratoAprovacaoWpp').style.display = tipo === 'contrato_aprovacao' ? '' : 'none';
+  document.getElementById('camposParcelaContratoWpp').style.display = tipo === 'parcela_contrato_aprovacao' ? '' : 'none';
   // Recorrente é configurado por intervalo; os demais, por dia da semana e hora.
   document.getElementById('camposSemanalWpp').style.display = recorrente ? 'none' : '';
   document.getElementById('camposIntervaloWpp').style.display = recorrente ? '' : 'none';
@@ -2339,6 +2358,8 @@ function abrirNovoWpp() {
   document.getElementById('mWppIntervalo').value = '10';
   document.getElementById('mWppVariacaoMinima').value = '10';
   document.getElementById('mWppDataCriacao').value = '2026-08-01';
+  document.getElementById('mWppDataVctoParcela').value = '2026-08-01';
+  document.getElementById('mWppFuncAprovador').value = '0';
   document.getElementById('mWppFuncAprovacao').value = '0';
   document.getElementById('mWppPercentualContrato').value = '70';
   document.getElementById('mWppDataVcto').value = '2026-03-01';
@@ -2369,6 +2390,8 @@ async function abrirEditarWpp(id) {
     document.getElementById('mWppVariacaoMinima').value = p.variacaoMinima != null ? p.variacaoMinima : 10;
     document.getElementById('mWppDataCriacao').value = p.dataCriacao || '2026-08-01';
     document.getElementById('mWppFuncAprovacao').value = p.funcaprovacao != null ? p.funcaprovacao : 0;
+    document.getElementById('mWppDataVctoParcela').value = p.dataVcto || '2026-08-01';
+    document.getElementById('mWppFuncAprovador').value = p.funcAprovador != null ? p.funcAprovador : 0;
     document.getElementById('mWppPercentualContrato').value = p.percentualMinimo != null ? p.percentualMinimo : 70;
     document.getElementById('mWppDataVcto').value = p.dataVcto || '2026-03-01';
     document.getElementById('mWppValorMinimoOc').value = p.valorMinimo != null ? p.valorMinimo : 30000;
@@ -2422,6 +2445,9 @@ async function salvarWpp() {
     : tipoRelatorio === 'contrato_aprovacao'
         ? { dataCriacao: document.getElementById('mWppDataCriacao').value || '2026-08-01',
             funcaprovacao: numeroOu('mWppFuncAprovacao', 0) }
+    : tipoRelatorio === 'parcela_contrato_aprovacao'
+        ? { dataVcto: document.getElementById('mWppDataVctoParcela').value || '2026-08-01',
+            funcAprovador: numeroOu('mWppFuncAprovador', 0) }
     : {};
 
   // Só um dos dois modos de recorrência vai no payload; o backend usa a
