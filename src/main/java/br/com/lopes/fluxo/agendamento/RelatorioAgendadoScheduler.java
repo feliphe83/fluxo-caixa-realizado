@@ -50,7 +50,8 @@ public class RelatorioAgendadoScheduler implements ServletContextListener {
             "divergencia_nf", new AlertaDivergenciaNfHandler(),
             "contrato_limite", new AlertaContratoLimiteHandler(),
             "contrato_vencendo", new AlertaContratoArrendamentoHandler(),
-            "oc_aprovada_alto_valor", new AlertaOrdemCompraAprovadaHandler()
+            "oc_aprovada_alto_valor", new AlertaOrdemCompraAprovadaHandler(),
+            "contrato_aprovacao", new AlertaContratoAprovacaoHandler()
     );
 
     /** Execuções mais antigas que isso são descartadas — os recorrentes geram um registro por ciclo. */

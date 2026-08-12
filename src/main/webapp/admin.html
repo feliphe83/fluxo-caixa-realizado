@@ -869,6 +869,7 @@
         <option value="contrato_limite">Alerta de Contrato no Limite</option>
         <option value="contrato_vencendo">Alerta de Contrato de Arrendamento a Vencer</option>
         <option value="oc_aprovada_alto_valor">Alerta de Ordem de Compra Aprovada de Alto Valor</option>
+          <option value="contrato_aprovacao">Alerta de Contrato Aguardando Aprovação</option>
       </select>
     </div>
 
@@ -891,6 +892,21 @@
           <label>Vencimento a partir de</label>
           <input type="date" id="mWppDataVcto" value="2026-03-01">
           <div class="hint">Só entram no cálculo as parcelas que vencem desta data em diante.</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="camposContratoAprovacaoWpp" style="display:none">
+      <div class="mf-grid">
+        <div class="mf">
+          <label>Criados nos últimos (dias)</label>
+          <input type="number" id="mWppDiasCriacao" value="30" min="1" max="3650" step="1">
+          <div class="hint">Janela da data de criação do contrato. Sem ela o primeiro envio varreria o histórico inteiro.</div>
+        </div>
+        <div class="mf">
+          <label>Autorizante (opcional)</label>
+          <input type="number" id="mWppFuncAprovacao" value="0" min="0" step="1">
+          <div class="hint">Código do funcionário autorizante. <b>Zero não filtra</b> — cada destinatário recebe o que ele mesmo aprova.</div>
         </div>
       </div>
     </div>
@@ -2298,6 +2314,7 @@ function atualizarCamposTipoWpp() {
   document.getElementById('camposVariacaoWpp').style.display = tipo === 'variacao_preco' ? '' : 'none';
   document.getElementById('camposContratoWpp').style.display = tipo === 'contrato_limite' ? '' : 'none';
   document.getElementById('camposOcAprovadaWpp').style.display = tipo === 'oc_aprovada_alto_valor' ? '' : 'none';
+  document.getElementById('camposContratoAprovacaoWpp').style.display = tipo === 'contrato_aprovacao' ? '' : 'none';
   // Recorrente é configurado por intervalo; os demais, por dia da semana e hora.
   document.getElementById('camposSemanalWpp').style.display = recorrente ? 'none' : '';
   document.getElementById('camposIntervaloWpp').style.display = recorrente ? '' : 'none';
@@ -2320,6 +2337,8 @@ function abrirNovoWpp() {
   document.getElementById('mWppHora').value = '08:00';
   document.getElementById('mWppIntervalo').value = '10';
   document.getElementById('mWppVariacaoMinima').value = '10';
+  document.getElementById('mWppDiasCriacao').value = '30';
+  document.getElementById('mWppFuncAprovacao').value = '0';
   document.getElementById('mWppPercentualContrato').value = '70';
   document.getElementById('mWppDataVcto').value = '2026-03-01';
   document.getElementById('mWppValorMinimoOc').value = '30000';
@@ -2347,6 +2366,8 @@ async function abrirEditarWpp(id) {
     document.getElementById('mWppHora').value = a.horaEnvio || '08:00';
     document.getElementById('mWppIntervalo').value = a.intervaloMinutos || 10;
     document.getElementById('mWppVariacaoMinima').value = p.variacaoMinima != null ? p.variacaoMinima : 10;
+    document.getElementById('mWppDiasCriacao').value = p.diasCriacao != null ? p.diasCriacao : 30;
+    document.getElementById('mWppFuncAprovacao').value = p.funcaprovacao != null ? p.funcaprovacao : 0;
     document.getElementById('mWppPercentualContrato').value = p.percentualMinimo != null ? p.percentualMinimo : 70;
     document.getElementById('mWppDataVcto').value = p.dataVcto || '2026-03-01';
     document.getElementById('mWppValorMinimoOc').value = p.valorMinimo != null ? p.valorMinimo : 30000;
@@ -2397,6 +2418,9 @@ async function salvarWpp() {
             dataVcto: document.getElementById('mWppDataVcto').value }
     : tipoRelatorio === 'oc_aprovada_alto_valor'
         ? { valorMinimo: numeroOu('mWppValorMinimoOc', 30000) }
+    : tipoRelatorio === 'contrato_aprovacao'
+        ? { diasCriacao: numeroOu('mWppDiasCriacao', 30),
+            funcaprovacao: numeroOu('mWppFuncAprovacao', 0) }
     : {};
 
   // Só um dos dois modos de recorrência vai no payload; o backend usa a

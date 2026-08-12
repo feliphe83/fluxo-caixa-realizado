@@ -211,7 +211,8 @@ public class RelatorioAgendadoDAO {
                     m.put("id", rs.getInt("id"));
                     m.put("nome", rs.getString("nome"));
                     m.put("telefone", rs.getString("telefone"));
-                    // Só o alerta de ordem de compra usa: identifica o aprovador no ERP.
+                    // Identifica o aprovador no ERP. Usado pelos alertas que
+                    // consultam por alçada: ordem de compra e contrato para aprovação.
                     Integer idLogonErp = rs.getInt("id_logon_erp");
                     if (rs.wasNull()) idLogonErp = null;
                     m.put("idLogonErp", idLogonErp);
