@@ -38,6 +38,12 @@ import java.util.logging.Logger;
  * delas nunca seria avisada.
  *
  * POSSUI_PERMISSAO_ETAPA é calculada e NÃO filtra, como na consulta original.
+ *
+ * As cláusulas "(COD_FORNECEDOR = 0 OR 0 = 0)" e "(PROVISAO = 'S' OR 'S' =
+ * 'S')" ficaram como estavam. São sempre verdadeiras — é onde a tela do ERP
+ * encaixa o fornecedor e a provisão escolhidos — e não mudam linha nenhuma,
+ * mas mantê-las deixa a diferença para a consulta original restrita às três
+ * mudanças acima, que é o que importa quando alguém for comparar as duas.
  */
 public class ParcelaContratoAprovacaoDAO {
 
@@ -190,12 +196,14 @@ public class ParcelaContratoAprovacaoDAO {
             AND    TIPOCONTASPAGAR.COD_GRUPOEMPRESA              = PARCELASCONTRATO.COD_GRUPOEMPRESA
             AND    PARCELASCONTASPAGAR.COD_FORNECEDOR            = FORNECEDOR.COD_FORNECEDOR
             AND    FORNECEDOR.COD_PESSOA                         = PESSOA.COD_PESSOA
+            AND    (PARCELASCONTASPAGAR.COD_FORNECEDOR           = 0 OR 0 = 0)
             AND    PARCELASCONTASPAGAR.ORCAMENTO_ESTOURADO      <> 'S'
             AND    (
                     ((PARCELASCONTASPAGAR.COD_SITUACAO = RH.C('SITUACAO_AUTORIZANTE')) AND ('S' = 'N')) OR
                     ((PARCELASCONTASPAGAR.COD_SITUACAO IN (RH.C('SITUACAO_AUTORIZANTE'), RH.C('SITUACAOPARCELA'))) AND ('S' = 'S')) OR
                     ((PARCELASCONTASPAGAR.COD_SITUACAO = NVL(RH.C('SIT_REPROVA_ALCADA','S'),0)) AND ('S' = 'S'))
                    )
+            AND    (PARCELASCONTASPAGAR.PROVISAO = 'S' OR 'S' = 'S')
             AND    (FINANCEIRO.PARCELASCONTASPAGAR.APROVADORCONTRATO IS NULL AND FINANCEIRO.PARCELASCONTASPAGAR.DATAAPROVACAOCONTRATO IS NULL)
             AND    PARCELASCONTASPAGAR.DATAPGTO             IS NULL
             AND    PARCELASCONTASPAGAR.PARCELA              = PARCELASCONTRATO.PARCELA
@@ -355,7 +363,9 @@ public class ParcelaContratoAprovacaoDAO {
             AND    CONTRATOADIANTAMENTO.COD_GRUPOEMPRESA    = PARCELASCONTASPAGAR.COD_GRUPOEMPRESA
             AND    CONTRATOADIANTAMENTO.NUMEROCONTRATO      = PARCELASCONTASPAGAR.DOCUMENTO
             AND    CONTRATOADIANTAMENTO.PARCELA             = PARCELASCONTASPAGAR.PARCELA
+            AND    (PARCELASCONTASPAGAR.COD_FORNECEDOR      = 0 OR 0 = 0)
             AND    PARCELASCONTASPAGAR.ORCAMENTO_ESTOURADO  <> 'S'
+            AND    (PARCELASCONTASPAGAR.PROVISAO            = 'S' OR 'S' = 'S')
             AND    (FINANCEIRO.PARCELASCONTASPAGAR.APROVADORCONTRATO IS NULL AND FINANCEIRO.PARCELASCONTASPAGAR.DATAAPROVACAOCONTRATO IS NULL)
             AND    PARCELASCONTASPAGAR.DATAPGTO             IS NULL
             AND    PARCELASCONTASPAGAR.DATAVCTO            >= ?
