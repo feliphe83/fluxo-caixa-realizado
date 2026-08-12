@@ -4,9 +4,11 @@ import br.com.lopes.fluxo.util.OracleConnectionUtil;
 import br.com.lopes.fluxo.util.RowMapperUtil;
 
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
@@ -20,8 +22,10 @@ import java.util.logging.Logger;
  *
  * 1. As duas datas fixas viraram TRUNC(SYSDATE) — a original tinha o dia em
  *    que foi escrita, e no dia seguinte já traria a vigência errada.
- * 2. A data de criação virou uma janela em dias, para o alerta não varrer o
- *    contrato de dois anos atrás na primeira execução.
+ * 2. A data de criação virou uma data de corte configurável (>=), para o
+ *    alerta não varrer o contrato de dois anos atrás na primeira execução.
+ *    Fica no agendamento em vez de fixa na consulta: mudá-la não pode exigir
+ *    deploy.
  * 3. O 324 do fn_verificasupervisorde e do fn_funcionarioaprovaetapa virou
  *    bind: é o id_logon do ERP de quem vai receber, do mesmo jeito que o
  *    alerta de variação de preço já faz. Assim cada destinatário recebe o que
@@ -38,7 +42,7 @@ public class ContratoAprovacaoDAO {
 
     private static final Logger LOG = Logger.getLogger(ContratoAprovacaoDAO.class.getName());
 
-    /** Binds, nesta ordem: diasCriacao, idLogon, funcaprovacao, funcaprovacao, idLogon. */
+    /** Binds, nesta ordem: dataCriacao, idLogon, funcaprovacao, funcaprovacao, idLogon. */
     private static final String SQL = """
         select tmp.numerocontrato
              , tmp.datainicio
@@ -177,7 +181,7 @@ public class ContratoAprovacaoDAO {
             and    contrato.cod_filial                   = 1
             and    contrato.cod_empresa                  = 1
             and    contrato.cod_grupoempresa             = 1
-            and    contrato.data_criacao                 > TRUNC(SYSDATE) - ?
+            and    contrato.data_criacao                >= ?
         ) tmp
         where  segurancanovo.fn_verificasupervisorde(tmp.cod_grupoempresa,
                                                      tmp.cod_empresa,
@@ -204,14 +208,14 @@ public class ContratoAprovacaoDAO {
      * Contratos sem nenhuma aprovação que este usuário pode aprovar.
      *
      * @param idLogon       id_logon do ERP, de fc_usuario.id_logon_erp
-     * @param diasCriacao   quantos dias para trás olhar a data de criação
+     * @param dataCriacao    só considera contratos criados a partir desta data
      * @param funcaprovacao prende ao autorizante informado; 0 não filtra
      */
-    public List<Map<String, Object>> buscarSemAprovacao(int idLogon, int diasCriacao, int funcaprovacao) {
+    public List<Map<String, Object>> buscarSemAprovacao(int idLogon, LocalDate dataCriacao, int funcaprovacao) {
         try (Connection conn = OracleConnectionUtil.getConnection();
              PreparedStatement ps = conn.prepareStatement(SQL)) {
 
-            ps.setInt(1, diasCriacao);
+            ps.setDate(1, Date.valueOf(dataCriacao));
             ps.setInt(2, idLogon);
             ps.setInt(3, funcaprovacao);
             ps.setInt(4, funcaprovacao);
@@ -223,7 +227,7 @@ public class ContratoAprovacaoDAO {
 
         } catch (SQLException e) {
             LOG.log(Level.SEVERE, "Erro ao buscar contratos sem aprovação (idLogon=" + idLogon
-                    + ", diasCriacao=" + diasCriacao + ", funcaprovacao=" + funcaprovacao
+                    + ", dataCriacao=" + dataCriacao + ", funcaprovacao=" + funcaprovacao
                     + "): " + e.getMessage(), e);
             throw new RuntimeException("Falha na consulta de contratos para aprovação: " + e.getMessage(), e);
         }

@@ -5,6 +5,7 @@ import br.com.lopes.fluxo.dao.ContratoAprovacaoDAO;
 import br.com.lopes.fluxo.util.EvolutionApiUtil;
 import com.google.gson.JsonObject;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -26,7 +27,7 @@ import java.util.logging.Logger;
  * {@link #TIPO} separando-os. A chave é contrato + data de início: uma
  * vigência nova do mesmo contrato é um aviso novo, porque é outra aprovação.
  *
- * parametros: {"diasCriacao": 30, "funcaprovacao": 0}
+ * parametros: {"dataCriacao": "2026-08-01", "funcaprovacao": 0}
  */
 public class AlertaContratoAprovacaoHandler implements RelatorioAgendadoHandler {
 
@@ -34,8 +35,9 @@ public class AlertaContratoAprovacaoHandler implements RelatorioAgendadoHandler 
 
     public static final String TIPO = "CONTRATO APROVACAO";
 
-    /** Janela da data de criação. Sem ela, a primeira execução varre o histórico inteiro. */
-    private static final int DIAS_CRIACAO_PADRAO = 30;
+    /** Data de corte da criação do contrato. Sem ela, a primeira execução
+     *  varre o histórico inteiro. */
+    private static final LocalDate DATA_CRIACAO_PADRAO = LocalDate.of(2026, 8, 1);
 
     /** Teto de mensagens por destinatário em um ciclo, pra uma enxurrada não virar spam. */
     private static final int MAX_MENSAGENS_POR_CICLO = 15;
@@ -45,8 +47,8 @@ public class AlertaContratoAprovacaoHandler implements RelatorioAgendadoHandler 
 
     @Override
     public String executar(JsonObject parametros, List<Map<String, Object>> destinatarios, long idUsuarioCriacao) throws Exception {
-        int diasCriacao   = inteiro(parametros, "diasCriacao", DIAS_CRIACAO_PADRAO, 1);
-        int funcaprovacao = inteiro(parametros, "funcaprovacao", 0, 0);
+        LocalDate dataCriacao = dataCriacao(parametros);
+        int funcaprovacao     = inteiro(parametros, "funcaprovacao", 0, 0);
 
         int totalAvisados = 0, semLogon = 0;
         List<String> falhas = new ArrayList<>();
@@ -63,7 +65,7 @@ public class AlertaContratoAprovacaoHandler implements RelatorioAgendadoHandler 
             }
             try {
                 List<Map<String, Object>> contratos =
-                        erp.buscarSemAprovacao(((Number) idLogon).intValue(), diasCriacao, funcaprovacao);
+                        erp.buscarSemAprovacao(((Number) idLogon).intValue(), dataCriacao, funcaprovacao);
                 totalAvisados += avisar(destinatario, contratos);
             } catch (Exception e) {
                 // Falha de um destinatário não pode travar os demais.
@@ -138,6 +140,18 @@ public class AlertaContratoAprovacaoHandler implements RelatorioAgendadoHandler 
         String nome = txt(destinatario.get("nome"));
         String msg = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
         return nome + ": " + msg;
+    }
+
+    private static LocalDate dataCriacao(JsonObject parametros) {
+        if (parametros == null || !parametros.has("dataCriacao") || parametros.get("dataCriacao").isJsonNull()) {
+            return DATA_CRIACAO_PADRAO;
+        }
+        try {
+            return LocalDate.parse(parametros.get("dataCriacao").getAsString());
+        } catch (Exception e) {
+            LOG.warning("dataCriacao inválida no agendamento, usando " + DATA_CRIACAO_PADRAO + ": " + e.getMessage());
+            return DATA_CRIACAO_PADRAO;
+        }
     }
 
     /** Lê um inteiro dos parâmetros, recusando valor abaixo do mínimo aceitável. */

@@ -899,9 +899,9 @@
     <div id="camposContratoAprovacaoWpp" style="display:none">
       <div class="mf-grid">
         <div class="mf">
-          <label>Criados nos últimos (dias)</label>
-          <input type="number" id="mWppDiasCriacao" value="30" min="1" max="3650" step="1">
-          <div class="hint">Janela da data de criação do contrato. Sem ela o primeiro envio varreria o histórico inteiro.</div>
+          <label>Criados a partir de</label>
+          <input type="date" id="mWppDataCriacao" value="2026-08-01">
+          <div class="hint">Só entram contratos criados nesta data ou depois. Sem ela o primeiro envio varreria o histórico inteiro.</div>
         </div>
         <div class="mf">
           <label>Autorizante (opcional)</label>
@@ -2337,7 +2337,7 @@ function abrirNovoWpp() {
   document.getElementById('mWppHora').value = '08:00';
   document.getElementById('mWppIntervalo').value = '10';
   document.getElementById('mWppVariacaoMinima').value = '10';
-  document.getElementById('mWppDiasCriacao').value = '30';
+  document.getElementById('mWppDataCriacao').value = '2026-08-01';
   document.getElementById('mWppFuncAprovacao').value = '0';
   document.getElementById('mWppPercentualContrato').value = '70';
   document.getElementById('mWppDataVcto').value = '2026-03-01';
@@ -2366,7 +2366,7 @@ async function abrirEditarWpp(id) {
     document.getElementById('mWppHora').value = a.horaEnvio || '08:00';
     document.getElementById('mWppIntervalo').value = a.intervaloMinutos || 10;
     document.getElementById('mWppVariacaoMinima').value = p.variacaoMinima != null ? p.variacaoMinima : 10;
-    document.getElementById('mWppDiasCriacao').value = p.diasCriacao != null ? p.diasCriacao : 30;
+    document.getElementById('mWppDataCriacao').value = p.dataCriacao || '2026-08-01';
     document.getElementById('mWppFuncAprovacao').value = p.funcaprovacao != null ? p.funcaprovacao : 0;
     document.getElementById('mWppPercentualContrato').value = p.percentualMinimo != null ? p.percentualMinimo : 70;
     document.getElementById('mWppDataVcto').value = p.dataVcto || '2026-03-01';
@@ -2419,7 +2419,7 @@ async function salvarWpp() {
     : tipoRelatorio === 'oc_aprovada_alto_valor'
         ? { valorMinimo: numeroOu('mWppValorMinimoOc', 30000) }
     : tipoRelatorio === 'contrato_aprovacao'
-        ? { diasCriacao: numeroOu('mWppDiasCriacao', 30),
+        ? { dataCriacao: document.getElementById('mWppDataCriacao').value || '2026-08-01',
             funcaprovacao: numeroOu('mWppFuncAprovacao', 0) }
     : {};
 
