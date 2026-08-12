@@ -131,9 +131,7 @@ public class AlertaContratoAprovacaoHandler implements RelatorioAgendadoHandler 
              + "💰 *Valor total:* R$ " + FormatoMensagem.valor(c.get("valor_total_ctr")) + "\n"
              + "🔁 *Parcelas:* " + txt(c.get("qtdeparcelas")) + " (" + txt(c.get("fixovariavel")) + ")\n"
              + "🎯 *Objeto de custo:* " + txt(c.get("desc_objetocusto")) + "\n"
-             + "📌 *Empenho:* " + txt(c.get("desc_empenho")) + "\n"
-             + "🧑‍💼 *Autorizante:* " + txt(c.get("nome_autorizante")) + "\n\n"
-             + "⚠️ Este contrato ainda não passou por nenhuma aprovação.";
+             + "📌 *Empenho:* " + txt(c.get("desc_empenho"));
     }
 
     private static String descreverFalha(Map<String, Object> destinatario, Exception e) {
