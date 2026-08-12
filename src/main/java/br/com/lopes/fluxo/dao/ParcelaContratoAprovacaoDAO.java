@@ -16,7 +16,7 @@ import java.util.logging.Logger;
  * Parcelas de contrato aguardando aprovação.
  *
  * A consulta é a da área financeira, palavra por palavra — inclusive o
- * id_logon 324, o formulário 8247, o aprovador 16417 e a data de 01/08/2026.
+ * id_logon 324, o formulário 8247, o aprovador 19424 e a data de 01/08/2026.
  * Nada aqui é parametrizado: o alerta manda para quem for marcado como
  * destinatário no agendamento, e todos recebem a mesma lista.
  *
@@ -367,7 +367,7 @@ public class ParcelaContratoAprovacaoDAO {
                                                     , 0
                                                     , 0
                                                     , 8247) = 'T'              /* pn_cod_formulario */
-          AND   TMP.COD_FUNC_APROVADOR = 16417
+          AND   TMP.COD_FUNC_APROVADOR = 19424
         )
         ORDER BY DATAVCTO, DOCUMENTO, PARCELA
         """;
