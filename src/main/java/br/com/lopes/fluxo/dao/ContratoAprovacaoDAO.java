@@ -30,10 +30,8 @@ import java.util.logging.Logger;
  *    bind: é o id_logon do ERP de quem vai receber, do mesmo jeito que o
  *    alerta de variação de preço já faz. Assim cada destinatário recebe o que
  *    ELE aprova, e não a lista de outra pessoa.
- * 4. O filtro funcaprovacao = 19424 virou opcional. Ele estava marcado como
- *    "Novo Filtro Adicionado" na consulta original e prende o resultado a um
- *    único autorizante; deixado fixo, todo destinatário receberia a lista
- *    daquela pessoa. Zero desliga o filtro.
+ * O filtro do autorizante ficou fixo em 19424, como na consulta original — o
+ * mesmo código usado no alerta de parcelas.
  *
  * O 8258 continua fixo: é o código da rotina de aprovação de contrato, como o
  * 7871 é o da cotação em {@link VariacaoPrecoDAO}.
@@ -42,7 +40,7 @@ public class ContratoAprovacaoDAO {
 
     private static final Logger LOG = Logger.getLogger(ContratoAprovacaoDAO.class.getName());
 
-    /** Binds, nesta ordem: dataCriacao, idLogon, funcaprovacao, funcaprovacao, idLogon. */
+    /** Binds, nesta ordem: dataCriacao, idLogon, idLogon. */
     private static final String SQL = """
         select tmp.numerocontrato
              , tmp.datainicio
@@ -192,7 +190,7 @@ public class ContratoAprovacaoDAO {
                                                      0,
                                                      0,
                                                      8258) = 'T'
-        and   (? = 0 or tmp.cod_autorizante = ?)
+        and    tmp.cod_autorizante = 19424
         and    FINANCEIRO.fn_funcionarioaprovaetapa(tmp.cod_grupoempresa
                                                   , tmp.cod_empresa
                                                   , tmp.cod_filial
@@ -208,18 +206,15 @@ public class ContratoAprovacaoDAO {
      * Contratos sem nenhuma aprovação que este usuário pode aprovar.
      *
      * @param idLogon       id_logon do ERP, de fc_usuario.id_logon_erp
-     * @param dataCriacao    só considera contratos criados a partir desta data
-     * @param funcaprovacao prende ao autorizante informado; 0 não filtra
+     * @param dataCriacao   só considera contratos criados a partir desta data
      */
-    public List<Map<String, Object>> buscarSemAprovacao(int idLogon, LocalDate dataCriacao, int funcaprovacao) {
+    public List<Map<String, Object>> buscarSemAprovacao(int idLogon, LocalDate dataCriacao) {
         try (Connection conn = OracleConnectionUtil.getConnection();
              PreparedStatement ps = conn.prepareStatement(SQL)) {
 
             ps.setDate(1, Date.valueOf(dataCriacao));
             ps.setInt(2, idLogon);
-            ps.setInt(3, funcaprovacao);
-            ps.setInt(4, funcaprovacao);
-            ps.setInt(5, idLogon);
+            ps.setInt(3, idLogon);
 
             try (ResultSet rs = ps.executeQuery()) {
                 return RowMapperUtil.toList(rs);
@@ -227,8 +222,7 @@ public class ContratoAprovacaoDAO {
 
         } catch (SQLException e) {
             LOG.log(Level.SEVERE, "Erro ao buscar contratos sem aprovação (idLogon=" + idLogon
-                    + ", dataCriacao=" + dataCriacao + ", funcaprovacao=" + funcaprovacao
-                    + "): " + e.getMessage(), e);
+                    + ", dataCriacao=" + dataCriacao + "): " + e.getMessage(), e);
             throw new RuntimeException("Falha na consulta de contratos para aprovação: " + e.getMessage(), e);
         }
     }

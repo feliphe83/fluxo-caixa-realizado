@@ -27,7 +27,7 @@ import java.util.logging.Logger;
  * {@link #TIPO} separando-os. A chave é contrato + data de início: uma
  * vigência nova do mesmo contrato é um aviso novo, porque é outra aprovação.
  *
- * parametros: {"dataCriacao": "2026-08-01", "funcaprovacao": 0}
+ * parametros: {"dataCriacao": "2026-08-01"}
  */
 public class AlertaContratoAprovacaoHandler implements RelatorioAgendadoHandler {
 
@@ -48,7 +48,6 @@ public class AlertaContratoAprovacaoHandler implements RelatorioAgendadoHandler 
     @Override
     public String executar(JsonObject parametros, List<Map<String, Object>> destinatarios, long idUsuarioCriacao) throws Exception {
         LocalDate dataCriacao = dataCriacao(parametros);
-        int funcaprovacao     = inteiro(parametros, "funcaprovacao", 0, 0);
 
         int totalAvisados = 0, semLogon = 0;
         List<String> falhas = new ArrayList<>();
@@ -65,7 +64,7 @@ public class AlertaContratoAprovacaoHandler implements RelatorioAgendadoHandler 
             }
             try {
                 List<Map<String, Object>> contratos =
-                        erp.buscarSemAprovacao(((Number) idLogon).intValue(), dataCriacao, funcaprovacao);
+                        erp.buscarSemAprovacao(((Number) idLogon).intValue(), dataCriacao);
                 totalAvisados += avisar(destinatario, contratos);
             } catch (Exception e) {
                 // Falha de um destinatário não pode travar os demais.
@@ -149,24 +148,6 @@ public class AlertaContratoAprovacaoHandler implements RelatorioAgendadoHandler 
         } catch (Exception e) {
             LOG.warning("dataCriacao inválida no agendamento, usando " + DATA_CRIACAO_PADRAO + ": " + e.getMessage());
             return DATA_CRIACAO_PADRAO;
-        }
-    }
-
-    /** Lê um inteiro dos parâmetros, recusando valor abaixo do mínimo aceitável. */
-    private static int inteiro(JsonObject parametros, String campo, int padrao, int minimo) {
-        if (parametros == null || !parametros.has(campo) || parametros.get(campo).isJsonNull()) {
-            return padrao;
-        }
-        try {
-            int v = parametros.get(campo).getAsInt();
-            if (v < minimo) {
-                LOG.warning(campo + "=" + v + " no agendamento é inválido; usando " + padrao + ".");
-                return padrao;
-            }
-            return v;
-        } catch (Exception e) {
-            LOG.warning(campo + " inválido no agendamento, usando " + padrao + ": " + e.getMessage());
-            return padrao;
         }
     }
 
