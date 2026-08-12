@@ -5,7 +5,6 @@ import br.com.lopes.fluxo.dao.ParcelaContratoAprovacaoDAO;
 import br.com.lopes.fluxo.util.EvolutionApiUtil;
 import com.google.gson.JsonObject;
 
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -17,24 +16,21 @@ import java.util.logging.Logger;
  * tipo_relatorio = "parcela_contrato_aprovacao" — avisa por WhatsApp as
  * parcelas de contrato que ainda aguardam aprovação.
  *
- * Como o alerta de contrato para aprovação, este é POR PESSOA: a consulta
- * pergunta ao ERP o que aquele usuário aprova. Quem não tem id_logon_erp
- * cadastrado é pulado, com o motivo no log.
+ * A consulta é fixa, como veio da área financeira: uma lista só, igual para
+ * todos os destinatários marcados no agendamento. Não depende do cadastro de
+ * ninguém no ERP — quem for marcado, recebe.
  *
  * Cada parcela é avisada uma única vez, por destinatário. A chave é contrato
  * + parcela — não só a parcela, senão a "parcela 1" de dois contratos
  * diferentes seria a mesma coisa para o controle e uma delas nunca sairia.
  *
- * parametros: {"dataVcto": "2026-08-01", "funcAprovador": 0}
+ * Sem parâmetros.
  */
 public class AlertaParcelaContratoHandler implements RelatorioAgendadoHandler {
 
     private static final Logger LOG = Logger.getLogger(AlertaParcelaContratoHandler.class.getName());
 
     public static final String TIPO = "PARCELA CONTRATO APROVACAO";
-
-    /** Data de corte do vencimento. Sem ela a consulta varre o histórico inteiro. */
-    private static final LocalDate DATA_VCTO_PADRAO = LocalDate.of(2026, 8, 1);
 
     /** Teto de mensagens por destinatário em um ciclo, pra uma enxurrada não virar spam. */
     private static final int MAX_MENSAGENS_POR_CICLO = 15;
@@ -44,23 +40,17 @@ public class AlertaParcelaContratoHandler implements RelatorioAgendadoHandler {
 
     @Override
     public String executar(JsonObject parametros, List<Map<String, Object>> destinatarios, long idUsuarioCriacao) throws Exception {
-        LocalDate dataVcto = dataVcto(parametros);
-        int funcAprovador  = inteiro(parametros, "funcAprovador", 0, 0);
+        // Uma consulta só para todos: a lista não depende de quem recebe —
+        // o que muda de um destinatário para outro é apenas o que cada um
+        // já viu.
+        List<Map<String, Object>> parcelas = erp.buscarSemAprovacao();
+        if (parcelas.isEmpty()) return "Nenhuma parcela aguardando aprovação.";
 
-        int totalAvisados = 0, semLogon = 0;
+        int totalAvisados = 0;
         List<String> falhas = new ArrayList<>();
 
         for (Map<String, Object> destinatario : destinatarios) {
-            Object idLogon = destinatario.get("idLogonErp");
-            if (!(idLogon instanceof Number) || ((Number) idLogon).intValue() <= 0) {
-                LOG.info("Alerta de parcela para aprovação: " + destinatario.get("nome")
-                        + " está sem id_logon_erp cadastrado e foi pulado.");
-                semLogon++;
-                continue;
-            }
             try {
-                List<Map<String, Object>> parcelas =
-                        erp.buscarSemAprovacao(((Number) idLogon).intValue(), dataVcto, funcAprovador);
                 totalAvisados += avisar(destinatario, parcelas);
             } catch (Exception e) {
                 // Falha de um destinatário não pode travar os demais.
@@ -72,10 +62,9 @@ public class AlertaParcelaContratoHandler implements RelatorioAgendadoHandler {
         if (!falhas.isEmpty()) {
             throw new RuntimeException(String.join(" | ", falhas));
         }
-        if (totalAvisados > 0) return totalAvisados + " parcela(s) avisada(s).";
-        return semLogon > 0
-                ? "Nenhuma parcela nova para aprovação (" + semLogon + " destinatário(s) sem id_logon_erp)."
-                : "Nenhuma parcela nova para aprovação.";
+        return totalAvisados == 0
+                ? "Nenhuma parcela nova para aprovação."
+                : totalAvisados + " parcela(s) avisada(s).";
     }
 
     /** Contrato + parcela: a parcela sozinha se repete entre contratos. */
@@ -141,35 +130,6 @@ public class AlertaParcelaContratoHandler implements RelatorioAgendadoHandler {
         if ("V".equalsIgnoreCase(s)) return "Variável";
         if ("F".equalsIgnoreCase(s)) return "Fixo";
         return s;
-    }
-
-    private static LocalDate dataVcto(JsonObject parametros) {
-        if (parametros == null || !parametros.has("dataVcto") || parametros.get("dataVcto").isJsonNull()) {
-            return DATA_VCTO_PADRAO;
-        }
-        try {
-            return LocalDate.parse(parametros.get("dataVcto").getAsString());
-        } catch (Exception e) {
-            LOG.warning("dataVcto inválida no agendamento, usando " + DATA_VCTO_PADRAO + ": " + e.getMessage());
-            return DATA_VCTO_PADRAO;
-        }
-    }
-
-    private static int inteiro(JsonObject parametros, String campo, int padrao, int minimo) {
-        if (parametros == null || !parametros.has(campo) || parametros.get(campo).isJsonNull()) {
-            return padrao;
-        }
-        try {
-            int v = parametros.get(campo).getAsInt();
-            if (v < minimo) {
-                LOG.warning(campo + "=" + v + " no agendamento é inválido; usando " + padrao + ".");
-                return padrao;
-            }
-            return v;
-        } catch (Exception e) {
-            LOG.warning(campo + " inválido no agendamento, usando " + padrao + ": " + e.getMessage());
-            return padrao;
-        }
     }
 
     private static String descreverFalha(Map<String, Object> destinatario, Exception e) {

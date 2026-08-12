@@ -4,11 +4,9 @@ import br.com.lopes.fluxo.util.OracleConnectionUtil;
 import br.com.lopes.fluxo.util.RowMapperUtil;
 
 import java.sql.Connection;
-import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
@@ -17,39 +15,22 @@ import java.util.logging.Logger;
 /**
  * Parcelas de contrato aguardando aprovação.
  *
- * A consulta é a que a área financeira usa — duas pernas em UNION ALL, a
- * segunda para os adiantamentos — com três mudanças, todas em trechos que
- * estavam presos a uma data e a uma pessoa:
+ * A consulta é a da área financeira, palavra por palavra — inclusive o
+ * id_logon 324, o formulário 8247, o aprovador 16417 e a data de 01/08/2026.
+ * Nada aqui é parametrizado: o alerta manda para quem for marcado como
+ * destinatário no agendamento, e todos recebem a mesma lista.
  *
- * 1. As duas datas de vencimento (uma em cada perna do UNION) viraram bind
- *    da data de corte do agendamento. Fixas na consulta, mudar o recorte
- *    exigiria deploy.
- * 2. O 324 do fn_funcionarioaprovaetapa e do fn_verificasupervisorde virou
- *    bind: é o id_logon do ERP de quem vai receber. Assim cada destinatário
- *    recebe as parcelas que ELE aprova.
- * 3. O COD_FUNC_APROVADOR = 16417 virou opcional, com zero desligando o
- *    filtro — fixo, todo destinatário receberia a lista daquela pessoa.
- *
- * O 8247 continua fixo: é o código do formulário de aprovação de parcela.
- *
- * DOCUMENTO foi acrescentado à lista de colunas do select de fora. A original
- * trazia só a parcela, e sem o número do contrato duas parcelas "1" de
- * contratos diferentes seriam a mesma coisa para o controle de envio — uma
- * delas nunca seria avisada.
- *
- * POSSUI_PERMISSAO_ETAPA é calculada e NÃO filtra, como na consulta original.
- *
- * As cláusulas "(COD_FORNECEDOR = 0 OR 0 = 0)" e "(PROVISAO = 'S' OR 'S' =
- * 'S')" ficaram como estavam. São sempre verdadeiras — é onde a tela do ERP
- * encaixa o fornecedor e a provisão escolhidos — e não mudam linha nenhuma,
- * mas mantê-las deixa a diferença para a consulta original restrita às três
- * mudanças acima, que é o que importa quando alguém for comparar as duas.
+ * A única diferença para a consulta original é DOCUMENTO na lista de colunas
+ * do select de fora. Sem o número do contrato, a "parcela 1" de dois
+ * contratos diferentes seria a mesma chave no controle de envio e uma delas
+ * nunca seria avisada — é o que faz o "enviar uma vez só" funcionar. O ";"
+ * do fim também saiu, porque o JDBC não aceita.
  */
 public class ParcelaContratoAprovacaoDAO {
 
     private static final Logger LOG = Logger.getLogger(ParcelaContratoAprovacaoDAO.class.getName());
 
-    /** Binds: idLogon, dataVcto (perna 1), dataVcto (perna 2), idLogon, funcAprovador, funcAprovador. */
+    /** Sem binds: a consulta é fixa, como veio da área financeira. */
     private static final String SQL = """
         select DOCUMENTO, DATAVCTO, PARCELA, NOME_FORNECEDOR, VALOR_LIQUIDO,
                DESC_OBJETOCUSTO, DESC_EMPENHO, FIXOVARIAVEL, OBSERVACAO
@@ -59,7 +40,7 @@ public class ParcelaContratoAprovacaoDAO {
                                                      , tmp.cod_empresa
                                                      , tmp.cod_filial
                                                      , tmp.documento
-                                                     , ?                       /* pn_id_logon */
+                                                     , 324                     /* pn_id_logon */
                                                      , 8247                    /* pn_cod_formulario */
                                                      , 'A'
                                                      , ''
@@ -210,7 +191,7 @@ public class ParcelaContratoAprovacaoDAO {
             AND    PARCELASCONTASPAGAR.DOCUMENTO            = PARCELASCONTRATO.NUMEROCONTRATO
             AND    PARCELASCONTASPAGAR.COD_TIPOCONTASPAGAR  = PARCELASCONTRATO.COD_TIPOCONTASPAGAR
             AND    PARCELASCONTASPAGAR.COD_GRUPOEMPRESA     = PARCELASCONTRATO.COD_GRUPOEMPRESA
-            AND    PARCELASCONTASPAGAR.DATAVCTO            >= ?
+            AND    PARCELASCONTASPAGAR.DATAVCTO            >= TO_DATE('01/08/2026', 'DD/MM/YYYY')
             AND    PARCELASCONTRATO.COD_GRUPOEMPRESA        = 1
             AND    PARCELASCONTRATO.COD_EMPRESA             = 1
             AND    PARCELASCONTRATO.COD_FILIAL              = 1
@@ -368,7 +349,7 @@ public class ParcelaContratoAprovacaoDAO {
             AND    (PARCELASCONTASPAGAR.PROVISAO            = 'S' OR 'S' = 'S')
             AND    (FINANCEIRO.PARCELASCONTASPAGAR.APROVADORCONTRATO IS NULL AND FINANCEIRO.PARCELASCONTASPAGAR.DATAAPROVACAOCONTRATO IS NULL)
             AND    PARCELASCONTASPAGAR.DATAPGTO             IS NULL
-            AND    PARCELASCONTASPAGAR.DATAVCTO            >= ?
+            AND    PARCELASCONTASPAGAR.DATAVCTO            >= TO_DATE('01/08/2026', 'DD/MM/YYYY')
             AND    PARCELASCONTASPAGAR.COD_TIPOCONTASPAGAR  IN (PARAMETRO_FINANCEIRO.COD_TIPOCONTRATO_ADIANTAMENTO, PARAMETRO_FINANCEIRO.COD_TIPOCONTRATO_ADIANT_REC)
             AND    PARCELASCONTASPAGAR.COD_FILIAL           = PARAMETRO_FINANCEIRO.COD_FILIAL
             AND    PARCELASCONTASPAGAR.COD_EMPRESA          = PARAMETRO_FINANCEIRO.COD_EMPRESA
@@ -380,44 +361,27 @@ public class ParcelaContratoAprovacaoDAO {
           WHERE SEGURANCANOVO.FN_VERIFICASUPERVISORDE(TMP.COD_GRUPOEMPRESA
                                                     , TMP.COD_EMPRESA
                                                     , TMP.COD_FILIAL
-                                                    , ?                        /* pn_id_logon */
+                                                    , 324                      /* pn_id_logon */
                                                     , TMP.COD_OBJETOCUSTO
                                                     , TMP.COD_EMPENHO
                                                     , 0
                                                     , 0
                                                     , 8247) = 'T'              /* pn_cod_formulario */
-          AND   (? = 0 OR TMP.COD_FUNC_APROVADOR = ?)
+          AND   TMP.COD_FUNC_APROVADOR = 16417
         )
         ORDER BY DATAVCTO, DOCUMENTO, PARCELA
         """;
 
-    /**
-     * Parcelas sem aprovação que este usuário pode aprovar.
-     *
-     * @param idLogon       id_logon do ERP, de fc_usuario.id_logon_erp
-     * @param dataVcto      só considera parcelas vencendo a partir desta data
-     * @param funcAprovador prende ao funcionário aprovador informado; 0 não filtra
-     */
-    public List<Map<String, Object>> buscarSemAprovacao(int idLogon, LocalDate dataVcto, int funcAprovador) {
+    /** Parcelas de contrato aguardando aprovação — a lista é a mesma para todos. */
+    public List<Map<String, Object>> buscarSemAprovacao() {
         try (Connection conn = OracleConnectionUtil.getConnection();
-             PreparedStatement ps = conn.prepareStatement(SQL)) {
+             PreparedStatement ps = conn.prepareStatement(SQL);
+             ResultSet rs = ps.executeQuery()) {
 
-            Date data = Date.valueOf(dataVcto);
-            ps.setInt(1, idLogon);          // fn_funcionarioaprovaetapa
-            ps.setDate(2, data);            // perna 1 do UNION
-            ps.setDate(3, data);            // perna 2 do UNION
-            ps.setInt(4, idLogon);          // fn_verificasupervisorde
-            ps.setInt(5, funcAprovador);
-            ps.setInt(6, funcAprovador);
-
-            try (ResultSet rs = ps.executeQuery()) {
-                return RowMapperUtil.toList(rs);
-            }
+            return RowMapperUtil.toList(rs);
 
         } catch (SQLException e) {
-            LOG.log(Level.SEVERE, "Erro ao buscar parcelas de contrato sem aprovação (idLogon=" + idLogon
-                    + ", dataVcto=" + dataVcto + ", funcAprovador=" + funcAprovador
-                    + "): " + e.getMessage(), e);
+            LOG.log(Level.SEVERE, "Erro ao buscar parcelas de contrato sem aprovação: " + e.getMessage(), e);
             throw new RuntimeException("Falha na consulta de parcelas para aprovação: " + e.getMessage(), e);
         }
     }
