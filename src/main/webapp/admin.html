@@ -2130,16 +2130,17 @@ function fmtDataHoraWpp(s) {
 
 /** Tipos que rodam por intervalo (a cada N minutos) em vez de dia da semana + hora. */
 const TIPOS_RECORRENTES_WPP = ['oc_pendente', 'variacao_preco', 'divergencia_nf', 'contrato_limite',
-                               'contrato_vencendo', 'oc_aprovada_alto_valor'];
+                               'contrato_vencendo', 'oc_aprovada_alto_valor', 'contrato_aprovacao'];
 /** Tipos que dependem do código de logon do ERP no cadastro do destinatário.
  *  Divergência de NF e contrato no limite ficam de fora de propósito: essas
  *  consultas não têm alçada, todo destinatário recebe a mesma lista. */
-const TIPOS_COM_LOGON_ERP_WPP = ['oc_pendente', 'variacao_preco'];
+const TIPOS_COM_LOGON_ERP_WPP = ['oc_pendente', 'variacao_preco', 'contrato_aprovacao'];
 /** Intervalo sugerido ao criar cada tipo — só preenche o campo, dá pra mudar. */
 // O contrato de arrendamento entra numa janela de 90 dias: não muda de um
 // minuto pro outro, uma verificação por dia basta.
 const INTERVALO_PADRAO_WPP = {oc_pendente: 10, variacao_preco: 30, divergencia_nf: 30,
-                              contrato_limite: 30, contrato_vencendo: 1440, oc_aprovada_alto_valor: 30};
+                              contrato_limite: 30, contrato_vencendo: 1440, oc_aprovada_alto_valor: 30,
+                              contrato_aprovacao: 30};
 let RELATORIOS_WPP = [];
 let USUARIOS_WPP = [];
 
