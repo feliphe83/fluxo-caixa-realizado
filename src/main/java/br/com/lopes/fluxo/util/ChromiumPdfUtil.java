@@ -74,8 +74,21 @@ public final class ChromiumPdfUtil {
             + "ou configure a variável de ambiente CHROMIUM_BIN com o caminho do executável.");
     }
 
+    /** Quanto tempo simulado a página tem para carregar antes do PDF sair. */
+    private static final int TEMPO_VIRTUAL_PADRAO_MS = 8000;
+
     /** Gera o PDF da URL informada e devolve os bytes prontos (ex.: pra anexar no WhatsApp). */
     public static byte[] gerarPdf(String url) throws Exception {
+        return gerarPdf(url, TEMPO_VIRTUAL_PADRAO_MS);
+    }
+
+    /**
+     * @param tempoVirtualMs quanto esperar a página montar. Tela que consulta
+     *        o Oracle antes de desenhar precisa de mais que os 8s padrão —
+     *        estourar esse tempo não dá erro, sai um PDF pela metade, que é
+     *        pior porque parece que funcionou.
+     */
+    public static byte[] gerarPdf(String url, int tempoVirtualMs) throws Exception {
         String bin = binario();
         File tempPdf = File.createTempFile("relatorio-" + UUID.randomUUID(), ".pdf");
         File logSaida = File.createTempFile("chromium-saida-", ".log");
@@ -93,7 +106,7 @@ public final class ChromiumPdfUtil {
                 "--user-data-dir=" + perfilTemp,
                 "--print-to-pdf=" + tempPdf.getAbsolutePath(),
                 "--no-pdf-header-footer",
-                "--virtual-time-budget=8000",
+                "--virtual-time-budget=" + tempoVirtualMs,
                 url
             );
             pb.redirectErrorStream(true);
