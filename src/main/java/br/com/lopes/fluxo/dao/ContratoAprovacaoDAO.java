@@ -17,7 +17,7 @@ import java.util.logging.Logger;
 /**
  * Contratos que ainda não passaram por nenhuma aprovação.
  *
- * A consulta é a que a área financeira usa, com quatro mudanças, todas em
+ * A consulta é a que a área financeira usa, com três mudanças, todas em
  * trechos que estavam presos a um dia e a uma pessoa:
  *
  * 1. As duas datas fixas viraram TRUNC(SYSDATE) — a original tinha o dia em
@@ -30,6 +30,7 @@ import java.util.logging.Logger;
  *    bind: é o id_logon do ERP de quem vai receber, do mesmo jeito que o
  *    alerta de variação de preço já faz. Assim cada destinatário recebe o que
  *    ELE aprova, e não a lista de outra pessoa.
+ *
  * O filtro do autorizante ficou fixo em 19424, como na consulta original — o
  * mesmo código usado no alerta de parcelas.
  *
