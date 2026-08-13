@@ -164,7 +164,12 @@
 
   #cabecalhoImpressao { display: none; }
   #cabecalhoImpressao .titulo-rel { font-size: 14px; font-weight: 800; color: #0f2460; }
-  #cabecalhoImpressao .periodo-rel { font-size: 11px; color: #475569; margin-top: 2px; }
+  /* O período é o que se confere primeiro ao pegar o relatório na mão:
+     preto e em negrito, maior que o resto do cabeçalho. */
+  #cabecalhoImpressao .periodo-rel {
+    font-size: 13px; color: #000; font-weight: 700; margin-top: 4px;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
   #cabecalhoImpressao .fornecedor-rel { font-size: 11px; color: #475569; margin-top: 2px; font-weight: 600; }
 
   /* ===== RESUMO (relatório em PDF) ===== */
