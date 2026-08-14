@@ -24,6 +24,9 @@ import java.util.logging.*;
  * Versão atualizada: bloco "TRANSPORTE DE PESSOAL" usa
  * it.cod_fazenda_destino como cod_fazenda_origem (alias), e a condição
  * "o.geracusto = 'S'" foi removida (comentada) — conforme query fornecida.
+ *
+ * O bloco "AUTOMOTIVO" está desativado (comentado dentro de buildSQL), a
+ * pedido — o relatório não traz mais horas/km de apontamento automotivo.
  */
 @WebServlet("/api/controle-servicos")
 public class ServicosFornecedorServlet extends HttpServlet {
@@ -113,48 +116,55 @@ public class ServicosFornecedorServlet extends HttpServlet {
         "and a.cod_itemtabelapreco = rr.cod_tiposervico " +
         "group by a.data_apontamento, a.cod_fazenda, RR.COD_TIPOSERVICO, a.cod_funcionario, rr.descricao " +
 
-        "union " +
-        "select 'AUTOMOTIVO' tipo, tarefa origem, dt_apontamento, null cod_tipoequipamento, " +
-        "null descricaoequipamento, cod_equipamento, null desc_equipamento, Cod_Fazenda, " +
-        "agricola.fn_busca_nomeproprietario(cod_fazenda), null cod_servico, tarefa, null unidade, " +
-        "null numerocontrato, null parcela, sum(tot_hs) total_horas, (sum(tot_km) * max(valor)) valor1, " +
-        "max(DescObjetoCusto) descobjeto " +
-        "from ( " +
-        "Select Apontamento.Ano_Apontamento, Apontamento.Numero_Apontamento, Apontamento.Dt_Apontamento, " +
-        "to_char(to_date(apontamento.dt_apontamento,'dd/mm/yyyy'),'mm/yyyy') mes_ano, " +
-        "to_number(to_char(to_date(apontamento.dt_apontamento,'dd/mm/rrrr'),'rrrrmm')) mes_ano_numero, " +
-        "Apontamento.Cod_Funcionario, Itens_Apontamento.Cod_Fazenda, Itens_Apontamento.Cod_Cidade, " +
-        "Itens_Apontamento.Cod_Talhao, Itens_Apontamento.cod_implemento, itens_apontamento.cod_equipamento, " +
-        "Itens_Apontamento.Cod_OperacaoAgricola, VW_PESSOA.Nome, Fazenda.Descricao Fazenda, " +
-        "Cidade.Descricao Fazenda_original, " +
-        "objetocusto.negocio || '.' || objetocusto.processo || '.' || objetocusto.subprocesso || objetocusto.descricao DescObjetoCusto, " +
-        "OperacaoAgricola.Descricao Tarefa, Equipamento.Descricao, Itens_Apontamento.KM_INICIAL, Itens_Apontamento.KM_FINAL, " +
-        "itens_apontamento.km_final - itens_apontamento.km_inicial tot_km, Itens_Apontamento.HORAINICIAL, Itens_Apontamento.HORAFINAL, " +
-        "case when geral.hora_centesimal(itens_apontamento.horafinal) >= geral.hora_centesimal(itens_apontamento.horainicial) " +
-        "then geral.hora_centesimal(itens_apontamento.horafinal) - geral.hora_centesimal(itens_apontamento.horainicial) " +
-        "when geral.hora_centesimal(itens_apontamento.horafinal) < geral.hora_centesimal(itens_apontamento.horainicial) " +
-        "then (geral.hora_centesimal(itens_apontamento.horafinal) + 24) - geral.hora_centesimal(itens_apontamento.horainicial) " +
-        "end tot_hs, itens_apontamento.cod_fazenda_origem, fazenda_origem.descricao desc_fazenda_origem, at.valor valor " +
-        "From agricola.fazenda fazenda_origem, Automotivo.Apontamento Apontamento, Automotivo.Itens_Apontamento Itens_Apontamento, " +
-        "Automotivo.equipamento, Rh.VW_PESSOA, rh.objetocusto, Rh.OperacaoAgricola, RH.VW_PESSOA_FUNCIONARIO, RH.CIDADE, " +
-        "Agricola.fazenda, cpd.atividade_equipamento at " +
-        "Where fazenda_origem.cod_fazenda (+)= itens_apontamento.cod_fazenda_origem " +
-        "and VW_PESSOA.Cod_Pessoa = VW_PESSOA_FUNCIONARIO.Cod_Pessoa " +
-        "and Itens_Apontamento.Cod_Operacaoagricola = at.atividade and Itens_Apontamento.Cod_Equipamento = at.equipamento " +
-        "and VW_PESSOA_FUNCIONARIO.Cod_Funcionario = Apontamento.Cod_Funcionario " +
-        "and VW_PESSOA_FUNCIONARIO.Cod_GrupoEmpresa = Apontamento.Cod_GrupoEmpresa " +
-        "and fazenda.Cod_Fazenda (+)= Itens_Apontamento.Cod_fazenda and cidade.Cod_cidade (+)= Itens_Apontamento.Cod_cidade " +
-        "and objetocusto.cod_objetocusto (+)= itens_apontamento.cod_objetocusto " +
-        "and OperacaoAgricola.Cod_OperacaoAgricola (+)= Itens_Apontamento.Cod_Operacaoagricola " +
-        "and Equipamento.Cod_Equipamento = itens_apontamento.cod_equipamento " +
-        "and Equipamento.Cod_GrupoEmpresa = Apontamento.Cod_Grupoempresa " +
-        "and Itens_Apontamento.Ano_Apontamento (+)= Apontamento.Ano_Apontamento " +
-        "and Itens_Apontamento.Numero_Apontamento (+)= Apontamento.Numero_Apontamento " +
-        "and Itens_Apontamento.dt_apontamento (+)= Apontamento.dt_apontamento " +
-        "and Apontamento.Cod_GrupoEmpresa = 1 and Apontamento.Cod_Empresa = 1 and Apontamento.Cod_Filial = 1 " +
-        "and Apontamento.Dt_Apontamento Between " + dIni + " and " + dFim + " " +
-        "order by cod_operacaoagricola, cod_equipamento " +
-        ") group by Cod_OperacaoAgricola, tarefa, Cod_Fazenda, dt_apontamento, cod_equipamento, tarefa " +
+        // ── Bloco AUTOMOTIVO — desativado a pedido ────────────────────
+        // Trazia as horas/km de apontamento automotivo como um tipo próprio no
+        // relatório. Está inteiro aqui embaixo, comentado: para voltar a usar,
+        // basta tirar o "//" das linhas até o ") group by Cod_OperacaoAgricola".
+        // O bloco começa no "union", então descomentar já o emenda de novo na
+        // consulta, sem mexer em mais nada.
+        //
+//        "union " +
+//        "select 'AUTOMOTIVO' tipo, tarefa origem, dt_apontamento, null cod_tipoequipamento, " +
+//        "null descricaoequipamento, cod_equipamento, null desc_equipamento, Cod_Fazenda, " +
+//        "agricola.fn_busca_nomeproprietario(cod_fazenda), null cod_servico, tarefa, null unidade, " +
+//        "null numerocontrato, null parcela, sum(tot_hs) total_horas, (sum(tot_km) * max(valor)) valor1, " +
+//        "max(DescObjetoCusto) descobjeto " +
+//        "from ( " +
+//        "Select Apontamento.Ano_Apontamento, Apontamento.Numero_Apontamento, Apontamento.Dt_Apontamento, " +
+//        "to_char(to_date(apontamento.dt_apontamento,'dd/mm/yyyy'),'mm/yyyy') mes_ano, " +
+//        "to_number(to_char(to_date(apontamento.dt_apontamento,'dd/mm/rrrr'),'rrrrmm')) mes_ano_numero, " +
+//        "Apontamento.Cod_Funcionario, Itens_Apontamento.Cod_Fazenda, Itens_Apontamento.Cod_Cidade, " +
+//        "Itens_Apontamento.Cod_Talhao, Itens_Apontamento.cod_implemento, itens_apontamento.cod_equipamento, " +
+//        "Itens_Apontamento.Cod_OperacaoAgricola, VW_PESSOA.Nome, Fazenda.Descricao Fazenda, " +
+//        "Cidade.Descricao Fazenda_original, " +
+//        "objetocusto.negocio || '.' || objetocusto.processo || '.' || objetocusto.subprocesso || objetocusto.descricao DescObjetoCusto, " +
+//        "OperacaoAgricola.Descricao Tarefa, Equipamento.Descricao, Itens_Apontamento.KM_INICIAL, Itens_Apontamento.KM_FINAL, " +
+//        "itens_apontamento.km_final - itens_apontamento.km_inicial tot_km, Itens_Apontamento.HORAINICIAL, Itens_Apontamento.HORAFINAL, " +
+//        "case when geral.hora_centesimal(itens_apontamento.horafinal) >= geral.hora_centesimal(itens_apontamento.horainicial) " +
+//        "then geral.hora_centesimal(itens_apontamento.horafinal) - geral.hora_centesimal(itens_apontamento.horainicial) " +
+//        "when geral.hora_centesimal(itens_apontamento.horafinal) < geral.hora_centesimal(itens_apontamento.horainicial) " +
+//        "then (geral.hora_centesimal(itens_apontamento.horafinal) + 24) - geral.hora_centesimal(itens_apontamento.horainicial) " +
+//        "end tot_hs, itens_apontamento.cod_fazenda_origem, fazenda_origem.descricao desc_fazenda_origem, at.valor valor " +
+//        "From agricola.fazenda fazenda_origem, Automotivo.Apontamento Apontamento, Automotivo.Itens_Apontamento Itens_Apontamento, " +
+//        "Automotivo.equipamento, Rh.VW_PESSOA, rh.objetocusto, Rh.OperacaoAgricola, RH.VW_PESSOA_FUNCIONARIO, RH.CIDADE, " +
+//        "Agricola.fazenda, cpd.atividade_equipamento at " +
+//        "Where fazenda_origem.cod_fazenda (+)= itens_apontamento.cod_fazenda_origem " +
+//        "and VW_PESSOA.Cod_Pessoa = VW_PESSOA_FUNCIONARIO.Cod_Pessoa " +
+//        "and Itens_Apontamento.Cod_Operacaoagricola = at.atividade and Itens_Apontamento.Cod_Equipamento = at.equipamento " +
+//        "and VW_PESSOA_FUNCIONARIO.Cod_Funcionario = Apontamento.Cod_Funcionario " +
+//        "and VW_PESSOA_FUNCIONARIO.Cod_GrupoEmpresa = Apontamento.Cod_GrupoEmpresa " +
+//        "and fazenda.Cod_Fazenda (+)= Itens_Apontamento.Cod_fazenda and cidade.Cod_cidade (+)= Itens_Apontamento.Cod_cidade " +
+//        "and objetocusto.cod_objetocusto (+)= itens_apontamento.cod_objetocusto " +
+//        "and OperacaoAgricola.Cod_OperacaoAgricola (+)= Itens_Apontamento.Cod_Operacaoagricola " +
+//        "and Equipamento.Cod_Equipamento = itens_apontamento.cod_equipamento " +
+//        "and Equipamento.Cod_GrupoEmpresa = Apontamento.Cod_Grupoempresa " +
+//        "and Itens_Apontamento.Ano_Apontamento (+)= Apontamento.Ano_Apontamento " +
+//        "and Itens_Apontamento.Numero_Apontamento (+)= Apontamento.Numero_Apontamento " +
+//        "and Itens_Apontamento.dt_apontamento (+)= Apontamento.dt_apontamento " +
+//        "and Apontamento.Cod_GrupoEmpresa = 1 and Apontamento.Cod_Empresa = 1 and Apontamento.Cod_Filial = 1 " +
+//        "and Apontamento.Dt_Apontamento Between " + dIni + " and " + dFim + " " +
+//        "order by cod_operacaoagricola, cod_equipamento " +
+//        ") group by Cod_OperacaoAgricola, tarefa, Cod_Fazenda, dt_apontamento, cod_equipamento, tarefa " +
 
         "UNION " +
         "select 'FATURAMENTO' tipo, 'EPI, FERRAMENTAS E GELO ' origem, a.data_apontamento data_movimento, " +
