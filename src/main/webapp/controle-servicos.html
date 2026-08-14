@@ -267,10 +267,18 @@
       <div class="header-sub">Apontamentos de mão de obra, automotivo e faturamento por fazenda</div>
     </div>
   </div>
-  <button class="btn-voltar" onclick="window.location.href='hub.html'">
-    <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-    Voltar ao Hub
-  </button>
+  <div style="display:flex;gap:8px;align-items:center">
+    <button class="btn-voltar" id="btnAdminServicos" style="display:none"
+            onclick="window.location.href='admin.html#servicoscorte'"
+            title="Quais tipos de serviço contam como corte de cana">
+      <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9c.14.36.46.63.85.74H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      Serviços de corte
+    </button>
+    <button class="btn-voltar" onclick="window.location.href='hub.html'">
+      <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      Voltar ao Hub
+    </button>
+  </div>
 </div>
 
 <div class="conteudo">
@@ -1060,6 +1068,18 @@ async function baixarResumoPdf() {
 })();
 
 window.addEventListener('afterprint', () => document.body.classList.remove('modo-resumo'));
+
+// O atalho para o cadastro dos serviços de corte só faz sentido para quem
+// pode mexer nele — para os demais nem aparece.
+(async function mostrarAtalhoAdmin() {
+  try {
+    const r = await fetch('api/sessao');
+    const j = await r.json();
+    if (j.ok && j.administrador) {
+      document.getElementById('btnAdminServicos').style.display = 'flex';
+    }
+  } catch(e) { /* sem sessão legível: o botão fica escondido, e está certo */ }
+})();
 
 function divSafe(a, b) { return b ? a / b : 0; }
 

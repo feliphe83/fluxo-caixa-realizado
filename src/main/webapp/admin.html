@@ -183,6 +183,10 @@
       <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
       De-Para Serviços
     </div>
+    <div class="sb-item" id="nav-servicoscorte" onclick="setSec('servicoscorte')">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><path d="M6 3v12"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><path d="M18 6v9"/><path d="M6 9l12-6"/></svg>
+      Serviços de Corte
+    </div>
     <div class="sb-item" id="nav-classeoperativa" onclick="setSec('classeoperativa')">
       <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
       De-Para Classe Operativa
@@ -244,6 +248,7 @@
       <button class="tab"    id="tab-permissoes" onclick="setSec('permissoes')">🔐 Permissões</button>
       <button class="tab"    id="tab-modulos"     onclick="setSec('modulos')">🧩 Módulos (Hub)</button>
       <button class="tab"    id="tab-depara"      onclick="setSec('depara')">🔄 De-Para Serviços</button>
+      <button class="tab"    id="tab-servicoscorte" onclick="setSec('servicoscorte')">🌾 Serviços de Corte</button>
       <button class="tab"    id="tab-classeoperativa" onclick="setSec('classeoperativa')">🚜 De-Para Classe Operativa</button>
       <button class="tab"    id="tab-whatsapp"    onclick="setSec('whatsapp')">📱 Relatórios WhatsApp</button>
       <button class="tab"    id="tab-externo"     onclick="setSec('externo')">🚛 Empresas Externas</button>
@@ -366,6 +371,60 @@
             <tr><td colspan="6" style="text-align:center;padding:28px;color:var(--text3)">Carregando…</td></tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <div class="sec" id="sec-servicoscorte">
+      <div class="panel" style="margin-bottom:20px">
+        <div style="padding:16px 20px;font-size:12.5px;color:var(--text2);line-height:1.65">
+          Os tipos de serviço marcados aqui são os que o <b>Controle de Serviços Agrícola</b> considera
+          <b>corte de cana</b>. A escolha decide três coisas no relatório:
+          <ul style="margin:8px 0 0 18px;padding:0">
+            <li>o que entra em <b>FATURAMENTO / CORTE DE CANA</b>, faturado por tonelada;</li>
+            <li>o que sobra para <b>MÃO DE OBRA / LIDERAÇÃO RURAL</b> — todo serviço que <u>não</u> estiver marcado;</li>
+            <li>sobre o que incide o rateio de <b>EPI, ferramentas e gelo</b>, cobrado por tonelada cortada.</li>
+          </ul>
+          <div style="margin-top:8px;color:var(--text3)">
+            Tirar ou incluir um serviço muda o valor de dois blocos do relatório ao mesmo tempo.
+          </div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+        <div class="panel">
+          <div class="ph">
+            <div class="ph-title">Considerados corte de cana (<span id="scTotal">0</span>)</div>
+            <button class="btn-primary" onclick="salvarServicosCorte()">
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              Salvar
+            </button>
+          </div>
+          <table>
+            <thead><tr><th style="width:90px">Cód.</th><th>Descrição</th><th style="width:70px">Ações</th></tr></thead>
+            <tbody id="tbServicosCorte">
+              <tr><td colspan="3" style="text-align:center;padding:28px;color:var(--text3)">Carregando…</td></tr>
+            </tbody>
+          </table>
+          <div style="padding:12px 20px;font-size:12px;color:var(--text3)" id="scAviso"></div>
+        </div>
+
+        <div class="panel">
+          <div class="ph">
+            <div class="ph-title">Tipos de serviço do ERP</div>
+            <div class="search-wrap">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input class="search-inp" id="searchServicoCorte" placeholder="Buscar código ou descrição…" oninput="renderServicosDisponiveis()">
+            </div>
+          </div>
+          <div style="max-height:520px;overflow:auto">
+            <table>
+              <thead><tr><th style="width:90px">Cód.</th><th>Descrição</th><th style="width:70px">Ações</th></tr></thead>
+              <tbody id="tbServicosDisp">
+                <tr><td colspan="3" style="text-align:center;padding:28px;color:var(--text3)">Carregando…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -986,7 +1045,18 @@ let usuarios=[], perms={}, permUser=null, delId=null, editId=null, isAdminCheck=
 window.addEventListener('DOMContentLoaded', () => {
   verificarSessao();
   carregarUsuarios();
+  abrirSecaoDaUrl();
 });
+
+// admin.html#servicoscorte já abre na aba certa — é assim que o Controle de
+// Serviços manda o administrador direto para o cadastro dele. Só aceita
+// seção que existe, senão setSec quebraria num elemento nulo.
+function abrirSecaoDaUrl() {
+  const s = (location.hash || '').replace('#', '').trim();
+  if (s && document.getElementById('sec-' + s) && document.getElementById('tab-' + s)) {
+    setSec(s);
+  }
+}
 
 // ── Sessão ────────────────────────────────────────────────────────
 function verificarSessao() {
@@ -1025,6 +1095,11 @@ function setSec(s) {
     document.getElementById('tsub').textContent='Classificação de tipo de serviço por Objeto de Custo (Controle de Serviços Agrícola)';
     document.getElementById('btnAcao').style.display='none';
     carregarDePara();
+  } else if(s==='servicoscorte'){
+    document.getElementById('ttitle').textContent='Serviços de Corte';
+    document.getElementById('tsub').textContent='Quais tipos de serviço contam como corte de cana (Controle de Serviços Agrícola)';
+    document.getElementById('btnAcao').style.display='none';
+    carregarServicosCorte();
   } else if(s==='classeoperativa'){
     document.getElementById('ttitle').textContent='De-Para Classe Operativa';
     document.getElementById('tsub').textContent='Agrupa cada equipamento em Classe Operativa (Dashboard de Combustível)';
@@ -1909,6 +1984,129 @@ async function togglePermModulo(idModulo) {
   } catch(e) {
     permsMod[idModulo] = !permsMod[idModulo];
     renderPermsModulos();
+    toast('Erro: ' + e.message, 'red');
+  }
+}
+
+// ── Serviços considerados corte de cana ──────────────────────────
+// SC_SEL guarda o que está na tela; só vai para o servidor no Salvar.
+// Assim dá para tirar um e pôr outro sem que o relatório fique, no meio
+// do caminho, com uma lista que ninguém escolheu.
+let SC_SEL = [];
+let SC_DISP = [];
+let SC_SALVO = '';
+
+async function carregarServicosCorte() {
+  try {
+    const r = await fetch('api/servicos-corte');
+    if (r.status === 401) { location.href = 'login.html'; return; }
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro);
+    SC_SEL = j.data;
+    SC_SALVO = JSON.stringify(SC_SEL.map(s => s.cod).sort());
+    renderServicosCorte();
+  } catch(e) {
+    document.getElementById('tbServicosCorte').innerHTML =
+      `<tr><td colspan="3" style="text-align:center;padding:28px;color:var(--red)">Erro: ${esc(e.message)}</td></tr>`;
+  }
+
+  // A lista do ERP é grande e independente: se o Oracle estiver fora, o
+  // cadastro do lado esquerdo continua utilizável.
+  try {
+    const r = await fetch('api/servicos-corte/disponiveis');
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro);
+    SC_DISP = j.data;
+    renderServicosDisponiveis();
+  } catch(e) {
+    document.getElementById('tbServicosDisp').innerHTML =
+      `<tr><td colspan="3" style="text-align:center;padding:28px;color:var(--red)">ERP indisponível: ${esc(e.message)}</td></tr>`;
+  }
+}
+
+function scAlterado() {
+  return JSON.stringify(SC_SEL.map(s => s.cod).sort()) !== SC_SALVO;
+}
+
+function renderServicosCorte() {
+  document.getElementById('scTotal').textContent = SC_SEL.length;
+
+  const tb = document.getElementById('tbServicosCorte');
+  if (SC_SEL.length === 0) {
+    tb.innerHTML = `<tr><td colspan="3" style="text-align:center;padding:28px;color:var(--text3)">Nenhum serviço marcado — com a lista vazia, nada é faturado como corte de cana.</td></tr>`;
+  } else {
+    tb.innerHTML = SC_SEL.map(s => `
+      <tr>
+        <td style="font-weight:600">${esc(s.cod)}</td>
+        <td>${esc(s.descricao) || '<span class="muted">sem descrição no ERP</span>'}</td>
+        <td><button class="btn-cancel" style="padding:4px 10px;font-size:12px" onclick="removerServicoCorte(${s.cod})">Remover</button></td>
+      </tr>`).join('');
+  }
+
+  document.getElementById('scAviso').innerHTML = scAlterado()
+    ? '⚠️ Alterações ainda não salvas.'
+    : '';
+  renderServicosDisponiveis();
+}
+
+function renderServicosDisponiveis() {
+  const tb = document.getElementById('tbServicosDisp');
+  if (SC_DISP.length === 0) return;
+
+  const termo = (document.getElementById('searchServicoCorte').value || '').toLowerCase().trim();
+  const marcados = new Set(SC_SEL.map(s => Number(s.cod)));
+  const lista = (!termo ? SC_DISP : SC_DISP.filter(d =>
+    String(d.cod).includes(termo) || (d.descricao||'').toLowerCase().includes(termo)
+  )).slice(0, 300);
+
+  if (lista.length === 0) {
+    tb.innerHTML = `<tr><td colspan="3" style="text-align:center;padding:28px;color:var(--text3)">Nada encontrado.</td></tr>`;
+    return;
+  }
+
+  tb.innerHTML = lista.map(d => {
+    const jaTem = marcados.has(Number(d.cod));
+    return `<tr>
+      <td style="font-weight:600">${esc(d.cod)}</td>
+      <td>${esc(d.descricao)}</td>
+      <td>${jaTem
+        ? '<span class="badge badge-green">marcado</span>'
+        : `<button class="btn-cancel" style="padding:4px 10px;font-size:12px" onclick="adicionarServicoCorte(${d.cod})">Adicionar</button>`}</td>
+    </tr>`;
+  }).join('');
+}
+
+function adicionarServicoCorte(cod) {
+  if (SC_SEL.some(s => Number(s.cod) === Number(cod))) return;
+  const doErp = SC_DISP.find(d => Number(d.cod) === Number(cod));
+  SC_SEL.push({ cod: Number(cod), descricao: doErp ? doErp.descricao : null });
+  SC_SEL.sort((a,b) => a.cod - b.cod);
+  renderServicosCorte();
+}
+
+function removerServicoCorte(cod) {
+  SC_SEL = SC_SEL.filter(s => Number(s.cod) !== Number(cod));
+  renderServicosCorte();
+}
+
+async function salvarServicosCorte() {
+  const codigos = SC_SEL.map(s => Number(s.cod));
+  if (codigos.length === 0 &&
+      !confirm('Salvar sem nenhum serviço marcado?\n\nO relatório vai deixar de faturar corte de cana e jogar tudo em mão de obra.')) {
+    return;
+  }
+  try {
+    const r = await fetch('api/servicos-corte', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ codigos })
+    });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro);
+    SC_SALVO = JSON.stringify(codigos.slice().sort());
+    renderServicosCorte();
+    toast(codigos.length + ' serviço(s) salvo(s).', 'green');
+  } catch(e) {
     toast('Erro: ' + e.message, 'red');
   }
 }

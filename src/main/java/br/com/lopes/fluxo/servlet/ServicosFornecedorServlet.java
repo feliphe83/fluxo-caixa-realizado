@@ -1,5 +1,6 @@
 package br.com.lopes.fluxo.servlet;
 
+import br.com.lopes.fluxo.dao.ServicoCorteDAO;
 import br.com.lopes.fluxo.util.DeParaTipoServicoCache;
 import br.com.lopes.fluxo.util.OracleConnectionUtil;
 import com.google.gson.*;
@@ -30,8 +31,16 @@ public class ServicosFornecedorServlet extends HttpServlet {
     private static final Logger LOG = Logger.getLogger(ServicosFornecedorServlet.class.getName());
     private static final DateTimeFormatter FMT = DateTimeFormatter.ISO_LOCAL_DATE;
     private final Gson gson = new Gson();
+    private final ServicoCorteDAO servicoCorteDAO = new ServicoCorteDAO();
 
-    private static String buildSQL(String ini, String fim, String filtroFazendasIn) {
+    /**
+     * @param servicosCorteIn códigos de cod_tiposervico tratados como corte de
+     *        cana, já validados como numéricos por {@link ServicoCorteDAO}.
+     *        Aparece três vezes: define o que entra em CORTE DE CANA, o que
+     *        sobra para LIDERAÇÃO RURAL (o NOT IN) e sobre o que incide o
+     *        rateio de EPI, ferramentas e gelo.
+     */
+    private static String buildSQL(String ini, String fim, String filtroFazendasIn, String servicosCorteIn) {
         String dIni = "'" + converterParaDDMMYYYY(ini) + "'";
         String dFim = "'" + converterParaDDMMYYYY(fim) + "'";
 
@@ -72,7 +81,7 @@ public class ServicosFornecedorServlet extends HttpServlet {
         "rr.descricao desc_servico, null unidade, null numerocontrato, null parcela, " +
         "sum(a.qtde_apontada)/1000 qtd_apontada, sum(a.valortotal) valor_total, null descobjeto " +
         "from rh.apontamento a, rh.tiposervico rr where a.cod_itemtabelapreco = rr.cod_tiposervico " +
-        "AND RR.COD_TIPOSERVICO IN (5558,5554,5532,5526,5555,5531,5553) " +
+        "AND RR.COD_TIPOSERVICO IN (" + servicosCorteIn + ") " +
         "group by a.data_apontamento, a.cod_fazenda, a.cod_funcionario, RR.COD_TIPOSERVICO, rr.descricao " +
 
         "UNION " +
@@ -82,7 +91,7 @@ public class ServicosFornecedorServlet extends HttpServlet {
         "rr.descricao desc_servico, null unidade, null numerocontrato, null parcela, " +
         "sum(a.qtde_apontada) qtd_apontada, sum(a.valortotal) valor_total, 'Administração/Controle Agrícola' descobjeto " +
         "from rh.apontamento a, rh.tiposervico rr where a.cod_itemtabelapreco = rr.cod_tiposervico " +
-        "AND RR.COD_TIPOSERVICO NOT IN (5558,5554,5532,5526,5555,5531,5553) " +
+        "AND RR.COD_TIPOSERVICO NOT IN (" + servicosCorteIn + ") " +
         "group by a.data_apontamento, a.cod_fazenda, a.cod_funcionario, RR.COD_TIPOSERVICO, rr.descricao " +
 
         "UNION " +
@@ -154,7 +163,7 @@ public class ServicosFornecedorServlet extends HttpServlet {
         "rr.descricao desc_servico, null unidade, null numerocontrato, null parcela, " +
         "0 qtd_apontada, sum(a.qtde_apontada)*2.40/1000 valor_total, null descobjeto " +
         "from rh.apontamento a, rh.tiposervico rr where a.cod_itemtabelapreco = rr.cod_tiposervico " +
-        "AND RR.COD_TIPOSERVICO IN (5558,5554,5532,5526,5555,5531,5553) " +
+        "AND RR.COD_TIPOSERVICO IN (" + servicosCorteIn + ") " +
         "group by a.data_apontamento, a.cod_fazenda, RR.COD_TIPOSERVICO, rr.descricao " +
 
         ") t " +
@@ -210,7 +219,11 @@ public class ServicosFornecedorServlet extends HttpServlet {
             }
         }
 
-        String sql = buildSQL(dataIni.toString(), dataFim.toString(), filtroFazendasIn);
+        // Quais tipos de serviço contam como corte de cana — mantido na tela de
+        // administração do módulo.
+        String servicosCorteIn = servicoCorteDAO.listaInOuPadrao();
+
+        String sql = buildSQL(dataIni.toString(), dataFim.toString(), filtroFazendasIn, servicosCorteIn);
 
         try (Connection conn = OracleConnectionUtil.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
