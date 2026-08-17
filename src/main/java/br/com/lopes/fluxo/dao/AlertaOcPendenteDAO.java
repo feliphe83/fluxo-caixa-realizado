@@ -6,7 +6,11 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -148,6 +152,111 @@ public class AlertaOcPendenteDAO {
                  "DELETE FROM fc_alerta_oc_enviado WHERE data_envio < DATE_SUB(NOW(), INTERVAL ? DAY)")) {
             ps.setInt(1, DIAS_HISTORICO);
             ps.executeUpdate();
+        }
+    }
+
+    // ── Reenvio manual (Administração → Reenviar alerta) ──────────────────
+    //
+    // Apagar o registro de envio é o que faz o alerta sair de novo: a consulta
+    // do ERP continua trazendo o item, e é só este controle que o segura.
+    //
+    // A tela trabalha em dois passos — procurar e depois liberar pelos ids
+    // encontrados. Não é cerimônia: o número vem do Oracle e pode estar
+    // gravado como "3482" ou "3482.0", então quem pede o reenvio precisa ver
+    // o que casou antes de apagar, e o DELETE por id não tem como pegar mais
+    // do que foi mostrado.
+
+    /** Tipos que existem hoje na tabela, com quanto e quando. */
+    public List<Map<String, Object>> tipos() throws SQLException {
+        String sql = """
+            SELECT tipo, COUNT(*) qt, MAX(data_envio) ultimo
+            FROM fc_alerta_oc_enviado GROUP BY tipo ORDER BY tipo
+            """;
+        List<Map<String, Object>> lista = new ArrayList<>();
+        try (Connection c = conn(); PreparedStatement ps = c.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("tipo", rs.getString(1));
+                m.put("qtde", rs.getInt(2));
+                m.put("ultimo", rs.getTimestamp(3) == null ? null : rs.getTimestamp(3).toString());
+                lista.add(m);
+            }
+        }
+        return lista;
+    }
+
+    /**
+     * Envios já registrados para estes números.
+     *
+     * O casamento do número é feito em Java, e não no SQL, justamente por
+     * causa do "3482" × "3482.0": comparar como número quando os dois lados
+     * são números resolve isso de uma vez, sem REGEXP nem CAST que precisem
+     * adivinhar o formato de tipos cujo "número" nem é numérico (o alerta de
+     * parcela guarda o documento aqui).
+     */
+    public List<Map<String, Object>> procurar(String tipo, List<String> numeros) throws SQLException {
+        String sql = """
+            SELECT e.id, e.id_usuario, u.nome, u.logon, e.nr_solicitacao, e.item, e.data_envio
+            FROM fc_alerta_oc_enviado e
+            LEFT JOIN fc_usuario u ON u.id = e.id_usuario
+            WHERE e.tipo = ?
+            ORDER BY e.nr_solicitacao, u.nome, e.item
+            """;
+        List<Map<String, Object>> lista = new ArrayList<>();
+        try (Connection c = conn(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, tipo);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String nr = rs.getString("nr_solicitacao");
+                    if (!casaAlgum(nr, numeros)) continue;
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("id", rs.getInt("id"));
+                    m.put("idUsuario", rs.getInt("id_usuario"));
+                    m.put("usuario", rs.getString("nome") != null ? rs.getString("nome") : rs.getString("logon"));
+                    m.put("numero", nr);
+                    m.put("item", rs.getString("item"));
+                    m.put("dataEnvio", rs.getTimestamp("data_envio") == null ? null
+                            : rs.getTimestamp("data_envio").toString());
+                    lista.add(m);
+                }
+            }
+        }
+        return lista;
+    }
+
+    /** Apaga os registros escolhidos. Só por id: é o que a tela mostrou. */
+    public int liberar(List<Integer> ids) throws SQLException {
+        if (ids == null || ids.isEmpty()) return 0;
+        StringBuilder in = new StringBuilder();
+        for (Integer id : ids) {
+            if (id == null) continue;
+            if (in.length() > 0) in.append(',');
+            in.append(id.intValue());        // int: não há como virar texto de SQL
+        }
+        if (in.length() == 0) return 0;
+        try (Connection c = conn(); Statement st = c.createStatement()) {
+            int n = st.executeUpdate("DELETE FROM fc_alerta_oc_enviado WHERE id IN (" + in + ")");
+            LOG.info("Reenvio liberado: " + n + " registro(s) de envio apagado(s) — ids " + in);
+            return n;
+        }
+    }
+
+    private static boolean casaAlgum(String gravado, List<String> numeros) {
+        for (String n : numeros) if (mesmoNumero(gravado, n)) return true;
+        return false;
+    }
+
+    /** "3482", "3482.0" e " 3482 " são o mesmo contrato. "ABC" só casa com "ABC". */
+    public static boolean mesmoNumero(String gravado, String pedido) {
+        String a = gravado == null ? "" : gravado.trim();
+        String b = pedido  == null ? "" : pedido.trim();
+        if (a.isEmpty() || b.isEmpty()) return false;
+        if (a.equalsIgnoreCase(b)) return true;
+        try {
+            return new java.math.BigDecimal(a).compareTo(new java.math.BigDecimal(b)) == 0;
+        } catch (NumberFormatException e) {
+            return false;   // algum dos lados não é número: só valia a igualdade de texto
         }
     }
 

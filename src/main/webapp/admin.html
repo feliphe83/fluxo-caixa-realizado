@@ -191,6 +191,10 @@
       <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
       De-Para Classe Operativa
     </div>
+    <div class="sb-item" id="nav-reenvio" onclick="setSec('reenvio')">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+      Reenviar Alerta
+    </div>
     <div class="sb-item" id="nav-externo" onclick="setSec('externo')">
       <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><rect x="2" y="7" width="13" height="10" rx="2"/><path d="M15 10h4l3 3v4h-7z"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="19" r="2"/></svg>
       Empresas Externas
@@ -251,6 +255,7 @@
       <button class="tab"    id="tab-servicoscorte" onclick="setSec('servicoscorte')">🌾 Serviços de Corte</button>
       <button class="tab"    id="tab-classeoperativa" onclick="setSec('classeoperativa')">🚜 De-Para Classe Operativa</button>
       <button class="tab"    id="tab-whatsapp"    onclick="setSec('whatsapp')">📱 Relatórios WhatsApp</button>
+      <button class="tab"    id="tab-reenvio"     onclick="setSec('reenvio')">🔁 Reenviar Alerta</button>
       <button class="tab"    id="tab-externo"     onclick="setSec('externo')">🚛 Empresas Externas</button>
       <button class="tab"    id="tab-paradas"     onclick="setSec('paradas')">🛑 Paradas da Moagem</button>
       <button class="tab"    id="tab-parametros"  onclick="setSec('parametros')">⚙️ Parâmetros gerais</button>
@@ -371,6 +376,71 @@
             <tr><td colspan="6" style="text-align:center;padding:28px;color:var(--text3)">Carregando…</td></tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <div class="sec" id="sec-reenvio">
+      <div class="panel" style="margin-bottom:20px">
+        <div class="ph"><div class="ph-title">Liberar reenvio</div></div>
+        <div style="padding:18px 20px">
+          <div style="font-size:12.5px;color:var(--text2);line-height:1.65;margin-bottom:14px">
+            Cada alerta é enviado <b>uma vez só</b> por destinatário — o sistema guarda o que já
+            avisou para não repetir a cada ciclo. Aqui você apaga esse registro, e no próximo envio
+            o item sai de novo.
+            <div style="margin-top:8px;color:var(--text3)">
+              Liberar não força o envio: o contrato (ou a ordem, ou a parcela) precisa continuar
+              aparecendo na consulta do ERP. Se já foi aprovado, ele não volta — e é certo que não volte.
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:280px 1fr auto;gap:12px;align-items:end">
+            <div>
+              <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:5px">Tipo de alerta</label>
+              <select id="reenvioTipo" style="width:100%;padding:8px 10px;background:var(--surf2);
+                      border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px">
+                <option>Carregando…</option>
+              </select>
+            </div>
+            <div>
+              <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:5px">
+                Número(s) — contrato, ordem ou documento
+              </label>
+              <input type="text" id="reenvioNumeros" placeholder="Ex: 3482, 2485, 3164"
+                     onkeydown="if(event.key==='Enter'){event.preventDefault();procurarReenvio()}"
+                     style="width:100%;padding:8px 10px;background:var(--surf2);border:1px solid var(--border);
+                            border-radius:8px;color:var(--text);font-size:13px;outline:none">
+            </div>
+            <button class="btn-primary" onclick="procurarReenvio()">
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              Procurar
+            </button>
+          </div>
+          <div class="hint" style="font-size:11.5px;color:var(--text3);margin-top:8px">
+            Separe por vírgula, espaço ou ponto-e-vírgula.
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="ph">
+          <div class="ph-title">Envios encontrados (<span id="reenvioTotal">0</span>)</div>
+          <button class="btn-primary" id="btnLiberar" onclick="liberarReenvio()" style="display:none">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+            Liberar reenvio dos marcados
+          </button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th style="width:40px"><input type="checkbox" id="reenvioTodos" onchange="marcarTodosReenvio(this.checked)"></th>
+              <th>Número</th><th>Destinatário</th><th>Item</th><th>Enviado em</th>
+            </tr>
+          </thead>
+          <tbody id="tbReenvio">
+            <tr><td colspan="5" style="text-align:center;padding:28px;color:var(--text3)">Escolha o tipo e informe os números.</td></tr>
+          </tbody>
+        </table>
+        <div style="padding:12px 20px;font-size:12.5px;color:var(--text3)" id="reenvioAviso"></div>
       </div>
     </div>
 
@@ -1095,6 +1165,11 @@ function setSec(s) {
     document.getElementById('tsub').textContent='Classificação de tipo de serviço por Objeto de Custo (Controle de Serviços Agrícola)';
     document.getElementById('btnAcao').style.display='none';
     carregarDePara();
+  } else if(s==='reenvio'){
+    document.getElementById('ttitle').textContent='Reenviar Alerta';
+    document.getElementById('tsub').textContent='Apaga o registro de "já avisei" para o alerta sair de novo';
+    document.getElementById('btnAcao').style.display='none';
+    carregarTiposReenvio();
   } else if(s==='servicoscorte'){
     document.getElementById('ttitle').textContent='Serviços de Corte';
     document.getElementById('tsub').textContent='Quais tipos de serviço contam como corte de cana (Controle de Serviços Agrícola)';
@@ -1984,6 +2059,149 @@ async function togglePermModulo(idModulo) {
   } catch(e) {
     permsMod[idModulo] = !permsMod[idModulo];
     renderPermsModulos();
+    toast('Erro: ' + e.message, 'red');
+  }
+}
+
+// ── Reenviar alerta ──────────────────────────────────────────────
+//
+// Procurar e liberar são dois passos de propósito: apagar é definitivo, e o
+// número pode estar gravado com casas decimais (vem do Oracle). Quem libera
+// precisa ter visto na tela o que casou.
+let REENVIO = [];
+
+// Os tipos são gravados como o alerta os chama. Aqui ganham o nome que
+// aparece na tela de Relatórios WhatsApp; o que não estiver na lista aparece
+// como está, e continua funcionando.
+const NOME_ALERTA = {
+  'CONTRATO APROVACAO':         'Contratos para aprovação',
+  'PARCELA CONTRATO APROVACAO': 'Parcelas de contrato para aprovação',
+  'CONTRATO LIMITE':            'Contratos no limite',
+  'CONTRATO ARRENDAMENTO':      'Contratos de arrendamento',
+  'VARIACAO DE PRECO':          'Variação de preço',
+  'OC APROVADA ALTO VALOR':     'OC aprovada de alto valor'
+};
+
+async function carregarTiposReenvio() {
+  const sel = document.getElementById('reenvioTipo');
+  try {
+    const r = await fetch('api/admin/alerta-reenvio/tipos');
+    if (r.status === 401) { location.href = 'login.html'; return; }
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro);
+    if (!j.data.length) {
+      sel.innerHTML = '<option value="">Nenhum alerta enviado ainda</option>';
+      return;
+    }
+    sel.innerHTML = j.data.map(t =>
+      `<option value="${esc(t.tipo)}">${esc(NOME_ALERTA[t.tipo] || t.tipo)} (${t.qtde})</option>`).join('');
+  } catch(e) {
+    sel.innerHTML = `<option value="">Erro: ${esc(e.message)}</option>`;
+  }
+}
+
+async function procurarReenvio() {
+  const tipo = document.getElementById('reenvioTipo').value;
+  const numeros = document.getElementById('reenvioNumeros').value.trim();
+  const aviso = document.getElementById('reenvioAviso');
+
+  if (!tipo)    { toast('Escolha o tipo de alerta', 'red'); return; }
+  if (!numeros) { toast('Informe ao menos um número', 'red'); return; }
+
+  document.getElementById('tbReenvio').innerHTML =
+    '<tr><td colspan="5" style="text-align:center;padding:28px;color:var(--text3)">Procurando…</td></tr>';
+  aviso.innerHTML = '';
+
+  try {
+    const r = await fetch('api/admin/alerta-reenvio?tipo=' + encodeURIComponent(tipo)
+                          + '&numeros=' + encodeURIComponent(numeros));
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro);
+    REENVIO = j.data;
+    renderReenvio();
+
+    // Número sem registro nenhum não é o mesmo que número já enviado: ou foi
+    // digitado errado, ou aquele alerta nunca saiu para ele.
+    if (j.semRegistro && j.semRegistro.length) {
+      aviso.innerHTML = '⚠️ Sem registro de envio para: <b>' + esc(j.semRegistro.join(', ')) + '</b>'
+        + ' — ou nunca foi enviado, ou o número está diferente.';
+    }
+  } catch(e) {
+    REENVIO = [];
+    document.getElementById('tbReenvio').innerHTML =
+      `<tr><td colspan="5" style="text-align:center;padding:28px;color:var(--red)">Erro: ${esc(e.message)}</td></tr>`;
+    document.getElementById('btnLiberar').style.display = 'none';
+    document.getElementById('reenvioTotal').textContent = '0';
+  }
+}
+
+function renderReenvio() {
+  const tb = document.getElementById('tbReenvio');
+  document.getElementById('reenvioTotal').textContent = REENVIO.length;
+  document.getElementById('reenvioTodos').checked = REENVIO.length > 0;
+  document.getElementById('btnLiberar').style.display = REENVIO.length ? 'flex' : 'none';
+
+  if (!REENVIO.length) {
+    tb.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:28px;color:var(--text3)">'
+                 + 'Nenhum envio registrado para esses números.</td></tr>';
+    return;
+  }
+
+  // Já vêm marcados: quem procurou por um número específico quer liberar
+  // aquele número. Desmarcar um destinatário continua possível.
+  tb.innerHTML = REENVIO.map(e => `
+    <tr>
+      <td><input type="checkbox" class="ck-reenvio" value="${e.id}" checked></td>
+      <td style="font-weight:600">${esc(e.numero)}</td>
+      <td>${esc(e.usuario) || '<span class="muted">usuário ' + e.idUsuario + '</span>'}</td>
+      <td>${esc(itemLegivel(e.item)) || '<span class="muted">—</span>'}</td>
+      <td>${esc(dataHoraBr(e.dataEnvio))}</td>
+    </tr>`).join('');
+}
+
+function marcarTodosReenvio(marcar) {
+  document.querySelectorAll('.ck-reenvio').forEach(c => { c.checked = marcar; });
+}
+
+/** A 2ª parte da chave muda conforme o alerta: material, parcela, data de
+ *  início do contrato. Quando é data, mostra em dia/mês/ano; o resto passa
+ *  como está — é o valor que o alerta gravou. */
+function itemLegivel(v) {
+  const m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : (v || '');
+}
+
+function dataHoraBr(v) {
+  const m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+  return m ? `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}` : (v || '—');
+}
+
+async function liberarReenvio() {
+  const ids = Array.from(document.querySelectorAll('.ck-reenvio:checked')).map(c => Number(c.value));
+  if (!ids.length) { toast('Marque ao menos um registro', 'red'); return; }
+
+  const numeros = Array.from(new Set(REENVIO.filter(e => ids.includes(e.id)).map(e => e.numero)));
+  if (!confirm('Liberar reenvio de ' + ids.length + ' registro(s)?\n\n'
+             + 'Número(s): ' + numeros.join(', ') + '\n\n'
+             + 'No próximo envio do alerta esses itens saem de novo, se ainda estiverem pendentes no ERP.')) return;
+
+  try {
+    const r = await fetch('api/admin/alerta-reenvio/liberar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids })
+    });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro);
+
+    REENVIO = REENVIO.filter(e => !ids.includes(e.id));
+    renderReenvio();
+    document.getElementById('reenvioAviso').innerHTML =
+      '✅ ' + j.liberados + ' registro(s) liberado(s). Para mandar agora, vá em '
+      + '<b>Relatórios WhatsApp</b> e use o <b>Executar agora</b> do agendamento — '
+      + 'sem isso, sai no próximo ciclo.';
+    toast(j.liberados + ' registro(s) liberado(s)', 'green');
+  } catch(e) {
     toast('Erro: ' + e.message, 'red');
   }
 }
