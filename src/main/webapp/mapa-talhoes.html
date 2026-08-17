@@ -1619,19 +1619,43 @@ function quantasSafras() {
 }
 
 /**
+ * Safra em que o mapa fica travado.
+ *
+ * Não é o "safra.padrao" da Administração de propósito: aquele diz com qual
+ * safra a tela ABRE, e continua valendo para as outras. Aqui o mapa não abre
+ * numa safra — ele fica nela, e o seletor não deixa sair. Para destravar,
+ * basta pôr null: a tela volta a abrir pela safra padrão e a trocar à vontade.
+ */
+const SAFRA_TRAVADA = '75';
+
+/**
  * As N safras mais recentes. As antigas somem da lista de vez — com sinal ou
  * sem ele, porque uma lista que muda de tamanho conforme a rede é pior do que
  * uma lista curta.
+ *
+ * Travado, o recorte é só a safra travada: uma lista com quatro opções e três
+ * delas impossíveis de escolher só faz o usuário tentar.
  */
 function recortarSafras(safras) {
-  return (safras || [])
+  const recentes = (safras || [])
     .slice()
-    .sort((a, b) => Number(b.cod_safra) - Number(a.cod_safra))
-    .slice(0, quantasSafras());
+    .sort((a, b) => Number(b.cod_safra) - Number(a.cod_safra));
+
+  if (SAFRA_TRAVADA) {
+    const travada = recentes.filter(s => String(s.cod_safra) === String(SAFRA_TRAVADA));
+    // Só devolve a travada se ela existir mesmo no ERP. Se não existir, seria
+    // uma lista vazia e um mapa em branco sem explicação — melhor cair no
+    // comportamento normal e deixar a tela funcionando.
+    if (travada.length) return travada;
+  }
+  return recentes.slice(0, quantasSafras());
 }
 
-/** Safra com que a tela abre: a configurada, se estiver na lista. */
+/** Safra com que a tela abre: a travada; se não houver, a configurada. */
 function safraDeAbertura(safras) {
+  if (SAFRA_TRAVADA && safras.some(s => String(s.cod_safra) === String(SAFRA_TRAVADA))) {
+    return String(SAFRA_TRAVADA);
+  }
   const padrao = String(PARAMETROS['safra.padrao'] || '').trim();
   if (padrao && safras.some(s => String(s.cod_safra) === padrao)) return padrao;
   return (safras.find(s => s.atual === 'S') || safras[0] || {}).cod_safra;
@@ -1665,6 +1689,13 @@ async function carregarSafras() {
     SAFRAS = safras;
     sel.innerHTML = safras.map(s =>
       `<option value="${esc(s.cod_safra)}">Safra ${esc(s.cod_safra)}${s.atual === 'S' ? ' (atual)' : ''}</option>`).join('');
+    // Travado, o seletor fica visível mas sem escolha — some o "por que não
+    // muda?" de um controle que aceita clique e não faz nada.
+    const travado = !!SAFRA_TRAVADA && safras.length === 1
+                    && String(safras[0].cod_safra) === String(SAFRA_TRAVADA);
+    sel.disabled = travado;
+    sel.title = travado ? 'O mapa está fixado na safra ' + SAFRA_TRAVADA : '';
+
     const manter = safras.some(s => String(s.cod_safra) === String(escolhida)) ? escolhida : null;
     const alvo = manter || safraDeAbertura(safras);
     if (alvo) { sel.value = alvo; await carregarDados(); }
