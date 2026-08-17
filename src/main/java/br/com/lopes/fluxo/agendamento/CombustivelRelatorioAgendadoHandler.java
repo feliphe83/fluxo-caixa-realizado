@@ -8,6 +8,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
@@ -59,30 +60,46 @@ public class CombustivelRelatorioAgendadoHandler implements RelatorioAgendadoHan
         String legenda = "Relatório Executivo — Consumo de " + combustivel
                 + " (" + dataIni.format(BR) + " a " + dataFim.format(BR) + "), gerado automaticamente.";
 
+        // Guarda quem falhou, e não só quantos. "1 de 6 falhou" manda o
+        // administrador conferir os seis, um a um, para descobrir qual —
+        // justamente o trabalho que a mensagem deveria poupar.
         Exception ultimaFalha = null;
-        int falhas = 0;
+        List<String> falhas = new ArrayList<>();
         for (Map<String, Object> destinatario : destinatarios) {
             String telefone = String.valueOf(destinatario.get("telefone"));
             try {
                 EvolutionApiUtil.enviarDocumento(telefone, pdf, "relatorio-combustivel.pdf", legenda);
             } catch (Exception e) {
-                falhas++;
                 ultimaFalha = e;
+                falhas.add(descreverFalha(destinatario, telefone, e));
                 LOG.log(Level.SEVERE, "Falha ao enviar relatório de combustível pro destinatário "
                         + destinatario.get("nome") + " (" + telefone + ")", e);
             }
         }
-        if (falhas > 0 && falhas == destinatarios.size()) {
-            throw new RuntimeException("Falha ao enviar para todos os " + falhas + " destinatários: "
-                    + (ultimaFalha == null ? "" : ultimaFalha.getMessage()), ultimaFalha);
-        }
-        if (falhas > 0) {
-            throw new RuntimeException(falhas + " de " + destinatarios.size()
-                    + " envios falharam (os demais foram entregues): "
-                    + (ultimaFalha == null ? "" : ultimaFalha.getMessage()), ultimaFalha);
+        if (!falhas.isEmpty()) {
+            String quem = String.join(" | ", falhas);
+            throw new RuntimeException(falhas.size() == destinatarios.size()
+                    ? "Falha ao enviar para todos os " + falhas.size() + " destinatários — " + quem
+                    : falhas.size() + " de " + destinatarios.size()
+                      + " envios falharam (os demais foram entregues) — " + quem,
+                    ultimaFalha);
         }
         return "Enviado para " + destinatarios.size() + " destinatário(s) — período "
                 + dataIni.format(BR) + " a " + dataFim.format(BR) + ".";
+    }
+
+    /**
+     * "NOME (telefone): motivo".
+     *
+     * O telefone entra junto porque é ele que falha: com o mesmo nome
+     * cadastrado duas vezes, ou com o número trocado, o nome sozinho não diz
+     * para onde a mensagem tentou ir.
+     */
+    private static String descreverFalha(Map<String, Object> destinatario, String telefone, Exception e) {
+        Object nome = destinatario.get("nome");
+        String motivo = e.getMessage() == null || e.getMessage().isBlank()
+                ? e.getClass().getSimpleName() : e.getMessage().trim();
+        return (nome == null ? "sem nome" : String.valueOf(nome).trim()) + " (" + telefone + "): " + motivo;
     }
 
     /**
