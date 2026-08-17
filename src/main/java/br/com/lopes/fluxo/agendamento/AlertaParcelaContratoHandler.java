@@ -110,7 +110,10 @@ public class AlertaParcelaContratoHandler implements RelatorioAgendadoHandler {
            .append("  ·  *Parcela:* ").append(txt(p.get("parcela"))).append("\n")
            .append("📅 *Vencimento:* ").append(FormatoMensagem.data(p.get("datavcto"))).append("\n")
            .append("🏢 *Fornecedor:* ").append(txt(p.get("nome_fornecedor"))).append("\n")
-           .append("💰 *Valor líquido:* R$ ").append(FormatoMensagem.valor(p.get("valor_liquido"))).append("\n")
+           // "valor", e não "valor_liquido": é o nome da coluna que a consulta
+           // devolve hoje. Ler o nome errado não dá erro nenhum — só faz o
+           // valor sumir da mensagem, que é pior.
+           .append("💰 *Valor:* R$ ").append(FormatoMensagem.valor(p.get("valor"))).append("\n")
            .append("🎯 *Objeto de custo:* ").append(txt(p.get("desc_objetocusto"))).append("\n")
            .append("📌 *Empenho:* ").append(txt(p.get("desc_empenho"))).append("\n")
            .append("🔁 *Tipo:* ").append(fixoVariavel(p.get("fixovariavel")));

@@ -16,15 +16,23 @@ import java.util.logging.Logger;
  * Parcelas de contrato aguardando aprovação.
  *
  * A consulta é a da área financeira, palavra por palavra — inclusive o
- * id_logon 324, o formulário 8247, o aprovador 19424 e a data de 01/08/2026.
+ * id_logon 1183, o formulário 8247, a situação 6 e a data de 01/08/2026.
  * Nada aqui é parametrizado: o alerta manda para quem for marcado como
  * destinatário no agendamento, e todos recebem a mesma lista.
  *
- * A única diferença para a consulta original é DOCUMENTO na lista de colunas
- * do select de fora. Sem o número do contrato, a "parcela 1" de dois
- * contratos diferentes seria a mesma chave no controle de envio e uma delas
- * nunca seria avisada — é o que faz o "enviar uma vez só" funcionar. O ";"
- * do fim também saiu, porque o JDBC não aceita.
+ * O filtro de fora é a situação da parcela (cod_situacao = 6). A versão
+ * anterior selecionava por supervisão (FN_VERIFICASUPERVISORDE) e pelo
+ * aprovador 19424; as duas coisas saíram nesta atualização, então quem
+ * define o que é "aguardando aprovação" agora é só a situação.
+ *
+ * A coluna de valor que sai é VALOR (era VALOR_LIQUIDO) — o handler lê o
+ * mesmo nome, e trocar um sem o outro deixaria a mensagem sem o valor.
+ *
+ * DOCUMENTO está na lista de colunas do select de fora e precisa continuar:
+ * sem o número do contrato, a "parcela 1" de dois contratos diferentes seria
+ * a mesma chave no controle de envio e uma delas nunca seria avisada — é o
+ * que faz o "enviar uma vez só" funcionar. O ";" do fim é o único trecho que
+ * não está aqui, porque o JDBC não aceita.
  */
 public class ParcelaContratoAprovacaoDAO {
 
@@ -32,7 +40,7 @@ public class ParcelaContratoAprovacaoDAO {
 
     /** Sem binds: a consulta é fixa, como veio da área financeira. */
     private static final String SQL = """
-        select DOCUMENTO, DATAVCTO, PARCELA, NOME_FORNECEDOR, VALOR_LIQUIDO,
+        select DOCUMENTO, DATAVCTO, PARCELA, NOME_FORNECEDOR, VALOR,
                DESC_OBJETOCUSTO, DESC_EMPENHO, FIXOVARIAVEL, OBSERVACAO
         from (
           SELECT TMP.*
@@ -40,7 +48,7 @@ public class ParcelaContratoAprovacaoDAO {
                                                      , tmp.cod_empresa
                                                      , tmp.cod_filial
                                                      , tmp.documento
-                                                     , 324                     /* pn_id_logon */
+                                                     , 1183                    /* pn_id_logon */
                                                      , 8247                    /* pn_cod_formulario */
                                                      , 'A'
                                                      , ''
@@ -358,16 +366,7 @@ public class ParcelaContratoAprovacaoDAO {
             AND    PARAMETRO_FINANCEIRO.COD_EMPRESA         = 1
             AND    PARAMETRO_FINANCEIRO.COD_FILIAL          = 1
           ) TMP
-          WHERE SEGURANCANOVO.FN_VERIFICASUPERVISORDE(TMP.COD_GRUPOEMPRESA
-                                                    , TMP.COD_EMPRESA
-                                                    , TMP.COD_FILIAL
-                                                    , 324                      /* pn_id_logon */
-                                                    , TMP.COD_OBJETOCUSTO
-                                                    , TMP.COD_EMPENHO
-                                                    , 0
-                                                    , 0
-                                                    , 8247) = 'T'              /* pn_cod_formulario */
-          AND   TMP.COD_FUNC_APROVADOR = 19424
+          where cod_situacao = 6
         )
         ORDER BY DATAVCTO, DOCUMENTO, PARCELA
         """;
