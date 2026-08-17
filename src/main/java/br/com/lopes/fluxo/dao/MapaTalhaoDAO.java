@@ -23,6 +23,10 @@ import java.util.logging.Logger;
  * Consulta enxuta de propósito: só o que o mapa pinta e o que o popup
  * mostra. O cadastro completo do talhão continua em {@link AgricolaTalhaoDAO},
  * que o chatbot usa.
+ *
+ * Traz também produção estimada e realizada do talhão, para o mapa comparar
+ * as duas. São a mesma cana contada em dois momentos — antes e depois do
+ * corte — e por isso nunca devem ser somadas uma à outra.
  */
 public class MapaTalhaoDAO {
 
@@ -54,6 +58,36 @@ public class MapaTalhaoDAO {
                                                      , talhao.cod_talhao
                                                      , 0
                                                      , 'TCH'), 0), 2)                 tch_estimado
+             -- Produção estimada, na conta que a área agrícola usa: área de
+             -- produção × rendimento agrícola do talhão, convertido para
+             -- tonelada. Na consulta de origem havia um
+             -- "+ decode('N','N',0,areamuda)", que é zero sempre — o 'N' diz
+             -- para não somar a área de muda. Ficou de fora por ser o que é.
+             , round( nvl(talhao.areaproducao, 0)
+                    * agricola.fn_conversao_unidade( rh.c('UNIDADE_TONELADA')
+                                                   , 'T'
+                                                   , nvl(talhao.rendimentoagricola, 0))
+                    , 2)                                                              producao_estimada
+             -- Produção realizada: a cana que já saiu deste talhão na safra,
+             -- somando todas as ordens de corte dele (um talhão costuma ter
+             -- mais de uma). pesomuda entra junto porque é cana pesada do
+             -- mesmo corte, como no relatório de produtividade.
+             --
+             -- Diferente daquele relatório, aqui NÃO se exige a ordem de
+             -- colheita encerrada: no meio da safra quase toda ordem está
+             -- aberta, e zerar essas faria o mapa mostrar colheita nenhuma
+             -- justamente quando ele é mais útil. O número é, então, o que já
+             -- foi pesado até agora.
+             , round( nvl( (select sum(nvl(oc.producao_realizada, 0) + nvl(oc.pesomuda, 0))
+                            from   agricola.ordem_corte_unica oc
+                            where  oc.cod_grupoempresa = 1
+                            and    oc.cod_empresa      = 1
+                            and    oc.cod_filial       = 1
+                            and    oc.cod_safra        = talhao.cod_safra
+                            and    oc.cod_fazenda      = talhao.cod_fazenda
+                            and    oc.zona             = talhao.zona
+                            and    oc.cod_talhao       = talhao.cod_talhao), 0)
+                    , 2)                                                              producao_realizada
         from   agricola.talhao
              , agricola.fazenda
              , agricola.situacao_talhao

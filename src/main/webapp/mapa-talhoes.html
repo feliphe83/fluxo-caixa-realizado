@@ -105,6 +105,41 @@
   .pop-tab td:last-child { text-align: right; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
   .pop-vazio { font-size: 12px; color: #94a0b8; font-style: italic; }
 
+  /* Estimado × realizado. Duas barras na mesma escala, uma embaixo da outra:
+     é a comparação que se lê de relance, sem contas. A escala é sempre o
+     MAIOR dos dois, então quando o realizado passa o estimado a barra de
+     cima é que fica menor — e isso é a informação, não um erro de desenho. */
+  .pop-comp { margin-top: 9px; border-top: 1px solid #eef1f6; padding-top: 8px; }
+  .pop-comp .rot { display: flex; justify-content: space-between; font-size: 11px;
+                   color: #64748b; margin-bottom: 3px; }
+  .pop-comp .rot b { color: var(--ink); font-variant-numeric: tabular-nums; }
+  .pop-comp .barra { height: 9px; border-radius: 5px; background: #eef1f6; overflow: hidden; }
+  .pop-comp .barra i { display: block; height: 100%; border-radius: 5px; }
+  .pop-comp .barra + .rot { margin-top: 7px; }
+  /* O selo do percentual não se pinta com a cor da faixa: nos passos claros
+     da rampa nenhum texto em cima dela chega aos 4,5:1 exigidos para leitura.
+     O texto fica em tinta escura sobre fundo pálido, e quem carrega a cor é a
+     bolinha ao lado — que não precisa ser lida, só vista. */
+  .pop-atg { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px;
+             font-size: 11.5px; font-weight: 700; padding: 4px 10px; border-radius: 999px;
+             background: #eef3fb; color: #0d2a52; }
+  .pop-atg .pt { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+
+  /* Legenda do modo colheita. Só aparece nesse modo — no modo situação a
+     cor já é explicada pelo próprio nome dentro do popup. */
+  .legenda-mapa {
+    position: absolute; left: 12px; bottom: 12px; z-index: 850;
+    background: rgba(255,255,255,.94); border-radius: 10px; padding: 9px 11px;
+    box-shadow: 0 4px 16px rgba(15,36,96,.20); display: none; max-width: 240px;
+  }
+  .legenda-mapa.on { display: block; }
+  .legenda-mapa .tit { font-size: 10px; font-weight: 700; text-transform: uppercase;
+                       letter-spacing: .5px; color: #64748b; margin-bottom: 6px; }
+  .legenda-mapa .item { display: flex; align-items: center; gap: 7px; font-size: 11.5px;
+                        color: #52514e; padding: 1.5px 0; }
+  .legenda-mapa .cx { width: 13px; height: 13px; border-radius: 3px; flex: none;
+                      border: 1px solid rgba(255,255,255,.9); }
+
   .carregando {
     position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
     background: rgba(244,246,251,.92); z-index: 1000; font-size: 13px; color: #475569; flex-direction: column; gap: 10px;
@@ -259,6 +294,10 @@
   </div>
   <div class="header-right">
     <select id="selSafra" onchange="carregarDados()"><option>…</option></select>
+    <select id="selCor" onchange="trocarModoCor(this.value)" title="O que a cor do talhão mostra">
+      <option value="situacao">Cor: situação</option>
+      <option value="colheita">Cor: colheita × estimado</option>
+    </select>
     <input type="search" id="busca" placeholder="Buscar talhão ou fazenda…" oninput="aplicarFiltros()" style="width:190px">
     <button class="btn-topo" id="btnGps" onclick="alternarGps()" title="Mostrar minha posição">📍<span class="rotulo"> Onde estou</span></button>
     <button class="btn-topo" id="btnOffline" onclick="prepararOffline()"
@@ -285,6 +324,10 @@
         <button onclick="pedirNomeDaTrilha()">Salvar</button>
         <button class="parar" onclick="pararTrilha(false)">Descartar</button>
       </div>
+    </div>
+    <div class="legenda-mapa" id="legendaColheita">
+      <div class="tit">Colhido do estimado</div>
+      <div id="legendaColheitaItens"></div>
     </div>
     <div class="cartao-gps" id="cartaoGps">
       <button class="fechar" onclick="fecharCartao()">×</button>
@@ -360,12 +403,79 @@ function situacaoDe(chave) {
            : { cod: Number(d.cod_situacao), nome: d.desc_situacao || ('Situação ' + d.cod_situacao), cor: SEM_DADOS.cor };
 }
 
+// ── Colheita × estimado ──────────────────────────────────────────────────
+//
+// Rampa de um tom só, do claro ao escuro: quanto mais escuro, mais do que se
+// esperava do talhão já saiu dele. Um tom só porque a informação é "quanto",
+// e não "qual" — cores diferentes sugeririam categorias que não existem aqui.
+//
+// A faixa "não colhido" é o passo mais claro da mesma rampa, e não um cinza:
+// zero é o começo da escala, não um estado à parte. Cinza continua sendo só
+// "não dá para calcular" — sem estimativa cadastrada.
+const FAIXAS_COLHEITA = [
+  { ate: 0,        cor: '#86b6ef', nome: 'Não colhido' },
+  { ate: 50,       cor: '#5598e7', nome: 'Até 50%' },
+  { ate: 80,       cor: '#2a78d6', nome: '50% a 80%' },
+  { ate: 100,      cor: '#1c5cab', nome: '80% a 100%' },
+  { ate: Infinity, cor: '#0d366b', nome: 'Acima de 100%' }
+];
+const SEM_ESTIMATIVA = { cor: '#98a2b3', nome: 'Sem estimativa' };
+
+let MODO_COR = 'situacao';
+
+/** % do estimado já colhido, ou null quando não há estimativa para dividir. */
+function atingimentoDe(chave) {
+  const d = DADOS[chave];
+  if (!d) return null;
+  const est = Number(d.producao_estimada) || 0;
+  if (est <= 0) return null;
+  return ((Number(d.producao_realizada) || 0) / est) * 100;
+}
+
+function faixaColheita(pct) {
+  if (pct == null) return SEM_ESTIMATIVA;
+  return FAIXAS_COLHEITA.find(f => pct <= f.ate) || FAIXAS_COLHEITA[FAIXAS_COLHEITA.length - 1];
+}
+
+function corDe(chave) {
+  if (MODO_COR === 'colheita') return faixaColheita(atingimentoDe(chave)).cor;
+  return situacaoDe(chave).cor;
+}
+
+function trocarModoCor(modo) {
+  MODO_COR = modo;
+  document.getElementById('legendaColheita').classList.toggle('on', modo === 'colheita');
+  montarLegendaColheita();
+  aplicarFiltros();
+  try { localStorage.setItem('mapaTalhoes.modoCor', modo); } catch(e) {}
+}
+
+/** Conta quantos talhões caem em cada faixa — a legenda sem número obriga a
+ *  adivinhar se uma cor que não aparece é rara ou inexistente. */
+function montarLegendaColheita() {
+  const el = document.getElementById('legendaColheitaItens');
+  if (!el || MODO_COR !== 'colheita' || !GEO) return;
+
+  const cont = new Map();
+  GEO.features.forEach(f => {
+    const nome = faixaColheita(atingimentoDe(f.properties.chave)).nome;
+    cont.set(nome, (cont.get(nome) || 0) + 1);
+  });
+
+  el.innerHTML = FAIXAS_COLHEITA.concat([SEM_ESTIMATIVA])
+    .filter(f => cont.get(f.nome))
+    .map(f => `<div class="item"><span class="cx" style="background:${f.cor}"></span>
+                 <span style="flex:1">${esc(f.nome)}</span>
+                 <span style="color:#94a0b8">${fmtInt(cont.get(f.nome))}</span></div>`)
+    .join('') || '<div class="item" style="color:#94a0b8">Sem talhões na tela</div>';
+}
+
 function estilo(feature) {
   const s = situacaoDe(feature.properties.chave);
   const escondido = OCULTAS.has(s.cod) || !passaBusca(feature);
   return {
     color: '#ffffff', weight: 1, opacity: escondido ? 0 : .9,
-    fillColor: s.cor, fillOpacity: escondido ? 0 : .68,
+    fillColor: corDe(feature.properties.chave), fillOpacity: escondido ? 0 : .68,
     interactive: !escondido
   };
 }
@@ -397,13 +507,40 @@ function conteudoPopup(p) {
          ${linha('Área plantada', d.areaplantada ? fmtNum(d.areaplantada) + ' ha' : null)}
          ${linha('Área (mapa)', fmtNum(p.areaShape) + ' ha')}
          ${linha('Último corte', formatarData(d.data_ultimo_corte))}
-       </table>`;
+       </table>
+       ${comparativoProducao(d)}`;
 
   return `
     <div class="pop-tit">Talhão ${esc(p.talhao)} <span style="font-weight:400;color:#94a0b8">· zona ${esc(p.zona)}</span></div>
     <div class="pop-faz">${esc((d && d.desc_fazenda) || p.nomeFazenda || 'Fazenda ' + p.fazenda)}</div>
     <div class="pop-sit" style="background:${s.cor}">${esc(s.nome)}</div>
     ${corpo}`;
+}
+
+/**
+ * Estimado × realizado deste talhão — um ao lado do outro, nunca somados:
+ * são a mesma cana contada duas vezes, uma antes e outra depois do corte.
+ */
+function comparativoProducao(d) {
+  const est = Number(d.producao_estimada) || 0;
+  const rea = Number(d.producao_realizada) || 0;
+  if (est <= 0 && rea <= 0) return '';
+
+  const escala = Math.max(est, rea) || 1;
+  const larg = v => Math.max(v > 0 ? 2 : 0, (v / escala) * 100).toFixed(1) + '%';
+  const pct = est > 0 ? (rea / est) * 100 : null;
+  const faixa = faixaColheita(pct);
+
+  return `
+    <div class="pop-comp">
+      <div class="rot"><span>Produção estimada</span><b>${fmtNum(est)} t</b></div>
+      <div class="barra"><i style="width:${larg(est)};background:#98a2b3"></i></div>
+      <div class="rot"><span>Produção realizada</span><b>${fmtNum(rea)} t</b></div>
+      <div class="barra"><i style="width:${larg(rea)};background:${faixa.cor}"></i></div>
+      ${pct == null
+        ? '<div class="pop-vazio" style="margin-top:7px">Sem estimativa cadastrada para comparar.</div>'
+        : `<span class="pop-atg"><i class="pt" style="background:${faixa.cor}"></i>${fmtNum(pct)}% do estimado</span>`}
+    </div>`;
 }
 
 function formatarData(v) {
@@ -414,6 +551,11 @@ function formatarData(v) {
 
 // ── Legenda e resumo ─────────────────────────────────────────────────────
 function montarLegenda() {
+  // A legenda da colheita depende dos mesmos dados e é atualizada junto —
+  // antes do desvio abaixo, que sai fora quando o painel de situação não
+  // está na tela.
+  montarLegendaColheita();
+
   // O painel de situação saiu da tela. A função continua existindo porque é
   // chamada de vários pontos do carregamento — e voltar a exibir o painel é
   // só devolver os dois elementos ao HTML.
@@ -1687,6 +1829,16 @@ async function aoVoltar(forcar) {
 
 (async function iniciar() {
   iniciarMapa();
+
+  // Quem trabalha olhando a colheita não quer reescolher o modo a cada vez
+  // que abre o app. A escolha fica no aparelho.
+  try {
+    const salvo = localStorage.getItem('mapaTalhoes.modoCor');
+    if (salvo === 'colheita' || salvo === 'situacao') {
+      document.getElementById('selCor').value = salvo;
+      trocarModoCor(salvo);
+    }
+  } catch(e) {}
 
   // Trilhas antes de tudo: são dados do próprio aparelho, aparecem na hora e
   // não dependem de rede nem do desenho dos talhões ter carregado.
