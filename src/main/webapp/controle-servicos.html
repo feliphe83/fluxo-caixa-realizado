@@ -31,7 +31,7 @@
     border: 1.5px solid rgba(255,255,255,0.3);
     background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.9);
     font-size: 13px; font-weight: 600; cursor: pointer;
-    margin-right: 56px;
+   
   }
   .btn-voltar:hover { background: rgba(255,255,255,0.18); }
 
@@ -365,6 +365,9 @@
 <script src="js/xlsx.full.min.js"></script>
 <script>
 let DADOS_RAW = [];
+// Combustível levado por cada fornecedor no período, para descontar do que a
+// usina paga. Vem junto da mesma chamada do relatório.
+let COMBUSTIVEL = [];
 
 // ── Comparação com uma gravação anterior ─────────────────────────────────
 // Snapshot escolhido no seletor: mapas de chave -> {qtd, valor} em cada um
@@ -396,6 +399,36 @@ const gravado = (mapa, chave) => (mapa && mapa.get(chave)) || ZERO;
 const comparando = () => COMPARATIVO !== null;
 
 /** Cabeçalhos extras das colunas de comparação. */
+/** Sem acento e sem pontuação: "USINA S/A" e "USINA SA" viram a mesma coisa. */
+function chaveNome(v) {
+  return String(v == null ? '' : v)
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+/**
+ * Combustível de um fornecedor. Casa pelo código; o nome é a segunda
+ * tentativa, para o caso de o relatório não ter resolvido o código (o nome
+ * vem de funções diferentes do ERP nos dois lados).
+ */
+function combustivelDe(grupo) {
+  if (!COMBUSTIVEL.length) return 0;
+  const cod = grupo.itens && grupo.itens.length ? String(grupo.itens[0].codFornecedor || '') : '';
+  const nome = chaveNome(grupo.descFornecedor);
+  let total = 0;
+  COMBUSTIVEL.forEach(c => {
+    const casaCod = cod && String(c.codFornecedor || '') === cod;
+    const casaNome = !cod && nome && chaveNome(c.nomeFornecedor) === nome;
+    if (casaCod || casaNome) total += Number(c.valor) || 0;
+  });
+  return total;
+}
+
+/** Há desconto a mostrar? Sem combustível nenhum, as colunas não aparecem. */
+function temCombustivel() {
+  return COMBUSTIVEL.length > 0;
+}
+
 function thsComp() {
   return comparando()
     ? '<th class="num">Qtd. Gravada</th><th class="num">Valor Gravado</th><th class="num">Diferença</th>'
@@ -459,6 +492,7 @@ async function gerarRelatorio() {
     if (!j.ok) throw new Error(j.erro);
 
     DADOS_RAW = j.data;
+    COMBUSTIVEL = j.combustivel || [];
     if (fornecedor) {
       const codigos = parseCodigos(fornecedor);
       DADOS_RAW = DADOS_RAW.filter(d => codigos.includes(String(d.codFornecedor)));
@@ -573,16 +607,26 @@ function renderizarTabela() {
     return;
   }
 
-  let totalQtd = 0, totalValor = 0;
-  GRUPOS.forEach(g => { totalQtd += g.qtdTotal; totalValor += g.valorTotal; });
+  let totalQtd = 0, totalValor = 0, totalComb = 0;
+  GRUPOS.forEach(g => {
+    totalQtd += g.qtdTotal;
+    totalValor += g.valorTotal;
+    g.combustivel = combustivelDe(g);
+    g.liquido = g.valorTotal - g.combustivel;
+    totalComb += g.combustivel;
+  });
+  const totalLiquido = totalValor - totalComb;
 
-  const nCols = comparando() ? 6 : 3;
+  const comb = temCombustivel();
+  const nCols = (comparando() ? 6 : 3) + (comb ? 2 : 0);
   const linhas = GRUPOS.map((g, idx) => `
     <tr class="item-row" id="row-${idx}" onclick="toggleDetalhe(${idx})">
       <td><span class="seta">▶</span>${escapeHtml(g.descFornecedor || '—')}${
         g.somenteGravado ? ' <span style="font-size:10px;font-weight:700;color:#dc2626">(saiu)</span>' : ''}</td>
       <td class="num">${fmtNum(g.qtdTotal)}</td>
       <td class="num">${fmtMoeda(g.valorTotal)}</td>
+      ${comb ? `<td class="num" style="color:#b45309">${g.combustivel ? '−' + fmtMoeda(g.combustivel) : '—'}</td>
+                <td class="num" style="font-weight:700">${fmtMoeda(g.liquido)}</td>` : ''}
       ${tdsComp(gravado(COMPARATIVO && COMPARATIVO.n1, chaveN1(g)), g.valorTotal)}
     </tr>
     <tr class="detalhe-row" id="det-${idx}" style="display:none">
@@ -600,6 +644,7 @@ function renderizarTabela() {
           <tr>
             <th>Fornecedor/Proprietário</th>
             <th class="num">Qtd. Apontada</th><th class="num">Valor Total</th>
+            ${comb ? '<th class="num">Combustível</th><th class="num">Líquido</th>' : ''}
             ${thsComp()}
           </tr>
         </thead>
@@ -609,6 +654,8 @@ function renderizarTabela() {
             <td>TOTAL</td>
             <td class="num">${fmtNum(totalQtd)}</td>
             <td class="num">${fmtMoeda(totalValor)}</td>
+            ${comb ? `<td class="num" style="color:#b45309">−${fmtMoeda(totalComb)}</td>
+                      <td class="num">${fmtMoeda(totalLiquido)}</td>` : ''}
             ${tdsComp(refTotal, totalValor)}
           </tr>
         </tfoot>
@@ -954,6 +1001,13 @@ function montarResumo() {
   const transporteDias = transportePorData.filter(g => g.valor > 0).length;
   const totalGeral = moTotal.valor + encargosTotal.valor + transporteTotal.valor;
 
+  // Combustível levado pelos fornecedores deste relatório. É um abatimento do
+  // que a usina paga, então entra depois do total geral e com sinal negativo —
+  // somá-lo em qualquer uma das linhas de cima inflaria a despesa.
+  const combTotal = COMBUSTIVEL.reduce((a, c) => a + (Number(c.valor) || 0), 0);
+  const combLitros = COMBUSTIVEL.reduce((a, c) => a + (Number(c.litros) || 0), 0);
+  const totalLiquido = totalGeral - combTotal;
+
   const dataIni = document.getElementById('dataIni').value;
   const dataFim = document.getElementById('dataFim').value;
   document.getElementById('periodoImpressao').textContent =
@@ -982,9 +1036,39 @@ function montarResumo() {
           <tr><td>ENCARGOS</td><td>%</td><td class="num">${fmtNum(70)}</td><td class="num">${fmtMoeda(divSafe(encargosTotal.valor, 70))}</td><td class="num">${fmtMoeda(encargosTotal.valor)}</td></tr>
           <tr><td>TRANSPORTE PESSOAL</td><td>DIARIAS</td><td class="num">${fmtNum(transporteDias)}</td><td class="num">${fmtMoeda(divSafe(transporteTotal.valor, transporteDias))}</td><td class="num">${fmtMoeda(transporteTotal.valor)}</td></tr>
           <tr class="linha-total-geral"><td colspan="4">TOTAL GERAL</td><td class="num">${fmtMoeda(totalGeral)}</td></tr>
+          ${combTotal > 0 ? `
+          <tr style="color:#b45309">
+            <td>(−) COMBUSTÍVEL</td><td>LITROS</td>
+            <td class="num">${fmtNum(combLitros)}</td>
+            <td class="num">${fmtMoeda(divSafe(combTotal, combLitros))}</td>
+            <td class="num">−${fmtMoeda(combTotal)}</td>
+          </tr>
+          <tr class="linha-total-geral"><td colspan="4">TOTAL LÍQUIDO A PAGAR</td><td class="num">${fmtMoeda(totalLiquido)}</td></tr>` : ''}
         </tbody>
       </table>
     </div>
+
+    ${combTotal > 0 ? `
+    <div class="resumo-bloco resumo-curto">
+      <div class="resumo-titulo-secao">COMBUSTÍVEL POR FORNECEDOR</div>
+      <table class="resumo-table">
+        <thead><tr><th>FORNECEDOR</th><th class="num">ABAST.</th><th class="num">LITROS</th><th class="num">VALOR (R$)</th></tr></thead>
+        <tbody>
+          ${COMBUSTIVEL.slice().sort((a,b) => (b.valor||0) - (a.valor||0)).map(c => `
+            <tr>
+              <td>${escapeHtml(c.nomeFornecedor || '—')}</td>
+              <td class="num">${fmtNum(c.abastecimentos)}</td>
+              <td class="num">${fmtNum(c.litros)}</td>
+              <td class="num">${fmtMoeda(c.valor)}</td>
+            </tr>`).join('')}
+          <tr class="linha-total-geral">
+            <td>TOTAL</td><td class="num"></td>
+            <td class="num">${fmtNum(combLitros)}</td>
+            <td class="num">${fmtMoeda(combTotal)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>` : ''}
   `;
 
   document.body.classList.add('modo-resumo');

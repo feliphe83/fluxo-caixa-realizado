@@ -290,6 +290,56 @@ public class AgroCombustivelDAO {
         """.formatted(SUBQUERY_DETALHE, MAX_TOTAL);
 
     /**
+     * Consumo somado por FORNECEDOR abastecido — quem levou o combustível e,
+     * portanto, de quem ele é descontado.
+     *
+     * Usa a mesma subconsulta detalhada dos outros agrupamentos, então o
+     * valor sai da mesma conta do dashboard de combustível: preço do
+     * posto.f_preco_combustivel × litros. Um número aqui que não bata com
+     * aquela tela seria pior do que não ter número nenhum.
+     *
+     * cod_fornecedor nulo fica de fora: é abastecimento de equipamento
+     * próprio, que não se cobra de ninguém.
+     */
+    private static final String SQL_POR_FORNECEDOR = """
+        select * from (
+        select
+               cod_fornecedor, des_fornecedor
+             , round(sum(qtde_litros), 2) total_litros
+             , round(sum(valor_total), 2) valor_total
+             , count(*) qtde_abastecimentos
+        from ( %s )
+        where cod_fornecedor is not null
+        group by cod_fornecedor, des_fornecedor
+        order by valor_total desc
+        ) where rownum <= %d
+        """.formatted(SUBQUERY_DETALHE, MAX_TOTAL);
+
+    /**
+     * Combustível levado por cada fornecedor no período.
+     *
+     * @param dataIni     obrigatório, yyyy-MM-dd
+     * @param dataFim     obrigatório, yyyy-MM-dd
+     * @param combustivel opcional; "Diesel" cai no cod_material exato
+     */
+    public List<Map<String, Object>> buscarPorFornecedor(String dataIni, String dataFim, String combustivel) {
+        StringBuilder filtros = new StringBuilder();
+        List<Object> params = new ArrayList<>();
+        params.add(paraDDMMYYYY(dataIni));
+        params.add(paraDDMMYYYY(dataFim));
+
+        if (combustivel != null && !combustivel.isBlank()) {
+            if ("diesel".equalsIgnoreCase(combustivel.trim())) {
+                filtros.append(" and material.cod_material = ").append(COD_MATERIAL_DIESEL).append("\n");
+            } else {
+                filtros.append(" and upper(material.descricao) like '%'||upper(?)||'%'\n");
+                params.add(combustivel.trim());
+            }
+        }
+        return executar(SQL_POR_FORNECEDOR.replace("/*FILTROS*/", filtros.toString()), params);
+    }
+
+    /**
      * @param dataIni        obrigatório, yyyy-MM-dd (data do abastecimento >=)
      * @param dataFim        obrigatório, yyyy-MM-dd (data do abastecimento <=)
      * @param codEquipamento opcional

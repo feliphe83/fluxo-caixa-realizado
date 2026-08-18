@@ -1,5 +1,6 @@
 package br.com.lopes.fluxo.servlet;
 
+import br.com.lopes.fluxo.dao.AgroCombustivelDAO;
 import br.com.lopes.fluxo.dao.ServicoCorteDAO;
 import br.com.lopes.fluxo.util.DeParaTipoServicoCache;
 import br.com.lopes.fluxo.util.OracleConnectionUtil;
@@ -13,6 +14,10 @@ import java.sql.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.logging.*;
 
 /**
@@ -35,6 +40,7 @@ public class ServicosFornecedorServlet extends HttpServlet {
     private static final DateTimeFormatter FMT = DateTimeFormatter.ISO_LOCAL_DATE;
     private final Gson gson = new Gson();
     private final ServicoCorteDAO servicoCorteDAO = new ServicoCorteDAO();
+    private final AgroCombustivelDAO combustivelDAO = new AgroCombustivelDAO();
 
     /**
      * @param servicosCorteIn códigos de cod_tiposervico tratados como corte de
@@ -288,6 +294,7 @@ public class ServicosFornecedorServlet extends HttpServlet {
             JsonObject result = new JsonObject();
             result.addProperty("ok", true);
             result.add("data", arr);
+            result.add("combustivel", combustivelDosFornecedores(arr, dataIni.toString(), dataFim.toString()));
             out.print(gson.toJson(result));
 
         } catch (SQLException e) {
@@ -299,6 +306,88 @@ public class ServicosFornecedorServlet extends HttpServlet {
         } finally {
             out.flush();
         }
+    }
+
+    /**
+     * Combustível levado no período pelos fornecedores que aparecem neste
+     * relatório — o que será descontado do que a usina paga a cada um.
+     *
+     * O casamento é pelo CÓDIGO do fornecedor, não pelo nome: os dois lados
+     * escrevem o nome por funções diferentes do ERP
+     * (agricola.fn_busca_nomeproprietario aqui, geral.fn_inf_colaborador no
+     * abastecimento), e basta um "S/A" contra "SA" para o desconto sumir
+     * sem ninguém perceber. Nome só entra como segunda tentativa, quando o
+     * relatório não conseguiu resolver o código.
+     *
+     * Só entram os fornecedores presentes no relatório: quem abasteceu no
+     * período mas não prestou serviço não tem de que descontar, e apareceria
+     * como um desconto sem contrapartida.
+     *
+     * Falhar aqui não derruba o relatório. O Controle de Serviços existia
+     * antes deste desconto e continua valendo sem ele; melhor a tela abrir
+     * sem a coluna do que não abrir.
+     */
+    private JsonArray combustivelDosFornecedores(JsonArray linhas, String dataIni, String dataFim) {
+        JsonArray fora = new JsonArray();
+
+        Set<String> codigos = new HashSet<>();
+        Set<String> nomes = new HashSet<>();
+        for (JsonElement el : linhas) {
+            JsonObject o = el.getAsJsonObject();
+            String cod = texto(o.get("codFornecedor"));
+            String nome = texto(o.get("descFornecedor"));
+            if (!cod.isEmpty()) codigos.add(cod);
+            if (!nome.isEmpty()) nomes.add(normalizar(nome));
+        }
+        if (codigos.isEmpty() && nomes.isEmpty()) return fora;
+
+        try {
+            for (Map<String, Object> c : combustivelDAO.buscarPorFornecedor(dataIni, dataFim, "Diesel")) {
+                String cod = texto(c.get("cod_fornecedor"));
+                String nome = texto(c.get("des_fornecedor"));
+                boolean nosso = (!cod.isEmpty() && codigos.contains(cod))
+                             || (cod.isEmpty() && nomes.contains(normalizar(nome)));
+                if (!nosso) continue;
+
+                JsonObject o = new JsonObject();
+                o.addProperty("codFornecedor", cod);
+                o.addProperty("nomeFornecedor", nome);
+                o.addProperty("litros", numero(c.get("total_litros")));
+                o.addProperty("valor", numero(c.get("valor_total")));
+                o.addProperty("abastecimentos", numero(c.get("qtde_abastecimentos")));
+                fora.add(o);
+            }
+        } catch (RuntimeException e) {
+            LOG.log(Level.WARNING, "Desconto de combustível indisponível ("
+                    + dataIni + " a " + dataFim + "): " + e.getMessage(), e);
+        }
+        return fora;
+    }
+
+    /** Sem acento, sem pontuação e em maiúsculas — "USINA S/A" e "USINA SA" viram o mesmo. */
+    private static String normalizar(String v) {
+        if (v == null) return "";
+        return java.text.Normalizer.normalize(v, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .toUpperCase()
+                .replaceAll("[^A-Z0-9]", "");
+    }
+
+    private static String texto(Object v) {
+        if (v == null) return "";
+        if (v instanceof JsonElement e) {
+            if (e.isJsonNull()) return "";
+            return e.getAsString().trim();
+        }
+        return String.valueOf(v).trim();
+    }
+
+    private static java.math.BigDecimal numero(Object v) {
+        if (v == null) return java.math.BigDecimal.ZERO;
+        if (v instanceof java.math.BigDecimal b) return b;
+        if (v instanceof Number n) return java.math.BigDecimal.valueOf(n.doubleValue());
+        try { return new java.math.BigDecimal(String.valueOf(v).trim()); }
+        catch (NumberFormatException e) { return java.math.BigDecimal.ZERO; }
     }
 
     private LocalDate parseDate(String s) {
