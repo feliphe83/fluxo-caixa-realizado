@@ -74,7 +74,7 @@
     }
     .snav-backdrop.aberto { display: block; }
     .snav-logo {
-      padding: 18px 16px; border-bottom: 1px solid rgba(255,255,255,0.09);
+      padding: 16px 14px; border-bottom: 1px solid rgba(255,255,255,0.09);
       display: flex; align-items: center; gap: 10px; flex-shrink: 0;
     }
     .snav-logo-box {
@@ -91,24 +91,41 @@
        usuário lá para baixo — o vazio no meio do menu vinha daí. Agora o
        rodapé vem logo depois do último módulo.
        O min-height: 0 é o que deixa a rolagem funcionar dentro do flex. */
-    .snav-nav { flex: 0 1 auto; min-height: 0; padding: 12px 10px; overflow-y: auto; }
-    .snav-sec { font-size: 9.5px; font-weight: 700; color: #8492a5; text-transform: uppercase; letter-spacing: .8px; padding: 0 8px; margin: 14px 0 4px; }
-    .snav-sec:first-child { margin-top: 2px; }
+    .snav-nav { flex: 0 1 auto; min-height: 0; padding: 10px 10px 14px; overflow-y: auto;
+                scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.22) transparent; }
+    .snav-nav::-webkit-scrollbar { width: 6px; }
+    .snav-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.22); border-radius: 3px; }
+    .snav-nav::-webkit-scrollbar-track { background: transparent; }
+    .snav-sec { font-size: 9.5px; font-weight: 700; color: #8492a5;
+                text-transform: uppercase; letter-spacing: 1px;
+                padding: 0 12px; margin: 18px 0 6px; }
+    .snav-sec:first-child { margin-top: 4px; }
+    /* A barra de acento à esquerda nasce transparente e ganha cor no hover
+       e no item atual. Assim o realce entra pelo mesmo lugar nos dois casos,
+       em vez de o fundo mudar num e a cor do texto no outro. */
     .snav-item {
-      display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 7px;
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 10px 9px 12px; border-radius: 8px;
       color: #c5d2e6; font-size: 12.5px; font-weight: 500; text-decoration: none;
-      margin-bottom: 1px; transition: all .15s; cursor: pointer;
+      margin-bottom: 2px; transition: background .15s, color .15s, box-shadow .15s;
+      cursor: pointer; position: relative;
+      box-shadow: inset 3px 0 0 transparent;
     }
-    .snav-item:hover { background: rgba(255,255,255,.10); color: #ffffff; }
-    .snav-item.ativo { background: rgba(125,179,255,.18); color: #ffffff; font-weight: 700; }
-    .snav-item svg { flex-shrink: 0; }
+    .snav-item:hover { background: rgba(255,255,255,.09); color: #ffffff;
+                       box-shadow: inset 3px 0 0 rgba(125,179,255,.55); }
+    .snav-item.ativo { background: rgba(125,179,255,.16); color: #ffffff; font-weight: 700;
+                       box-shadow: inset 3px 0 0 #7db3ff; }
+    .snav-item svg { flex-shrink: 0; width: 17px; height: 17px; opacity: .78; }
+    .snav-item:hover svg, .snav-item.ativo svg { opacity: 1; }
     .snav-item .txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     .snav-loading, .snav-erro { padding: 12px 8px; font-size: 11.5px; color: #8492a5; }
     .snav-erro { color: #ef4444; }
 
-    .snav-foot { padding: 12px; border-top: 1px solid rgba(255,255,255,0.09); flex-shrink: 0; }
-    .snav-user { display: flex; align-items: center; gap: 9px; padding: 9px 10px; border-radius: 9px; background: rgba(255,255,255,.07); }
+    .snav-foot { padding: 10px 10px 12px; border-top: 1px solid rgba(255,255,255,0.09); flex-shrink: 0; }
+    .snav-user { display: flex; align-items: center; gap: 10px; padding: 9px 10px;
+                 border-radius: 10px; background: rgba(255,255,255,.07);
+                 border: 1px solid rgba(255,255,255,.06); }
     .snav-avatar { width: 30px; height: 30px; border-radius: 8px; background: #2a5bb8; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: white; flex-shrink: 0; }
     .snav-uinfo { flex: 1; min-width: 0; }
     .snav-uname { font-size: 11.5px; font-weight: 600; color: #ffffff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

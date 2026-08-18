@@ -69,29 +69,26 @@
          + corpo + '</svg>';
   }
 
-  // Os quatro que existiam antes de haver escolha. Um módulo cadastrado com
-  // um destes não teve o ícone escolhido — teve o que sobrou, porque a lista
-  // inteira eram esses quatro. Por isso a dedução passa na frente deles.
-  var LEGADO = { 'dollar-sign': 1, 'package': 1, 'trending-up': 1, 'users': 1 };
-
   /**
-   * Ícone do módulo, nesta ordem:
+   * Ícone do módulo: o NOME decide.
    *
-   * 1. o cadastrado no admin, se for FORA do conjunto antigo — aí alguém
-   *    escolheu de verdade, e escolha de gente vence palpite de código;
-   * 2. o deduzido do nome e do endereço;
-   * 3. o cadastrado antigo, se não deu para deduzir nada;
-   * 4. o genérico.
+   * A regra anterior tentava respeitar o ícone cadastrado no admin quando ele
+   * fosse "deliberado". Na prática o campo é herdado, ninguém o mantém, e o
+   * resultado era um cifrão em Fichas de Candidatos — sem que dava para
+   * explicar olhando a tela. Entre uma regra que às vezes acerta e uma que
+   * sempre faz a mesma coisa, a segunda vale mais: o ícone passa a ser
+   * função do nome, e nome errado se conserta renomeando o módulo.
+   *
+   * O cadastrado só entra quando não há pista nenhuma no nome nem no
+   * endereço — aí ele é melhor que o quadriculado genérico.
    */
   function nomeDoModulo(mod) {
-    var cadastrado = mod && mod.icone && CORPOS[mod.icone] ? mod.icone : null;
-    if (cadastrado && !LEGADO[cadastrado]) return cadastrado;
-
     var texto = (((mod && mod.nome) || '') + ' ' + ((mod && mod.urlDestino) || ''))
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
     for (var i = 0; i < PISTAS.length; i++) {
       if (PISTAS[i][0].test(texto)) return PISTAS[i][1];
     }
+    var cadastrado = mod && mod.icone && CORPOS[mod.icone] ? mod.icone : null;
     return cadastrado || 'grid';
   }
 
