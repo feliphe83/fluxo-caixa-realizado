@@ -18,27 +18,31 @@
    tem sistema, tem parede.
    ──────────────────────────────────────────────────────────────────────── */
   :root {
-    --surface-0:      #0d0f13;   /* fundo da tela */
-    --surface-1:      #1a1a19;   /* superfície dos cartões — é contra esta
-                                    cor que as cores de série foram validadas */
-    --surface-2:      #23241f;
-    --borda:          #292b31;
-    --borda-suave:    rgba(255,255,255,.06);
-    --text-primary:   #ffffff;
-    --text-secondary: #c3c2b7;
-    --text-muted:     #8b8a80;
+    /* Mesma combinação do dashboard de combustível: fundo claro, cartões
+       brancos, tinta azul-marinho nos números e a paleta categórica nos
+       passos CLAROS — os escuros de antes eram feitos para fundo preto. */
+    --fundo:      #f4f6fb;
+    --papel:      #ffffff;
+    --papel-2:    #f8faff;   /* fundo dos blocos de número */
+    --borda:      #e3e8f5;
+    --grade:      #e9edf6;
 
-    /* Origem da cana — slots 1 a 4 da paleta categórica, passos escuros.
-       A ordem é fixa: filtrar ou reordenar não pode repintar ninguém. */
-    --origem-propria:    #3987e5;
-    --origem-fornecedor: #d95926;
-    --origem-acionista:  #199e70;
-    --origem-outros:     #c98500;
+    --ink:        #0f2460;   /* números e títulos */
+    --ink-2:      #52514e;
+    --ink-3:      #898781;
+    --rotulo:     #64748b;
 
-    /* Colheita — slots 5 e 6, propositalmente fora da faixa das origens:
-       na mesma tela, repetir o azul da "Própria" em "Mecanizada" faria o
-       olho ligar duas coisas que não têm relação. */
-    --colheita-mec:    #d55181;
+    /* Origem da cana — slots 1 a 4 da paleta categórica, passos claros.
+       Ordem fixa: filtrar ou reordenar não pode repintar ninguém. */
+    --origem-propria:    #2a78d6;
+    --origem-fornecedor: #eb6834;
+    --origem-acionista:  #1baf7a;
+    --origem-outros:     #eda100;
+
+    /* Colheita — slots 5 e 6, fora da faixa das origens: na mesma tela,
+       repetir o azul da "Própria" em "Mecanizada" faria o olho ligar duas
+       coisas sem relação. */
+    --colheita-mec:    #e87ba4;
     --colheita-manual: #008300;
   }
 
@@ -46,8 +50,8 @@
 
   html, body {
     height: 100%;
-    background: var(--surface-0);
-    color: var(--text-primary);
+    background: var(--fundo);
+    color: var(--ink-2);
     font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
     overflow: hidden;                 /* TV não rola */
     font-variant-numeric: tabular-nums;
@@ -70,47 +74,47 @@
 
   /* ── Cabeçalho ── */
   .topo { display: flex; align-items: center; gap: 20px;
-          padding-bottom: 18px; border-bottom: 1px solid var(--borda-suave); }
-  .topo img { width: 58px; height: 58px; object-fit: contain; background: #fff;
+          padding-bottom: 18px; border-bottom: 1px solid var(--borda); }
+  .topo img { width: 58px; height: 58px; object-fit: contain; background: var(--ink);
               border-radius: 12px; padding: 6px; }
-  .topo h1 { font-size: 38px; font-weight: 750; letter-spacing: -.4px; }
-  .topo .sub { font-size: 17px; color: var(--text-muted); margin-top: 3px;
+  .topo h1 { font-size: 38px; font-weight: 750; letter-spacing: -.4px; color: var(--ink); }
+  .topo .sub { font-size: 17px; color: var(--ink-3); margin-top: 3px;
                letter-spacing: .2px; }
   .topo .direita { margin-left: auto; text-align: right; }
   /* Continua com cara de selo — na TV ninguém vai clicar. Mas é um select
      de verdade, para quem abrir o painel no computador poder conferir outra
      safra sem mexer na URL. */
-  .selo-safra { font-size: 26px; font-weight: 700; color: var(--text-primary);
-                background: var(--surface-2); border: 1px solid var(--borda);
+  .selo-safra { font-size: 26px; font-weight: 700; color: var(--ink);
+                background: var(--papel); border: 1px solid var(--borda);
                 border-radius: 10px; padding: 7px 18px; display: inline-block;
                 font-family: inherit; cursor: pointer; appearance: none;
                 text-align: center; text-align-last: center; letter-spacing: .2px; }
-  .selo-safra:hover { border-color: #4a4b55; }
+  .selo-safra:hover { border-color: #b9c6e0; }
   .selo-safra:focus { outline: 2px solid var(--origem-propria); outline-offset: 2px; }
-  .relogio { font-size: 15px; color: var(--text-muted); margin-top: 8px; letter-spacing: .2px; }
+  .relogio { font-size: 15px; color: var(--ink-3); margin-top: 8px; letter-spacing: .2px; }
 
   /* ── Cartões de número ── */
   .numeros { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 16px; }
-  .cartao { background: var(--surface-1); border: 1px solid var(--borda);
+  .cartao { background: var(--papel); border: 1px solid var(--borda);
             border-radius: 16px; padding: 18px 22px 20px; position: relative; overflow: hidden; }
   /* O acento de cor é uma marca, não um bloco: 3px bastam para ligar o
      cartão à sua série no gráfico. O texto fica sempre em tinta de texto. */
   .cartao::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
-  .cartao .rot { font-size: 15px; color: var(--text-muted); font-weight: 700;
+  .cartao .rot { font-size: 15px; color: var(--rotulo); font-weight: 700;
                  text-transform: uppercase; letter-spacing: 1.1px; }
   .cartao .num { font-size: 54px; font-weight: 750; line-height: 1.05; margin-top: 10px;
-                 letter-spacing: -1.5px; }
-  .cartao .un  { font-size: 20px; font-weight: 600; color: var(--text-muted);
+                 letter-spacing: -1.5px; color: var(--ink); }
+  .cartao .un  { font-size: 20px; font-weight: 600; color: var(--ink-3);
                  margin-left: 7px; letter-spacing: 0; }
-  .cartao .pct { font-size: 17px; color: var(--text-secondary); margin-top: 8px;
+  .cartao .pct { font-size: 17px; color: var(--ink-2); margin-top: 8px;
                  display: flex; align-items: center; gap: 8px; }
   .cartao .pct i { width: 9px; height: 9px; border-radius: 50%; flex: none; }
 
-  /* O cartão do total não muda de cor — muda de peso. Fundo levemente mais
-     claro e número maior bastam para ele liderar sem virar outro assunto. */
-  .cartao.total { background: #1e2027; border-color: #33363f; }
+  /* O cartão do total não muda de cor — muda de peso, como a faixa
+     "GERAL CONSOLIDADO" do relatório de combustível. */
+  .cartao.total { background: var(--papel-2); border-color: #d6dff0; }
   .cartao.total::before { background: var(--origem-propria); width: 4px; }
-  .cartao.total .rot { color: var(--text-secondary); }
+  .cartao.total .rot { color: var(--ink); }
   .cartao.total .num { font-size: 78px; letter-spacing: -2.5px; }
 
   .cartao.propria::before    { background: var(--origem-propria); }
@@ -123,49 +127,53 @@
   .cartao.outros .pct i      { background: var(--origem-outros); }
 
   /* ── Gráfico ── */
-  .grafico { background: var(--surface-1); border: 1px solid var(--borda);
+  .grafico { background: var(--papel); border: 1px solid var(--borda);
              border-radius: 16px; padding: 20px 26px 16px; display: flex; flex-direction: column; }
   .grafico .cab { display: flex; align-items: baseline; gap: 14px; margin-bottom: 6px; }
-  .grafico h2, .colheita h2 { font-size: 20px; font-weight: 700; letter-spacing: .2px; }
-  .grafico .dica, .colheita .dica { font-size: 14px; color: var(--text-muted);
+  .grafico h2, .colheita h2 { font-size: 20px; font-weight: 700; letter-spacing: .2px; color: var(--ink); }
+  .grafico .dica, .colheita .dica { font-size: 14px; color: var(--ink-3);
                                     text-transform: uppercase; letter-spacing: 1px;
                                     font-weight: 600; }
   .legenda { display: flex; gap: 26px; margin-left: auto; }
   .legenda span { display: flex; align-items: center; gap: 9px; font-size: 16px;
-                  color: var(--text-secondary); font-weight: 600; }
+                  color: var(--ink-2); font-weight: 600; }
   .legenda i { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
   .tela-grafico { flex: 1; position: relative; min-height: 0; }
   /* Safra que ainda não começou: um eixo vazio com marcas "2, 1, 0" parece
      defeito. Uma frase diz o que está acontecendo. */
   .sem-dado { display: none; position: absolute; inset: 0; place-items: center;
-              font-size: 26px; color: var(--text-muted); font-weight: 600; }
+              font-size: 26px; color: var(--ink-3); font-weight: 600; }
   .sem-dado.on { display: grid; }
 
   /* ── Faixa da colheita ── */
-  .colheita { background: var(--surface-1); border: 1px solid var(--borda);
+  .colheita { background: var(--papel); border: 1px solid var(--borda);
               border-radius: 16px; padding: 18px 26px 20px; }
   .colheita .cab { display: flex; align-items: baseline; gap: 14px; margin-bottom: 12px; }
   .barra-split { display: flex; height: 46px; border-radius: 8px; overflow: hidden;
-                 background: var(--surface-2); gap: 3px; }
+                 background: var(--grade); gap: 3px; }
   /* O vão de 2px entre os pedaços é a superfície aparecendo: sem ele, duas
      cores encostadas viram uma terceira na borda, à distância da TV. */
   .barra-split div { display: flex; align-items: center; padding: 0 18px;
-                     font-size: 21px; font-weight: 700; color: #fff; white-space: nowrap;
-                     letter-spacing: .2px; }
+                     font-size: 21px; font-weight: 700; white-space: nowrap;
+                     letter-spacing: .2px; color: #1a1a2e; }
+  /* Só o verde é escuro o bastante para texto branco (4,95:1). No magenta o
+     branco daria 2,69:1 e no amarelo 2,17:1 — ilegíveis à distância de uma
+     TV, que é justamente onde este painel vive. */
+  .barra-split .manual { color: #ffffff; }
   .barra-split .mec    { background: var(--colheita-mec); }
   .barra-split .manual { background: var(--colheita-manual); justify-content: flex-end; }
   .colheita .abaixo { display: flex; justify-content: space-between; margin-top: 12px;
-                      font-size: 17px; color: var(--text-secondary); }
-  .colheita .abaixo b { color: var(--text-primary); font-size: 19px; font-weight: 700; }
+                      font-size: 17px; color: var(--ink-2); }
+  .colheita .abaixo b { color: var(--ink); font-size: 19px; font-weight: 700; }
 
   /* ── Estados ── */
   .aviso { position: fixed; inset: 0; display: none; place-items: center;
-           background: rgba(15,17,21,.94); z-index: 50; text-align: center; padding: 40px; }
+           background: rgba(244,246,251,.96); z-index: 50; text-align: center; padding: 40px; }
   .aviso.on { display: grid; }
   .aviso .cx { max-width: 900px; }
-  .aviso h3 { font-size: 40px; margin-bottom: 14px; }
-  .aviso p  { font-size: 22px; color: var(--text-secondary); line-height: 1.5; }
-  .tarja-velha { position: fixed; top: 0; left: 0; right: 0; background: #c98500;
+  .aviso h3 { font-size: 40px; margin-bottom: 14px; color: var(--ink); }
+  .aviso p  { font-size: 22px; color: var(--ink-2); line-height: 1.5; }
+  .tarja-velha { position: fixed; top: 0; left: 0; right: 0; background: #eda100;
                  color: #1a1a19; font-size: 18px; font-weight: 700; text-align: center;
                  padding: 7px; display: none; z-index: 40; }
   .tarja-velha.on { display: block; }
@@ -404,9 +412,9 @@ function desenharGrafico(d) {
       scales: {
         x: {
           grid: { display: false },
-          border: { color: 'rgba(255,255,255,.14)' },
+          border: { color: '#d6dff0' },
           ticks: {
-            color: '#c3c2b7',
+            color: '#52514e',
             font: { size: 19, weight: '700' },
             padding: 10,
             callback: (v, i) => meses[i].label
@@ -414,10 +422,10 @@ function desenharGrafico(d) {
         },
         y: {
           max: teto,
-          grid: { color: 'rgba(255,255,255,.06)', drawTicks: false },
+          grid: { color: '#e9edf6', drawTicks: false },
           border: { display: false },
           ticks: {
-            color: '#7d7c73', font: { size: 16 },
+            color: '#898781', font: { size: 16 },
             maxTicksLimit: 5, padding: 10,
             callback: v => num0(v)
           }
@@ -452,7 +460,7 @@ function desenharGrafico(d) {
           });
           if (!n) continue;
           ctx.font = '700 23px system-ui, sans-serif';
-          ctx.fillStyle = '#ffffff';
+          ctx.fillStyle = '#0f2460';
           ctx.fillText(num0(totais[i]), x / n, linha);
         }
 
@@ -462,7 +470,7 @@ function desenharGrafico(d) {
         // o número encostaria no vizinho e nenhum dos dois seria lido.
         const alturaUtil = chart.chartArea.bottom - chart.chartArea.top;
         ctx.font = '600 15px system-ui, sans-serif';
-        ctx.fillStyle = '#c3c2b7';
+        ctx.fillStyle = '#52514e';
         chart.data.datasets.forEach((ds, d) => {
           const meta = chart.getDatasetMeta(d);
           meta.data.forEach((barra, i) => {
