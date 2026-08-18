@@ -54,7 +54,7 @@
 
     .snav-sidebar {
       position: fixed; top: 0; left: 0; height: 100vh; width: var(--snav-w);
-      background: #0f1e36; border-right: 1px solid rgba(26,58,124,0.35);
+      background: #0f2460; border-right: 1px solid rgba(255,255,255,0.09);
       display: flex; flex-direction: column; z-index: 1040;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       transform: translateX(-100%); transition: transform .22s ease;
@@ -74,7 +74,7 @@
     }
     .snav-backdrop.aberto { display: block; }
     .snav-logo {
-      padding: 18px 16px; border-bottom: 1px solid rgba(26,58,124,0.35);
+      padding: 18px 16px; border-bottom: 1px solid rgba(255,255,255,0.09);
       display: flex; align-items: center; gap: 10px; flex-shrink: 0;
     }
     .snav-logo-box {
@@ -84,7 +84,7 @@
     }
     .snav-logo-box img { width: 100%; height: 100%; object-fit: contain; }
     .snav-logo-txt { font-size: 12.5px; font-weight: 700; color: #e2e8f0; line-height: 1.3; }
-    .snav-logo-sub { font-size: 9.5px; color: #64748b; text-transform: uppercase; letter-spacing: .6px; }
+    .snav-logo-sub { font-size: 9.5px; color: #8492a5; text-transform: uppercase; letter-spacing: .6px; }
 
     /* Cresce só até onde a lista pede, e rola quando passar disso.
        Com "flex: 1" ele esticava até o rodapé e empurrava Administração e o
@@ -92,28 +92,28 @@
        rodapé vem logo depois do último módulo.
        O min-height: 0 é o que deixa a rolagem funcionar dentro do flex. */
     .snav-nav { flex: 0 1 auto; min-height: 0; padding: 12px 10px; overflow-y: auto; }
-    .snav-sec { font-size: 9.5px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .8px; padding: 0 8px; margin: 14px 0 4px; }
+    .snav-sec { font-size: 9.5px; font-weight: 700; color: #8492a5; text-transform: uppercase; letter-spacing: .8px; padding: 0 8px; margin: 14px 0 4px; }
     .snav-sec:first-child { margin-top: 2px; }
     .snav-item {
       display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 7px;
       color: #94a3b8; font-size: 12.5px; font-weight: 500; text-decoration: none;
       margin-bottom: 1px; transition: all .15s; cursor: pointer;
     }
-    .snav-item:hover { background: #162440; color: #e2e8f0; }
-    .snav-item.ativo { background: rgba(15,36,96,0.5); color: #7db3ff; font-weight: 700; }
+    .snav-item:hover { background: rgba(255,255,255,.08); color: #e2e8f0; }
+    .snav-item.ativo { background: rgba(125,179,255,.16); color: #a8cbff; font-weight: 700; }
     .snav-item svg { flex-shrink: 0; }
     .snav-item .txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-    .snav-loading, .snav-erro { padding: 12px 8px; font-size: 11.5px; color: #64748b; }
+    .snav-loading, .snav-erro { padding: 12px 8px; font-size: 11.5px; color: #8492a5; }
     .snav-erro { color: #ef4444; }
 
-    .snav-foot { padding: 12px; border-top: 1px solid rgba(26,58,124,0.35); flex-shrink: 0; }
-    .snav-user { display: flex; align-items: center; gap: 9px; padding: 9px 10px; border-radius: 9px; background: #162440; }
-    .snav-avatar { width: 30px; height: 30px; border-radius: 8px; background: #1a3a7c; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: white; flex-shrink: 0; }
+    .snav-foot { padding: 12px; border-top: 1px solid rgba(255,255,255,0.09); flex-shrink: 0; }
+    .snav-user { display: flex; align-items: center; gap: 9px; padding: 9px 10px; border-radius: 9px; background: rgba(255,255,255,.07); }
+    .snav-avatar { width: 30px; height: 30px; border-radius: 8px; background: #2a5bb8; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: white; flex-shrink: 0; }
     .snav-uinfo { flex: 1; min-width: 0; }
     .snav-uname { font-size: 11.5px; font-weight: 600; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .snav-urole { font-size: 9.5px; color: #64748b; text-transform: uppercase; letter-spacing: .4px; }
-    .snav-btn-sair { background: none; border: none; cursor: pointer; color: #64748b; padding: 5px; border-radius: 5px; flex-shrink: 0; transition: color .15s; }
+    .snav-urole { font-size: 9.5px; color: #8492a5; text-transform: uppercase; letter-spacing: .4px; }
+    .snav-btn-sair { background: none; border: none; cursor: pointer; color: #8492a5; padding: 5px; border-radius: 5px; flex-shrink: 0; transition: color .15s; }
     .snav-btn-sair:hover { color: #ef4444; }
 
     /* Aba na borda esquerda, na altura dos olhos. No canto superior esquerdo
