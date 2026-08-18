@@ -5,107 +5,211 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Intranet USC · Central de Módulos</title>
 <style>
+  :root {
+    --azul-900: #0d1f47;
+    --azul-800: #12295c;
+    --azul-600: #1a3a7c;
+    --azul-100: #e8edfb;
+
+    --fundo:    #f5f7fa;
+    --papel:    #ffffff;
+    --borda:    #e2e7f0;
+    --borda-forte: #cfd7e6;
+
+    --tinta:    #14192b;
+    --tinta-2:  #5a6478;
+    --tinta-3:  #8b93a5;
+
+    --raio:     12px;
+    --sombra:   0 1px 2px rgba(16,26,51,.05);
+    --sombra-alta: 0 10px 28px rgba(16,26,51,.10);
+  }
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: #f4f6fb;
-    color: #1a1a2e;
+    background: var(--fundo);
+    color: var(--tinta);
     min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
   }
 
-  /* Header */
+  /* ── Cabeçalho ──────────────────────────────────────────────────────────
+     Cor chapada em vez de gradiente: gradiente em barra de topo é a marca
+     mais rápida de site datado, e não carrega informação nenhuma. */
   .header {
-    background: linear-gradient(135deg, #0f2460 0%, #1a3a7c 100%);
-    color: white;
-    padding: 18px 32px;
+    background: var(--azul-900);
+    color: #fff;
+    padding: 0 32px;
+    height: 62px;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    position: sticky; top: 0; z-index: 20;
   }
-  .header-left { display: flex; align-items: center; gap: 14px; }
-  .header-logo { width: 42px; height: 42px; border-radius: 8px; background: white; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 5px; flex-shrink: 0; }
+  .header-left { display: flex; align-items: center; gap: 13px; }
+  .header-logo {
+    width: 36px; height: 36px; border-radius: 8px; background: #fff;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden; padding: 4px; flex-shrink: 0;
+  }
   .header-logo img { width: 100%; height: 100%; object-fit: contain; }
-  .header-title { font-size: 18px; font-weight: 700; }
-  .header-sub { font-size: 12px; opacity: .75; margin-top: 2px; }
-  .header-right { display: flex; align-items: center; gap: 16px; margin-right: 56px; }
-  .header-user { font-size: 13px; opacity: .9; text-align: right; }
+  .header-title { font-size: 15px; font-weight: 650; letter-spacing: .1px; }
+  .header-sub {
+    font-size: 11px; color: rgba(255,255,255,.55); margin-top: 1px;
+    text-transform: uppercase; letter-spacing: .9px; font-weight: 600;
+  }
+  .header-right { display: flex; align-items: center; gap: 10px; }
+
+  /* O usuário vira um item clicável de verdade — antes era um texto com
+     sublinhado que só aparecia no hover, e nada dizia que levava a algum
+     lugar. */
+  .chip-user {
+    display: flex; align-items: center; gap: 9px;
+    padding: 6px 12px 6px 6px; border-radius: 999px;
+    background: rgba(255,255,255,.07);
+    border: 1px solid rgba(255,255,255,.10);
+    color: rgba(255,255,255,.92); font-size: 13px; font-weight: 600;
+    text-decoration: none; transition: background .15s, border-color .15s;
+  }
+  .chip-user:hover { background: rgba(255,255,255,.13); border-color: rgba(255,255,255,.22); }
+  .chip-user .avatar {
+    width: 25px; height: 25px; border-radius: 50%; flex: none;
+    background: var(--azul-600); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; letter-spacing: .3px;
+  }
   .btn-sair {
     display: flex; align-items: center; gap: 7px;
-    padding: 8px 16px; border-radius: 8px;
-    border: 1.5px solid rgba(255,255,255,0.3);
-    background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.85);
+    padding: 8px 14px; border-radius: 8px;
+    border: 1px solid rgba(255,255,255,.16);
+    background: transparent; color: rgba(255,255,255,.78);
     font-size: 13px; font-weight: 600; cursor: pointer;
-    transition: all .18s;
+    font-family: inherit; transition: all .15s;
   }
-  .btn-sair:hover { background: rgba(239,68,68,0.25); border-color: rgba(239,68,68,0.6); color: white; }
+  .btn-sair:hover { background: rgba(220,68,68,.16); border-color: rgba(220,68,68,.45); color: #fff; }
 
-  /* Conteúdo */
-  .conteudo { max-width: 1100px; margin: 0 auto; padding: 40px 24px; }
-  .titulo-principal { font-size: 24px; font-weight: 800; color: #0f2460; margin-bottom: 6px; }
-  .subtitulo-principal { font-size: 14px; color: #64748b; margin-bottom: 32px; }
+  /* ── Conteúdo ── */
+  .conteudo { max-width: 1180px; margin: 0 auto; padding: 34px 24px 60px; }
 
-  /* Categorias */
-  .categoria-bloco { margin-bottom: 36px; }
+  .saudacao {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    gap: 24px; flex-wrap: wrap; margin-bottom: 26px;
+  }
+  .saudacao h1 { font-size: 25px; font-weight: 700; letter-spacing: -.4px; }
+  .saudacao .dia {
+    font-size: 13.5px; color: var(--tinta-2); margin-top: 5px;
+  }
+
+  /* Busca: com quinze módulos na tela, ler todos para achar um é o que
+     cansa. Filtrar por nome resolve sem tirar nada do lugar. */
+  .busca-wrap { position: relative; flex: 0 0 300px; max-width: 100%; }
+  .busca-wrap svg {
+    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    width: 16px; height: 16px; color: var(--tinta-3); pointer-events: none;
+  }
+  .busca {
+    width: 100%; padding: 10px 12px 10px 36px;
+    border: 1px solid var(--borda-forte); border-radius: 9px;
+    background: var(--papel); color: var(--tinta);
+    font-size: 13.5px; font-family: inherit; outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .busca::placeholder { color: var(--tinta-3); }
+  .busca:focus { border-color: var(--azul-600); box-shadow: 0 0 0 3px rgba(26,58,124,.12); }
+
+  /* ── Categoria ──
+     Rótulo curto com uma régua atravessando: separa as seções sem gastar um
+     bloco colorido para cada uma. */
+  .categoria-bloco { margin-bottom: 30px; }
+  .categoria-bloco:last-child { margin-bottom: 0; }
   .categoria-header {
-    display: flex; align-items: center; gap: 10px;
-    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
   }
-  .categoria-icone {
-    width: 34px; height: 34px; border-radius: 9px;
-    background: #e8edfb; color: #1a3a7c;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 16px;
+  .categoria-nome {
+    font-size: 12px; font-weight: 700; color: var(--tinta-2);
+    text-transform: uppercase; letter-spacing: 1.2px; white-space: nowrap;
   }
-  .categoria-nome { font-size: 16px; font-weight: 700; color: #0f2460; }
+  .categoria-header .regua { flex: 1; height: 1px; background: var(--borda); }
+  .categoria-header .qtde {
+    font-size: 12px; color: var(--tinta-3); font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
 
   .modulos-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(268px, 1fr));
+    gap: 14px;
   }
 
+  /* ── Cartão do módulo ──
+     É um <a> de verdade: abrir em outra aba com o botão do meio ou com
+     ctrl+clique passa a funcionar, e o teclado alcança pelo tab. Com div e
+     onclick nada disso existia. */
   .modulo-card {
-    background: white;
-    border: 1.5px solid #e3e8f5;
-    border-radius: 14px;
-    padding: 22px;
-    cursor: pointer;
-    transition: all .18s;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+    display: flex; align-items: flex-start; gap: 14px;
+    background: var(--papel);
+    border: 1px solid var(--borda);
+    border-radius: var(--raio);
+    padding: 16px 16px 16px 15px;
+    text-decoration: none; color: inherit;
+    box-shadow: var(--sombra);
+    transition: border-color .16s, box-shadow .16s;
+    position: relative;
   }
-  .modulo-card:hover {
-    border-color: #1a3a7c;
-    box-shadow: 0 8px 24px rgba(26,58,124,0.12);
-    transform: translateY(-2px);
-  }
+  .modulo-card:hover { border-color: var(--borda-forte); box-shadow: var(--sombra-alta); }
+  .modulo-card:focus-visible { outline: 2px solid var(--azul-600); outline-offset: 2px; }
+
+  /* Ícone em bloco discreto de cor plana. O quadrado com gradiente escuro de
+     antes puxava mais atenção que o nome do módulo, que é o que se procura. */
   .modulo-icone {
-    width: 44px; height: 44px; border-radius: 11px;
-    background: linear-gradient(135deg, #1a3a7c, #0f2460);
-    color: white;
+    width: 38px; height: 38px; border-radius: 9px; flex: none;
+    background: var(--azul-100); color: var(--azul-600);
     display: flex; align-items: center; justify-content: center;
-    font-size: 20px;
   }
-  .modulo-nome { font-size: 15px; font-weight: 700; color: #1a1a2e; }
-  .modulo-desc { font-size: 12.5px; color: #6b7488; line-height: 1.4; }
-
-  /* Estado vazio */
-  .estado-vazio {
-    text-align: center;
-    padding: 80px 20px;
-    color: #94a0b8;
+  /* São <span> por estarem dentro de um <a> — e span é inline por padrão, o
+     que deixaria nome e descrição na mesma linha e faria a margem sumir. */
+  .modulo-texto { flex: 1; min-width: 0; display: block; }
+  .modulo-nome {
+    display: block;
+    font-size: 14.5px; font-weight: 650; color: var(--tinta);
+    line-height: 1.3; letter-spacing: -.1px;
   }
-  .estado-vazio svg { width: 56px; height: 56px; margin-bottom: 16px; opacity: .5; }
-  .estado-vazio p { font-size: 14px; }
+  .modulo-desc {
+    display: block;
+    font-size: 12.5px; color: var(--tinta-2); line-height: 1.45; margin-top: 3px;
+  }
+  /* A seta só aparece no hover: presente o tempo todo, quinze setas iguais
+     viram ruído; no hover ela confirma para onde o clique leva. */
+  .modulo-seta {
+    flex: none; align-self: center; color: var(--tinta-3);
+    opacity: 0; transform: translateX(-3px);
+    transition: opacity .16s, transform .16s;
+  }
+  .modulo-card:hover .modulo-seta { opacity: 1; transform: translateX(0); }
 
-  /* Loading */
-  .loading-state { text-align: center; padding: 80px 20px; color: #94a0b8; }
+  .modulo-card.oculto { display: none; }
+  .categoria-bloco.oculto { display: none; }
+
+  /* ── Estados ── */
+  .estado { text-align: center; padding: 70px 20px; color: var(--tinta-3); }
+  .estado svg { width: 48px; height: 48px; margin-bottom: 14px; opacity: .45; }
+  .estado p { font-size: 14px; line-height: 1.6; }
   .spinner {
-    width: 32px; height: 32px; border: 3px solid #e3e8f5; border-top-color: #1a3a7c;
-    border-radius: 50%; margin: 0 auto 12px; animation: spin .8s linear infinite;
+    width: 28px; height: 28px; border: 2.5px solid var(--borda);
+    border-top-color: var(--azul-600); border-radius: 50%;
+    margin: 0 auto 14px; animation: spin .8s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 640px) {
+    .header { padding: 0 16px; height: auto; min-height: 58px; }
+    .header-right { margin-right: 48px; }
+    .chip-user span.nome { display: none; }
+    .conteudo { padding: 24px 16px 48px; }
+    .saudacao h1 { font-size: 21px; }
+    .busca-wrap { flex: 1 1 100%; }
+  }
 </style>
   <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
   <link rel="apple-touch-icon" sizes="152x152" href="img/apple-touch-icon-152.png">
@@ -116,7 +220,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="USC">
-  <meta name="theme-color" content="#0f2460">
+  <meta name="theme-color" content="#0d1f47">
 </head>
 <body>
 
@@ -125,11 +229,14 @@
     <div class="header-logo"><img src="img/logo.png" alt="USC"></div>
     <div>
       <div class="header-title">Usina Santa Clotilde S/A</div>
-      <div class="header-sub">Intranet · Central de Módulos</div>
+      <div class="header-sub">Intranet</div>
     </div>
   </div>
   <div class="header-right">
-    <div class="header-user" id="hdr-usuario" onclick="window.location.href='minha-conta.html'" style="cursor:pointer;text-decoration:underline;text-decoration-color:transparent;transition:text-decoration-color .15s" onmouseover="this.style.textDecorationColor='currentColor'" onmouseout="this.style.textDecorationColor='transparent'" title="Alterar minha senha"></div>
+    <a class="chip-user" id="chipUsuario" href="minha-conta.html" title="Minha conta">
+      <span class="avatar" id="avatarUsuario">·</span>
+      <span class="nome" id="nomeUsuario">…</span>
+    </a>
     <button class="btn-sair" onclick="sair()">
       <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
         <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/>
@@ -140,54 +247,85 @@
 </div>
 
 <div class="conteudo">
-  <div class="titulo-principal">Bem-vindo</div>
-  <div class="subtitulo-principal">Selecione um módulo para começar</div>
+  <div class="saudacao">
+    <div>
+      <h1 id="saudacaoTexto">Central de Módulos</h1>
+      <div class="dia" id="saudacaoDia"></div>
+    </div>
+    <div class="busca-wrap" id="buscaWrap" style="display:none">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input class="busca" id="busca" type="search" placeholder="Buscar módulo…"
+             autocomplete="off" oninput="filtrar()">
+    </div>
+  </div>
+
   <div id="hub-container">
-    <div class="loading-state">
+    <div class="estado">
       <div class="spinner"></div>
       <p>Carregando módulos disponíveis…</p>
     </div>
   </div>
 </div>
 
+<script src="js/icones-modulos.js"></script>
 <script>
+// Os ícones vêm de js/icones-modulos.js — o mesmo arquivo que o menu
+// lateral usa. Antes cada tela tinha a sua tabela, e as duas divergiam.
+const svg = (nome, tam) => window.IconesModulos.svg(nome, tam);
+const iconeDoModulo = mod => window.IconesModulos.doModulo(mod, 19);
+
+// ── Sessão e saudação ─────────────────────────────────────────────────────
 fetch('api/sessao').then(r => r.json()).then(j => {
   if (!j || !j.logon) { window.location.href = 'login.html'; return; }
-  document.getElementById('hdr-usuario').textContent = j.nome || j.logon;
-});
+  const nome = j.nome || j.logon;
+  document.getElementById('nomeUsuario').textContent = nome;
+  document.getElementById('avatarUsuario').textContent = iniciais(nome);
+  document.getElementById('saudacaoTexto').textContent = saudacao() + ', ' + primeiroNome(nome);
+}).catch(() => {});
+
+function iniciais(nome) {
+  const p = String(nome).trim().split(/\s+/).filter(Boolean);
+  if (!p.length) return '·';
+  return (p[0][0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase();
+}
+function primeiroNome(nome) {
+  return String(nome).trim().split(/\s+/)[0] || nome;
+}
+function saudacao() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Bom dia';
+  if (h < 18) return 'Boa tarde';
+  return 'Boa noite';
+}
+
+(function mostrarData() {
+  const d = new Date();
+  const txt = d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
+  document.getElementById('saudacaoDia').textContent = txt.charAt(0).toUpperCase() + txt.slice(1);
+})();
 
 function sair() {
   fetch('api/login').finally(() => { window.location.href = 'login.html'; });
 }
 
-// Mapa simples de ícones (nome -> SVG). Adicione mais conforme necessário.
-const ICONES = {
-  'dollar-sign': '<svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>',
-  'package':     '<svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',
-  'trending-up': '<svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>',
-  'users':       '<svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>',
-};
-
-function iconeHtml(nome) {
-  return ICONES[nome] || ICONES['package'];
-}
-
+// ── Módulos ───────────────────────────────────────────────────────────────
 fetch('api/hub').then(r => r.json()).then(j => {
   const container = document.getElementById('hub-container');
 
   if (!j.ok) {
-    container.innerHTML = '<div class="estado-vazio"><p>Erro ao carregar módulos: ' + (j.erro || '') + '</p></div>';
+    container.innerHTML = '<div class="estado"><p>Não foi possível carregar os módulos.<br>'
+                        + escapeHtml(j.erro || '') + '</p></div>';
     return;
   }
 
-  if (!j.categorias || j.categorias.length === 0) {
+  if (!j.categorias || !j.categorias.length) {
     container.innerHTML = `
-      <div class="estado-vazio">
-        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-          <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
-          <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
-        </svg>
-        <p>Você ainda não tem acesso a nenhum módulo.<br>Solicite ao administrador a liberação do acesso.</p>
+      <div class="estado">
+        ${svg('grid', 48)}
+        <p>Você ainda não tem acesso a nenhum módulo.<br>
+           Solicite ao administrador a liberação do acesso.</p>
       </div>`;
     return;
   }
@@ -195,33 +333,58 @@ fetch('api/hub').then(r => r.json()).then(j => {
   container.innerHTML = j.categorias.map(cat => `
     <div class="categoria-bloco">
       <div class="categoria-header">
-        <div class="categoria-icone">${iconeHtml(cat.icone)}</div>
-        <div class="categoria-nome">${escapeHtml(cat.nome)}</div>
+        <span class="categoria-nome">${escapeHtml(cat.nome)}</span>
+        <span class="regua"></span>
+        <span class="qtde">${cat.modulos.length}</span>
       </div>
       <div class="modulos-grid">
         ${cat.modulos.map(mod => `
-          <div class="modulo-card" onclick="abrirModulo('${escapeAttr(mod.urlDestino)}')">
-            <div class="modulo-icone">${iconeHtml(mod.icone)}</div>
-            <div class="modulo-nome">${escapeHtml(mod.nome)}</div>
-            ${mod.descricao ? `<div class="modulo-desc">${escapeHtml(mod.descricao)}</div>` : ''}
-          </div>
+          <a class="modulo-card" href="${escapeAttr(mod.urlDestino)}"
+             data-busca="${escapeAttr(((mod.nome || '') + ' ' + (mod.descricao || '')).toLowerCase())}">
+            <span class="modulo-icone">${iconeDoModulo(mod)}</span>
+            <span class="modulo-texto">
+              <span class="modulo-nome">${escapeHtml(mod.nome)}</span>
+              ${mod.descricao ? `<span class="modulo-desc">${escapeHtml(mod.descricao)}</span>` : ''}
+            </span>
+            <span class="modulo-seta">
+              ${svg('chevron', 17)}
+            </span>
+          </a>
         `).join('')}
       </div>
     </div>
   `).join('');
+
+  // A busca só faz sentido quando há bastante coisa para procurar.
+  const total = j.categorias.reduce((n, c) => n + c.modulos.length, 0);
+  if (total >= 8) document.getElementById('buscaWrap').style.display = '';
 });
 
-function abrirModulo(url) {
-  window.location.href = url;
+/** Esconde os cartões que não casam, e a categoria que ficou sem nenhum. */
+function filtrar() {
+  const termo = (document.getElementById('busca').value || '').trim().toLowerCase();
+  document.querySelectorAll('.categoria-bloco').forEach(bloco => {
+    let visiveis = 0;
+    bloco.querySelectorAll('.modulo-card').forEach(card => {
+      const casa = !termo || (card.dataset.busca || '').includes(termo);
+      card.classList.toggle('oculto', !casa);
+      if (casa) visiveis++;
+    });
+    bloco.classList.toggle('oculto', visiveis === 0);
+    const qtde = bloco.querySelector('.qtde');
+    if (qtde) qtde.textContent = visiveis;
+  });
 }
 
 function escapeHtml(s) {
   if (s == null) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
+/** Para dentro de aspas duplas de atributo — inclusive href. */
 function escapeAttr(s) {
   if (s == null) return '';
-  return String(s).replace(/'/g, "\\'");
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;')
+                  .replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 </script>
 

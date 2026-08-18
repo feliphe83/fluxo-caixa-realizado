@@ -455,6 +455,31 @@ function desenharGrafico(d) {
           ctx.fillStyle = '#ffffff';
           ctx.fillText(num0(totais[i]), x / n, linha);
         }
+
+        // Valor de cada barra, logo acima dela. Menor e em tinta secundária:
+        // quem manda na leitura é a régua de totais lá em cima, estes são o
+        // detalhe de quem chega perto. Barra baixa demais fica sem rótulo —
+        // o número encostaria no vizinho e nenhum dos dois seria lido.
+        const alturaUtil = chart.chartArea.bottom - chart.chartArea.top;
+        ctx.font = '600 15px system-ui, sans-serif';
+        ctx.fillStyle = '#c3c2b7';
+        chart.data.datasets.forEach((ds, d) => {
+          const meta = chart.getDatasetMeta(d);
+          meta.data.forEach((barra, i) => {
+            const v = Number(ds.data[i]) || 0;
+            if (!v) return;
+            // Barra baixa demais: o número encostaria no vizinho de cima.
+            if ((chart.chartArea.bottom - barra.y) < alturaUtil * 0.07) return;
+            // Barra estreita demais: numa safra de doze meses as barras
+            // afinam e os rótulos passam a se sobrepor. Medir o texto contra
+            // a largura da barra decide isso sozinho, em vez de eu chutar um
+            // número máximo de meses.
+            const texto = num0(v);
+            const largura = (barra.width || 0) + 6;
+            if (ctx.measureText(texto).width > largura) return;
+            ctx.fillText(texto, barra.x, barra.y - 7);
+          });
+        });
         ctx.restore();
       }
     }]

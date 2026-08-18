@@ -5,24 +5,39 @@
  * api/hub (mesma rota do hub.html) e a sessão em api/sessao, destaca a tela
  * atual e não exige nenhuma mudança de layout na página que o inclui.
  *
- * Fica recolhido por padrão (só o botão de "3 riscos" no canto superior
- * esquerdo) — a tela do módulo continua com a largura inteira. Abre como uma
- * camada por cima do conteúdo (overlay + fundo escurecido), nunca fixo
- * empurrando a página.
+ * Comporta-se de dois jeitos, conforme onde está:
+ *
+ * - No HUB, em tela larga, fica FIXO à esquerda: ocupa a sua faixa e o
+ *   conteúdo começa ao lado dele. É a tela de escolher para onde ir, então o
+ *   menu é o assunto principal e não faz sentido escondê-lo.
+ *
+ * - Dentro de um MÓDULO, some: sobra a aba de "3 riscos" na borda esquerda, e
+ *   a tela do módulo fica com a largura inteira. Abrindo, ele entra por cima
+ *   do conteúdo (com fundo escurecido) e sai ao escolher ou clicar fora.
+ *
+ * A aba fica na BORDA, e não no canto superior: no topo à esquerda ela cairia
+ * em cima do logo, que é o que todas as telas têm ali.
  *
  * Uso: <script src="js/sidebar-nav.js" defer></script> antes do fechamento
  * do <body>, igual ao padrão já usado para js/agro-chat-widget.js.
  */
 (function () {
   const ARQUIVO_ATUAL = (location.pathname.split('/').pop() || 'hub.html').toLowerCase();
+  const EH_HUB = ARQUIVO_ATUAL === 'hub.html' || ARQUIVO_ATUAL === '';
+  /** Abaixo disso, faixa fixa de 232px come metade da tela — vira overlay. */
+  const LARGURA_MINIMA_FIXO = 900;
 
-  const ICONES = {
-    'dollar-sign': '<svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>',
-    'package':     '<svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',
-    'trending-up': '<svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>',
-    'users':       '<svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>',
-  };
-  function iconeHtml(nome) { return ICONES[nome] || ICONES['package']; }
+  // Ícones: js/icones-modulos.js, o mesmo arquivo do hub. Aqui existiam
+  // quatro, e todo módulo fora dessa lista virava a mesma caixa — o menu
+  // inteiro ficava com o mesmo desenho repetido.
+  //
+  // Se o arquivo não estiver carregado na página, cai num traço discreto em
+  // vez de estourar: menu sem ícone ainda navega; menu que não abre, não.
+  function iconeDoModulo(mod, tamanho) {
+    if (window.IconesModulos) return window.IconesModulos.doModulo(mod, tamanho || 16);
+    return '<svg width="' + (tamanho || 16) + '" height="' + (tamanho || 16) + '" fill="none" '
+         + 'viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+  }
 
   function escapeHtml(s) {
     if (s == null) return '';
@@ -40,18 +55,21 @@
   style.textContent = `
     :root { --snav-w: 232px; }
 
-    /* Recolhido por padrão — só o botão de "3 riscos" fica visível, a tela
-       do módulo continua com a largura inteira. O menu abre por cima do
-       conteúdo (overlay), não empurra nada. */
     .snav-sidebar {
-      position: fixed; top: 0; right: 0; height: 100vh; width: var(--snav-w);
-      background: #0f1e36; border-left: 1px solid rgba(26,58,124,0.35);
+      position: fixed; top: 0; left: 0; height: 100vh; width: var(--snav-w);
+      background: #0f1e36; border-right: 1px solid rgba(26,58,124,0.35);
       display: flex; flex-direction: column; z-index: 1040;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      transform: translateX(100%); transition: transform .22s ease;
+      transform: translateX(-100%); transition: transform .22s ease;
       box-shadow: 0 0 40px rgba(0,0,0,.35);
     }
     .snav-sidebar.aberto { transform: translateX(0); }
+
+    /* Fixo (só no hub, em tela larga): sem deslizar e sem sombra — não é uma
+       camada por cima de nada, é uma coluna da página. O padding no body é o
+       que abre lugar para ela; sem isso o conteúdo começaria embaixo do menu. */
+    .snav-sidebar.fixo { transform: none; box-shadow: none; transition: none; }
+    html.snav-fixo body { padding-left: var(--snav-w); }
 
     .snav-backdrop {
       display: none; position: fixed; inset: 0; background: rgba(10,22,40,.35);
@@ -71,7 +89,12 @@
     .snav-logo-txt { font-size: 12.5px; font-weight: 700; color: #e2e8f0; line-height: 1.3; }
     .snav-logo-sub { font-size: 9.5px; color: #64748b; text-transform: uppercase; letter-spacing: .6px; }
 
-    .snav-nav { flex: 1; padding: 12px 10px; overflow-y: auto; }
+    /* Cresce só até onde a lista pede, e rola quando passar disso.
+       Com "flex: 1" ele esticava até o rodapé e empurrava Administração e o
+       usuário lá para baixo — o vazio no meio do menu vinha daí. Agora o
+       rodapé vem logo depois do último módulo.
+       O min-height: 0 é o que deixa a rolagem funcionar dentro do flex. */
+    .snav-nav { flex: 0 1 auto; min-height: 0; padding: 12px 10px; overflow-y: auto; }
     .snav-sec { font-size: 9.5px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .8px; padding: 0 8px; margin: 14px 0 4px; }
     .snav-sec:first-child { margin-top: 2px; }
     .snav-item {
@@ -96,17 +119,24 @@
     .snav-btn-sair { background: none; border: none; cursor: pointer; color: #64748b; padding: 5px; border-radius: 5px; flex-shrink: 0; transition: color .15s; }
     .snav-btn-sair:hover { color: #ef4444; }
 
+    /* Aba na borda esquerda, na altura dos olhos. No canto superior esquerdo
+       ela ficaria sobre o logo — que é o que todas as telas põem ali. */
     .snav-toggle {
-      display: flex; position: fixed; top: 14px; right: 14px; z-index: 1020;
-      width: 38px; height: 38px; border-radius: 9px; border: none;
-      background: #0f2460; color: white; cursor: pointer;
-      align-items: center; justify-content: center; box-shadow: 0 2px 10px rgba(0,0,0,.25);
-      transition: background .15s;
+      display: flex; position: fixed; left: 0; top: 50%; z-index: 1020;
+      transform: translateY(-50%);
+      width: 30px; height: 56px; border: none;
+      border-radius: 0 10px 10px 0;
+      background: #0f2460; color: rgba(255,255,255,.85); cursor: pointer;
+      align-items: center; justify-content: center;
+      box-shadow: 2px 0 12px rgba(0,0,0,.28);
+      transition: background .15s, width .15s, color .15s;
     }
-    .snav-toggle:hover { background: #1a3a7c; }
+    .snav-toggle:hover { background: #1a3a7c; color: #fff; width: 36px; }
+    .snav-toggle.escondido { display: none; }
 
     @media print {
       .snav-sidebar, .snav-toggle, .snav-backdrop { display: none !important; }
+      html.snav-fixo body { padding-left: 0 !important; }
     }
   `;
   document.head.appendChild(style);
@@ -139,19 +169,46 @@
   `;
   document.body.prepend(sidebar);
 
+  function fixado() { return sidebar.classList.contains('fixo'); }
+
   function abrirMenu() {
+    if (fixado()) return;              // já está à vista
     sidebar.classList.add('aberto');
     backdrop.classList.add('aberto');
   }
   function fecharMenu() {
+    if (fixado()) return;
     sidebar.classList.remove('aberto');
     backdrop.classList.remove('aberto');
   }
+
+  /**
+   * Decide entre fixo e recolhido. Roda na carga e a cada redimensionamento
+   * porque a janela pode cruzar o limite de largura a qualquer momento —
+   * girar um tablet já basta.
+   */
+  function ajustarModo() {
+    const fixar = EH_HUB && window.innerWidth >= LARGURA_MINIMA_FIXO;
+    sidebar.classList.toggle('fixo', fixar);
+    document.documentElement.classList.toggle('snav-fixo', fixar);
+    toggle.classList.toggle('escondido', fixar);
+    if (fixar) {
+      // Sai de qualquer estado de overlay que tenha ficado da largura anterior.
+      sidebar.classList.remove('aberto');
+      backdrop.classList.remove('aberto');
+    }
+  }
+
+  ajustarModo();
+  window.addEventListener('resize', ajustarModo);
 
   toggle.addEventListener('click', () => {
     sidebar.classList.contains('aberto') ? fecharMenu() : abrirMenu();
   });
   backdrop.addEventListener('click', fecharMenu);
+  // Esc fecha — quando o menu está por cima do conteúdo, é o caminho que a
+  // mão já procura.
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharMenu(); });
   sidebar.querySelectorAll('.snav-nav, .snav-foot').forEach(el => {
     el.addEventListener('click', e => {
       if (e.target.closest('a, .snav-item')) fecharMenu();
@@ -201,7 +258,7 @@
       ${cat.modulos.map(mod => `
         <a class="snav-item ${ultimoSegmento(mod.urlDestino) === ARQUIVO_ATUAL ? 'ativo' : ''}"
            href="${escapeHtml(mod.urlDestino)}" title="${escapeHtml(mod.descricao || mod.nome)}">
-          ${iconeHtml(mod.icone)}
+          ${iconeDoModulo(mod, 16)}
           <span class="txt">${escapeHtml(mod.nome)}</span>
         </a>`).join('')}
     `).join('');
