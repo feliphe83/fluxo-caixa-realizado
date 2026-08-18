@@ -5,25 +5,22 @@
  * api/hub (mesma rota do hub.html) e a sessão em api/sessao, destaca a tela
  * atual e não exige nenhuma mudança de layout na página que o inclui.
  *
- * Comporta-se de dois jeitos, conforme onde está:
+ * Em tela larga fica FIXO à esquerda em TODAS as telas: ocupa a sua faixa e
+ * o conteúdo começa ao lado dele. Trocar de módulo não muda a navegação de
+ * lugar — a barra é sempre o mesmo ponto de referência.
  *
- * - No HUB, em tela larga, fica FIXO à esquerda: ocupa a sua faixa e o
- *   conteúdo começa ao lado dele. É a tela de escolher para onde ir, então o
- *   menu é o assunto principal e não faz sentido escondê-lo.
+ * Em tela estreita (< 900px) a faixa comeria metade do espaço, então ele se
+ * recolhe atrás da aba de "3 riscos" e abre por cima do conteúdo, saindo ao
+ * escolher um módulo ou clicar fora.
  *
- * - Dentro de um MÓDULO, some: sobra a aba de "3 riscos" na borda esquerda, e
- *   a tela do módulo fica com a largura inteira. Abrindo, ele entra por cima
- *   do conteúdo (com fundo escurecido) e sai ao escolher ou clicar fora.
- *
- * A aba fica na BORDA, e não no canto superior: no topo à esquerda ela cairia
- * em cima do logo, que é o que todas as telas têm ali.
+ * A aba fica na BORDA esquerda, e não no canto superior: no topo à esquerda
+ * ela cairia em cima do logo, que é o que todas as telas têm ali.
  *
  * Uso: <script src="js/sidebar-nav.js" defer></script> antes do fechamento
  * do <body>, igual ao padrão já usado para js/agro-chat-widget.js.
  */
 (function () {
   const ARQUIVO_ATUAL = (location.pathname.split('/').pop() || 'hub.html').toLowerCase();
-  const EH_HUB = ARQUIVO_ATUAL === 'hub.html' || ARQUIVO_ATUAL === '';
   /** Abaixo disso, faixa fixa de 232px come metade da tela — vira overlay. */
   const LARGURA_MINIMA_FIXO = 900;
 
@@ -188,7 +185,7 @@
    * girar um tablet já basta.
    */
   function ajustarModo() {
-    const fixar = EH_HUB && window.innerWidth >= LARGURA_MINIMA_FIXO;
+    const fixar = window.innerWidth >= LARGURA_MINIMA_FIXO;
     sidebar.classList.toggle('fixo', fixar);
     document.documentElement.classList.toggle('snav-fixo', fixar);
     toggle.classList.toggle('escondido', fixar);
