@@ -83,7 +83,7 @@
       flex-shrink: 0; overflow: hidden; padding: 4px;
     }
     .snav-logo-box img { width: 100%; height: 100%; object-fit: contain; }
-    .snav-logo-txt { font-size: 12.5px; font-weight: 700; color: #e2e8f0; line-height: 1.3; }
+    .snav-logo-txt { font-size: 12.5px; font-weight: 700; color: #ffffff; line-height: 1.3; }
     .snav-logo-sub { font-size: 9.5px; color: #8492a5; text-transform: uppercase; letter-spacing: .6px; }
 
     /* Cresce só até onde a lista pede, e rola quando passar disso.
@@ -96,11 +96,11 @@
     .snav-sec:first-child { margin-top: 2px; }
     .snav-item {
       display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 7px;
-      color: #94a3b8; font-size: 12.5px; font-weight: 500; text-decoration: none;
+      color: #c5d2e6; font-size: 12.5px; font-weight: 500; text-decoration: none;
       margin-bottom: 1px; transition: all .15s; cursor: pointer;
     }
-    .snav-item:hover { background: rgba(255,255,255,.08); color: #e2e8f0; }
-    .snav-item.ativo { background: rgba(125,179,255,.16); color: #a8cbff; font-weight: 700; }
+    .snav-item:hover { background: rgba(255,255,255,.10); color: #ffffff; }
+    .snav-item.ativo { background: rgba(125,179,255,.18); color: #ffffff; font-weight: 700; }
     .snav-item svg { flex-shrink: 0; }
     .snav-item .txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -111,7 +111,7 @@
     .snav-user { display: flex; align-items: center; gap: 9px; padding: 9px 10px; border-radius: 9px; background: rgba(255,255,255,.07); }
     .snav-avatar { width: 30px; height: 30px; border-radius: 8px; background: #2a5bb8; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: white; flex-shrink: 0; }
     .snav-uinfo { flex: 1; min-width: 0; }
-    .snav-uname { font-size: 11.5px; font-weight: 600; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .snav-uname { font-size: 11.5px; font-weight: 600; color: #ffffff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .snav-urole { font-size: 9.5px; color: #8492a5; text-transform: uppercase; letter-spacing: .4px; }
     .snav-btn-sair { background: none; border: none; cursor: pointer; color: #8492a5; padding: 5px; border-radius: 5px; flex-shrink: 0; transition: color .15s; }
     .snav-btn-sair:hover { color: #ef4444; }
