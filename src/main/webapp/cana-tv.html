@@ -18,11 +18,12 @@
    tem sistema, tem parede.
    ──────────────────────────────────────────────────────────────────────── */
   :root {
-    --surface-0:      #0f1115;   /* fundo da tela */
+    --surface-0:      #0d0f13;   /* fundo da tela */
     --surface-1:      #1a1a19;   /* superfície dos cartões — é contra esta
                                     cor que as cores de série foram validadas */
     --surface-2:      #23241f;
-    --borda:          #2f3038;
+    --borda:          #292b31;
+    --borda-suave:    rgba(255,255,255,.06);
     --text-primary:   #ffffff;
     --text-secondary: #c3c2b7;
     --text-muted:     #8b8a80;
@@ -61,64 +62,78 @@
     position: absolute; left: 50%; top: 50%;
     width: 1920px; height: 1080px;
     transform-origin: center center;
-    padding: 34px 40px;
+    padding: 36px 44px 34px;
     display: grid;
     grid-template-rows: auto auto 1fr auto;
-    gap: 22px;
+    gap: 20px;
   }
 
   /* ── Cabeçalho ── */
-  .topo { display: flex; align-items: center; gap: 20px; }
-  .topo img { width: 62px; height: 62px; object-fit: contain; background: #fff;
+  .topo { display: flex; align-items: center; gap: 20px;
+          padding-bottom: 18px; border-bottom: 1px solid var(--borda-suave); }
+  .topo img { width: 58px; height: 58px; object-fit: contain; background: #fff;
               border-radius: 12px; padding: 6px; }
-  .topo h1 { font-size: 40px; font-weight: 800; letter-spacing: -.5px; }
-  .topo .sub { font-size: 19px; color: var(--text-secondary); margin-top: 2px; }
+  .topo h1 { font-size: 38px; font-weight: 750; letter-spacing: -.4px; }
+  .topo .sub { font-size: 17px; color: var(--text-muted); margin-top: 3px;
+               letter-spacing: .2px; }
   .topo .direita { margin-left: auto; text-align: right; }
   /* Continua com cara de selo — na TV ninguém vai clicar. Mas é um select
      de verdade, para quem abrir o painel no computador poder conferir outra
      safra sem mexer na URL. */
-  .selo-safra { font-size: 30px; font-weight: 800; color: var(--text-primary);
+  .selo-safra { font-size: 26px; font-weight: 700; color: var(--text-primary);
                 background: var(--surface-2); border: 1px solid var(--borda);
-                border-radius: 12px; padding: 8px 20px; display: inline-block;
+                border-radius: 10px; padding: 7px 18px; display: inline-block;
                 font-family: inherit; cursor: pointer; appearance: none;
-                text-align: center; text-align-last: center; }
+                text-align: center; text-align-last: center; letter-spacing: .2px; }
   .selo-safra:hover { border-color: #4a4b55; }
   .selo-safra:focus { outline: 2px solid var(--origem-propria); outline-offset: 2px; }
-  .relogio { font-size: 17px; color: var(--text-muted); margin-top: 7px; }
+  .relogio { font-size: 15px; color: var(--text-muted); margin-top: 8px; letter-spacing: .2px; }
 
   /* ── Cartões de número ── */
-  .numeros { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 18px; }
+  .numeros { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 16px; }
   .cartao { background: var(--surface-1); border: 1px solid var(--borda);
-            border-radius: 18px; padding: 20px 24px; position: relative; overflow: hidden; }
-  /* A faixa colorida é a única marca de cor do cartão: o texto fica em tinta
-     de texto, nunca na cor da série. */
-  .cartao::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; }
-  .cartao .rot { font-size: 17px; color: var(--text-secondary); font-weight: 600;
-                 text-transform: uppercase; letter-spacing: .7px; }
-  .cartao .num { font-size: 56px; font-weight: 800; line-height: 1.1; margin-top: 6px; }
-  .cartao .un  { font-size: 22px; font-weight: 600; color: var(--text-muted); margin-left: 6px; }
-  .cartao .pct { font-size: 19px; color: var(--text-secondary); margin-top: 4px; }
+            border-radius: 16px; padding: 18px 22px 20px; position: relative; overflow: hidden; }
+  /* O acento de cor é uma marca, não um bloco: 3px bastam para ligar o
+     cartão à sua série no gráfico. O texto fica sempre em tinta de texto. */
+  .cartao::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
+  .cartao .rot { font-size: 15px; color: var(--text-muted); font-weight: 700;
+                 text-transform: uppercase; letter-spacing: 1.1px; }
+  .cartao .num { font-size: 54px; font-weight: 750; line-height: 1.05; margin-top: 10px;
+                 letter-spacing: -1.5px; }
+  .cartao .un  { font-size: 20px; font-weight: 600; color: var(--text-muted);
+                 margin-left: 7px; letter-spacing: 0; }
+  .cartao .pct { font-size: 17px; color: var(--text-secondary); margin-top: 8px;
+                 display: flex; align-items: center; gap: 8px; }
+  .cartao .pct i { width: 9px; height: 9px; border-radius: 50%; flex: none; }
 
-  .cartao.total { background: linear-gradient(135deg, #16283f 0%, var(--surface-1) 62%); }
-  .cartao.total::before { background: var(--origem-propria); }
-  .cartao.total .rot { font-size: 19px; color: #bcd6f5; }
-  .cartao.total .num { font-size: 82px; }
+  /* O cartão do total não muda de cor — muda de peso. Fundo levemente mais
+     claro e número maior bastam para ele liderar sem virar outro assunto. */
+  .cartao.total { background: #1e2027; border-color: #33363f; }
+  .cartao.total::before { background: var(--origem-propria); width: 4px; }
+  .cartao.total .rot { color: var(--text-secondary); }
+  .cartao.total .num { font-size: 78px; letter-spacing: -2.5px; }
 
   .cartao.propria::before    { background: var(--origem-propria); }
+  .cartao.propria .pct i     { background: var(--origem-propria); }
   .cartao.fornecedor::before { background: var(--origem-fornecedor); }
+  .cartao.fornecedor .pct i  { background: var(--origem-fornecedor); }
   .cartao.acionista::before  { background: var(--origem-acionista); }
+  .cartao.acionista .pct i   { background: var(--origem-acionista); }
   .cartao.outros::before     { background: var(--origem-outros); }
+  .cartao.outros .pct i      { background: var(--origem-outros); }
 
   /* ── Gráfico ── */
   .grafico { background: var(--surface-1); border: 1px solid var(--borda);
-             border-radius: 18px; padding: 20px 24px 14px; display: flex; flex-direction: column; }
-  .grafico .cab { display: flex; align-items: baseline; gap: 16px; margin-bottom: 10px; }
-  .grafico h2 { font-size: 24px; font-weight: 700; }
-  .grafico .dica { font-size: 16px; color: var(--text-muted); }
-  .legenda { display: flex; gap: 22px; margin-left: auto; }
-  .legenda span { display: flex; align-items: center; gap: 8px; font-size: 17px;
+             border-radius: 16px; padding: 20px 26px 16px; display: flex; flex-direction: column; }
+  .grafico .cab { display: flex; align-items: baseline; gap: 14px; margin-bottom: 6px; }
+  .grafico h2, .colheita h2 { font-size: 20px; font-weight: 700; letter-spacing: .2px; }
+  .grafico .dica, .colheita .dica { font-size: 14px; color: var(--text-muted);
+                                    text-transform: uppercase; letter-spacing: 1px;
+                                    font-weight: 600; }
+  .legenda { display: flex; gap: 26px; margin-left: auto; }
+  .legenda span { display: flex; align-items: center; gap: 9px; font-size: 16px;
                   color: var(--text-secondary); font-weight: 600; }
-  .legenda i { width: 15px; height: 15px; border-radius: 4px; display: inline-block; }
+  .legenda i { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
   .tela-grafico { flex: 1; position: relative; min-height: 0; }
   /* Safra que ainda não começou: um eixo vazio com marcas "2, 1, 0" parece
      defeito. Uma frase diz o que está acontecendo. */
@@ -128,20 +143,20 @@
 
   /* ── Faixa da colheita ── */
   .colheita { background: var(--surface-1); border: 1px solid var(--borda);
-              border-radius: 18px; padding: 18px 24px 20px; }
-  .colheita .cab { display: flex; align-items: baseline; gap: 16px; margin-bottom: 12px; }
-  .colheita h2 { font-size: 24px; font-weight: 700; }
-  .barra-split { display: flex; height: 54px; border-radius: 10px; overflow: hidden;
-                 background: var(--surface-2); gap: 2px; }
+              border-radius: 16px; padding: 18px 26px 20px; }
+  .colheita .cab { display: flex; align-items: baseline; gap: 14px; margin-bottom: 12px; }
+  .barra-split { display: flex; height: 46px; border-radius: 8px; overflow: hidden;
+                 background: var(--surface-2); gap: 3px; }
   /* O vão de 2px entre os pedaços é a superfície aparecendo: sem ele, duas
      cores encostadas viram uma terceira na borda, à distância da TV. */
   .barra-split div { display: flex; align-items: center; padding: 0 18px;
-                     font-size: 24px; font-weight: 800; color: #fff; white-space: nowrap; }
+                     font-size: 21px; font-weight: 700; color: #fff; white-space: nowrap;
+                     letter-spacing: .2px; }
   .barra-split .mec    { background: var(--colheita-mec); }
   .barra-split .manual { background: var(--colheita-manual); justify-content: flex-end; }
-  .colheita .abaixo { display: flex; justify-content: space-between; margin-top: 10px;
-                      font-size: 19px; color: var(--text-secondary); }
-  .colheita .abaixo b { color: var(--text-primary); font-size: 21px; }
+  .colheita .abaixo { display: flex; justify-content: space-between; margin-top: 12px;
+                      font-size: 17px; color: var(--text-secondary); }
+  .colheita .abaixo b { color: var(--text-primary); font-size: 19px; font-weight: 700; }
 
   /* ── Estados ── */
   .aviso { position: fixed; inset: 0; display: none; place-items: center;
@@ -182,7 +197,7 @@
   <div class="grafico">
     <div class="cab">
       <h2>Mês a mês, por origem</h2>
-      <span class="dica">toneladas</span>
+      <span class="dica">toneladas · o número acima de cada mês é o total</span>
       <div class="legenda" id="legenda"></div>
     </div>
     <div class="tela-grafico">
@@ -231,11 +246,17 @@ let GRAFICO = null, ULTIMO_OK = 0;
 // está desenhado enquanto a nova consulta não volta.
 let SAFRA_ATUAL = null;
 
-/** Arredonda o topo do eixo para 1, 2 ou 5 vezes uma potência de 10. */
+/**
+ * Topo do eixo num número redondo, mas COLADO no dado.
+ *
+ * Com passos só de 1, 2 e 5, uma barra de 112 mil subia o eixo para 200 mil e
+ * metade do gráfico ficava vazia. Os passos intermediários mantêm o número
+ * redondo sem jogar as barras para o rodapé.
+ */
 function tetoRedondo(v) {
   if (!(v > 0)) return 1;
   const ordem = Math.pow(10, Math.floor(Math.log10(v)));
-  for (const passo of [1, 2, 2.5, 5, 10]) {
+  for (const passo of [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) {
     if (v <= passo * ordem) return passo * ordem;
   }
   return 10 * ordem;
@@ -318,7 +339,7 @@ function desenharNumeros(d) {
       <div class="cartao ${o.chave}">
         <div class="rot">${esc(o.nome)}</div>
         <div class="num">${num0(v ? v.toneladas : 0)}<span class="un">t</span></div>
-        <div class="pct">${num1(v ? v.pct : 0)}% do total</div>
+        <div class="pct"><i></i>${num1(v ? v.pct : 0)}% do total</div>
       </div>`;
   }
   document.getElementById('numeros').innerHTML = html;
@@ -347,9 +368,11 @@ function desenharGrafico(d) {
     .map(o => `<span><i style="background:${o.cor}"></i>${esc(o.nome)}</span>`).join('');
 
   const totais = meses.map(m => Number(m.total) || 0);
-  // Teto redondo. Deixar o Chart.js calcular com a folga do rótulo dava topo
-  // de eixo em "176.320" — número que não diz nada e que o olho tropeça.
-  const teto = tetoRedondo(Math.max(1, ...totais) * 1.16);
+  // Lado a lado o eixo passa a ser regido pela MAIOR barra, não pela soma do
+  // mês. Usar o total como teto deixaria as barras achatadas na metade de
+  // baixo do gráfico.
+  const maiorBarra = Math.max(1, ...meses.flatMap(m => usadas.map(o => Number(m[o.chave]) || 0)));
+  const teto = tetoRedondo(maiorBarra * 1.08);
 
   const config = {
     type: 'bar',
@@ -359,38 +382,43 @@ function desenharGrafico(d) {
         label: o.nome,
         data: meses.map(m => Number(m[o.chave]) || 0),
         backgroundColor: o.cor,
-        // A borda tem a cor da superfície do cartão: é ela que abre o vão de
-        // 2px entre um pedaço e o outro. Sem o vão, duas cores encostadas
-        // criam uma terceira na emenda — à distância de uma TV, isso vira
-        // uma faixa que não existe nos dados.
-        borderColor: '#1a1a19',
-        borderWidth: 2,
-        borderRadius: 4,
-        borderSkipped: false,
-        barPercentage: 0.72,
-        categoryPercentage: 0.86
+        borderWidth: 0,
+        // Ponta arredondada só em cima, ancorada na linha do zero: a base
+        // reta é o que faz as barras parecerem apoiadas no eixo.
+        borderRadius: { topLeft: 5, topRight: 5, bottomLeft: 0, bottomRight: 0 },
+        borderSkipped: 'bottom',
+        // O vão entre as barras vizinhas é a superfície do cartão aparecendo.
+        // Vem de barPercentage < 1, e não de uma borda colorida: borda come a
+        // largura da barra e, nas pequenas, quase não sobra cor.
+        barPercentage: 0.84,
+        categoryPercentage: 0.74
       }))
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       animation: false,
-      layout: { padding: { top: 26 } },
+      // A folga no topo é onde mora a régua de totais — fora da grade, para
+      // não se confundir com valor do eixo.
+      layout: { padding: { top: 40 } },
       scales: {
         x: {
-          stacked: true,
           grid: { display: false },
-          border: { color: '#2f3038' },
-          ticks: { color: '#c3c2b7', font: { size: 20, weight: '600' } }
+          border: { color: 'rgba(255,255,255,.14)' },
+          ticks: {
+            color: '#c3c2b7',
+            font: { size: 19, weight: '700' },
+            padding: 10,
+            callback: (v, i) => meses[i].label
+          }
         },
         y: {
-          stacked: true,
           max: teto,
-          grid: { color: 'rgba(255,255,255,.07)' },
+          grid: { color: 'rgba(255,255,255,.06)', drawTicks: false },
           border: { display: false },
           ticks: {
-            color: '#8b8a80', font: { size: 17 },
-            maxTicksLimit: 6,
+            color: '#7d7c73', font: { size: 16 },
+            maxTicksLimit: 5, padding: 10,
             callback: v => num0(v)
           }
         }
@@ -401,21 +429,32 @@ function desenharGrafico(d) {
       }
     },
     plugins: [{
-      // Total do mês escrito acima da pilha: é o número que se lê de longe.
-      id: 'totalNoTopo',
+      // Total do mês acima do grupo. Sem a pilha, nenhuma barra sozinha diz
+      // quanto entrou no mês — e é esse o número que se lê de longe. Fica
+      // sobre a barra mais alta do grupo, que é onde o olho já está.
+      id: 'totalDoMes',
       afterDatasetsDraw(chart) {
         const { ctx } = chart;
-        const ult = chart.getDatasetMeta(chart.data.datasets.length - 1);
-        if (!ult) return;
         ctx.save();
-        ctx.font = '700 21px system-ui, sans-serif';
-        ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'center';
-        ult.data.forEach((barra, i) => {
-          const t = totais[i];
-          if (!t) return;
-          ctx.fillText(num0(t), barra.x, chart.scales.y.getPixelForValue(t) - 10);
-        });
+        // Todos os totais na MESMA linha, no alto da área do gráfico. Seguindo
+        // o topo de cada barra, eles subiam e desciam e o conjunto ficava
+        // inquieto — e a altura da barra já é a comparação, o número não
+        // precisa repeti-la. Alinhados, viram uma régua que se lê de uma vez.
+        const linha = chart.chartArea.top - 14;
+        for (let i = 0; i < totais.length; i++) {
+          if (!totais[i]) continue;
+          let x = 0, n = 0;
+          chart.data.datasets.forEach((_, d) => {
+            const barra = chart.getDatasetMeta(d).data[i];
+            if (!barra) return;
+            x += barra.x; n++;
+          });
+          if (!n) continue;
+          ctx.font = '700 23px system-ui, sans-serif';
+          ctx.fillStyle = '#ffffff';
+          ctx.fillText(num0(totais[i]), x / n, linha);
+        }
         ctx.restore();
       }
     }]
