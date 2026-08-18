@@ -191,6 +191,38 @@
   .modulo-card.oculto { display: none; }
   .categoria-bloco.oculto { display: none; }
 
+  /* ── Menu fixo à esquerda ──
+     Com o menu à vista, os cartões no meio repetem item por item o que já
+     está na lateral. Some com eles e com a busca: navegar passa a ser um
+     lugar só.
+
+     Continuam existindo quando o menu NÃO está fixo (celular, janela
+     estreita) — ali a lateral fica recolhida e os cartões são a única
+     forma de chegar aos módulos.
+
+     A classe snav-fixo é posta pelo js/sidebar-nav.js, que é quem sabe se
+     coube fixar. */
+  html.snav-fixo #hub-container,
+  html.snav-fixo #buscaWrap { display: none; }
+  html.snav-fixo .conteudo {
+    min-height: calc(100vh - 62px);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding-bottom: 90px;                 /* sobe o bloco do centro óptico */
+  }
+  html.snav-fixo .saudacao { display: block; text-align: center; margin-bottom: 0; }
+  html.snav-fixo .saudacao h1 { font-size: 30px; }
+  html.snav-fixo .dica-menu { display: block; }
+
+  .dica-menu {
+    display: none; margin-top: 18px; font-size: 14px; color: var(--tinta-3);
+  }
+  .dica-menu span {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--papel); border: 1px solid var(--borda);
+    border-radius: 999px; padding: 9px 18px; box-shadow: var(--sombra);
+  }
+
   /* ── Estados ── */
   .estado { text-align: center; padding: 70px 20px; color: var(--tinta-3); }
   .estado svg { width: 48px; height: 48px; margin-bottom: 14px; opacity: .45; }
@@ -259,6 +291,14 @@
       <input class="busca" id="busca" type="search" placeholder="Buscar módulo…"
              autocomplete="off" oninput="filtrar()">
     </div>
+  </div>
+
+  <div class="dica-menu" id="dicaMenu">
+    <span>
+      <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Escolha um módulo no menu ao lado
+    </span>
   </div>
 
   <div id="hub-container">
