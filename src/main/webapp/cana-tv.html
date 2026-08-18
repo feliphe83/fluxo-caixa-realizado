@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Entrada de Cana — Usina Santa Clotilde</title>
+<link rel="icon" href="img/logo.png">
+<style>
+/* ────────────────────────────────────────────────────────────────────────
+   Painel de televisão.
+
+   O palco tem 1920×1080 fixos e é ESCALADO para caber na tela, em vez de
+   se reorganizar. Numa TV ninguém corrige layout quebrado: o que se vê é o
+   que fica o dia inteiro. Escalando, o painel sai idêntico em qualquer
+   resolução — 4K, 1366×768 ou a janela do navegador de quem for conferir.
+
+   Tema escuro fixo, e não "escuro se o sistema estiver escuro": a TV não
+   tem sistema, tem parede.
+   ──────────────────────────────────────────────────────────────────────── */
+  :root {
+    --surface-0:      #0f1115;   /* fundo da tela */
+    --surface-1:      #1a1a19;   /* superfície dos cartões — é contra esta
+                                    cor que as cores de série foram validadas */
+    --surface-2:      #23241f;
+    --borda:          #2f3038;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #8b8a80;
+
+    /* Origem da cana — slots 1 a 4 da paleta categórica, passos escuros.
+       A ordem é fixa: filtrar ou reordenar não pode repintar ninguém. */
+    --origem-propria:    #3987e5;
+    --origem-fornecedor: #d95926;
+    --origem-acionista:  #199e70;
+    --origem-outros:     #c98500;
+
+    /* Colheita — slots 5 e 6, propositalmente fora da faixa das origens:
+       na mesma tela, repetir o azul da "Própria" em "Mecanizada" faria o
+       olho ligar duas coisas que não têm relação. */
+    --colheita-mec:    #d55181;
+    --colheita-manual: #008300;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    background: var(--surface-0);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    overflow: hidden;                 /* TV não rola */
+    font-variant-numeric: tabular-nums;
+  }
+
+  #palco-wrap { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
+  /* Centrado por posição absoluta, e não por grid/flex: um item MAIOR que o
+     container não é centrado por place-items — ele encosta no início e vaza.
+     Com left/top 50% + translate(-50%,-50%) o ponto de ancoragem é o centro
+     do palco em qualquer tamanho, que é o que a escala precisa. */
+  #palco {
+    position: absolute; left: 50%; top: 50%;
+    width: 1920px; height: 1080px;
+    transform-origin: center center;
+    padding: 34px 40px;
+    display: grid;
+    grid-template-rows: auto auto 1fr auto;
+    gap: 22px;
+  }
+
+  /* ── Cabeçalho ── */
+  .topo { display: flex; align-items: center; gap: 20px; }
+  .topo img { width: 62px; height: 62px; object-fit: contain; background: #fff;
+              border-radius: 12px; padding: 6px; }
+  .topo h1 { font-size: 40px; font-weight: 800; letter-spacing: -.5px; }
+  .topo .sub { font-size: 19px; color: var(--text-secondary); margin-top: 2px; }
+  .topo .direita { margin-left: auto; text-align: right; }
+  .selo-safra { font-size: 30px; font-weight: 800; color: var(--text-primary);
+                background: var(--surface-2); border: 1px solid var(--borda);
+                border-radius: 12px; padding: 8px 20px; display: inline-block; }
+  .relogio { font-size: 17px; color: var(--text-muted); margin-top: 7px; }
+
+  /* ── Cartões de número ── */
+  .numeros { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 18px; }
+  .cartao { background: var(--surface-1); border: 1px solid var(--borda);
+            border-radius: 18px; padding: 20px 24px; position: relative; overflow: hidden; }
+  /* A faixa colorida é a única marca de cor do cartão: o texto fica em tinta
+     de texto, nunca na cor da série. */
+  .cartao::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; }
+  .cartao .rot { font-size: 17px; color: var(--text-secondary); font-weight: 600;
+                 text-transform: uppercase; letter-spacing: .7px; }
+  .cartao .num { font-size: 56px; font-weight: 800; line-height: 1.1; margin-top: 6px; }
+  .cartao .un  { font-size: 22px; font-weight: 600; color: var(--text-muted); margin-left: 6px; }
+  .cartao .pct { font-size: 19px; color: var(--text-secondary); margin-top: 4px; }
+
+  .cartao.total { background: linear-gradient(135deg, #16283f 0%, var(--surface-1) 62%); }
+  .cartao.total::before { background: var(--origem-propria); }
+  .cartao.total .rot { font-size: 19px; color: #bcd6f5; }
+  .cartao.total .num { font-size: 82px; }
+
+  .cartao.propria::before    { background: var(--origem-propria); }
+  .cartao.fornecedor::before { background: var(--origem-fornecedor); }
+  .cartao.acionista::before  { background: var(--origem-acionista); }
+  .cartao.outros::before     { background: var(--origem-outros); }
+
+  /* ── Gráfico ── */
+  .grafico { background: var(--surface-1); border: 1px solid var(--borda);
+             border-radius: 18px; padding: 20px 24px 14px; display: flex; flex-direction: column; }
+  .grafico .cab { display: flex; align-items: baseline; gap: 16px; margin-bottom: 10px; }
+  .grafico h2 { font-size: 24px; font-weight: 700; }
+  .grafico .dica { font-size: 16px; color: var(--text-muted); }
+  .legenda { display: flex; gap: 22px; margin-left: auto; }
+  .legenda span { display: flex; align-items: center; gap: 8px; font-size: 17px;
+                  color: var(--text-secondary); font-weight: 600; }
+  .legenda i { width: 15px; height: 15px; border-radius: 4px; display: inline-block; }
+  .tela-grafico { flex: 1; position: relative; min-height: 0; }
+  /* Safra que ainda não começou: um eixo vazio com marcas "2, 1, 0" parece
+     defeito. Uma frase diz o que está acontecendo. */
+  .sem-dado { display: none; position: absolute; inset: 0; place-items: center;
+              font-size: 26px; color: var(--text-muted); font-weight: 600; }
+  .sem-dado.on { display: grid; }
+
+  /* ── Faixa da colheita ── */
+  .colheita { background: var(--surface-1); border: 1px solid var(--borda);
+              border-radius: 18px; padding: 18px 24px 20px; }
+  .colheita .cab { display: flex; align-items: baseline; gap: 16px; margin-bottom: 12px; }
+  .colheita h2 { font-size: 24px; font-weight: 700; }
+  .barra-split { display: flex; height: 54px; border-radius: 10px; overflow: hidden;
+                 background: var(--surface-2); gap: 2px; }
+  /* O vão de 2px entre os pedaços é a superfície aparecendo: sem ele, duas
+     cores encostadas viram uma terceira na borda, à distância da TV. */
+  .barra-split div { display: flex; align-items: center; padding: 0 18px;
+                     font-size: 24px; font-weight: 800; color: #fff; white-space: nowrap; }
+  .barra-split .mec    { background: var(--colheita-mec); }
+  .barra-split .manual { background: var(--colheita-manual); justify-content: flex-end; }
+  .colheita .abaixo { display: flex; justify-content: space-between; margin-top: 10px;
+                      font-size: 19px; color: var(--text-secondary); }
+  .colheita .abaixo b { color: var(--text-primary); font-size: 21px; }
+
+  /* ── Estados ── */
+  .aviso { position: fixed; inset: 0; display: none; place-items: center;
+           background: rgba(15,17,21,.94); z-index: 50; text-align: center; padding: 40px; }
+  .aviso.on { display: grid; }
+  .aviso .cx { max-width: 900px; }
+  .aviso h3 { font-size: 40px; margin-bottom: 14px; }
+  .aviso p  { font-size: 22px; color: var(--text-secondary); line-height: 1.5; }
+  .tarja-velha { position: fixed; top: 0; left: 0; right: 0; background: #c98500;
+                 color: #1a1a19; font-size: 18px; font-weight: 700; text-align: center;
+                 padding: 7px; display: none; z-index: 40; }
+  .tarja-velha.on { display: block; }
+</style>
+</head>
+<body>
+
+<div class="tarja-velha" id="tarjaVelha"></div>
+
+<div id="palco-wrap">
+<div id="palco">
+
+  <div class="topo">
+    <img src="img/logo.png" alt="USC">
+    <div>
+      <h1>Entrada de Cana</h1>
+      <div class="sub">Usina Santa Clotilde · acompanhamento da safra</div>
+    </div>
+    <div class="direita">
+      <div class="selo-safra" id="selSafra">Safra —</div>
+      <div class="relogio" id="relogio">—</div>
+    </div>
+  </div>
+
+  <div class="numeros" id="numeros"></div>
+
+  <div class="grafico">
+    <div class="cab">
+      <h2>Mês a mês, por origem</h2>
+      <span class="dica">toneladas</span>
+      <div class="legenda" id="legenda"></div>
+    </div>
+    <div class="tela-grafico">
+      <canvas id="grafMeses"></canvas>
+      <div class="sem-dado" id="semMeses">Nenhuma entrada registrada nesta safra ainda</div>
+    </div>
+  </div>
+
+  <div class="colheita">
+    <div class="cab"><h2>Colheita</h2><span class="dica">do total da safra</span></div>
+    <div class="barra-split" id="barraColheita"></div>
+    <div class="abaixo" id="abaixoColheita"></div>
+  </div>
+
+</div>
+</div>
+
+<div class="aviso" id="aviso"><div class="cx">
+  <h3 id="avisoTit">Carregando…</h3>
+  <p id="avisoTxt">Consultando a entrada de cana da safra.</p>
+</div></div>
+
+<script src="js/chart.umd.min.js"></script>
+<script>
+// Safra fixa, como no mapa. Trocar aqui troca o painel inteiro; ?safra=76 na
+// URL vence, para conferir outra safra sem mexer no arquivo.
+const SAFRA_PADRAO = '75';
+// De quanto em quanto tempo o painel se atualiza sozinho. Cinco minutos: a
+// cana entra o dia todo, mas ninguém acompanha tonelada a tonelada de uma TV.
+const INTERVALO_MS = 5 * 60 * 1000;
+// A partir daqui o dado na tela é velho o bastante para avisar — é o caso de
+// o servidor ter caído e a TV continuar mostrando número de ontem.
+const VELHO_MS = 20 * 60 * 1000;
+
+const ORIGENS = [
+  { chave: 'propria',    nome: 'Própria',    cor: getComputedStyle(document.documentElement).getPropertyValue('--origem-propria').trim() },
+  { chave: 'fornecedor', nome: 'Fornecedor', cor: getComputedStyle(document.documentElement).getPropertyValue('--origem-fornecedor').trim() },
+  { chave: 'acionista',  nome: 'Acionista',  cor: getComputedStyle(document.documentElement).getPropertyValue('--origem-acionista').trim() },
+  { chave: 'outros',     nome: 'Outros',     cor: getComputedStyle(document.documentElement).getPropertyValue('--origem-outros').trim() }
+];
+
+let GRAFICO = null, ULTIMO_OK = 0;
+
+/** Arredonda o topo do eixo para 1, 2 ou 5 vezes uma potência de 10. */
+function tetoRedondo(v) {
+  if (!(v > 0)) return 1;
+  const ordem = Math.pow(10, Math.floor(Math.log10(v)));
+  for (const passo of [1, 2, 2.5, 5, 10]) {
+    if (v <= passo * ordem) return passo * ordem;
+  }
+  return 10 * ordem;
+}
+
+const num0 = v => (Number(v) || 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 });
+const num1 = v => (Number(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const esc  = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+function safraDaUrl() {
+  const p = new URLSearchParams(location.search).get('safra');
+  return (p && /^\d+$/.test(p)) ? p : SAFRA_PADRAO;
+}
+
+/* O palco tem tamanho fixo e é escalado — nunca reorganizado. */
+function ajustarEscala() {
+  const s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+  document.getElementById('palco').style.transform =
+    'translate(-50%, -50%) scale(' + s + ')';
+}
+window.addEventListener('resize', ajustarEscala);
+
+function mostrarAviso(titulo, texto) {
+  document.getElementById('avisoTit').textContent = titulo;
+  document.getElementById('avisoTxt').textContent = texto;
+  document.getElementById('aviso').classList.add('on');
+}
+function esconderAviso() { document.getElementById('aviso').classList.remove('on'); }
+
+/** Grandes números: total em destaque, origens ao lado. */
+function desenharNumeros(d) {
+  const porNome = {};
+  (d.porOrigem || []).forEach(o => { porNome[o.nome] = o; });
+
+  let html = `
+    <div class="cartao total">
+      <div class="rot">Cana total da safra</div>
+      <div class="num">${num0(d.total)}<span class="un">t</span></div>
+      <div class="pct">${(d.meses || []).length} ${(d.meses||[]).length === 1 ? 'mês' : 'meses'} com entrada</div>
+    </div>`;
+
+  for (const o of ORIGENS) {
+    const v = porNome[o.nome];
+    // "Outros" só ocupa espaço na tela quando existe de verdade.
+    if (!v && o.chave === 'outros') continue;
+    html += `
+      <div class="cartao ${o.chave}">
+        <div class="rot">${esc(o.nome)}</div>
+        <div class="num">${num0(v ? v.toneladas : 0)}<span class="un">t</span></div>
+        <div class="pct">${num1(v ? v.pct : 0)}% do total</div>
+      </div>`;
+  }
+  document.getElementById('numeros').innerHTML = html;
+
+  const cols = document.querySelectorAll('#numeros .cartao').length;
+  document.getElementById('numeros').style.gridTemplateColumns =
+    '1.5fr' + ' 1fr'.repeat(Math.max(1, cols - 1));
+}
+
+/** Barras empilhadas por mês. Rótulo só no total de cada mês — número em
+ *  cada pedaço vira poeira à distância de uma TV. */
+function desenharGrafico(d) {
+  const meses = d.meses || [];
+  const usadas = ORIGENS.filter(o => meses.some(m => Number(m[o.chave]) > 0));
+
+  const vazio = meses.length === 0;
+  document.getElementById('semMeses').classList.toggle('on', vazio);
+  document.getElementById('grafMeses').style.visibility = vazio ? 'hidden' : 'visible';
+  if (vazio) {
+    document.getElementById('legenda').innerHTML = '';
+    if (GRAFICO) { GRAFICO.destroy(); GRAFICO = null; }
+    return;
+  }
+
+  document.getElementById('legenda').innerHTML = usadas
+    .map(o => `<span><i style="background:${o.cor}"></i>${esc(o.nome)}</span>`).join('');
+
+  const totais = meses.map(m => Number(m.total) || 0);
+  // Teto redondo. Deixar o Chart.js calcular com a folga do rótulo dava topo
+  // de eixo em "176.320" — número que não diz nada e que o olho tropeça.
+  const teto = tetoRedondo(Math.max(1, ...totais) * 1.16);
+
+  const config = {
+    type: 'bar',
+    data: {
+      labels: meses.map(m => m.label),
+      datasets: usadas.map(o => ({
+        label: o.nome,
+        data: meses.map(m => Number(m[o.chave]) || 0),
+        backgroundColor: o.cor,
+        // A borda tem a cor da superfície do cartão: é ela que abre o vão de
+        // 2px entre um pedaço e o outro. Sem o vão, duas cores encostadas
+        // criam uma terceira na emenda — à distância de uma TV, isso vira
+        // uma faixa que não existe nos dados.
+        borderColor: '#1a1a19',
+        borderWidth: 2,
+        borderRadius: 4,
+        borderSkipped: false,
+        barPercentage: 0.72,
+        categoryPercentage: 0.86
+      }))
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      layout: { padding: { top: 26 } },
+      scales: {
+        x: {
+          stacked: true,
+          grid: { display: false },
+          border: { color: '#2f3038' },
+          ticks: { color: '#c3c2b7', font: { size: 20, weight: '600' } }
+        },
+        y: {
+          stacked: true,
+          max: teto,
+          grid: { color: 'rgba(255,255,255,.07)' },
+          border: { display: false },
+          ticks: {
+            color: '#8b8a80', font: { size: 17 },
+            maxTicksLimit: 6,
+            callback: v => num0(v)
+          }
+        }
+      },
+      plugins: {
+        legend: { display: false },     // a legenda é a do cabeçalho
+        tooltip: { enabled: false }     // TV não tem mouse
+      }
+    },
+    plugins: [{
+      // Total do mês escrito acima da pilha: é o número que se lê de longe.
+      id: 'totalNoTopo',
+      afterDatasetsDraw(chart) {
+        const { ctx } = chart;
+        const ult = chart.getDatasetMeta(chart.data.datasets.length - 1);
+        if (!ult) return;
+        ctx.save();
+        ctx.font = '700 21px system-ui, sans-serif';
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ult.data.forEach((barra, i) => {
+          const t = totais[i];
+          if (!t) return;
+          ctx.fillText(num0(t), barra.x, chart.scales.y.getPixelForValue(t) - 10);
+        });
+        ctx.restore();
+      }
+    }]
+  };
+
+  if (GRAFICO) GRAFICO.destroy();
+  GRAFICO = new Chart(document.getElementById('grafMeses'), config);
+}
+
+/** Manual × mecanizada: uma barra só, porque é uma divisão de um todo. */
+function desenharColheita(d) {
+  const por = {};
+  (d.porColheita || []).forEach(c => { por[c.nome] = c; });
+  const mec = por['Mecanizada'] || { toneladas: 0, pct: 0 };
+  const man = por['Manual']     || { toneladas: 0, pct: 0 };
+  const out = por['Outros'];
+
+  const total = Number(d.total) || 0;
+  const larg = v => total > 0 ? (Number(v) / total * 100) : 0;
+
+  let barra = '';
+  // Abaixo de ~8% o rótulo não cabe dentro do pedaço; some do pedaço e fica
+  // só na linha de baixo, em vez de vazar por cima da cor vizinha.
+  const dentro = (pct, texto) => pct >= 8 ? texto : '';
+  if (larg(mec.toneladas) > 0)
+    barra += `<div class="mec" style="width:${larg(mec.toneladas)}%">${dentro(larg(mec.toneladas), 'Mecanizada ' + num1(mec.pct) + '%')}</div>`;
+  if (larg(man.toneladas) > 0)
+    barra += `<div class="manual" style="width:${larg(man.toneladas)}%">${dentro(larg(man.toneladas), 'Manual ' + num1(man.pct) + '%')}</div>`;
+  if (out && Number(out.toneladas) > 0)
+    barra += `<div style="width:${larg(out.toneladas)}%;background:var(--origem-outros)">${dentro(larg(out.toneladas), 'Outros ' + num1(out.pct) + '%')}</div>`;
+  document.getElementById('barraColheita').innerHTML =
+    barra || '<div style="width:100%;color:#8b8a80;font-weight:600">Sem colheita registrada na safra</div>';
+
+  // Bolinha na cor da barra, e não emoji: o texto fica em tinta de texto e
+  // quem carrega a identidade é a marca colorida ao lado.
+  const ponto = cor => `<i style="display:inline-block;width:14px;height:14px;border-radius:4px;background:${cor};margin-right:9px;vertical-align:-1px"></i>`;
+  let abaixo = `<span>${ponto('var(--colheita-mec)')}Mecanizada · <b>${num0(mec.toneladas)} t</b> (${num1(mec.pct)}%)</span>`;
+  if (out && Number(out.toneladas) > 0)
+    abaixo += `<span>${ponto('var(--origem-outros)')}Outros · <b>${num0(out.toneladas)} t</b> (${num1(out.pct)}%)</span>`;
+  abaixo += `<span>${ponto('var(--colheita-manual)')}Manual · <b>${num0(man.toneladas)} t</b> (${num1(man.pct)}%)</span>`;
+  document.getElementById('abaixoColheita').innerHTML = abaixo;
+}
+
+async function carregar() {
+  const safra = safraDaUrl();
+  try {
+    const r = await fetch('api/cana-entrada?safra=' + encodeURIComponent(safra),
+                          { headers: { 'Accept': 'application/json' }, cache: 'no-store' });
+    // Sessão caiu (dura 8 h a partir do login). Numa TV, mandar para o
+    // formulário de login troca o painel por uma tela que ninguém vai
+    // preencher — melhor manter os números e dizer o que houve.
+    if (r.status === 401) {
+      document.getElementById('tarjaVelha').textContent =
+        '⚠ Sessão expirada — faça login novamente neste navegador para o painel voltar a atualizar';
+      document.getElementById('tarjaVelha').classList.add('on');
+      if (!ULTIMO_OK) mostrarAviso('Sessão expirada', 'Faça login neste navegador para o painel carregar.');
+      return;
+    }
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro || 'Consulta recusada');
+
+    document.getElementById('selSafra').textContent = 'Safra ' + esc(j.safra);
+    document.getElementById('relogio').textContent = 'Atualizado em ' + esc(j.atualizadoEm);
+
+    desenharNumeros(j);
+    desenharGrafico(j);
+    desenharColheita(j);
+
+    ULTIMO_OK = Date.now();
+    esconderAviso();
+    document.getElementById('tarjaVelha').classList.remove('on');
+
+  } catch (e) {
+    // Uma falha não apaga o painel: o número de cinco minutos atrás vale mais
+    // do que uma tela preta na parede. O aviso só sobe quando nunca carregou.
+    if (!ULTIMO_OK) {
+      mostrarAviso('Não foi possível carregar', String(e && e.message || e));
+    }
+  } finally {
+    conferirIdade();
+  }
+}
+
+/** Avisa quando o que está na tela ficou velho — TV mostrando número de
+ *  ontem sem dizer nada é pior do que TV apagada. */
+function conferirIdade() {
+  const t = document.getElementById('tarjaVelha');
+  if (!ULTIMO_OK) return;
+  const idade = Date.now() - ULTIMO_OK;
+  if (idade > VELHO_MS) {
+    t.textContent = '⚠ Sem atualizar há ' + Math.round(idade / 60000)
+                  + ' minutos — o painel pode estar mostrando dado antigo';
+    t.classList.add('on');
+  } else {
+    t.classList.remove('on');
+  }
+}
+
+ajustarEscala();
+carregar();
+setInterval(carregar, INTERVALO_MS);
+setInterval(conferirIdade, 60 * 1000);
+</script>
+</body>
+</html>
