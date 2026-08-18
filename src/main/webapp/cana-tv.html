@@ -74,9 +74,16 @@
   .topo h1 { font-size: 40px; font-weight: 800; letter-spacing: -.5px; }
   .topo .sub { font-size: 19px; color: var(--text-secondary); margin-top: 2px; }
   .topo .direita { margin-left: auto; text-align: right; }
+  /* Continua com cara de selo — na TV ninguém vai clicar. Mas é um select
+     de verdade, para quem abrir o painel no computador poder conferir outra
+     safra sem mexer na URL. */
   .selo-safra { font-size: 30px; font-weight: 800; color: var(--text-primary);
                 background: var(--surface-2); border: 1px solid var(--borda);
-                border-radius: 12px; padding: 8px 20px; display: inline-block; }
+                border-radius: 12px; padding: 8px 20px; display: inline-block;
+                font-family: inherit; cursor: pointer; appearance: none;
+                text-align: center; text-align-last: center; }
+  .selo-safra:hover { border-color: #4a4b55; }
+  .selo-safra:focus { outline: 2px solid var(--origem-propria); outline-offset: 2px; }
   .relogio { font-size: 17px; color: var(--text-muted); margin-top: 7px; }
 
   /* ── Cartões de número ── */
@@ -163,7 +170,9 @@
       <div class="sub">Usina Santa Clotilde · acompanhamento da safra</div>
     </div>
     <div class="direita">
-      <div class="selo-safra" id="selSafra">Safra —</div>
+      <select class="selo-safra" id="selSafra" onchange="trocarSafra(this.value)">
+        <option>Safra —</option>
+      </select>
       <div class="relogio" id="relogio">—</div>
     </div>
   </div>
@@ -198,8 +207,9 @@
 
 <script src="js/chart.umd.min.js"></script>
 <script>
-// Safra fixa, como no mapa. Trocar aqui troca o painel inteiro; ?safra=76 na
-// URL vence, para conferir outra safra sem mexer no arquivo.
+// Safra com que o painel ABRE. O seletor no canto troca para qualquer outra
+// sem recarregar a página, e ?safra=76 na URL também vence — útil para deixar
+// uma segunda TV noutra safra sem mexer no arquivo.
 const SAFRA_PADRAO = '75';
 // De quanto em quanto tempo o painel se atualiza sozinho. Cinco minutos: a
 // cana entra o dia todo, mas ninguém acompanha tonelada a tonelada de uma TV.
@@ -216,6 +226,10 @@ const ORIGENS = [
 ];
 
 let GRAFICO = null, ULTIMO_OK = 0;
+// A safra que está na tela. Começa pela da URL (ou a padrão) e passa a ser a
+// que o usuário escolher — sem recarregar a página, para não perder o que já
+// está desenhado enquanto a nova consulta não volta.
+let SAFRA_ATUAL = null;
 
 /** Arredonda o topo do eixo para 1, 2 ou 5 vezes uma potência de 10. */
 function tetoRedondo(v) {
@@ -234,6 +248,39 @@ const esc  = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,
 function safraDaUrl() {
   const p = new URLSearchParams(location.search).get('safra');
   return (p && /^\d+$/.test(p)) ? p : SAFRA_PADRAO;
+}
+
+/** Preenche o seletor. Falhar aqui não impede o painel: sem a lista, fica
+ *  só a safra atual escrita no seletor, e os números carregam igual. */
+async function carregarSafras() {
+  const sel = document.getElementById('selSafra');
+  try {
+    const r = await fetch('api/cana-entrada/safras', { cache: 'no-store' });
+    const j = await r.json();
+    if (!j.ok || !j.data || !j.data.length) throw new Error('sem safras');
+    sel.innerHTML = j.data
+      .map(x => `<option value="${esc(x.cod_safra)}">Safra ${esc(x.cod_safra)}${x.atual === 'S' ? ' •' : ''}</option>`)
+      .join('');
+    // A safra atual pode não estar na lista (safra antiga pedida na URL);
+    // nesse caso ela entra como opção para o seletor não mostrar outra coisa.
+    if (!j.data.some(x => String(x.cod_safra) === String(SAFRA_ATUAL))) {
+      sel.insertAdjacentHTML('afterbegin',
+        `<option value="${esc(SAFRA_ATUAL)}">Safra ${esc(SAFRA_ATUAL)}</option>`);
+    }
+    sel.value = SAFRA_ATUAL;
+  } catch (e) {
+    sel.innerHTML = `<option value="${esc(SAFRA_ATUAL)}">Safra ${esc(SAFRA_ATUAL)}</option>`;
+  }
+}
+
+function trocarSafra(safra) {
+  if (!safra || !/^\d+$/.test(safra) || safra === SAFRA_ATUAL) return;
+  SAFRA_ATUAL = safra;
+  // Zera o "já carregou": a safra nova nunca carregou, então uma falha agora
+  // deve avisar em vez de deixar na tela o número da safra anterior com o
+  // rótulo da nova.
+  ULTIMO_OK = 0;
+  carregar();
 }
 
 /* O palco tem tamanho fixo e é escalado — nunca reorganizado. */
@@ -413,7 +460,7 @@ function desenharColheita(d) {
 }
 
 async function carregar() {
-  const safra = safraDaUrl();
+  const safra = SAFRA_ATUAL || (SAFRA_ATUAL = safraDaUrl());
   try {
     const r = await fetch('api/cana-entrada?safra=' + encodeURIComponent(safra),
                           { headers: { 'Accept': 'application/json' }, cache: 'no-store' });
@@ -430,7 +477,7 @@ async function carregar() {
     const j = await r.json();
     if (!j.ok) throw new Error(j.erro || 'Consulta recusada');
 
-    document.getElementById('selSafra').textContent = 'Safra ' + esc(j.safra);
+    document.getElementById('selSafra').value = String(j.safra);
     document.getElementById('relogio').textContent = 'Atualizado em ' + esc(j.atualizadoEm);
 
     desenharNumeros(j);
@@ -468,6 +515,8 @@ function conferirIdade() {
 }
 
 ajustarEscala();
+SAFRA_ATUAL = safraDaUrl();
+carregarSafras();
 carregar();
 setInterval(carregar, INTERVALO_MS);
 setInterval(conferirIdade, 60 * 1000);
