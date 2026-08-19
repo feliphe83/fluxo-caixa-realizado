@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Faturamento de Vendas — Usina Santa Clotilde</title>
+<link rel="icon" href="img/logo.png">
+<style>
+/* ────────────────────────────────────────────────────────────────────────
+   Painel de televisão do faturamento.
+
+   Palco de 1920×1080 fixos, ESCALADO para caber na tela em vez de se
+   reorganizar: numa TV ninguém corrige layout quebrado, e o que se vê é o
+   que fica o dia inteiro. Sai idêntico em 4K, em 1366×768 ou na janela de
+   quem for conferir do computador.
+
+   Nem tudo cabe de uma vez, então o painel tem VISÕES: a capa fica sempre à
+   mostra e o miolo troca pelos botões do topo.
+   ──────────────────────────────────────────────────────────────────────── */
+  :root {
+    --serie-1: #2a78d6;
+    --serie-2: #eb6834;
+    --serie-3: #1baf7a;
+    --serie-4: #eda100;
+    --serie-5: #e87ba4;
+    --serie-6: #008300;
+    --serie-outros: #98a2b3;
+
+    --ink:    #0f2460;
+    --ink-2:  #52514e;
+    --ink-3:  #898781;
+    --rotulo: #64748b;
+    --grade:  #e9edf6;
+    --borda:  #e3e8f5;
+    --papel:  #ffffff;
+    --papel-2:#f8faff;
+    --fundo:  #f4f6fb;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%; background: var(--fundo); color: var(--ink-2);
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    overflow: hidden;                 /* TV não rola */
+    font-variant-numeric: tabular-nums;
+  }
+
+  #palco-wrap { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
+  #palco {
+    position: absolute; left: 50%; top: 50%;
+    width: 1920px; height: 1080px;
+    transform-origin: center center;
+    padding: 34px 42px 30px;
+    display: grid; grid-template-rows: auto auto 1fr; gap: 20px;
+  }
+
+  /* ── Cabeçalho ── */
+  .topo { display: flex; align-items: center; gap: 20px;
+          padding-bottom: 16px; border-bottom: 1px solid var(--borda); }
+  .topo img { width: 56px; height: 56px; object-fit: contain;
+              background: var(--ink); border-radius: 12px; padding: 6px; }
+  .topo h1 { font-size: 36px; font-weight: 750; letter-spacing: -.5px; color: var(--ink); }
+  .topo .sub { font-size: 16px; color: var(--ink-3); margin-top: 3px; letter-spacing: .2px; }
+  .topo .direita { margin-left: auto; text-align: right; }
+  .selo-safra { font-size: 24px; font-weight: 700; color: var(--ink);
+                background: var(--papel); border: 1px solid var(--borda);
+                border-radius: 10px; padding: 7px 16px; font-family: inherit;
+                cursor: pointer; appearance: none; text-align: center;
+                text-align-last: center; }
+  .selo-safra:hover { border-color: #b9c6e0; }
+  .relogio { font-size: 14px; color: var(--ink-3); margin-top: 7px; }
+
+  /* ── Capa: sempre à mostra ── */
+  .capa { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .cartao { background: var(--papel); border: 1px solid var(--borda);
+            border-radius: 14px; padding: 16px 20px 18px; position: relative; overflow: hidden; }
+  .cartao::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
+  .c-receita::before { background: var(--ink); }
+  .c-acucar::before  { background: var(--serie-4); }
+  .c-etanol::before  { background: var(--serie-1); }
+  .c-cana::before    { background: var(--serie-3); }
+  .cartao .rot { font-size: 14px; font-weight: 700; color: var(--rotulo);
+                 text-transform: uppercase; letter-spacing: .9px; }
+  .cartao .cifra { font-size: 40px; font-weight: 800; color: var(--ink);
+                   line-height: 1.12; margin-top: 8px; letter-spacing: -1.2px;
+                   white-space: nowrap; }
+  .c-receita .cifra { font-size: 46px; }
+  .cartao .un { font-size: 20px; font-weight: 600; color: var(--ink-3); margin-left: 5px;
+                letter-spacing: 0; }
+  .cartao .base { font-size: 13px; color: var(--ink-3); margin-top: 7px; line-height: 1.35; }
+  .cartao .vazio { font-size: 32px; font-weight: 700; color: var(--ink-3); margin-top: 8px; }
+
+  /* ── Visões ── */
+  .painel { background: var(--papel); border: 1px solid var(--borda); border-radius: 16px;
+            padding: 18px 24px 16px; display: flex; flex-direction: column; min-height: 0; }
+  .painel-cab { display: flex; align-items: center; gap: 16px; margin-bottom: 10px; }
+  .painel-cab h2 { font-size: 22px; font-weight: 750; color: var(--ink); }
+  .painel-cab .dica { font-size: 14px; color: var(--ink-3); text-transform: uppercase;
+                      letter-spacing: 1px; font-weight: 600; }
+  .botoes { display: flex; gap: 8px; margin-left: auto; }
+  .botao { padding: 9px 18px; border-radius: 999px; border: 1px solid var(--borda);
+           background: var(--papel-2); color: var(--ink-2); font-size: 15px;
+           font-weight: 650; cursor: pointer; font-family: inherit; transition: all .15s; }
+  .botao:hover { border-color: #b9c6e0; color: var(--ink); }
+  .botao.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+
+  .visao { display: none; flex: 1; min-height: 0; }
+  .visao.on { display: flex; flex-direction: column; }
+  .tela { flex: 1; position: relative; min-height: 0; }
+
+  /* Por produto: gráfico e tabela lado a lado, que numa TV cabem juntos. */
+  .lado-a-lado { display: grid; grid-template-columns: 1.15fr 1fr; gap: 24px;
+                 flex: 1; min-height: 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 17px; }
+  thead th { text-align: left; font-size: 13px; font-weight: 700; color: var(--rotulo);
+             text-transform: uppercase; letter-spacing: .6px; padding: 8px 10px;
+             border-bottom: 1.5px solid var(--borda); white-space: nowrap; }
+  tbody td { padding: 9px 10px; border-bottom: 1px solid #f0f3f9; }
+  tbody tr:last-child td { border-bottom: none; }
+  .num { text-align: right; white-space: nowrap; }
+  tfoot td { padding: 10px; font-weight: 800; color: var(--ink);
+             border-top: 1.5px solid var(--borda); font-size: 18px; }
+  .pilula { display: inline-flex; align-items: center; gap: 9px; }
+  .pilula i { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+
+  /* Preços: um gráfico por produto, cada um na sua escala. */
+  .mini-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+               gap: 20px; flex: 1; min-height: 0; }
+  .mini { border: 1px solid var(--borda); border-radius: 12px; padding: 14px 18px 10px;
+          background: var(--papel-2); display: flex; flex-direction: column; min-height: 0; }
+  .mini .cab { display: flex; align-items: baseline; gap: 10px; }
+  .mini .nome { font-size: 17px; font-weight: 700; color: var(--ink);
+                display: flex; align-items: center; gap: 9px; }
+  .mini .nome i { width: 11px; height: 11px; border-radius: 3px; flex: none; }
+  .mini .un { font-size: 13px; color: var(--ink-3); text-transform: uppercase;
+              letter-spacing: .6px; font-weight: 600; margin-left: auto; }
+  .mini .atual { font-size: 28px; font-weight: 800; color: var(--ink); margin-top: 6px; }
+  .mini .var { font-size: 14px; font-weight: 700; margin-top: 2px; }
+  .mini .var.sobe { color: #0ca30c; }
+  .mini .var.desce { color: #d03b3b; }
+  .mini .var.igual { color: var(--ink-3); }
+  .mini .tela { margin-top: 8px; }
+
+  /* Cortes: quatro tabelas em grade. */
+  .quatro { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
+            gap: 18px 28px; flex: 1; min-height: 0; }
+  .corte { display: flex; flex-direction: column; min-height: 0; }
+  .corte h3 { font-size: 15px; font-weight: 700; color: var(--rotulo);
+              text-transform: uppercase; letter-spacing: .9px; margin-bottom: 6px; }
+  .corte .rolagem { overflow: hidden; }
+
+  /* ── Estados ── */
+  .aviso { position: fixed; inset: 0; display: none; place-items: center;
+           background: rgba(244,246,251,.96); z-index: 50; text-align: center; padding: 40px; }
+  .aviso.on { display: grid; }
+  .aviso h3 { font-size: 38px; margin-bottom: 14px; color: var(--ink); }
+  .aviso p  { font-size: 21px; color: var(--ink-2); line-height: 1.5; }
+  .tarja { position: fixed; top: 0; left: 0; right: 0; background: #eda100;
+           color: #1a1a19; font-size: 17px; font-weight: 700; text-align: center;
+           padding: 7px; display: none; z-index: 40; }
+  .tarja.on { display: block; }
+</style>
+</head>
+<body>
+
+<div class="tarja" id="tarja"></div>
+
+<div id="palco-wrap"><div id="palco">
+
+  <div class="topo">
+    <img src="img/logo.png" alt="USC">
+    <div>
+      <h1>Faturamento de Vendas</h1>
+      <div class="sub">Usina Santa Clotilde · vendas de produtos por safra</div>
+    </div>
+    <div class="direita">
+      <select class="selo-safra" id="selSafra" onchange="carregar()"></select>
+      <div class="relogio" id="relogio">—</div>
+    </div>
+  </div>
+
+  <div class="capa" id="capa"></div>
+
+  <div class="painel">
+    <div class="painel-cab">
+      <h2 id="tituloVisao">Mês a mês</h2>
+      <span class="dica" id="dicaVisao"></span>
+      <div class="botoes" id="botoes"></div>
+    </div>
+
+    <div class="visao on" id="v-meses"><div class="tela"><canvas id="gMeses"></canvas></div></div>
+
+    <div class="visao" id="v-produto">
+      <div class="lado-a-lado">
+        <div class="tela"><canvas id="gProduto"></canvas></div>
+        <div id="tabProduto"></div>
+      </div>
+    </div>
+
+    <div class="visao" id="v-precos"><div class="mini-grid" id="miniGrid"></div></div>
+
+    <div class="visao" id="v-cortes"><div class="quatro" id="cortes"></div></div>
+  </div>
+
+</div></div>
+
+<div class="aviso" id="aviso"><div>
+  <h3 id="avisoTit">Carregando…</h3>
+  <p id="avisoTxt">Consultando as notas fiscais da safra.</p>
+</div></div>
+
+<script src="js/chart.umd.min.js"></script>
+<script>
+const CORES = ['#2a78d6','#eb6834','#1baf7a','#eda100','#e87ba4','#008300'];
+const COR_OUTROS = '#98a2b3';
+/* De quanto em quanto tempo o painel se atualiza sozinho. Faturamento muda
+   por nota emitida, não por minuto — dez minutos basta e não castiga o
+   Oracle. */
+const INTERVALO_MS = 10 * 60 * 1000;
+/* A partir daqui o dado na tela é velho o bastante para avisar. */
+const VELHO_MS = 40 * 60 * 1000;
+
+const VISOES = [
+  { id: 'meses',   botao: 'Mês a mês',  titulo: 'Mês a mês, por produto', dica: 'valor faturado dos itens' },
+  { id: 'produto', botao: 'Produtos',   titulo: 'Por produto',            dica: 'quantidade, preço médio e participação' },
+  { id: 'precos',  botao: 'Preços',     titulo: 'Evolução do preço',      dica: 'preço médio por mês, ponderado pelo volume' },
+  { id: 'cortes',  botao: 'Cortes',     titulo: 'Cliente, estado, destino e rotina', dica: 'maiores primeiro' }
+];
+
+let DADOS = null, ULTIMO_OK = 0, VISAO = 'meses';
+const graficos = {};
+
+const fmtMoeda = v => 'R$ ' + (Number(v)||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+const fmtMoedaCurta = v => {
+  const n = Number(v) || 0;
+  if (Math.abs(n) >= 1e6) return 'R$ ' + (n/1e6).toLocaleString('pt-BR',{maximumFractionDigits:1}) + ' mi';
+  if (Math.abs(n) >= 1e3) return 'R$ ' + (n/1e3).toLocaleString('pt-BR',{maximumFractionDigits:0}) + ' mil';
+  return fmtMoeda(n);
+};
+const fmtNum = (v, c) => (Number(v)||0).toLocaleString('pt-BR',
+  {minimumFractionDigits: c==null?2:c, maximumFractionDigits: c==null?2:c});
+const fmtInt = v => (Number(v)||0).toLocaleString('pt-BR');
+const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const fmtData = iso => {
+  const m = String(iso||'').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : (iso||'');
+};
+
+/* A escala é fixa por posição na lista de produtos: a cor segue o produto, e
+   não o lugar dele no ranking do mês. */
+function corDoProduto(nome) {
+  if (!DADOS || nome === 'Outros') return COR_OUTROS;
+  const i = (DADOS.seriesProduto || []).indexOf(nome);
+  return i >= 0 && i < CORES.length ? CORES[i] : COR_OUTROS;
+}
+
+/* O palco tem tamanho fixo e é escalado — nunca reorganizado. */
+function ajustarEscala() {
+  const s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+  document.getElementById('palco').style.transform =
+    'translate(-50%, -50%) scale(' + s + ')';
+}
+window.addEventListener('resize', ajustarEscala);
+
+// ── Safra ─────────────────────────────────────────────────────────────────
+// De 01/03 a 28/02. O fim sai de "dia 0 de março", que o próprio JavaScript
+// resolve como o último dia de fevereiro — ano bissexto vira 29/02 sozinho.
+function safraDe(ano) {
+  const dd = n => String(n).padStart(2, '0');
+  const fim = new Date(ano + 1, 2, 0);
+  return { ano, rotulo: ano + '/' + (ano + 1), ini: ano + '-03-01',
+           fim: (ano + 1) + '-' + dd(fim.getMonth() + 1) + '-' + dd(fim.getDate()) };
+}
+function safraAtual() {
+  const h = new Date();
+  return safraDe(h.getMonth() >= 2 ? h.getFullYear() : h.getFullYear() - 1);
+}
+let SAFRAS = [];
+function montarSafras() {
+  const atual = safraAtual().ano;
+  SAFRAS = [];
+  for (let a = atual; a >= atual - 5; a--) SAFRAS.push(safraDe(a));
+  const sel = document.getElementById('selSafra');
+  sel.innerHTML = SAFRAS.map((s, i) =>
+    `<option value="${i}">Safra ${s.rotulo}${i === 0 ? ' (atual)' : ''}</option>`).join('');
+  sel.value = '0';
+}
+const safraEscolhida = () => SAFRAS[Number(document.getElementById('selSafra').value) || 0];
+
+// ── Visões ────────────────────────────────────────────────────────────────
+function montarBotoes() {
+  document.getElementById('botoes').innerHTML = VISOES.map(v =>
+    `<button class="botao ${v.id === VISAO ? 'on' : ''}" onclick="trocarVisao('${v.id}')">${esc(v.botao)}</button>`
+  ).join('');
+}
+
+function trocarVisao(id) {
+  VISAO = id;
+  const v = VISOES.find(x => x.id === id) || VISOES[0];
+  document.getElementById('tituloVisao').textContent = v.titulo;
+  document.getElementById('dicaVisao').textContent = v.dica;
+  VISOES.forEach(x =>
+    document.getElementById('v-' + x.id).classList.toggle('on', x.id === id));
+  montarBotoes();
+  // Chart.js só mede o canvas quando ele está visível: um gráfico desenhado
+  // dentro de uma visão escondida sai com 0 de altura e some ao aparecer.
+  // Por isso o desenho acontece na TROCA, e não uma vez só no carregamento.
+  if (DADOS) desenharVisao(id);
+}
+
+function desenharVisao(id) {
+  if (id === 'meses')   desenharMeses(DADOS);
+  if (id === 'produto') desenharProduto(DADOS);
+  if (id === 'precos')  desenharPrecos(DADOS);
+}
+
+// ── Carregamento ──────────────────────────────────────────────────────────
+async function carregar() {
+  const s = safraEscolhida();
+  if (!s) return;
+  try {
+    const r = await fetch(`api/faturamento-vendas?dataIni=${s.ini}&dataFim=${s.fim}`,
+                          { headers: { 'Accept': 'application/json' }, cache: 'no-store' });
+    if (r.status === 401) {
+      // Numa TV, mandar para o formulário de login troca o painel por uma
+      // tela que ninguém vai preencher — melhor manter os números e dizer.
+      document.getElementById('tarja').textContent =
+        '⚠ Sessão expirada — faça login neste navegador para o painel voltar a atualizar';
+      document.getElementById('tarja').classList.add('on');
+      if (!ULTIMO_OK) aviso('Sessão expirada', 'Faça login neste navegador para o painel carregar.');
+      return;
+    }
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro || 'Consulta recusada');
+
+    DADOS = j;
+    render(j);
+    ULTIMO_OK = Date.now();
+    esconderAviso();
+    document.getElementById('tarja').classList.remove('on');
+
+  } catch (e) {
+    // Uma falha não apaga o painel: o número de dez minutos atrás vale mais
+    // do que uma tela em branco na parede.
+    if (!ULTIMO_OK) aviso('Não foi possível carregar', String(e && e.message || e));
+  } finally {
+    conferirIdade();
+  }
+}
+
+function render(d) {
+  document.getElementById('relogio').textContent =
+    fmtData(d.dataIni) + ' a ' + fmtData(d.dataFim) + ' · ' + d.atualizadoEm;
+  document.getElementById('capa').innerHTML = faixaCapa(d);
+  montarTabelaProduto(d);
+  montarMinis(d);
+  montarCortes(d);
+  desenharVisao(VISAO);
+}
+
+function faixaCapa(d) {
+  const c = d.capa || {};
+  const preco = (b, rot, classe, base) => !b || b.indisponivel
+    ? `<div class="cartao ${classe}"><div class="rot">${rot}</div>
+         <div class="vazio">—</div><div class="base">Sem venda na safra</div></div>`
+    : `<div class="cartao ${classe}"><div class="rot">${rot}</div>
+         <div class="cifra">${fmtMoeda(b.preco)}<span class="un">/ ${esc(b.unidade)}</span></div>
+         <div class="base">${base(b)}</div></div>`;
+
+  const cana = c.canaEquivalente || {};
+  const cartaoCana = cana.indisponivel
+    ? `<div class="cartao c-cana"><div class="rot">Preço médio · cana equiv.</div>
+         <div class="vazio">—</div><div class="base">Tonelagem indisponível</div></div>`
+    : `<div class="cartao c-cana"><div class="rot">Preço médio · cana equiv.</div>
+         <div class="cifra">${fmtMoeda(cana.preco)}<span class="un">/ t</span></div>
+         <div class="base">Receita bruta ÷ ${fmtNum(cana.toneladas, 0)} t de cana</div></div>`;
+
+  return `
+    <div class="cartao c-receita">
+      <div class="rot">Receita bruta total</div>
+      <div class="cifra">${fmtMoedaCurta(c.receitaBruta)}</div>
+      <div class="base">${fmtMoeda(c.receitaBruta)} · valor total das notas</div>
+    </div>
+    ${preco(c.acucar, 'Preço médio · açúcar', 'c-acucar',
+            b => `${fmtNum(b.quantidade, 0)} ${esc(b.unidade)} vendidas`)}
+    ${preco(c.etanol, 'Preço médio · etanol', 'c-etanol',
+            b => `${fmtNum(b.quantidade, 0)} ${esc(b.unidade)} · anidro + hidratado`)}
+    ${cartaoCana}`;
+}
+
+function montarTabelaProduto(d) {
+  const linhas = (d.porProduto || []).slice(0, 10);
+  document.getElementById('tabProduto').innerHTML = `
+    <table>
+      <thead><tr><th>Produto</th><th class="num">Qtd.</th><th>Un.</th>
+        <th class="num">Preço médio</th><th class="num">%</th></tr></thead>
+      <tbody>
+        ${linhas.map(p => `
+          <tr>
+            <td><span class="pilula"><i style="background:${corDoProduto(p.nome)}"></i>${esc(p.nome)}</span></td>
+            <td class="num">${fmtNum(p.quantidade, 0)}</td>
+            <td>${esc(p.unidade || '—')}</td>
+            <td class="num">${fmtMoeda(p.precoMedio)}</td>
+            <td class="num">${fmtNum(p.pct, 1)}%</td>
+          </tr>`).join('')}
+      </tbody>
+      <tfoot><tr><td>TOTAL</td><td class="num"></td><td></td>
+        <td class="num">${fmtMoedaCurta(d.valorItens)}</td><td class="num">100%</td></tr></tfoot>
+    </table>`;
+}
+
+function montarMinis(d) {
+  const alvo = (d.precoMensal || []).filter(p => p.familia && (p.pontos || []).length);
+  document.getElementById('miniGrid').innerHTML = alvo.map((p, i) => {
+    const pts = p.pontos;
+    const ultimo = Number(pts[pts.length - 1].preco) || 0;
+    const primeiro = Number(pts[0].preco) || 0;
+    const vp = primeiro > 0 ? (ultimo / primeiro - 1) * 100 : 0;
+    const cl = Math.abs(vp) < .05 ? 'igual' : (vp > 0 ? 'sobe' : 'desce');
+    const seta = cl === 'igual' ? '→' : (vp > 0 ? '↑' : '↓');
+    return `
+      <div class="mini">
+        <div class="cab">
+          <span class="nome"><i style="background:${corDoProduto(p.produto)}"></i>${esc(p.produto)}</span>
+          <span class="un">R$ / ${esc(p.unidade || 'un')}</span>
+        </div>
+        <div class="atual">${fmtMoeda(ultimo)}</div>
+        <div class="var ${cl}">${seta} ${fmtNum(Math.abs(vp), 1)}% desde ${esc(pts[0].label)}</div>
+        <div class="tela"><canvas id="gPreco${i}"></canvas></div>
+      </div>`;
+  }).join('') || '<div style="color:var(--ink-3);font-size:22px">Sem venda de açúcar ou etanol na safra</div>';
+}
+
+function montarCortes(d) {
+  const bloco = (titulo, linhas) => !linhas || !linhas.length ? '' : `
+    <div class="corte">
+      <h3>${esc(titulo)}</h3>
+      <div class="rolagem">
+        <table>
+          <tbody>
+            ${linhas.slice(0, 6).map(l => `
+              <tr><td>${esc(l.nome)}</td>
+                  <td class="num">${fmtMoedaCurta(l.valor)}</td>
+                  <td class="num" style="color:var(--ink-3);width:70px">${fmtNum(l.pct, 1)}%</td></tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  document.getElementById('cortes').innerHTML =
+      bloco('Por cliente', d.porCliente)
+    + bloco('Por estado', d.porEstado)
+    + bloco('Por destino do item', d.porDestino)
+    + bloco('Por rotina fiscal', d.porRotina);
+}
+
+// ── Gráficos ──────────────────────────────────────────────────────────────
+function desenharMeses(d) {
+  const meses = d.meses || [], series = d.seriesProduto || [];
+  const totais = meses.map(m => Number(m.total) || 0);
+  criar('gMeses', {
+    type: 'bar',
+    data: {
+      labels: meses.map(m => m.label),
+      datasets: series.map(nome => ({
+        label: nome,
+        data: meses.map(m => Number((m.produtos || {})[nome]) || 0),
+        backgroundColor: corDoProduto(nome),
+        // Borda na cor do cartão: é ela que abre o vão entre os pedaços
+        // empilhados. Sem o vão, duas cores encostadas criam uma terceira.
+        borderColor: '#ffffff', borderWidth: 2, borderRadius: 3, borderSkipped: false
+      }))
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      layout: { padding: { top: 30 } },
+      scales: {
+        x: { stacked: true, grid: { display: false }, border: { color: '#e3e8f5' },
+             ticks: { color: '#52514e', font: { size: 17, weight: '600' } } },
+        y: { stacked: true, grid: { color: '#e9edf6' }, border: { display: false },
+             ticks: { color: '#898781', font: { size: 15 }, callback: v => fmtMoedaCurta(v) } }
+      },
+      plugins: {
+        legend: { position: 'top', align: 'end',
+                  labels: { boxWidth: 14, boxHeight: 14, usePointStyle: true,
+                            pointStyle: 'rectRounded', color: '#52514e',
+                            font: { size: 16, weight: '600' } } },
+        tooltip: { enabled: false }
+      }
+    },
+    plugins: [{
+      id: 'totalNoTopo',
+      afterDatasetsDraw(chart) {
+        const ctx = chart.ctx;
+        const ult = chart.getDatasetMeta(chart.data.datasets.length - 1);
+        if (!ult) return;
+        ctx.save();
+        ctx.font = '700 18px system-ui, sans-serif';
+        ctx.fillStyle = '#0f2460'; ctx.textAlign = 'center';
+        ult.data.forEach((b, i) => {
+          if (!totais[i]) return;
+          ctx.fillText(fmtMoedaCurta(totais[i]), b.x, chart.scales.y.getPixelForValue(totais[i]) - 10);
+        });
+        ctx.restore();
+      }
+    }]
+  });
+}
+
+function desenharProduto(d) {
+  const dados = (d.porProduto || []).slice(0, 10);
+  criar('gProduto', {
+    type: 'bar',
+    data: {
+      labels: dados.map(p => p.nome),
+      datasets: [{ data: dados.map(p => Number(p.valor) || 0),
+                   backgroundColor: dados.map(p => corDoProduto(p.nome)),
+                   borderRadius: 4, borderSkipped: false }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false, animation: false,
+      layout: { padding: { right: 96 } },
+      scales: {
+        x: { grid: { color: '#e9edf6' }, border: { display: false },
+             ticks: { color: '#898781', font: { size: 14 }, callback: v => fmtMoedaCurta(v) } },
+        y: { grid: { display: false }, border: { color: '#e3e8f5' },
+             ticks: { color: '#52514e', font: { size: 16, weight: '600' } } }
+      },
+      plugins: { legend: { display: false }, tooltip: { enabled: false } }
+    },
+    plugins: [{
+      id: 'valorNaPonta',
+      afterDatasetsDraw(chart) {
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.font = '700 16px system-ui, sans-serif';
+        ctx.fillStyle = '#0f2460'; ctx.textBaseline = 'middle';
+        chart.getDatasetMeta(0).data.forEach((b, i) => {
+          const v = chart.data.datasets[0].data[i];
+          if (v) ctx.fillText(fmtMoedaCurta(v), b.x + 10, b.y);
+        });
+        ctx.restore();
+      }
+    }]
+  });
+}
+
+function desenharPrecos(d) {
+  const alvo = (d.precoMensal || []).filter(p => p.familia && (p.pontos || []).length);
+  alvo.forEach((p, i) => {
+    const pts = p.pontos;
+    criar('gPreco' + i, {
+      type: 'line',
+      data: {
+        labels: pts.map(x => x.label),
+        datasets: [{
+          data: pts.map(x => Number(x.preco) || 0),
+          borderColor: corDoProduto(p.produto), backgroundColor: 'transparent',
+          borderWidth: 3, pointRadius: pts.length > 14 ? 0 : 5,
+          pointBackgroundColor: corDoProduto(p.produto),
+          pointBorderColor: '#ffffff', pointBorderWidth: 2, tension: .25
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, animation: false,
+        scales: {
+          x: { grid: { display: false }, border: { color: '#e3e8f5' },
+               ticks: { color: '#898781', font: { size: 13 }, maxRotation: 0, autoSkipPadding: 14 } },
+          // Sem começar no zero: variação de preço se lê na inclinação, e um
+          // eixo de 0 a 3.500 achataria uma oscilação de 8% até sumir. A folga
+          // sai por "grace" para as marcas ficarem redondas.
+          y: { grace: '25%', beginAtZero: false,
+               grid: { color: '#e9edf6' }, border: { display: false },
+               ticks: { color: '#898781', font: { size: 13 }, maxTicksLimit: 4,
+                        callback: v => 'R$ ' + fmtNum(v, 0) } }
+        },
+        plugins: { legend: { display: false }, tooltip: { enabled: false } }
+      }
+    });
+  });
+}
+
+function criar(id, config) {
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  if (graficos[id]) graficos[id].destroy();
+  graficos[id] = new Chart(canvas, config);
+}
+
+// ── Estados ───────────────────────────────────────────────────────────────
+function aviso(titulo, texto) {
+  document.getElementById('avisoTit').textContent = titulo;
+  document.getElementById('avisoTxt').textContent = texto;
+  document.getElementById('aviso').classList.add('on');
+}
+function esconderAviso() { document.getElementById('aviso').classList.remove('on'); }
+
+/** TV mostrando número de ontem sem dizer nada é pior que TV apagada. */
+function conferirIdade() {
+  const t = document.getElementById('tarja');
+  if (!ULTIMO_OK) return;
+  const idade = Date.now() - ULTIMO_OK;
+  if (idade > VELHO_MS) {
+    t.textContent = '⚠ Sem atualizar há ' + Math.round(idade / 60000)
+                  + ' minutos — o painel pode estar mostrando dado antigo';
+    t.classList.add('on');
+  } else {
+    t.classList.remove('on');
+  }
+}
+
+ajustarEscala();
+montarSafras();
+montarBotoes();
+trocarVisao('meses');
+carregar();
+setInterval(carregar, INTERVALO_MS);
+setInterval(conferirIdade, 60 * 1000);
+</script>
+</body>
+</html>
