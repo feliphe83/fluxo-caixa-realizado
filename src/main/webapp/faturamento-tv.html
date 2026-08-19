@@ -588,7 +588,7 @@ function desenharPrecos(d) {
       },
       options: {
         responsive: true, maintainAspectRatio: false, animation: false,
-        layout: { padding: { top: 22, right: 16, left: 6 } },
+        layout: { padding: { top: 22, right: 20, bottom: 6, left: 6 } },
         scales: {
           x: { grid: { display: false }, border: { color: '#e3e8f5' },
                ticks: { color: '#898781', font: { size: 10, weight: '700' },
@@ -596,55 +596,64 @@ function desenharPrecos(d) {
           // Sem começar no zero: variação de preço se lê na inclinação, e um
           // eixo de 0 a 3.500 achataria uma oscilação de 8% até sumir. A folga
           // sai por "grace" para as marcas ficarem redondas.
-          y: { grace: '30%', beginAtZero: false,
+          y: { grace: '35%', beginAtZero: false,
                // Largura fixa do eixo: "R$ 10.000" é muito mais largo que
                // "R$ 4", e sem isso a área de desenho de cada gráfico começa
                // num x diferente — os quadros ficam visivelmente tortos entre si.
                afterFit(escala) { escala.width = 66; },
                grid: { color: '#e9edf6' }, border: { display: false },
+               // Casas decimais conforme a escala: o etanol vive entre 2,85 e
+               // 3,10, e arredondando para inteiro as três marcas do eixo
+               // viravam "R$ 3, R$ 3, R$ 3".
                ticks: { color: '#898781', font: { size: 10, weight: '700' }, maxTicksLimit: 3,
-                        callback: v => 'R$ ' + fmtNum(v, 0) } }
+                        callback: v => 'R$ ' + fmtNum(v, Math.abs(v) < 100 ? 2 : 0) } }
         },
         plugins: { legend: { display: false }, tooltip: { enabled: false } }
       },
       plugins: [{
         /*
-         * Rótulo em cada PICO — os pontos onde a linha muda de direção para
-         * baixo. São eles que marcam o topo de cada movimento de preço; o
-         * resto da linha é o caminho entre um e outro.
+         * Rótulo em TODOS os pontos. Só nos picos deixava metade da linha sem
+         * número, e quem lê a TV de longe não consegue interpolar no olho.
          *
-         * Antes o rótulo ia no primeiro e no último ponto, que é informação
-         * que o cabeçalho do cartão já dá ("R$ 3,40 · ↑19,3% desde set/25").
-         *
-         * Dois picos vizinhos podem ficar perto demais: cada rótulo é medido
-         * contra o anterior e só sai se não encostar.
+         * O truque para caberem: quem é topo escreve ACIMA da linha, quem é
+         * fundo escreve ABAIXO. São duas faixas independentes, então a
+         * densidade de cada uma cai pela metade. Cada faixa tem seu próprio
+         * controle de ocupação horizontal; se o rótulo não cabe na faixa
+         * natural, tenta a outra, e só desiste se as duas estiverem tomadas.
          */
-        id: 'picos',
+        id: 'valores',
         afterDatasetsDraw(chart) {
           const ctx = chart.ctx;
           const pts = chart.getDatasetMeta(0).data;
           const v = chart.data.datasets[0].data;
           ctx.save();
-          ctx.font = '800 12px system-ui, sans-serif';
+          ctx.font = '800 11px system-ui, sans-serif';
           ctx.fillStyle = '#0f2460';
           ctx.textAlign = 'center';
-          ctx.textBaseline = 'bottom';
 
-          let ocupadoAte = -Infinity;
+          const ocupado = { acima: -Infinity, abaixo: -Infinity };
           for (let i = 0; i < v.length; i++) {
             if (v[i] == null || !pts[i]) continue;
             // Vizinhos com valor, saltando os meses sem venda.
             let a = i - 1; while (a >= 0 && v[a] == null) a--;
             let b = i + 1; while (b < v.length && v[b] == null) b++;
-            const subiu  = a < 0 || v[i] > v[a];
-            const desceu = b >= v.length || v[i] > v[b];
-            if (!(subiu && desceu)) continue;      // não é topo
+            const antes  = a >= 0 ? v[a] : v[i];
+            const depois = b < v.length ? v[b] : v[i];
+            // Fundo = menor que os dois vizinhos. Todo o resto vai para cima.
+            const fundo = v[i] < antes && v[i] < depois;
 
             const texto = fmtNum(v[i], v[i] < 100 ? 2 : 0);
-            const meia = ctx.measureText(texto).width / 2 + 6;
-            if (pts[i].x - meia < ocupadoAte) continue;
-            ctx.fillText(texto, pts[i].x, pts[i].y - 9);
-            ocupadoAte = pts[i].x + meia;
+            const meia = ctx.measureText(texto).width / 2 + 5;
+            const esq = pts[i].x - meia, dir = pts[i].x + meia;
+
+            let faixa = fundo ? 'abaixo' : 'acima';
+            if (esq < ocupado[faixa]) {
+              faixa = faixa === 'acima' ? 'abaixo' : 'acima';
+              if (esq < ocupado[faixa]) continue;   // as duas tomadas
+            }
+            ctx.textBaseline = faixa === 'acima' ? 'bottom' : 'top';
+            ctx.fillText(texto, pts[i].x, pts[i].y + (faixa === 'acima' ? -9 : 9));
+            ocupado[faixa] = dir;
           }
           ctx.restore();
         }
