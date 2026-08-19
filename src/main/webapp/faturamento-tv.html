@@ -84,7 +84,7 @@
                    line-height: 1.1; margin-top: 5px; letter-spacing: -1px; white-space: nowrap; }
   .c-receita .cifra { font-size: 38px; }
   .cartao .un { font-size: 17px; font-weight: 600; color: var(--ink-3); margin-left: 4px; }
-  .cartao .base { font-size: 11.5px; color: var(--ink-3); margin-top: 4px; }
+  .cartao .base { font-size: 11.5px; color: var(--ink-3); margin-top: 4px; font-weight: 600; }
   .cartao .vazio { font-size: 28px; font-weight: 700; color: var(--ink-3); margin-top: 5px; }
 
   /* ── Quadrantes ── */
@@ -96,16 +96,19 @@
            padding: 12px 16px 10px; display: flex; flex-direction: column; min-height: 0; }
   .bloco h2 { font-size: 17px; font-weight: 750; color: var(--ink); }
   .bloco .dica { font-size: 11.5px; color: var(--ink-3); text-transform: uppercase;
-                 letter-spacing: .9px; font-weight: 600; }
+                 letter-spacing: .9px; font-weight: 700; }
   .bloco .cab { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; flex: none; }
   .tela { flex: 1; position: relative; min-height: 0; }
 
   /* ── Tabelas ── */
-  table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  thead th { text-align: left; font-size: 10.5px; font-weight: 700; color: var(--rotulo);
-             text-transform: uppercase; letter-spacing: .6px; padding: 4px 7px;
+  /* Peso alto em tudo: a tela é lida de longe, e texto fino some antes de
+     ficar pequeno. O que separa hierarquia aqui é tamanho e cor, não peso. */
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; font-weight: 650; }
+  thead th { text-align: left; font-size: 10.5px; font-weight: 800; color: var(--rotulo);
+             text-transform: uppercase; letter-spacing: .6px; padding: 4px 6px;
              border-bottom: 1.5px solid var(--borda); white-space: nowrap; }
-  tbody td { padding: 6px 7px; border-bottom: 1px solid #f4f6fb; }
+  tbody td { padding: 6px 6px; border-bottom: 1px solid #f4f6fb; color: var(--ink); }
+  tbody td.num.forte { font-weight: 800; }
   tbody tr:last-child td { border-bottom: none; }
   .num { text-align: right; white-space: nowrap; }
   tfoot td { padding: 7px; font-weight: 800; color: var(--ink);
@@ -125,13 +128,13 @@
            flex: 1; min-height: 0; }
   .mini { border: 1px solid var(--borda); border-radius: 10px; padding: 9px 12px 6px;
           background: var(--papel-2); display: flex; flex-direction: column; min-height: 0; }
-  .mini .nome { font-size: 13px; font-weight: 700; color: var(--ink);
+  .mini .nome { font-size: 13px; font-weight: 800; color: var(--ink);
                 display: flex; align-items: center; gap: 7px; }
   .mini .nome i { width: 9px; height: 9px; border-radius: 2px; flex: none; }
   .mini .atual { font-size: 21px; font-weight: 800; color: var(--ink); margin-top: 3px;
                  white-space: nowrap; }
   .mini .atual small { font-size: 11px; font-weight: 600; color: var(--ink-3); margin-left: 3px; }
-  .mini .var { font-size: 11.5px; font-weight: 700; margin-top: 1px; }
+  .mini .var { font-size: 12px; font-weight: 800; margin-top: 1px; }
   .mini .var.sobe { color: #0ca30c; }
   .mini .var.desce { color: #d03b3b; }
   .mini .var.igual { color: var(--ink-3); }
@@ -140,9 +143,9 @@
   /* ── Cortes: quatro listas curtas ── */
   .cortes { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
             gap: 8px 18px; flex: 1; min-height: 0; }
-  .corte h3 { font-size: 11px; font-weight: 700; color: var(--rotulo);
+  .corte h3 { font-size: 11px; font-weight: 800; color: var(--rotulo);
               text-transform: uppercase; letter-spacing: .8px; margin-bottom: 2px; }
-  .corte table { font-size: 13px; }
+  .corte table { font-size: 12.5px; font-weight: 700; }
   .corte tbody td { padding: 3.5px 4px; border-bottom: none; }
   .corte .nome { max-width: 210px; overflow: hidden; text-overflow: ellipsis;
                  white-space: nowrap; }
@@ -181,7 +184,7 @@
 
   <div class="linha a">
     <div class="bloco">
-      <div class="cab"><h2>Mês a mês, por produto</h2><span class="dica">valor faturado dos itens</span></div>
+      <div class="cab"><h2>Mês a mês, por produto</h2><span class="dica">composição · total em reais acima de cada mês</span></div>
       <div class="tela"><canvas id="gMeses"></canvas></div>
     </div>
     <div class="bloco">
@@ -234,6 +237,18 @@ const fmtData = iso => {
   const m = String(iso||'').match(/^(\d{4})-(\d{2})-(\d{2})/);
   return m ? `${m[3]}/${m[2]}/${m[1]}` : (iso||'');
 };
+
+/**
+ * Tinta que se lê sobre uma cor de série.
+ *
+ * Nos passos claros da paleta o branco não passa de 2,2:1 — some. Decidir
+ * pela luminância evita ter de manter uma tabela de exceções à mão.
+ */
+function corLegivel(hex) {
+  const n = parseInt(String(hex).replace('#', ''), 16);
+  const lum = ((n >> 16 & 255) * .299 + (n >> 8 & 255) * .587 + (n & 255) * .114) / 255;
+  return lum > .6 ? '#1a1a2e' : '#ffffff';
+}
 
 /* A cor segue o produto, e não o lugar dele no ranking do mês. */
 function corDoProduto(nome) {
@@ -360,12 +375,12 @@ function montarTabelaProduto(d) {
             <td class="num">${fmtNum(p.quantidade, 0)}</td>
             <td>${esc(p.unidade || '—')}</td>
             <td class="num">${fmtMoeda(p.precoMedio)}</td>
-            <td class="num">${fmtMoedaCurta(p.valor)}</td>
+            <td class="num forte">${fmtMoeda(p.valor)}</td>
             <td class="num">${fmtNum(p.pct, 1)}%</td>
           </tr>`).join('')}
       </tbody>
       <tfoot><tr><td>TOTAL</td><td class="num"></td><td></td><td></td>
-        <td class="num">${fmtMoedaCurta(d.valorItens)}</td><td class="num">100%</td></tr></tfoot>
+        <td class="num">${fmtMoeda(d.valorItens)}</td><td class="num">100%</td></tr></tfoot>
     </table>`;
 }
 
@@ -407,6 +422,23 @@ function montarCortes(d) {
 }
 
 // ── Gráficos ──────────────────────────────────────────────────────────────
+/**
+ * Mês a mês: COMPOSIÇÃO em barra cheia, com o total escrito em cima.
+ *
+ * As duas formas anteriores falhavam pela mesma razão — a escala real é
+ * torta demais. Um produto responde por 68% do faturamento e os meses vão de
+ * R$ 577 mil a R$ 42,5 milhões, 73 vezes de diferença:
+ *
+ * - empilhado em valor: os meses fracos viram traços rentes ao eixo e os
+ *   produtos pequenos, linhas de um pixel;
+ * - lado a lado: pior ainda, porque cada produto pequeno passa a ter a sua
+ *   própria barra invisível.
+ *
+ * Normalizando cada mês a 100%, a MISTURA fica comparável entre meses — que
+ * é a pergunta que este gráfico responde ("de que se compôs o faturamento
+ * deste mês"). O TAMANHO não se perde: vai escrito acima de cada barra, que
+ * é onde um número grande se lê melhor do que numa altura.
+ */
 function desenharMeses(d) {
   const meses = d.meses || [], series = d.seriesProduto || [];
   const totais = meses.map(m => Number(m.total) || 0);
@@ -414,30 +446,30 @@ function desenharMeses(d) {
     type: 'bar',
     data: {
       labels: meses.map(m => m.label),
-      // Lado a lado, não empilhado: empilhado mostra bem o total do mês, mas
-      // esconde o produto — para comparar açúcar contra etanol é preciso ler
-      // alturas que não partem da mesma base. Agrupado, cada produto tem o
-      // seu pé no zero.
       datasets: series.map(nome => ({
         label: nome,
-        data: meses.map(m => Number((m.produtos || {})[nome]) || 0),
+        data: meses.map((m, i) => {
+          const v = Number((m.produtos || {})[nome]) || 0;
+          return totais[i] > 0 ? (v / totais[i]) * 100 : 0;
+        }),
+        // O valor em reais viaja junto, para o rótulo de dentro do pedaço.
+        reais: meses.map(m => Number((m.produtos || {})[nome]) || 0),
         backgroundColor: corDoProduto(nome),
         borderRadius: 2, borderSkipped: false,
-        // Sem borda branca: com 7 produtos por mês a barra fica fina, e 1,5px
-        // de borda de cada lado comeria metade dela.
-        borderWidth: 0,
-        barPercentage: 0.96, categoryPercentage: 0.82
+        borderColor: '#ffffff', borderWidth: 1,
+        barPercentage: 0.9, categoryPercentage: 0.86
       }))
     },
     options: {
       responsive: true, maintainAspectRatio: false, animation: false,
       layout: { padding: { top: 20 } },
       scales: {
-        x: { grid: { display: false }, border: { color: '#e3e8f5' },
-             ticks: { color: '#52514e', font: { size: 13, weight: '600' } } },
-        y: { grid: { color: '#e9edf6' }, border: { display: false },
-             ticks: { color: '#898781', font: { size: 12 }, maxTicksLimit: 6,
-                      callback: v => fmtMoedaCurta(v) } }
+        x: { stacked: true, grid: { display: false }, border: { color: '#e3e8f5' },
+             ticks: { color: '#52514e', font: { size: 13, weight: '700' } } },
+        y: { stacked: true, min: 0, max: 100,
+             grid: { color: '#e9edf6' }, border: { display: false },
+             ticks: { color: '#898781', font: { size: 12, weight: '700' },
+                      stepSize: 25, callback: v => v + '%' } }
       },
       plugins: {
         // Legenda à esquerda do topo e compacta: com sete produtos ela
@@ -450,37 +482,42 @@ function desenharMeses(d) {
       }
     },
     plugins: [{
-      id: 'totalNoTopo',
+      id: 'totalEComposicao',
       afterDatasetsDraw(chart) {
         const ctx = chart.ctx;
-        const metas = chart.data.datasets.map((_, d) => chart.getDatasetMeta(d));
-        if (!metas.length) return;
-        ctx.save();
-        ctx.font = '700 13px system-ui, sans-serif';
-        ctx.fillStyle = '#0f2460';
-        ctx.textAlign = 'center';
-
-        // Largura do grupo do mês: é dentro dela que o rótulo tem de caber.
-        // No print anterior "R$ 42,4 mi" e "R$ 42,5 mi" se encostaram porque
-        // o texto era desenhado sem ninguém medir se havia espaço.
         const area = chart.chartArea.right - chart.chartArea.left;
         const larguraMes = area / Math.max(1, chart.data.labels.length);
 
+        // Total do mês, em reais, acima da barra.
+        ctx.save();
+        // 12px em vez de 14: a 14 o texto de meses grandes ("R$ 35,4 mi")
+        // passava da largura da coluna e era suprimido pela medição — metade
+        // dos meses ficava sem total, que é a informação principal daqui.
+        ctx.font = '800 12px system-ui, sans-serif';
+        ctx.fillStyle = '#0f2460';
+        ctx.textAlign = 'center';
+        const topo = chart.getDatasetMeta(0).data;
         chart.data.labels.forEach((_, i) => {
-          const t = totais[i];
-          if (!t) return;
-          const texto = fmtMoedaCurta(t);
-          if (ctx.measureText(texto).width > larguraMes - 8) return;
-          // Acima da barra MAIS ALTA do grupo, e centrado no grupo.
-          let topo = Infinity, somaX = 0, n = 0;
-          metas.forEach(m => {
-            const b = m.data[i];
-            if (!b) return;
-            somaX += b.x; n++;
-            if (b.y < topo) topo = b.y;
+          if (!totais[i] || !topo[i]) return;
+          const texto = fmtMoedaCurta(totais[i]);
+          if (ctx.measureText(texto).width > larguraMes - 2) return;
+          ctx.fillText(texto, topo[i].x, chart.chartArea.top - 6);
+        });
+
+        // Percentual dentro do pedaço, quando ele é alto o bastante para o
+        // texto caber sem encostar nas bordas.
+        ctx.font = '800 11px system-ui, sans-serif';
+        ctx.textBaseline = 'middle';
+        chart.data.datasets.forEach((ds, di) => {
+          const meta = chart.getDatasetMeta(di);
+          meta.data.forEach((b, i) => {
+            const pct = ds.data[i];
+            if (!pct || pct < 9) return;
+            const altura = Math.abs(b.base - b.y);
+            if (altura < 17) return;
+            ctx.fillStyle = corLegivel(ds.backgroundColor);
+            ctx.fillText(fmtNum(pct, 0) + '%', b.x, (b.base + b.y) / 2);
           });
-          if (!n) return;
-          ctx.fillText(texto, somaX / n, topo - 7);
         });
         ctx.restore();
       }
@@ -490,35 +527,86 @@ function desenharMeses(d) {
 
 function desenharPrecos(d) {
   const alvo = (d.precoMensal || []).filter(p => p.familia && (p.pontos || []).length);
+
+  // Eixo de tempo COMUM a todos: um produto que só começou a vender em abril
+  // desenhava um gráfico com onze meses enquanto o vizinho tinha doze, e as
+  // duas linhas ficavam desalinhadas — comparar duas evoluções exige que o
+  // mesmo mês caia na mesma posição em todos os quadros.
+  const meses = (d.meses || []).map(m => ({ mes: m.mes, label: m.label }));
+  const rotulos = meses.length ? meses.map(m => m.label)
+                              : (alvo[0] ? alvo[0].pontos.map(x => x.label) : []);
+
   alvo.forEach((p, i) => {
-    const pts = p.pontos;
+    const porMes = {};
+    p.pontos.forEach(x => { porMes[x.mes] = Number(x.preco) || 0; });
+    // null onde não houve venda: a linha interrompe em vez de descer até o
+    // zero, que leria como "o preço despencou".
+    const pts = meses.length
+      ? meses.map(m => (m.mes in porMes ? porMes[m.mes] : null))
+      : p.pontos.map(x => Number(x.preco) || 0);
+
     criar('gPreco' + i, {
       type: 'line',
       data: {
-        labels: pts.map(x => x.label),
+        labels: rotulos,
         datasets: [{
-          data: pts.map(x => Number(x.preco) || 0),
+          data: pts,
           borderColor: corDoProduto(p.produto), backgroundColor: 'transparent',
           borderWidth: 2.5, pointRadius: pts.length > 12 ? 0 : 3.5,
           pointBackgroundColor: corDoProduto(p.produto),
-          pointBorderColor: '#ffffff', pointBorderWidth: 1.5, tension: .25
+          pointBorderColor: '#ffffff', pointBorderWidth: 1.5, tension: .25,
+          spanGaps: false
         }]
       },
       options: {
         responsive: true, maintainAspectRatio: false, animation: false,
+        layout: { padding: { top: 16, right: 34, left: 6 } },
         scales: {
           x: { grid: { display: false }, border: { color: '#e3e8f5' },
-               ticks: { color: '#898781', font: { size: 10 }, maxRotation: 0, autoSkipPadding: 10 } },
+               ticks: { color: '#898781', font: { size: 10, weight: '700' },
+                        maxRotation: 0, autoSkipPadding: 10 } },
           // Sem começar no zero: variação de preço se lê na inclinação, e um
           // eixo de 0 a 3.500 achataria uma oscilação de 8% até sumir. A folga
           // sai por "grace" para as marcas ficarem redondas.
-          y: { grace: '25%', beginAtZero: false,
+          y: { grace: '30%', beginAtZero: false,
+               // Largura fixa do eixo: "R$ 10.000" é muito mais largo que
+               // "R$ 4", e sem isso a área de desenho de cada gráfico começa
+               // num x diferente — os quadros ficam visivelmente tortos entre si.
+               afterFit(escala) { escala.width = 66; },
                grid: { color: '#e9edf6' }, border: { display: false },
-               ticks: { color: '#898781', font: { size: 10 }, maxTicksLimit: 3,
+               ticks: { color: '#898781', font: { size: 10, weight: '700' }, maxTicksLimit: 3,
                         callback: v => 'R$ ' + fmtNum(v, 0) } }
         },
         plugins: { legend: { display: false }, tooltip: { enabled: false } }
-      }
+      },
+      plugins: [{
+        // Só o primeiro e o último ponto ganham número: com doze pontos, um
+        // rótulo em cada um vira uma faixa de dígitos onde a linha some — e
+        // o que se quer saber é de onde saiu e onde chegou.
+        id: 'pontasDaLinha',
+        afterDatasetsDraw(chart) {
+          const ctx = chart.ctx;
+          const pontos = chart.getDatasetMeta(0).data;
+          const dados = chart.data.datasets[0].data;
+          const validos = [];
+          dados.forEach((v, k) => { if (v != null && pontos[k]) validos.push(k); });
+          if (!validos.length) return;
+
+          ctx.save();
+          ctx.font = '800 12px system-ui, sans-serif';
+          ctx.fillStyle = '#0f2460';
+          ctx.textBaseline = 'bottom';
+          const marcar = (k, alinhamento) => {
+            const b = pontos[k];
+            ctx.textAlign = alinhamento;
+            const dx = alinhamento === 'left' ? 5 : -5;
+            ctx.fillText(fmtNum(dados[k], dados[k] < 100 ? 2 : 0), b.x + dx, b.y - 7);
+          };
+          marcar(validos[0], 'left');
+          if (validos.length > 1) marcar(validos[validos.length - 1], 'right');
+          ctx.restore();
+        }
+      }]
     });
   });
 }
