@@ -146,14 +146,21 @@
   .mini .tela { margin-top: 4px; }
 
   /* ── Cortes: quatro listas curtas ── */
-  .cortes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px;
-            flex: 1; min-height: 0; align-content: start; }
+  /* Empilhados, e cada um na sua caixa.
+     Lado a lado eles alinhavam linha a linha, e "SUCDEN DO BRASIL LTDA … SP"
+     lia como se SP fosse o estado da Sucden — duas listas independentes
+     viravam uma tabela de quatro colunas aos olhos. Empilhadas e emolduradas,
+     não há como confundir; de quebra o nome do cliente deixa de ser truncado,
+     porque agora tem a largura inteira. */
+  .cortes { display: flex; flex-direction: column; gap: 10px;
+            flex: 1; min-height: 0; }
+  .corte { background: var(--papel-2); border: 1px solid var(--borda);
+           border-radius: 10px; padding: 8px 12px 6px; min-height: 0; overflow: hidden; }
   .corte h3 { font-size: 11px; font-weight: 800; color: var(--rotulo);
               text-transform: uppercase; letter-spacing: .8px; margin-bottom: 2px; }
   .corte table { font-size: 12.5px; font-weight: 700; }
   .corte tbody td { padding: 3.5px 4px; border-bottom: none; }
-  .corte .nome { max-width: 210px; overflow: hidden; text-overflow: ellipsis;
-                 white-space: nowrap; }
+  .corte .nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 
   /* ── Estados ── */
@@ -415,7 +422,7 @@ function montarCortes(d) {
     <div class="corte ${classe || ''}">
       <h3>${esc(titulo)}</h3>
       <table><tbody>
-        ${linhas.slice(0, 8).map(l => `
+        ${linhas.slice(0, 5).map(l => `
           <tr><td class="nome">${esc(l.nome)}</td>
               <td class="num">${fmtMoedaCurta(l.valor)}</td>
               <td class="num" style="color:var(--ink-3);width:52px">${fmtNum(l.pct, 1)}%</td></tr>`).join('')}
