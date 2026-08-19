@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recebimento de Óleo Diesel · USC</title>
+<style>
+  :root {
+    /* Duas séries só, e elas não são pares: o ano atual é o assunto, o ano
+       passado é a régua. Por isso azul cheio contra cinza — e não duas cores
+       de categoria, que fariam parecer dois produtos diferentes.
+       O cinza é #5b6675 e não um cinza claro porque precisa de 3:1 contra o
+       branco para a barra existir de longe (validado). */
+    --atual:    #2a78d6;
+    --anterior: #5b6675;
+
+    --sobe:  #0ca30c;
+    --desce: #d03b3b;
+
+    --ink:    #0f2460;
+    --ink-2:  #52514e;
+    --ink-3:  #898781;
+    --rotulo: #64748b;
+    --grade:  #e9edf6;
+    --borda:  #e3e8f5;
+    --papel:  #ffffff;
+    --papel-2:#f8faff;
+    --fundo:  #f4f6fb;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--fundo); color: #1a1a2e; min-height: 100vh;
+    font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased;
+  }
+
+  .header { background: var(--ink); color: white; padding: 0 32px; height: 62px;
+            display: flex; align-items: center; justify-content: space-between; }
+  .header-left { display: flex; align-items: center; gap: 13px; }
+  .header-logo { width: 36px; height: 36px; border-radius: 8px; background: white;
+                 display: flex; align-items: center; justify-content: center;
+                 overflow: hidden; padding: 4px; flex-shrink: 0; }
+  .header-logo img { width: 100%; height: 100%; object-fit: contain; }
+  .header-title { font-size: 15px; font-weight: 650; }
+  .header-sub { font-size: 11px; color: rgba(255,255,255,.55); margin-top: 1px;
+                text-transform: uppercase; letter-spacing: .9px; font-weight: 600; }
+  .btn-voltar { display: flex; align-items: center; gap: 7px; padding: 8px 14px;
+                border-radius: 8px; border: 1px solid rgba(255,255,255,.16);
+                background: transparent; color: rgba(255,255,255,.85);
+                font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+                text-decoration: none; }
+  .btn-voltar:hover { background: rgba(255,255,255,.10); color: #fff; }
+
+  .conteudo { max-width: 1280px; margin: 0 auto; padding: 24px 24px 60px; }
+
+  /* ── Faixa do período ── */
+  .periodo { background: var(--papel); border: 1px solid var(--borda); border-radius: 14px;
+             padding: 14px 22px; margin-bottom: 18px; display: flex; gap: 14px;
+             align-items: center; flex-wrap: wrap; }
+  .periodo .titulo { font-size: 15px; font-weight: 800; color: var(--ink); }
+  .periodo .contra { font-size: 12.5px; color: var(--ink-2); }
+  .periodo .contra b { color: var(--ink); }
+  .atualizado { margin-left: auto; font-size: 12px; color: var(--ink-3); }
+
+  /* ── Capa ── */
+  .capa { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
+  .capa .cartao { background: var(--papel); border: 1px solid var(--borda);
+                  border-radius: 14px; padding: 18px 20px; position: relative; overflow: hidden; }
+  .capa .cartao::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+                          background: var(--atual); }
+  .capa .c-valor::before { background: var(--ink); }
+  .capa .c-preco::before { background: #eda100; }
+  .capa .c-notas::before { background: var(--anterior); }
+  .capa .rot { font-size: 10.5px; font-weight: 700; color: var(--rotulo);
+               text-transform: uppercase; letter-spacing: .6px; }
+  .capa .cifra { font-size: 28px; font-weight: 800; color: var(--ink);
+                 line-height: 1.15; margin-top: 8px; letter-spacing: -.7px; white-space: nowrap; }
+  .capa .un { font-size: 14px; font-weight: 600; color: var(--ink-3); margin-left: 4px;
+              letter-spacing: 0; }
+  .capa .base { font-size: 11.5px; color: var(--ink-3); margin-top: 7px; line-height: 1.45; }
+
+  .var { font-weight: 800; }
+  .var.sobe  { color: var(--sobe); }
+  .var.desce { color: var(--desce); }
+  .var.igual { color: var(--ink-3); }
+  /* No preço, subir é ruim: quem lê "diesel 12% mais caro" em verde lê errado.
+     Por isso a cor do preço é invertida em relação à do volume. */
+  .var.custo.sobe  { color: var(--desce); }
+  .var.custo.desce { color: var(--sobe); }
+
+  /* ── Seções ── */
+  .secao { background: var(--papel); border: 1px solid var(--borda); border-radius: 14px;
+           padding: 20px 24px; margin-bottom: 18px; }
+  .secao-header { display: flex; align-items: baseline; gap: 10px; }
+  .secao-num { width: 22px; height: 22px; border-radius: 6px; background: var(--ink);
+               color: white; font-size: 11px; font-weight: 800; display: flex;
+               align-items: center; justify-content: center; flex-shrink: 0; }
+  .secao-titulo { font-size: 16px; font-weight: 800; color: var(--ink); }
+  .secao-sub { font-size: 12px; color: var(--ink-3); margin: 3px 0 14px 32px; }
+
+  .legenda { display: flex; gap: 18px; margin: 0 0 8px 32px; }
+  .legenda span { display: inline-flex; align-items: center; gap: 7px;
+                  font-size: 12px; font-weight: 700; color: var(--ink-2); }
+  .legenda i { width: 11px; height: 11px; border-radius: 3px; flex: none; }
+
+  .grafico-caixa { position: relative; height: 300px; margin-top: 4px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th { text-align: left; font-size: 10.5px; font-weight: 700; color: var(--rotulo);
+             text-transform: uppercase; letter-spacing: .5px; padding: 8px 10px;
+             border-bottom: 1.5px solid var(--borda); white-space: nowrap; }
+  tbody td { padding: 9px 10px; border-bottom: 1px solid #f0f3f9; }
+  tbody tr:last-child td { border-bottom: none; }
+  .num { text-align: right; white-space: nowrap; }
+  tfoot td { padding: 10px; font-weight: 800; color: var(--ink);
+             border-top: 1.5px solid var(--borda); }
+  .nome-forn { font-weight: 600; color: var(--ink); }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .grid-2 .secao { margin-bottom: 0; }
+
+  .nota-box { display: flex; gap: 10px; align-items: flex-start; background: #fffaf0;
+              border-left: 3px solid #eda100; border-radius: 8px; padding: 10px 16px;
+              font-size: 12px; color: var(--ink-2); line-height: 1.55; margin-top: 16px; }
+  .nota-box b { color: var(--ink); }
+
+  .estado { text-align: center; padding: 60px 20px; color: var(--ink-3); font-size: 14px; }
+  .spinner { width: 28px; height: 28px; border: 2.5px solid var(--borda);
+             border-top-color: var(--atual); border-radius: 50%;
+             margin: 0 auto 14px; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .erro { color: var(--desce); }
+  .erro code { display: block; margin-top: 10px; font-size: 12px; color: var(--ink-2);
+               background: var(--papel-2); border: 1px solid var(--borda); border-radius: 8px;
+               padding: 10px 14px; text-align: left; white-space: pre-wrap; }
+
+  @media (max-width: 900px) {
+    .capa { grid-template-columns: repeat(2, 1fr); }
+    .grid-2 { grid-template-columns: 1fr; }
+    .header { padding: 0 16px; }
+    .conteudo { padding: 16px 14px 40px; }
+  }
+</style>
+<link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+<meta name="theme-color" content="#0f2460">
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="header-logo"><img src="img/logo.png" alt="USC"></div>
+    <div>
+      <div class="header-title">Recebimento de Óleo Diesel</div>
+      <div class="header-sub">Entrada em estoque · 6 meses</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <a class="btn-voltar" href="diesel-tv.html" target="_blank" title="Abrir a versão para televisão">
+      <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <rect x="2" y="4" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/>
+        <line x1="12" y1="18" x2="12" y2="21"/></svg>
+      Modo TV
+    </a>
+    <a class="btn-voltar" href="hub.html">
+      <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      Voltar ao Hub
+    </a>
+  </div>
+</div>
+
+<div class="conteudo">
+  <div id="resultado">
+    <div class="estado"><div class="spinner"></div>Consultando as entradas de diesel…</div>
+  </div>
+</div>
+
+<script src="js/chart.umd.min.js"></script>
+<script>
+const COR_ATUAL    = '#2a78d6';
+const COR_ANTERIOR = '#5b6675';
+
+let DADOS = null;
+const graficos = {};
+
+const fmtInt   = v => (Number(v)||0).toLocaleString('pt-BR', {maximumFractionDigits:0});
+const fmtNum   = (v, c) => (Number(v)||0).toLocaleString('pt-BR',
+  {minimumFractionDigits: c==null?2:c, maximumFractionDigits: c==null?2:c});
+const fmtMoeda = v => 'R$ ' + fmtNum(v, 2);
+const fmtMoedaCurta = v => {
+  const n = Number(v) || 0;
+  if (Math.abs(n) >= 1e6) return 'R$ ' + fmtNum(n/1e6, 1) + ' mi';
+  if (Math.abs(n) >= 1e3) return 'R$ ' + fmtNum(n/1e3, 0) + ' mil';
+  return fmtMoeda(n);
+};
+const fmtLitros = v => fmtInt(v) + ' L';
+const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+/**
+ * Variação. Sem base do ano passado não existe percentual — a API manda null
+ * e aqui sai "sem base", que é a verdade, em vez de um "+100%" inventado.
+ * `custo` inverte a cor: diesel mais caro não é uma boa notícia em verde.
+ */
+function varHtml(v, custo) {
+  if (v === null || v === undefined) return '<span class="var igual">sem base</span>';
+  const n = Number(v);
+  const classe = n > 0.05 ? 'sobe' : (n < -0.05 ? 'desce' : 'igual');
+  const seta = n > 0.05 ? '↑' : (n < -0.05 ? '↓' : '=');
+  return `<span class="var ${custo ? 'custo ' : ''}${classe}">${seta} ${fmtNum(Math.abs(n), 1)}%</span>`;
+}
+
+async function carregar() {
+  try {
+    const r = await fetch('api/diesel-recebimento', {headers: {'Accept': 'application/json'}});
+    const j = await r.json();
+    if (j.redirect) { location.href = 'login.html'; return; }
+    if (!j.ok) { falhar(j.erro || 'Erro ao consultar'); return; }
+    DADOS = j;
+    desenhar(j);
+  } catch (e) {
+    falhar(e.message || String(e));
+  }
+}
+
+function falhar(msg) {
+  document.getElementById('resultado').innerHTML =
+    `<div class="estado erro"><b>Não foi possível carregar o recebimento de diesel.</b>
+     <code>${esc(msg)}</code></div>`;
+}
+
+function desenhar(d) {
+  const a = d.atual, b = d.anterior, v = d.variacao;
+
+  document.getElementById('resultado').innerHTML = `
+    <div class="periodo">
+      <div class="titulo">${esc(d.periodo)}</div>
+      <div class="contra">comparado com <b>${esc(d.periodoAnterior)}</b> — o mesmo intervalo de dias,
+        cortado em ${esc(d.cortadoEm)} dos dois lados</div>
+      <div class="atualizado">Atualizado em ${esc(d.atualizadoEm)}</div>
+    </div>
+
+    <div class="capa">
+      <div class="cartao c-litros">
+        <div class="rot">Diesel recebido</div>
+        <div class="cifra">${fmtInt(a.litros)}<span class="un">L</span></div>
+        <div class="base">${varHtml(v.litros)} · ano anterior ${fmtLitros(b.litros)}</div>
+      </div>
+      <div class="cartao c-valor">
+        <div class="rot">Valor das entradas</div>
+        <div class="cifra">${fmtMoedaCurta(a.valor)}</div>
+        <div class="base">${varHtml(v.valor)} · ano anterior ${fmtMoedaCurta(b.valor)}</div>
+      </div>
+      <div class="cartao c-preco">
+        <div class="rot">Preço médio pago</div>
+        <div class="cifra">${fmtMoeda(a.preco)}<span class="un">/ L</span></div>
+        <div class="base">${varHtml(v.preco, true)} · ano anterior ${fmtMoeda(b.preco)}/L</div>
+      </div>
+      <div class="cartao c-notas">
+        <div class="rot">Notas de entrada</div>
+        <div class="cifra">${fmtInt(a.notas)}</div>
+        <div class="base">ano anterior ${fmtInt(b.notas)} notas</div>
+      </div>
+    </div>
+
+    <div class="secao">
+      <div class="secao-header"><div class="secao-num">1</div>
+        <div class="secao-titulo">Mês a mês</div></div>
+      <div class="secao-sub">Litros que entraram em cada mês, contra o mesmo mês do ano anterior</div>
+      <div class="legenda">
+        <span><i style="background:${COR_ATUAL}"></i>Este ano</span>
+        <span><i style="background:${COR_ANTERIOR}"></i>Ano anterior</span>
+      </div>
+      <div class="grafico-caixa"><canvas id="gLitros"></canvas></div>
+      ${tabelaMeses(d.meses)}
+    </div>
+
+    <div class="secao">
+      <div class="secao-header"><div class="secao-num">2</div>
+        <div class="secao-titulo">Preço médio pago por litro</div></div>
+      <div class="secao-sub">Valor da entrada ÷ litros recebidos, mês a mês</div>
+      <div class="legenda">
+        <span><i style="background:${COR_ATUAL}"></i>Este ano</span>
+        <span><i style="background:${COR_ANTERIOR}"></i>Ano anterior</span>
+      </div>
+      <div class="grafico-caixa" style="height:260px"><canvas id="gPreco"></canvas></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="secao">
+        <div class="secao-header"><div class="secao-num">3</div>
+          <div class="secao-titulo">Fornecedores</div></div>
+        <div class="secao-sub">Quem entregou o diesel no período</div>
+        ${tabelaConfronto(d.fornecedores, 'Fornecedor')}
+      </div>
+      <div class="secao">
+        <div class="secao-header"><div class="secao-num">4</div>
+          <div class="secao-titulo">Tipo de diesel</div></div>
+        <div class="secao-sub">Material como está cadastrado no ERP</div>
+        ${tabelaConfronto(d.materiais, 'Material')}
+      </div>
+    </div>
+
+    ${notaDiagnostico(d.diag)}
+  `;
+
+  graficoLitros(d.meses);
+  graficoPreco(d.meses);
+}
+
+function tabelaMeses(meses) {
+  return `<table style="margin-top:16px">
+    <thead><tr>
+      <th>Mês</th><th class="num">Litros</th><th class="num">Ano anterior</th>
+      <th class="num">Variação</th><th class="num">R$/L</th>
+      <th class="num">R$/L anterior</th><th class="num">Variação</th>
+    </tr></thead>
+    <tbody>${meses.map(m => `<tr>
+      <td><b>${esc(m.label)}</b></td>
+      <td class="num">${fmtInt(m.litros)}</td>
+      <td class="num" style="color:var(--ink-3)">${fmtInt(m.litrosAnterior)}</td>
+      <td class="num">${varHtml(m.varLitros)}</td>
+      <td class="num">${m.preco ? fmtMoeda(m.preco) : '—'}</td>
+      <td class="num" style="color:var(--ink-3)">${m.precoAnterior ? fmtMoeda(m.precoAnterior) : '—'}</td>
+      <td class="num">${varHtml(m.varPreco, true)}</td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+function tabelaConfronto(linhas, titulo) {
+  if (!linhas || !linhas.length) return '<div class="estado">Nada no período.</div>';
+  return `<table>
+    <thead><tr>
+      <th>${esc(titulo)}</th><th class="num">Litros</th><th class="num">%</th>
+      <th class="num">R$/L</th><th class="num">Ano ant.</th><th class="num">Var.</th>
+    </tr></thead>
+    <tbody>${linhas.map(l => `<tr>
+      <td class="nome-forn">${esc(l.nome)}</td>
+      <td class="num">${fmtInt(l.litros)}</td>
+      <td class="num">${fmtNum(l.pct, 1)}%</td>
+      <td class="num">${l.preco ? fmtMoeda(l.preco) : '—'}</td>
+      <td class="num" style="color:var(--ink-3)">${fmtInt(l.litrosAnterior)}</td>
+      <td class="num">${varHtml(l.varLitros)}</td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+/**
+ * O rodapé conta de qual coluna do ERP saiu a quantidade e de qual saiu o
+ * valor. Parece detalhe de bastidor, mas é o contrário: é o que permite
+ * conferir o painel contra o estoque sem abrir o banco — e é onde aparece,
+ * de cara, se nenhuma coluna casou e os litros estão zerados por isso.
+ */
+function notaDiagnostico(diag) {
+  if (!diag) return '';
+  const falta = !diag.colunaQtde || !diag.colunaValor;
+  return `<div class="nota-box">
+    <div>
+      <b>De onde vêm os números:</b> ${fmtInt(diag.itens)} itens de entrada no período atual.
+      Quantidade lida da coluna <b>${esc(diag.colunaQtde || '— nenhuma reconhecida —')}</b>
+      e valor da coluna <b>${esc(diag.colunaValor || '— nenhuma reconhecida —')}</b>
+      de material.itensentrada.
+      ${falta ? '<br><b>Atenção:</b> alguma dessas colunas não foi reconhecida — o número correspondente sai zerado. Colunas disponíveis: ' + esc((diag.colunas||[]).join(', ')) : ''}
+    </div>
+  </div>`;
+}
+
+// ── Gráficos ────────────────────────────────────────────────────────────
+
+/** Rótulo no topo de cada barra: são 12 barras, e todas cabem. */
+const rotuloNoTopo = (fmt) => ({
+  id: 'topo',
+  afterDatasetsDraw(chart) {
+    const ctx = chart.ctx;
+    ctx.save();
+    ctx.font = '800 10.5px system-ui, sans-serif';
+    ctx.fillStyle = '#0f2460';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    chart.data.datasets.forEach((ds, di) => {
+      const meta = chart.getDatasetMeta(di);
+      meta.data.forEach((p, i) => {
+        const v = ds.data[i];
+        if (!v) return;
+        ctx.fillText(fmt(v), p.x, p.y - 4);
+      });
+    });
+    ctx.restore();
+  }
+});
+
+function graficoLitros(meses) {
+  criar('gLitros', {
+    type: 'bar',
+    data: {
+      labels: meses.map(m => m.label),
+      datasets: [
+        { label: 'Este ano', data: meses.map(m => Number(m.litros)||0),
+          backgroundColor: COR_ATUAL, borderRadius: 4, borderSkipped: false,
+          // 2px de papel entre as barras vizinhas do mesmo mês.
+          barPercentage: .9, categoryPercentage: .74 },
+        { label: 'Ano anterior', data: meses.map(m => Number(m.litrosAnterior)||0),
+          backgroundColor: COR_ANTERIOR, borderRadius: 4, borderSkipped: false,
+          barPercentage: .9, categoryPercentage: .74 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      layout: { padding: { top: 18 } },
+      scales: {
+        x: { grid: { display: false }, border: { color: '#e3e8f5' },
+             ticks: { color: '#52514e', font: { size: 12, weight: '700' } } },
+        y: { beginAtZero: true, grid: { color: '#e9edf6' }, border: { display: false },
+             ticks: { color: '#898781', font: { size: 11, weight: '600' },
+                      callback: v => v === 0 ? '0' : fmtInt(v/1000) + ' mil L' } }
+      },
+      plugins: { legend: { display: false }, tooltip: {
+        callbacks: { label: c => c.dataset.label + ': ' + fmtLitros(c.parsed.y) } } }
+    },
+    plugins: [rotuloNoTopo(v => fmtInt(v/1000) + ' mil')]
+  });
+}
+
+function graficoPreco(meses) {
+  // null onde não houve entrada: a linha corta em vez de despencar até o
+  // zero, que leria como diesel de graça.
+  const zeroNulo = v => { const n = Number(v)||0; return n === 0 ? null : n; };
+  criar('gPreco', {
+    type: 'line',
+    data: {
+      labels: meses.map(m => m.label),
+      datasets: [
+        { label: 'Este ano', data: meses.map(m => zeroNulo(m.preco)),
+          borderColor: COR_ATUAL, backgroundColor: 'transparent', borderWidth: 2.5,
+          pointRadius: 4, pointBackgroundColor: COR_ATUAL, pointBorderColor: '#fff',
+          pointBorderWidth: 1.5, tension: .25, spanGaps: false },
+        { label: 'Ano anterior', data: meses.map(m => zeroNulo(m.precoAnterior)),
+          borderColor: COR_ANTERIOR, backgroundColor: 'transparent', borderWidth: 2.5,
+          borderDash: [5, 4],
+          pointRadius: 4, pointBackgroundColor: COR_ANTERIOR, pointBorderColor: '#fff',
+          pointBorderWidth: 1.5, tension: .25, spanGaps: false }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      layout: { padding: { top: 20, bottom: 6, left: 12, right: 12 } },
+      scales: {
+        x: { grid: { display: false }, border: { color: '#e3e8f5' },
+             ticks: { color: '#52514e', font: { size: 12, weight: '700' } } },
+        // Sem começar no zero: o preço do diesel oscila poucos por cento, e um
+        // eixo de 0 a 6 achataria a variação até ela sumir.
+        y: { beginAtZero: false, grace: '25%', grid: { color: '#e9edf6' },
+             border: { display: false },
+             ticks: { color: '#898781', font: { size: 11, weight: '600' },
+                      callback: v => 'R$ ' + fmtNum(v, 2) } }
+      },
+      plugins: { legend: { display: false }, tooltip: {
+        callbacks: { label: c => c.dataset.label + ': ' + fmtMoeda(c.parsed.y) + '/L' } } }
+    },
+    plugins: [rotuloNoTopo(v => fmtNum(v, 2))]
+  });
+}
+
+const observador = typeof ResizeObserver !== 'undefined'
+  ? new ResizeObserver(es => { for (const e of es) {
+      const g = graficos[e.target.dataset.gid]; if (g) g.resize(); } })
+  : null;
+
+function criar(id, config) {
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  if (graficos[id]) graficos[id].destroy();
+  graficos[id] = new Chart(canvas, config);
+  const caixa = canvas.parentElement;
+  if (observador && caixa) { caixa.dataset.gid = id; observador.observe(caixa); }
+}
+
+carregar();
+</script>
+<script src="js/icones-modulos.js?v=20260819a"></script>
+<script src="js/sidebar-nav.js?v=20260819a" defer></script>
+<script src="js/agro-chat-widget.js" defer></script>
+</body>
+</html>

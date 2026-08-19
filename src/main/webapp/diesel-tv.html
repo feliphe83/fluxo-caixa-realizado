@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recebimento de Diesel — Usina Santa Clotilde</title>
+<link rel="icon" href="img/logo.png">
+<style>
+/* ────────────────────────────────────────────────────────────────────────
+   Painel de televisão do recebimento de óleo diesel.
+
+   Palco de 1920×1080 fixos, ESCALADO para caber na tela em vez de se
+   reorganizar: numa TV ninguém corrige layout quebrado, e o que se vê é o
+   que fica o dia inteiro. Sai idêntico em 4K, em 1366×768 ou na janela de
+   quem for conferir do computador.
+
+   Tudo numa tela só, sem botão: numa parede não há quem clique.
+   ──────────────────────────────────────────────────────────────────────── */
+  :root {
+    /* Azul cheio é este ano; cinza é a régua do ano passado. Não são duas
+       categorias — é o assunto e a referência. */
+    --atual:    #2a78d6;
+    --anterior: #5b6675;
+
+    --sobe:  #0ca30c;
+    --desce: #d03b3b;
+
+    --ink:    #0f2460;
+    --ink-2:  #52514e;
+    --ink-3:  #898781;
+    --rotulo: #64748b;
+    --grade:  #e9edf6;
+    --borda:  #e3e8f5;
+    --papel:  #ffffff;
+    --papel-2:#f8faff;
+    --fundo:  #f4f6fb;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%; background: var(--fundo); color: var(--ink-2);
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    overflow: hidden; font-variant-numeric: tabular-nums;
+  }
+
+  #palco-wrap { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
+  #palco {
+    position: absolute; left: 50%; top: 50%;
+    width: 1920px; height: 1080px;
+    transform-origin: center center;
+    padding: 22px 26px 20px;
+    /* As duas linhas quase iguais, com uma folga para a de baixo: ali vão
+       duas listas empilhadas, e a de cima sobrava espaço vazio embaixo da
+       tabela de 7 meses. Medido no render, não no chute. */
+    display: grid; grid-template-rows: auto auto 1fr 1.04fr; gap: 14px;
+  }
+
+  /* ── Topo ── */
+  .topo { display: flex; align-items: center; gap: 18px; }
+  .marca { width: 46px; height: 46px; border-radius: 11px; background: var(--ink);
+           display: flex; align-items: center; justify-content: center; padding: 6px; flex: none; }
+  .marca img { width: 100%; height: 100%; object-fit: contain; }
+  .topo h1 { font-size: 31px; font-weight: 800; color: var(--ink); letter-spacing: -.6px; }
+  .topo .sub { font-size: 14px; font-weight: 700; color: var(--ink-3);
+               text-transform: uppercase; letter-spacing: .8px; margin-top: 1px; }
+  .topo .direita { margin-left: auto; text-align: right; }
+  .topo .janela { font-size: 21px; font-weight: 800; color: var(--ink);
+                  background: var(--papel); border: 1px solid var(--borda);
+                  border-radius: 11px; padding: 8px 18px; display: inline-block; }
+  .topo .contra { font-size: 13.5px; font-weight: 700; color: var(--ink-3); margin-top: 6px; }
+
+  /* ── Capa ── */
+  .capa { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .cartao { background: var(--papel); border: 1px solid var(--borda); border-radius: 13px;
+            padding: 13px 20px 14px; position: relative; overflow: hidden; }
+  .cartao::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+                    background: var(--atual); }
+  .c-valor::before { background: var(--ink); }
+  .c-preco::before { background: #eda100; }
+  .c-notas::before { background: var(--anterior); }
+  .cartao .rot { font-size: 13px; font-weight: 800; color: var(--rotulo);
+                 text-transform: uppercase; letter-spacing: .8px; }
+  .cartao .cifra { font-size: 40px; font-weight: 800; color: var(--ink);
+                   line-height: 1.1; margin-top: 5px; letter-spacing: -1.1px; white-space: nowrap; }
+  .cartao .un { font-size: 19px; font-weight: 700; color: var(--ink-3); margin-left: 5px;
+                letter-spacing: 0; }
+  .cartao .base { font-size: 14px; font-weight: 700; color: var(--ink-3); margin-top: 5px;
+                  white-space: nowrap; }
+
+  .var { font-weight: 800; }
+  .var.sobe  { color: var(--sobe); }
+  .var.desce { color: var(--desce); }
+  .var.igual { color: var(--ink-3); }
+  /* No preço, subir é ruim: "12% mais caro" em verde se lê ao contrário. */
+  .var.custo.sobe  { color: var(--desce); }
+  .var.custo.desce { color: var(--sobe); }
+
+  /* ── Blocos ── */
+  .linha { display: grid; gap: 14px; min-height: 0; }
+  .linha.a { grid-template-columns: 1.42fr 1fr; }
+  .linha.b { grid-template-columns: 1.42fr 1fr; }
+  .bloco { background: var(--papel); border: 1px solid var(--borda); border-radius: 13px;
+           padding: 12px 18px 14px; display: flex; flex-direction: column; min-height: 0; }
+  .bloco h2 { font-size: 19px; font-weight: 800; color: var(--ink); letter-spacing: -.2px; }
+  .bloco h2 small { font-size: 12.5px; font-weight: 800; color: var(--ink-3);
+                    text-transform: uppercase; letter-spacing: .8px; margin-left: 8px; }
+  .cabecalho { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+  .legenda { margin-left: auto; display: flex; gap: 16px; }
+  .legenda span { display: inline-flex; align-items: center; gap: 7px;
+                  font-size: 13.5px; font-weight: 800; color: var(--ink-2); }
+  .legenda i { width: 13px; height: 13px; border-radius: 4px; flex: none; }
+  .tela { position: relative; flex: 1; min-height: 0; }
+
+  /* ── Tabelas ── */
+  table { width: 100%; border-collapse: collapse; font-size: 16.5px; font-weight: 700; }
+  thead th { text-align: left; font-size: 12px; font-weight: 800; color: var(--rotulo);
+             text-transform: uppercase; letter-spacing: .7px; padding: 5px 7px;
+             border-bottom: 2px solid var(--borda); white-space: nowrap; }
+  tbody td { padding: 7px 7px; border-bottom: 1px solid #f0f3f9; color: var(--ink); }
+  tbody tr:last-child td { border-bottom: none; }
+  .num { text-align: right; white-space: nowrap; }
+  .fraco { color: var(--ink-3); font-weight: 700; }
+  tfoot td { padding: 8px 7px; font-weight: 800; color: var(--ink);
+             border-top: 2px solid var(--borda); font-size: 17px; }
+  .nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 380px; }
+
+  /* Duas listas no mesmo bloco, empilhadas e emolduradas. */
+  .caixas { display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; }
+  .caixa { background: var(--papel-2); border: 1px solid var(--borda);
+           border-radius: 10px; padding: 7px 12px 5px; min-height: 0; overflow: hidden; }
+  .caixa h3 { font-size: 12px; font-weight: 800; color: var(--rotulo);
+              text-transform: uppercase; letter-spacing: .7px; margin-bottom: 2px; }
+
+  /* A tabela do mês a mês tem 7 linhas num bloco alto: linha mais folgada
+     preenche o bloco e ainda se lê melhor de longe. */
+  #tabMeses tbody td, #tabMeses tfoot td { padding: 12px 7px; font-size: 18px; }
+  #tabMeses thead th { padding: 6px 7px; }
+
+  .tarja { position: fixed; top: 0; left: 0; right: 0; background: #eda100;
+           color: #1a1a19; font-size: 17px; font-weight: 800; text-align: center;
+           padding: 7px; display: none; z-index: 40; }
+  .tarja.on { display: block; }
+
+  #aviso { position: fixed; inset: 0; background: var(--fundo); z-index: 50;
+           display: none; align-items: center; justify-content: center; text-align: center; }
+  #aviso.on { display: flex; }
+  #aviso h2 { font-size: 40px; font-weight: 800; color: var(--ink); }
+  #aviso p  { font-size: 20px; font-weight: 700; color: var(--ink-3); margin-top: 12px; }
+</style>
+</head>
+<body>
+
+<div class="tarja" id="tarja"></div>
+
+<div id="palco-wrap"><div id="palco">
+
+  <div class="topo">
+    <div class="marca"><img src="img/logo.png" alt="USC"></div>
+    <div>
+      <h1>Recebimento de Óleo Diesel</h1>
+      <div class="sub">Usina Santa Clotilde · entrada em estoque</div>
+    </div>
+    <div class="direita">
+      <div class="janela" id="janela">—</div>
+      <div class="contra" id="contra"></div>
+    </div>
+  </div>
+
+  <div class="capa" id="capa"></div>
+
+  <div class="linha a">
+    <div class="bloco">
+      <div class="cabecalho">
+        <h2>Mês a mês <small>litros recebidos</small></h2>
+        <div class="legenda">
+          <span><i style="background:#2a78d6"></i>Este ano</span>
+          <span><i style="background:#5b6675"></i>Ano anterior</span>
+        </div>
+      </div>
+      <div class="tela"><canvas id="gLitros"></canvas></div>
+    </div>
+    <div class="bloco">
+      <div class="cabecalho"><h2>Por mês <small>litros e R$/L</small></h2></div>
+      <div id="tabMeses"></div>
+    </div>
+  </div>
+
+  <div class="linha b">
+    <div class="bloco">
+      <div class="cabecalho">
+        <h2>Preço pago <small>R$ por litro</small></h2>
+        <div class="legenda">
+          <span><i style="background:#2a78d6"></i>Este ano</span>
+          <span><i style="background:#5b6675"></i>Ano anterior</span>
+        </div>
+      </div>
+      <div class="tela"><canvas id="gPreco"></canvas></div>
+    </div>
+    <div class="bloco">
+      <div class="cabecalho"><h2>Quem entregou <small>e o quê</small></h2></div>
+      <div class="caixas"><div id="tabForn"></div><div id="tabMat"></div></div>
+    </div>
+  </div>
+
+</div></div>
+
+<div id="aviso"><div><h2 id="avisoTit"></h2><p id="avisoTxt"></p></div></div>
+
+<script src="js/chart.umd.min.js"></script>
+<script>
+const COR_ATUAL    = '#2a78d6';
+const COR_ANTERIOR = '#5b6675';
+
+const INTERVALO_MS = 10 * 60 * 1000;
+const VELHO_MS     = 40 * 60 * 1000;
+
+let DADOS = null, ULTIMO_OK = 0;
+const graficos = {};
+
+const fmtInt = v => (Number(v)||0).toLocaleString('pt-BR', {maximumFractionDigits:0});
+const fmtNum = (v, c) => (Number(v)||0).toLocaleString('pt-BR',
+  {minimumFractionDigits: c==null?2:c, maximumFractionDigits: c==null?2:c});
+const fmtMoeda = v => 'R$ ' + fmtNum(v, 2);
+const fmtMoedaCurta = v => {
+  const n = Number(v) || 0;
+  if (Math.abs(n) >= 1e6) return 'R$ ' + fmtNum(n/1e6, 1) + ' mi';
+  if (Math.abs(n) >= 1e3) return 'R$ ' + fmtNum(n/1e3, 0) + ' mil';
+  return fmtMoeda(n);
+};
+const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+/** Sem base do ano passado não existe percentual: sai "sem base". */
+function varHtml(v, custo) {
+  if (v === null || v === undefined) return '<span class="var igual">sem base</span>';
+  const n = Number(v);
+  const classe = n > 0.05 ? 'sobe' : (n < -0.05 ? 'desce' : 'igual');
+  const seta = n > 0.05 ? '↑' : (n < -0.05 ? '↓' : '=');
+  return `<span class="var ${custo ? 'custo ' : ''}${classe}">${seta} ${fmtNum(Math.abs(n), 1)}%</span>`;
+}
+
+function ajustarEscala() {
+  const s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+  document.getElementById('palco').style.transform =
+    'translate(-50%, -50%) scale(' + s + ')';
+}
+window.addEventListener('resize', ajustarEscala);
+
+async function carregar() {
+  try {
+    const r = await fetch('api/diesel-recebimento', {headers: {'Accept': 'application/json'}});
+    if (r.status === 401) {
+      document.getElementById('tarja').textContent =
+        '⚠ Sessão expirada — faça login neste navegador para o painel voltar a atualizar';
+      document.getElementById('tarja').classList.add('on');
+      if (!ULTIMO_OK) aviso('Sessão expirada', 'Faça login neste navegador para o painel carregar.');
+      return;
+    }
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro || 'Consulta recusada');
+
+    document.getElementById('tarja').classList.remove('on');
+    esconderAviso();
+    DADOS = j;
+    ULTIMO_OK = Date.now();
+    desenhar(j);
+
+  } catch (e) {
+    // Uma falha não apaga o painel: o número de dez minutos atrás vale mais
+    // do que uma tela em branco na parede.
+    if (!ULTIMO_OK) aviso('Não foi possível carregar', String(e && e.message || e));
+  } finally {
+    conferirIdade();
+  }
+}
+
+function desenhar(d) {
+  const a = d.atual, b = d.anterior, v = d.variacao;
+
+  document.getElementById('janela').textContent = d.periodo;
+  document.getElementById('contra').textContent =
+    'contra ' + d.periodoAnterior + ' · atualizado ' + d.atualizadoEm;
+
+  document.getElementById('capa').innerHTML = `
+    <div class="cartao c-litros">
+      <div class="rot">Diesel recebido</div>
+      <div class="cifra">${fmtInt(a.litros)}<span class="un">L</span></div>
+      <div class="base">${varHtml(v.litros)} · antes ${fmtInt(b.litros)} L</div>
+    </div>
+    <div class="cartao c-valor">
+      <div class="rot">Valor das entradas</div>
+      <div class="cifra">${fmtMoedaCurta(a.valor)}</div>
+      <div class="base">${varHtml(v.valor)} · antes ${fmtMoedaCurta(b.valor)}</div>
+    </div>
+    <div class="cartao c-preco">
+      <div class="rot">Preço médio pago</div>
+      <div class="cifra">${fmtMoeda(a.preco)}<span class="un">/ L</span></div>
+      <div class="base">${varHtml(v.preco, true)} · antes ${fmtMoeda(b.preco)}/L</div>
+    </div>
+    <div class="cartao c-notas">
+      <div class="rot">Notas de entrada</div>
+      <div class="cifra">${fmtInt(a.notas)}</div>
+      <div class="base">antes ${fmtInt(b.notas)} notas</div>
+    </div>`;
+
+  document.getElementById('tabMeses').innerHTML = `
+    <table>
+      <thead><tr>
+        <th>Mês</th><th class="num">Litros</th><th class="num">Antes</th>
+        <th class="num">Var.</th><th class="num">R$/L</th><th class="num">Var.</th>
+      </tr></thead>
+      <tbody>${d.meses.map(m => `<tr>
+        <td>${esc(m.label)}</td>
+        <td class="num">${fmtInt(m.litros)}</td>
+        <td class="num fraco">${fmtInt(m.litrosAnterior)}</td>
+        <td class="num">${varHtml(m.varLitros)}</td>
+        <td class="num">${Number(m.preco) ? fmtNum(m.preco, 2) : '—'}</td>
+        <td class="num">${varHtml(m.varPreco, true)}</td>
+      </tr>`).join('')}</tbody>
+      <tfoot><tr>
+        <td>Total</td>
+        <td class="num">${fmtInt(d.atual.litros)}</td>
+        <td class="num fraco">${fmtInt(d.anterior.litros)}</td>
+        <td class="num">${varHtml(d.variacao.litros)}</td>
+        <td class="num">${fmtNum(d.atual.preco, 2)}</td>
+        <td class="num">${varHtml(d.variacao.preco, true)}</td>
+      </tr></tfoot>
+    </table>`;
+
+  // Cinco linhas é o que cabe com a caixa do material embaixo.
+  const forn = (d.fornecedores || []).slice(0, 5);
+  document.getElementById('tabForn').innerHTML = `
+    <div class="caixa"><h3>Fornecedor</h3>
+    <table>
+      <thead><tr>
+        <th></th><th class="num">Litros</th><th class="num">%</th>
+        <th class="num">R$/L</th><th class="num">Var. vol.</th>
+      </tr></thead>
+      <tbody>${forn.map(l => `<tr>
+        <td class="nome">${esc(l.nome)}</td>
+        <td class="num">${fmtInt(l.litros)}</td>
+        <td class="num fraco">${fmtNum(l.pct, 1)}%</td>
+        <td class="num">${Number(l.preco) ? fmtNum(l.preco, 2) : '—'}</td>
+        <td class="num">${varHtml(l.varLitros)}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>`;
+
+  document.getElementById('tabMat').innerHTML = `
+    <div class="caixa"><h3>Tipo de diesel</h3>
+    <table>
+      <thead><tr>
+        <th></th><th class="num">Litros</th><th class="num">%</th>
+        <th class="num">R$/L</th><th class="num">Var. vol.</th>
+      </tr></thead>
+      <tbody>${(d.materiais || []).slice(0, 3).map(l => `<tr>
+        <td class="nome">${esc(l.nome)}</td>
+        <td class="num">${fmtInt(l.litros)}</td>
+        <td class="num fraco">${fmtNum(l.pct, 1)}%</td>
+        <td class="num">${Number(l.preco) ? fmtNum(l.preco, 2) : '—'}</td>
+        <td class="num">${varHtml(l.varLitros)}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>`;
+
+  graficoLitros(d.meses);
+  graficoPreco(d.meses);
+}
+
+// ── Gráficos ────────────────────────────────────────────────────────────
+
+/** Rótulo no topo de cada barra — de longe, a barra sem número não se lê. */
+const rotuloNoTopo = (fmt) => ({
+  id: 'topo',
+  afterDatasetsDraw(chart) {
+    const ctx = chart.ctx;
+    ctx.save();
+    ctx.font = '800 14px system-ui, sans-serif';
+    ctx.fillStyle = '#0f2460';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    chart.data.datasets.forEach((ds, di) => {
+      chart.getDatasetMeta(di).data.forEach((p, i) => {
+        const v = ds.data[i];
+        if (!v) return;
+        ctx.fillText(fmt(v), p.x, p.y - 5);
+      });
+    });
+    ctx.restore();
+  }
+});
+
+function graficoLitros(meses) {
+  criar('gLitros', {
+    type: 'bar',
+    data: {
+      labels: meses.map(m => m.label),
+      datasets: [
+        { label: 'Este ano', data: meses.map(m => Number(m.litros)||0),
+          backgroundColor: COR_ATUAL, borderRadius: 5, borderSkipped: false,
+          barPercentage: .9, categoryPercentage: .74 },
+        { label: 'Ano anterior', data: meses.map(m => Number(m.litrosAnterior)||0),
+          backgroundColor: COR_ANTERIOR, borderRadius: 5, borderSkipped: false,
+          barPercentage: .9, categoryPercentage: .74 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      layout: { padding: { top: 22 } },
+      scales: {
+        x: { grid: { display: false }, border: { color: '#e3e8f5' },
+             ticks: { color: '#52514e', font: { size: 16, weight: '800' } } },
+        y: { beginAtZero: true, grid: { color: '#e9edf6' }, border: { display: false },
+             ticks: { color: '#898781', font: { size: 13, weight: '800' }, maxTicksLimit: 5,
+                      callback: v => v === 0 ? '0' : fmtInt(v/1000) + ' mil' } }
+      },
+      plugins: { legend: { display: false }, tooltip: { enabled: false } }
+    },
+    plugins: [rotuloNoTopo(v => fmtInt(v/1000) + ' mil')]
+  });
+}
+
+function graficoPreco(meses) {
+  // null onde não houve entrada: a linha corta em vez de despencar até o
+  // zero, que leria como diesel de graça.
+  const zeroNulo = v => { const n = Number(v)||0; return n === 0 ? null : n; };
+  criar('gPreco', {
+    type: 'line',
+    data: {
+      labels: meses.map(m => m.label),
+      datasets: [
+        { label: 'Este ano', data: meses.map(m => zeroNulo(m.preco)),
+          borderColor: COR_ATUAL, backgroundColor: 'transparent', borderWidth: 3,
+          pointRadius: 5, pointBackgroundColor: COR_ATUAL, pointBorderColor: '#fff',
+          pointBorderWidth: 2, tension: .25, spanGaps: false },
+        { label: 'Ano anterior', data: meses.map(m => zeroNulo(m.precoAnterior)),
+          borderColor: COR_ANTERIOR, backgroundColor: 'transparent', borderWidth: 3,
+          borderDash: [6, 5],
+          pointRadius: 5, pointBackgroundColor: COR_ANTERIOR, pointBorderColor: '#fff',
+          pointBorderWidth: 2, tension: .25, spanGaps: false }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      layout: { padding: { top: 24, bottom: 8, right: 12 } },
+      scales: {
+        x: { grid: { display: false }, border: { color: '#e3e8f5' },
+             ticks: { color: '#52514e', font: { size: 16, weight: '800' } } },
+        // Sem começar no zero: o diesel oscila poucos por cento, e um eixo de
+        // 0 a 6 achataria a variação até ela sumir.
+        y: { beginAtZero: false, grace: '30%', grid: { color: '#e9edf6' },
+             border: { display: false },
+             ticks: { color: '#898781', font: { size: 13, weight: '800' }, maxTicksLimit: 4,
+                      callback: v => 'R$ ' + fmtNum(v, 2) } }
+      },
+      plugins: { legend: { display: false }, tooltip: { enabled: false } }
+    },
+    plugins: [{
+      /* Valor em todos os pontos das duas linhas. A de cima escreve por
+         cima, a de baixo por baixo: assim os dois números do mesmo mês não
+         se encostam mesmo quando as linhas passam perto. */
+      id: 'valores',
+      afterDatasetsDraw(chart) {
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.font = '800 14px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        const a = chart.getDatasetMeta(0).data, b = chart.getDatasetMeta(1).data;
+        const va = chart.data.datasets[0].data, vb = chart.data.datasets[1].data;
+        for (let i = 0; i < Math.max(va.length, vb.length); i++) {
+          const pa = va[i] != null && a[i] ? a[i] : null;
+          const pb = vb[i] != null && b[i] ? b[i] : null;
+          // Quem está mais alto na tela (y menor) escreve para cima.
+          const aEmCima = !pb || (pa && pa.y <= pb.y);
+          if (pa) escreve(ctx, pa, va[i], COR_ATUAL, aEmCima);
+          if (pb) escreve(ctx, pb, vb[i], COR_ANTERIOR, !aEmCima);
+        }
+        ctx.restore();
+      }
+    }]
+  });
+}
+
+function escreve(ctx, ponto, valor, cor, acima) {
+  ctx.fillStyle = cor;
+  ctx.textBaseline = acima ? 'bottom' : 'top';
+  ctx.fillText(fmtNum(valor, 2), ponto.x, ponto.y + (acima ? -11 : 11));
+}
+
+const observador = typeof ResizeObserver !== 'undefined'
+  ? new ResizeObserver(es => { for (const e of es) {
+      const g = graficos[e.target.dataset.gid]; if (g) g.resize(); } })
+  : null;
+
+function criar(id, config) {
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  if (graficos[id]) graficos[id].destroy();
+  graficos[id] = new Chart(canvas, config);
+  const caixa = canvas.parentElement;
+  if (observador && caixa) { caixa.dataset.gid = id; observador.observe(caixa); }
+}
+
+// ── Estados ───────────────────────────────────────────────────────────────
+function aviso(titulo, texto) {
+  document.getElementById('avisoTit').textContent = titulo;
+  document.getElementById('avisoTxt').textContent = texto;
+  document.getElementById('aviso').classList.add('on');
+}
+function esconderAviso() { document.getElementById('aviso').classList.remove('on'); }
+
+/** TV mostrando número de ontem sem dizer nada é pior que TV apagada. */
+function conferirIdade() {
+  const t = document.getElementById('tarja');
+  if (!ULTIMO_OK) return;
+  const idade = Date.now() - ULTIMO_OK;
+  if (idade > VELHO_MS) {
+    t.textContent = '⚠ Sem atualizar há ' + Math.round(idade / 60000)
+                  + ' minutos — o painel pode estar mostrando dado antigo';
+    t.classList.add('on');
+  } else {
+    t.classList.remove('on');
+  }
+}
+
+ajustarEscala();
+carregar();
+setInterval(carregar, INTERVALO_MS);
+setInterval(conferirIdade, 60 * 1000);
+</script>
+</body>
+</html>
