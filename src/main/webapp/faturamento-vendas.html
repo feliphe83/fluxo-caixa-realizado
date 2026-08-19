@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Faturamento de Vendas · USC</title>
+<style>
+  :root {
+    /* Mesma combinação do dashboard de combustível e do painel de cana. */
+    --serie-1: #2a78d6;   /* azul */
+    --serie-2: #eb6834;   /* laranja */
+    --serie-3: #1baf7a;   /* água */
+    --serie-4: #eda100;   /* amarelo */
+    --serie-5: #e87ba4;   /* magenta */
+    --serie-6: #008300;   /* verde */
+    --serie-outros: #98a2b3;
+
+    --ink:    #0f2460;
+    --ink-2:  #52514e;
+    --ink-3:  #898781;
+    --rotulo: #64748b;
+    --grade:  #e9edf6;
+    --borda:  #e3e8f5;
+    --papel:  #ffffff;
+    --papel-2:#f8faff;
+    --fundo:  #f4f6fb;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--fundo); color: #1a1a2e; min-height: 100vh;
+    font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased;
+  }
+
+  .header {
+    background: var(--ink); color: white; padding: 0 32px; height: 62px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .header-left { display: flex; align-items: center; gap: 13px; }
+  .header-logo { width: 36px; height: 36px; border-radius: 8px; background: white;
+                 display: flex; align-items: center; justify-content: center;
+                 overflow: hidden; padding: 4px; flex-shrink: 0; }
+  .header-logo img { width: 100%; height: 100%; object-fit: contain; }
+  .header-title { font-size: 15px; font-weight: 650; }
+  .header-sub { font-size: 11px; color: rgba(255,255,255,.55); margin-top: 1px;
+                text-transform: uppercase; letter-spacing: .9px; font-weight: 600; }
+  .btn-voltar { display: flex; align-items: center; gap: 7px; padding: 8px 14px;
+                border-radius: 8px; border: 1px solid rgba(255,255,255,.16);
+                background: transparent; color: rgba(255,255,255,.85);
+                font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+                text-decoration: none; }
+  .btn-voltar:hover { background: rgba(255,255,255,.10); color: #fff; }
+
+  .conteudo { max-width: 1280px; margin: 0 auto; padding: 24px 24px 60px; }
+
+  /* ── Filtros ── */
+  .filtros { background: var(--papel); border: 1px solid var(--borda); border-radius: 14px;
+             padding: 18px 22px; margin-bottom: 20px; }
+  .filtros-linha { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; }
+  .campo label { display: block; font-size: 10.5px; font-weight: 700; color: var(--rotulo);
+                 text-transform: uppercase; letter-spacing: .5px; margin-bottom: 5px; }
+  .campo input { padding: 9px 11px; border: 1px solid #cfd7e6; border-radius: 8px;
+                 font-size: 13.5px; font-family: inherit; color: #1a1a2e; outline: none; }
+  .campo input:focus { border-color: var(--serie-1); box-shadow: 0 0 0 3px rgba(42,120,214,.12); }
+  .btn-gerar { display: flex; align-items: center; gap: 8px; padding: 10px 20px;
+               background: var(--ink); color: white; border: none; border-radius: 8px;
+               font-size: 13.5px; font-weight: 650; cursor: pointer; font-family: inherit; }
+  .btn-gerar:hover { background: #16336f; }
+  .btn-gerar:disabled { opacity: .6; cursor: default; }
+  .atalhos { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .atalho { padding: 6px 13px; border: 1px solid var(--borda); border-radius: 999px;
+            background: var(--papel); font-size: 12.5px; color: var(--ink-2);
+            cursor: pointer; font-family: inherit; }
+  .atalho:hover { border-color: var(--serie-1); color: var(--ink); }
+
+  /* ── Seções ── */
+  .secao { background: var(--papel); border: 1px solid var(--borda); border-radius: 14px;
+           padding: 20px 24px; margin-bottom: 20px; }
+  .secao-header { display: flex; align-items: baseline; gap: 10px; }
+  .secao-num { width: 22px; height: 22px; border-radius: 6px; background: var(--ink);
+               color: white; font-size: 11px; font-weight: 800; display: flex;
+               align-items: center; justify-content: center; flex-shrink: 0; }
+  .secao-titulo { font-size: 16px; font-weight: 800; color: var(--ink); }
+  .secao-sub { font-size: 12px; color: var(--ink-3); margin: 3px 0 16px 32px; }
+
+  /* ── KPIs ── */
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .kpi { background: var(--papel-2); border: 1px solid var(--borda); border-radius: 12px;
+         padding: 14px 16px; }
+  .kpi .valor { font-size: 24px; font-weight: 800; color: var(--ink); line-height: 1.15; }
+  .kpi .valor small { font-size: 14px; font-weight: 600; color: var(--ink-3); margin-left: 4px; }
+  .kpi .rotulo { font-size: 10px; font-weight: 700; color: var(--rotulo);
+                 text-transform: uppercase; letter-spacing: .4px; margin-top: 4px; }
+  .kpi .sub { font-size: 10.5px; color: var(--ink-3); margin-top: 2px; }
+
+  .nota-box { display: flex; gap: 10px; align-items: flex-start; background: #fffaf0;
+              border-left: 3px solid var(--serie-4); border-radius: 8px; padding: 10px 16px;
+              font-size: 12px; color: var(--ink-2); line-height: 1.55; margin-top: 16px; }
+  .nota-box b { color: var(--ink); }
+
+  /* ── Tabelas ── */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th { text-align: left; font-size: 10.5px; font-weight: 700; color: var(--rotulo);
+             text-transform: uppercase; letter-spacing: .5px; padding: 8px 10px;
+             border-bottom: 1.5px solid var(--borda); white-space: nowrap; }
+  tbody td { padding: 9px 10px; border-bottom: 1px solid #f0f3f9; }
+  tbody tr:last-child td { border-bottom: none; }
+  .num { text-align: right; white-space: nowrap; }
+  tfoot td { padding: 10px; font-weight: 800; color: var(--ink);
+             border-top: 1.5px solid var(--borda); }
+  .pilula { display: inline-flex; align-items: center; gap: 7px; }
+  .pilula i { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+
+  .grafico-caixa { position: relative; height: 320px; margin-top: 6px; }
+  .grafico-caixa.alto { height: 400px; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+  .estado { text-align: center; padding: 60px 20px; color: var(--ink-3); font-size: 14px; }
+  .spinner { width: 28px; height: 28px; border: 2.5px solid var(--borda);
+             border-top-color: var(--serie-1); border-radius: 50%;
+             margin: 0 auto 14px; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .erro { color: #d03b3b; }
+
+  @media (max-width: 900px) {
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .grid-2 { grid-template-columns: 1fr; }
+    .header { padding: 0 16px; }
+    .conteudo { padding: 16px 14px 40px; }
+  }
+</style>
+<link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+<meta name="theme-color" content="#0f2460">
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="header-logo"><img src="img/logo.png" alt="USC"></div>
+    <div>
+      <div class="header-title">Faturamento de Vendas</div>
+      <div class="header-sub">Produtos · notas fiscais</div>
+    </div>
+  </div>
+  <a class="btn-voltar" href="hub.html">
+    <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+    </svg>
+    Voltar ao Hub
+  </a>
+</div>
+
+<div class="conteudo">
+
+  <div class="filtros">
+    <div class="filtros-linha">
+      <div class="campo">
+        <label for="dataIni">Data início</label>
+        <input type="date" id="dataIni">
+      </div>
+      <div class="campo">
+        <label for="dataFim">Data fim</label>
+        <input type="date" id="dataFim">
+      </div>
+      <button class="btn-gerar" id="btnGerar" onclick="carregar()">
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Gerar
+      </button>
+    </div>
+    <div class="atalhos">
+      <button class="atalho" onclick="periodo('mes')">Mês atual</button>
+      <button class="atalho" onclick="periodo('mes-1')">Mês anterior</button>
+      <button class="atalho" onclick="periodo('90')">Últimos 90 dias</button>
+      <button class="atalho" onclick="periodo('ano')">Ano atual</button>
+      <button class="atalho" onclick="periodo('12m')">Últimos 12 meses</button>
+    </div>
+  </div>
+
+  <div id="resultado">
+    <div class="estado">Escolha o período e clique em Gerar.</div>
+  </div>
+</div>
+
+<script src="js/chart.umd.min.js"></script>
+<script>
+const CORES = ['#2a78d6','#eb6834','#1baf7a','#eda100','#e87ba4','#008300'];
+const COR_OUTROS = '#98a2b3';
+
+let DADOS = null;
+const graficos = {};
+
+const fmtMoeda = v => 'R$ ' + (Number(v)||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+const fmtMoedaCurta = v => {
+  const n = Number(v) || 0;
+  if (Math.abs(n) >= 1e6) return 'R$ ' + (n/1e6).toLocaleString('pt-BR',{maximumFractionDigits:1}) + ' mi';
+  if (Math.abs(n) >= 1e3) return 'R$ ' + (n/1e3).toLocaleString('pt-BR',{maximumFractionDigits:0}) + ' mil';
+  return fmtMoeda(n);
+};
+const fmtNum = (v, casas) => (Number(v)||0).toLocaleString('pt-BR',
+  {minimumFractionDigits: casas==null?2:casas, maximumFractionDigits: casas==null?2:casas});
+const fmtInt = v => (Number(v)||0).toLocaleString('pt-BR');
+const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+/** Cor fixa por posição na lista de produtos — a cor segue o produto, e não
+ *  o lugar dele no ranking de hoje. */
+function corDoProduto(nome) {
+  if (!DADOS || nome === 'Outros') return COR_OUTROS;
+  const i = (DADOS.seriesProduto || []).indexOf(nome);
+  return i >= 0 && i < CORES.length ? CORES[i] : COR_OUTROS;
+}
+
+function periodo(qual) {
+  const hoje = new Date();
+  const iso = d => d.toISOString().slice(0,10);
+  let ini, fim = hoje;
+  if (qual === 'mes')        ini = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+  else if (qual === 'mes-1') { ini = new Date(hoje.getFullYear(), hoje.getMonth()-1, 1);
+                               fim = new Date(hoje.getFullYear(), hoje.getMonth(), 0); }
+  else if (qual === '90')    { ini = new Date(hoje); ini.setDate(ini.getDate()-90); }
+  else if (qual === 'ano')   ini = new Date(hoje.getFullYear(), 0, 1);
+  else                       { ini = new Date(hoje); ini.setMonth(ini.getMonth()-12); }
+  document.getElementById('dataIni').value = iso(ini);
+  document.getElementById('dataFim').value = iso(fim);
+  carregar();
+}
+
+async function carregar() {
+  const ini = document.getElementById('dataIni').value;
+  const fim = document.getElementById('dataFim').value;
+  if (!ini || !fim) { alert('Informe o período completo.'); return; }
+  if (fim < ini) { alert('Data fim não pode ser anterior à data início.'); return; }
+
+  const btn = document.getElementById('btnGerar');
+  btn.disabled = true;
+  document.getElementById('resultado').innerHTML =
+    '<div class="estado"><div class="spinner"></div>Consultando notas fiscais…</div>';
+
+  try {
+    const r = await fetch(`api/faturamento-vendas?dataIni=${ini}&dataFim=${fim}`);
+    if (r.status === 401) { location.href = 'login.html'; return; }
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro || 'Consulta recusada');
+    DADOS = j;
+    render(j);
+  } catch (e) {
+    document.getElementById('resultado').innerHTML =
+      '<div class="estado erro">❌ ' + esc(e.message) + '</div>';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function render(d) {
+  if (!d.porProduto || !d.porProduto.length) {
+    document.getElementById('resultado').innerHTML =
+      '<div class="estado">Nenhuma nota faturada no período.</div>';
+    return;
+  }
+
+  const ticket = d.notas > 0 ? Number(d.valorNotas) / d.notas : 0;
+
+  document.getElementById('resultado').innerHTML = `
+    <div class="secao">
+      <div class="secao-header"><span class="secao-num">1</span>
+        <span class="secao-titulo">Resumo</span></div>
+      <div class="secao-sub">${esc(fmtData(d.dataIni))} a ${esc(fmtData(d.dataFim))} · atualizado em ${esc(d.atualizadoEm)}</div>
+      <div class="kpi-row">
+        <div class="kpi">
+          <div class="valor">${fmtMoedaCurta(d.valorItens)}</div>
+          <div class="rotulo">Faturado (itens)</div>
+          <div class="sub">${fmtMoeda(d.valorItens)}</div>
+        </div>
+        <div class="kpi">
+          <div class="valor">${fmtInt(d.notas)}</div>
+          <div class="rotulo">Notas fiscais</div>
+          <div class="sub">${fmtInt(d.itens)} itens</div>
+        </div>
+        <div class="kpi">
+          <div class="valor">${fmtMoedaCurta(ticket)}</div>
+          <div class="rotulo">Ticket médio por nota</div>
+          <div class="sub">valor total da nota ÷ notas</div>
+        </div>
+        <div class="kpi">
+          <div class="valor">${fmtInt(d.porProduto.length)}</div>
+          <div class="rotulo">Produtos vendidos</div>
+          <div class="sub">${esc(d.porProduto[0].nome)} lidera</div>
+        </div>
+      </div>
+      <div class="nota-box">
+        <span>⚠️</span>
+        <span><b>Impostos e total da nota são por NOTA, não por produto.</b>
+        Eles vêm repetidos em cada item, então são somados uma vez por nota —
+        no período: ICMS ${fmtMoeda(d.icms)}, IPI ${fmtMoeda(d.ipi)},
+        ICMS ST ${fmtMoeda(d.icmsSt)}, desconto ${fmtMoeda(d.desconto)},
+        outras despesas ${fmtMoeda(d.outrasDesp)}.
+        A quebra por produto usa o <b>valor do item</b>, que é o único que
+        separa por produto de verdade.</span>
+      </div>
+    </div>
+
+    <div class="secao">
+      <div class="secao-header"><span class="secao-num">2</span>
+        <span class="secao-titulo">Por produto</span></div>
+      <div class="secao-sub">Quantidade, valor faturado e participação — ordenado do maior para o menor</div>
+      <div class="grafico-caixa alto"><canvas id="gProduto"></canvas></div>
+      <table style="margin-top:18px">
+        <thead><tr>
+          <th>Produto</th><th class="num">Quantidade</th><th>Un.</th>
+          <th class="num">Preço médio</th><th class="num">Faturado</th><th class="num">%</th>
+        </tr></thead>
+        <tbody>
+          ${d.porProduto.map(p => `
+            <tr>
+              <td><span class="pilula"><i style="background:${corDoProduto(p.nome)}"></i>${esc(p.nome)}</span></td>
+              <td class="num">${fmtNum(p.quantidade)}</td>
+              <td>${esc(p.unidade || '—')}</td>
+              <td class="num">${fmtMoeda(p.precoMedio)}</td>
+              <td class="num">${fmtMoeda(p.valor)}</td>
+              <td class="num">${fmtNum(p.pct, 1)}%</td>
+            </tr>`).join('')}
+        </tbody>
+        <tfoot><tr>
+          <td>TOTAL</td><td class="num"></td><td></td><td></td>
+          <td class="num">${fmtMoeda(d.valorItens)}</td><td class="num">100,0%</td>
+        </tr></tfoot>
+      </table>
+    </div>
+
+    <div class="secao">
+      <div class="secao-header"><span class="secao-num">3</span>
+        <span class="secao-titulo">Mês a mês, por produto</span></div>
+      <div class="secao-sub">Valor faturado dos itens · o número acima de cada mês é o total</div>
+      <div class="grafico-caixa alto"><canvas id="gMeses"></canvas></div>
+    </div>
+
+    <div class="grid-2">
+      ${tabelaCorte('4', 'Por cliente', d.porCliente, 'Cliente')}
+      ${tabelaCorte('5', 'Por estado', d.porEstado, 'UF')}
+    </div>
+    <div class="grid-2">
+      ${tabelaCorte('6', 'Por destino do item', d.porDestino, 'Destino')}
+      ${tabelaCorte('7', 'Por rotina fiscal', d.porRotina, 'Rotina')}
+    </div>
+  `;
+
+  desenharProduto(d);
+  desenharMeses(d);
+}
+
+function tabelaCorte(num, titulo, linhas, rotulo) {
+  if (!linhas || !linhas.length) return '';
+  return `
+    <div class="secao">
+      <div class="secao-header"><span class="secao-num">${num}</span>
+        <span class="secao-titulo">${esc(titulo)}</span></div>
+      <div class="secao-sub">Maiores primeiro</div>
+      <table>
+        <thead><tr><th>${esc(rotulo)}</th><th class="num">Faturado</th><th class="num">%</th></tr></thead>
+        <tbody>
+          ${linhas.map(l => `
+            <tr>
+              <td>${esc(l.nome)}</td>
+              <td class="num">${fmtMoeda(l.valor)}</td>
+              <td class="num">${fmtNum(l.pct, 1)}%</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+/** Barras horizontais: nome de produto é longo, e deitado ele cabe. */
+function desenharProduto(d) {
+  const dados = d.porProduto.slice(0, 12);
+  criar('gProduto', {
+    type: 'bar',
+    data: {
+      labels: dados.map(p => p.nome),
+      datasets: [{
+        label: 'Faturado',
+        data: dados.map(p => Number(p.valor) || 0),
+        backgroundColor: dados.map(p => corDoProduto(p.nome)),
+        borderRadius: 4,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      layout: { padding: { right: 70 } },
+      scales: {
+        x: { grid: { color: '#e9edf6' }, border: { display: false },
+             ticks: { color: '#898781', font: { size: 11 }, callback: v => fmtMoedaCurta(v) } },
+        y: { grid: { display: false }, border: { color: '#e3e8f5' },
+             ticks: { color: '#52514e', font: { size: 12, weight: '600' } } }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: c => fmtMoeda(c.raw) } }
+      }
+    },
+    plugins: [{
+      id: 'valorNaPonta',
+      afterDatasetsDraw(chart) {
+        const { ctx } = chart;
+        ctx.save();
+        ctx.font = '700 12px system-ui, sans-serif';
+        ctx.fillStyle = '#0f2460';
+        ctx.textBaseline = 'middle';
+        chart.getDatasetMeta(0).data.forEach((barra, i) => {
+          const v = chart.data.datasets[0].data[i];
+          if (!v) return;
+          ctx.fillText(fmtMoedaCurta(v), barra.x + 8, barra.y);
+        });
+        ctx.restore();
+      }
+    }]
+  });
+}
+
+/** Empilhado por produto: o mês é a unidade de comparação, e cada pedaço
+ *  mostra de que produto veio. */
+function desenharMeses(d) {
+  const meses = d.meses || [];
+  const series = d.seriesProduto || [];
+  const totais = meses.map(m => Number(m.total) || 0);
+
+  criar('gMeses', {
+    type: 'bar',
+    data: {
+      labels: meses.map(m => m.label),
+      datasets: series.map(nome => ({
+        label: nome,
+        data: meses.map(m => Number((m.produtos || {})[nome]) || 0),
+        backgroundColor: corDoProduto(nome),
+        // A borda na cor do cartão abre o vão de 2px entre os pedaços: sem
+        // ele, duas cores encostadas criam uma terceira na emenda.
+        borderColor: '#ffffff',
+        borderWidth: 2,
+        borderRadius: 3,
+        borderSkipped: false
+      }))
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      layout: { padding: { top: 26 } },
+      scales: {
+        x: { stacked: true, grid: { display: false }, border: { color: '#e3e8f5' },
+             ticks: { color: '#52514e', font: { size: 12, weight: '600' } } },
+        y: { stacked: true, grid: { color: '#e9edf6' }, border: { display: false },
+             ticks: { color: '#898781', font: { size: 11 }, callback: v => fmtMoedaCurta(v) } }
+      },
+      plugins: {
+        legend: { position: 'top', align: 'end',
+                  labels: { boxWidth: 11, boxHeight: 11, usePointStyle: true,
+                            pointStyle: 'rectRounded', color: '#52514e',
+                            font: { size: 12, weight: '600' } } },
+        tooltip: { callbacks: { label: c => c.dataset.label + ': ' + fmtMoeda(c.raw) } }
+      }
+    },
+    plugins: [{
+      id: 'totalNoTopo',
+      afterDatasetsDraw(chart) {
+        const { ctx } = chart;
+        const ult = chart.getDatasetMeta(chart.data.datasets.length - 1);
+        if (!ult) return;
+        ctx.save();
+        ctx.font = '700 13px system-ui, sans-serif';
+        ctx.fillStyle = '#0f2460';
+        ctx.textAlign = 'center';
+        ult.data.forEach((barra, i) => {
+          const t = totais[i];
+          if (!t) return;
+          ctx.fillText(fmtMoedaCurta(t), barra.x, chart.scales.y.getPixelForValue(t) - 8);
+        });
+        ctx.restore();
+      }
+    }]
+  });
+}
+
+function criar(id, config) {
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  if (graficos[id]) graficos[id].destroy();
+  config.options = config.options || {};
+  config.options.animation = false;
+  graficos[id] = new Chart(canvas, config);
+}
+
+function fmtData(iso) {
+  const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : (iso || '');
+}
+
+// Abre no mês atual, como as outras telas do projeto.
+periodo('mes');
+</script>
+
+<script src="js/icones-modulos.js?v=20260818e"></script>
+<script src="js/sidebar-nav.js?v=20260818e" defer></script>
+<script src="js/agro-chat-widget.js" defer></script>
+</body>
+</html>
