@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Entrada de Cana · USC</title>
+<style>
+  :root {
+    /* Mesmas cores do painel de televisão: as duas telas mostram os mesmos
+       números, e trocar a cor da "própria" entre uma e outra faria o mesmo
+       dado parecer coisa diferente. */
+    --origem-propria:    #2a78d6;
+    --origem-fornecedor: #eb6834;
+    --origem-acionista:  #1baf7a;
+    --origem-outros:     #eda100;
+    --colheita-mec:      #e87ba4;
+    --colheita-manual:   #008300;
+
+    --ink:    #0f2460;
+    --ink-2:  #52514e;
+    --ink-3:  #898781;
+    --rotulo: #64748b;
+    --grade:  #e9edf6;
+    --borda:  #e3e8f5;
+    --papel:  #ffffff;
+    --papel-2:#f8faff;
+    --fundo:  #f4f6fb;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--fundo); color: #1a1a2e; min-height: 100vh;
+    font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased;
+  }
+
+  .header { background: var(--ink); color: white; padding: 0 32px; height: 62px;
+            display: flex; align-items: center; justify-content: space-between; }
+  .header-left { display: flex; align-items: center; gap: 13px; }
+  .header-logo { width: 36px; height: 36px; border-radius: 8px; background: white;
+                 display: flex; align-items: center; justify-content: center;
+                 overflow: hidden; padding: 4px; flex-shrink: 0; }
+  .header-logo img { width: 100%; height: 100%; object-fit: contain; }
+  .header-title { font-size: 15px; font-weight: 650; }
+  .header-sub { font-size: 11px; color: rgba(255,255,255,.55); margin-top: 1px;
+                text-transform: uppercase; letter-spacing: .9px; font-weight: 600; }
+  .btn-voltar { display: flex; align-items: center; gap: 7px; padding: 8px 14px;
+                border-radius: 8px; border: 1px solid rgba(255,255,255,.16);
+                background: transparent; color: rgba(255,255,255,.85);
+                font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+                text-decoration: none; }
+  .btn-voltar:hover { background: rgba(255,255,255,.10); color: #fff; }
+
+  .conteudo { max-width: 1280px; margin: 0 auto; padding: 24px 24px 60px; }
+
+  .filtros { background: var(--papel); border: 1px solid var(--borda); border-radius: 14px;
+             padding: 18px 22px; margin-bottom: 20px; }
+  .filtros-linha { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; }
+  .campo label { display: block; font-size: 10.5px; font-weight: 700; color: var(--rotulo);
+                 text-transform: uppercase; letter-spacing: .5px; margin-bottom: 5px; }
+  .campo select { padding: 10px 14px; border: 1px solid #cfd7e6; border-radius: 8px;
+                  font-size: 14.5px; font-weight: 600; font-family: inherit; color: var(--ink);
+                  background: var(--papel); outline: none; cursor: pointer; min-width: 200px; }
+  .campo select:disabled { opacity: .6; cursor: progress; }
+  .campo select:focus { border-color: var(--origem-propria);
+                        box-shadow: 0 0 0 3px rgba(42,120,214,.12); }
+  .atualizado { margin-left: auto; font-size: 12px; color: var(--ink-3); padding-bottom: 10px; }
+
+  /* ── Capa ── */
+  /* As colunas são tantas quantos forem os cartões: "Outros" só existe em
+     algumas safras, e numa grade fixa de quatro ele caía sozinho numa
+     segunda linha, parecendo um bloco à parte em vez do quinto de cinco. */
+  .capa { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+  .capa .cartao { background: var(--papel); border: 1px solid var(--borda);
+                  border-radius: 14px; padding: 18px 20px; position: relative; overflow: hidden; }
+  .capa .cartao::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+                          background: var(--cor, var(--ink)); }
+  .capa .rot { font-size: 10.5px; font-weight: 700; color: var(--rotulo);
+               text-transform: uppercase; letter-spacing: .6px; }
+  .capa .cifra { font-size: 28px; font-weight: 800; color: var(--ink);
+                 line-height: 1.15; margin-top: 8px; letter-spacing: -.7px; white-space: nowrap; }
+  .capa .un { font-size: 14px; font-weight: 600; color: var(--ink-3); margin-left: 4px; }
+  .capa .base { font-size: 11.5px; color: var(--ink-3); margin-top: 7px; }
+
+  /* ── Seções ── */
+  .secao { background: var(--papel); border: 1px solid var(--borda); border-radius: 14px;
+           padding: 20px 24px; margin-bottom: 20px; }
+  .secao-header { display: flex; align-items: baseline; gap: 10px; }
+  .secao-num { width: 22px; height: 22px; border-radius: 6px; background: var(--ink);
+               color: white; font-size: 11px; font-weight: 800; display: flex;
+               align-items: center; justify-content: center; flex-shrink: 0; }
+  .secao-titulo { font-size: 16px; font-weight: 800; color: var(--ink); }
+  .secao-sub { font-size: 12px; color: var(--ink-3); margin: 3px 0 14px 32px; }
+
+  .legenda { display: flex; gap: 18px; margin: 0 0 8px 32px; flex-wrap: wrap; }
+  .legenda span { display: inline-flex; align-items: center; gap: 7px;
+                  font-size: 12px; font-weight: 700; color: var(--ink-2); }
+  .legenda i { width: 11px; height: 11px; border-radius: 3px; flex: none; }
+
+  .grafico-caixa { position: relative; height: 340px; margin-top: 4px; }
+
+  /* ── Colheita: uma barra só, porque é divisão de um todo ── */
+  .split { display: flex; height: 46px; border-radius: 10px; overflow: hidden;
+           margin-top: 6px; background: var(--papel-2); }
+  .split div { display: flex; align-items: center; padding: 0 14px; color: #fff;
+               font-size: 14px; font-weight: 800; white-space: nowrap; }
+  .split .mec { background: var(--colheita-mec); }
+  .split .man { background: var(--colheita-manual); justify-content: flex-end; }
+  .abaixo { display: flex; gap: 24px; margin-top: 12px; flex-wrap: wrap;
+            font-size: 13px; color: var(--ink-2); }
+  .abaixo span { display: inline-flex; align-items: center; gap: 8px; }
+  .abaixo i { width: 11px; height: 11px; border-radius: 3px; flex: none; }
+  .abaixo b { color: var(--ink); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th { text-align: left; font-size: 10.5px; font-weight: 700; color: var(--rotulo);
+             text-transform: uppercase; letter-spacing: .5px; padding: 8px 10px;
+             border-bottom: 1.5px solid var(--borda); white-space: nowrap; }
+  tbody td { padding: 9px 10px; border-bottom: 1px solid #f0f3f9; }
+  tbody tr:last-child td { border-bottom: none; }
+  .num { text-align: right; white-space: nowrap; }
+  tfoot td { padding: 10px; font-weight: 800; color: var(--ink);
+             border-top: 1.5px solid var(--borda); }
+  .pilula { display: inline-flex; align-items: center; gap: 7px; }
+  .pilula i { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-2 .secao { margin-bottom: 0; }
+
+  .nota-box { display: flex; gap: 10px; align-items: flex-start; background: #fffaf0;
+              border-left: 3px solid var(--origem-outros); border-radius: 8px;
+              padding: 10px 16px; font-size: 12px; color: var(--ink-2);
+              line-height: 1.55; margin-top: 20px; }
+  .nota-box b { color: var(--ink); }
+
+  .estado { text-align: center; padding: 60px 20px; color: var(--ink-3); font-size: 14px; }
+  .spinner { width: 28px; height: 28px; border: 2.5px solid var(--borda);
+             border-top-color: var(--origem-propria); border-radius: 50%;
+             margin: 0 auto 14px; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .erro { color: #d03b3b; }
+  .erro code { display: block; margin-top: 10px; font-size: 12px; color: var(--ink-2);
+               background: var(--papel-2); border: 1px solid var(--borda); border-radius: 8px;
+               padding: 10px 14px; text-align: left; white-space: pre-wrap; }
+
+  @media (max-width: 900px) {
+    .capa { grid-template-columns: repeat(2, 1fr) !important; }
+    .grid-2 { grid-template-columns: 1fr; }
+    .header { padding: 0 16px; }
+    .conteudo { padding: 16px 14px 40px; }
+  }
+</style>
+<link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+<meta name="theme-color" content="#0f2460">
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="header-logo"><img src="img/logo.png" alt="USC"></div>
+    <div>
+      <div class="header-title">Entrada de Cana</div>
+      <div class="header-sub">Acompanhamento da safra</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <!-- A tela cheia é só daqui: o painel de parede abre em aba nova, e esta
+         página continua com o menu do lado, como qualquer outro módulo. -->
+    <a class="btn-voltar" id="btnTv" href="cana-tv.html" target="_blank"
+       title="Abrir a versão para televisão">
+      <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <rect x="2" y="4" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/>
+        <line x1="12" y1="18" x2="12" y2="21"/></svg>
+      Modo TV
+    </a>
+    <a class="btn-voltar" href="hub.html">
+      <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      Voltar ao Hub
+    </a>
+  </div>
+</div>
+
+<div class="conteudo">
+  <div class="filtros">
+    <div class="filtros-linha">
+      <div class="campo">
+        <label for="selSafra">Safra</label>
+        <select id="selSafra" onchange="trocarSafra(this.value)">
+          <option>Safra —</option>
+        </select>
+      </div>
+      <div class="atualizado" id="atualizado"></div>
+    </div>
+  </div>
+
+  <div id="resultado">
+    <div class="estado"><div class="spinner"></div>Consultando a entrada de cana…</div>
+  </div>
+</div>
+
+<script src="js/chart.umd.min.js"></script>
+<script>
+// A safra com que a tela ABRE — a mesma do painel de televisão, para as duas
+// não mostrarem safras diferentes lado a lado. ?safra=76 na URL vence.
+const SAFRA_PADRAO = '75';
+
+const ORIGENS = [
+  { chave: 'propria',    nome: 'Própria',    cor: '#2a78d6' },
+  { chave: 'fornecedor', nome: 'Fornecedor', cor: '#eb6834' },
+  { chave: 'acionista',  nome: 'Acionista',  cor: '#1baf7a' },
+  { chave: 'outros',     nome: 'Outros',     cor: '#eda100' }
+];
+const COR_MEC = '#e87ba4', COR_MANUAL = '#008300';
+
+let DADOS = null, SAFRA_ATUAL = null;
+const graficos = {};
+
+const fmtInt = v => (Number(v)||0).toLocaleString('pt-BR', {maximumFractionDigits:0});
+const fmtNum = (v, c) => (Number(v)||0).toLocaleString('pt-BR',
+  {minimumFractionDigits: c==null?1:c, maximumFractionDigits: c==null?1:c});
+const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+function safraDaUrl() {
+  const m = /[?&]safra=(\d+)/.exec(location.search);
+  return m ? m[1] : SAFRA_PADRAO;
+}
+
+/** Preenche o seletor. Falhar aqui não impede a tela: sem a lista fica só a
+ *  safra corrente escrita no seletor, e os números carregam igual. */
+async function carregarSafras() {
+  const sel = document.getElementById('selSafra');
+  try {
+    const r = await fetch('api/cana-entrada/safras', { cache: 'no-store' });
+    const j = await r.json();
+    if (!j.ok || !j.data || !j.data.length) throw new Error('sem safras');
+    sel.innerHTML = j.data.map(x =>
+      `<option value="${esc(x.cod_safra)}">Safra ${esc(x.cod_safra)}${x.atual === 'S' ? ' (atual)' : ''}</option>`
+    ).join('');
+    // A safra pedida pode não estar na lista (uma antiga vinda pela URL);
+    // nesse caso ela entra como opção, para o seletor não mostrar outra.
+    if (!j.data.some(x => String(x.cod_safra) === String(SAFRA_ATUAL))) {
+      sel.insertAdjacentHTML('afterbegin',
+        `<option value="${esc(SAFRA_ATUAL)}">Safra ${esc(SAFRA_ATUAL)}</option>`);
+    }
+    sel.value = SAFRA_ATUAL;
+  } catch (e) {
+    sel.innerHTML = `<option value="${esc(SAFRA_ATUAL)}">Safra ${esc(SAFRA_ATUAL)}</option>`;
+  }
+}
+
+function trocarSafra(safra) {
+  if (!safra || !/^\d+$/.test(safra) || safra === SAFRA_ATUAL) return;
+  SAFRA_ATUAL = safra;
+  // O botão da TV segue a safra escolhida: abrir o painel de parede numa
+  // safra diferente da que está na tela seria o pior tipo de surpresa.
+  document.getElementById('btnTv').href = 'cana-tv.html?safra=' + encodeURIComponent(safra);
+  carregar();
+}
+
+async function carregar() {
+  const sel = document.getElementById('selSafra');
+  sel.disabled = true;
+  document.getElementById('atualizado').textContent = '';
+  document.getElementById('resultado').innerHTML =
+    '<div class="estado"><div class="spinner"></div>Consultando a entrada de cana…</div>';
+  try {
+    const r = await fetch('api/cana-entrada?safra=' + encodeURIComponent(SAFRA_ATUAL),
+                          {headers: {'Accept': 'application/json'}});
+    const j = await r.json();
+    if (j.redirect) { location.href = 'login.html'; return; }
+    if (!j.ok) { falhar(j.erro || 'Erro ao consultar'); return; }
+    DADOS = j;
+    desenhar(j);
+  } catch (e) {
+    falhar(e.message || String(e));
+  } finally {
+    sel.disabled = false;
+  }
+}
+
+function falhar(msg) {
+  document.getElementById('resultado').innerHTML =
+    `<div class="estado erro"><b>Não foi possível carregar a entrada de cana.</b>
+     <code>${esc(msg)}</code></div>`;
+}
+
+function fatia(lista, nome) {
+  return (lista || []).find(x => x.nome === nome) || { nome, toneladas: 0, pct: 0 };
+}
+
+function desenhar(d) {
+  document.getElementById('atualizado').textContent = 'Atualizado em ' + d.atualizadoEm;
+
+  const total = Number(d.total) || 0;
+  if (!total) {
+    // Safra sem nenhuma cana pesada não é uma tela de zeros: é "ainda não
+    // começou", e tem que estar escrito.
+    document.getElementById('resultado').innerHTML =
+      `<div class="estado"><b style="color:var(--ink);font-size:16px">
+         Nenhuma entrada registrada na safra ${esc(d.safra)}.</b>
+       <div style="margin-top:8px">A consulta rodou sem erro e não trouxe cana pesada nesta safra.</div></div>`;
+    return;
+  }
+
+  const cartoes = [
+    { rot: 'Cana total', cor: 'var(--ink)', t: total, base: `safra ${esc(d.safra)}` }
+  ].concat(ORIGENS.map(o => {
+    const f = fatia(d.porOrigem, o.nome);
+    return { rot: 'Cana ' + o.nome.toLowerCase(), cor: o.cor, t: f.toneladas,
+             base: fmtNum(f.pct) + '% do total' };
+  // "Outros" só vira cartão quando existe mesmo: um cartão zerado fixo na
+  // tela vira ruído que todo mundo aprende a ignorar.
+  })).filter(c => c.rot === 'Cana total' || Number(c.t) > 0);
+
+  document.getElementById('resultado').innerHTML = `
+    <div class="capa" style="grid-template-columns:repeat(${cartoes.length},1fr)">
+      ${cartoes.map(c => `
+        <div class="cartao" style="--cor:${c.cor}">
+          <div class="rot">${esc(c.rot)}</div>
+          <div class="cifra">${fmtInt(c.t)}<span class="un">t</span></div>
+          <div class="base">${c.base}</div>
+        </div>`).join('')}
+    </div>
+
+    <div class="secao">
+      <div class="secao-header"><div class="secao-num">1</div>
+        <div class="secao-titulo">Mês a mês, por origem</div></div>
+      <div class="secao-sub">Toneladas pesadas em cada mês · o número acima da barra é o total do mês</div>
+      <div class="legenda">
+        ${ORIGENS.map(o => `<span><i style="background:${o.cor}"></i>${o.nome}</span>`).join('')}
+      </div>
+      <div class="grafico-caixa"><canvas id="gMeses"></canvas></div>
+      ${tabelaMeses(d.meses)}
+    </div>
+
+    <div class="secao">
+      <div class="secao-header"><div class="secao-num">2</div>
+        <div class="secao-titulo">Colheita</div></div>
+      <div class="secao-sub">Do total da safra</div>
+      ${blocoColheita(d.porColheita, total)}
+    </div>
+
+    <div class="grid-2">
+      <div class="secao">
+        <div class="secao-header"><div class="secao-num">3</div>
+          <div class="secao-titulo">Origens como estão no ERP</div></div>
+        <div class="secao-sub">A descrição crua do cadastro — é aqui que se vê o que caiu em "Outros"</div>
+        ${tabelaCrua(d.origensDoErp, 'Tipo de fundo agrícola', total)}
+      </div>
+      <div class="secao">
+        <div class="secao-header"><div class="secao-num">4</div>
+          <div class="secao-titulo">Tipos de corte como estão no ERP</div></div>
+        <div class="secao-sub">Mesma ideia, do lado da colheita</div>
+        ${tabelaCrua(d.cortesDoErp, 'Tipo de corte', total)}
+      </div>
+    </div>
+
+    <div class="nota-box"><div>
+      <b>De onde vêm os números:</b> agricola.ordem_corte_unica — produção realizada mais peso de muda,
+      a mesma fonte do mapa de talhões e do relatório de produtividade. A classificação em própria,
+      fornecedor e acionista é pela <b>descrição</b> cadastrada no ERP, não por código: o que não casar
+      com nenhuma das três aparece como <b>Outros</b> em vez de ser somado à força dentro de uma delas.
+    </div></div>`;
+
+  graficoMeses(d.meses);
+}
+
+function tabelaMeses(meses) {
+  if (!meses || !meses.length) return '';
+  const soma = c => meses.reduce((a, m) => a + (Number(m[c]) || 0), 0);
+  return `<table style="margin-top:18px">
+    <thead><tr>
+      <th>Mês</th>
+      ${ORIGENS.map(o => `<th class="num">${o.nome}</th>`).join('')}
+      <th class="num">Total</th><th class="num">Mecanizada</th><th class="num">Manual</th>
+    </tr></thead>
+    <tbody>${meses.map(m => `<tr>
+      <td><b>${esc(m.label)}</b></td>
+      ${ORIGENS.map(o => `<td class="num">${fmtInt(m[o.chave])}</td>`).join('')}
+      <td class="num"><b>${fmtInt(m.total)}</b></td>
+      <td class="num">${fmtInt(m.mecanizada)}</td>
+      <td class="num">${fmtInt(m.manual)}</td>
+    </tr>`).join('')}</tbody>
+    <tfoot><tr>
+      <td>Safra</td>
+      ${ORIGENS.map(o => `<td class="num">${fmtInt(soma(o.chave))}</td>`).join('')}
+      <td class="num">${fmtInt(soma('total'))}</td>
+      <td class="num">${fmtInt(soma('mecanizada'))}</td>
+      <td class="num">${fmtInt(soma('manual'))}</td>
+    </tr></tfoot>
+  </table>`;
+}
+
+function blocoColheita(porColheita, total) {
+  const mec = fatia(porColheita, 'Mecanizada');
+  const man = fatia(porColheita, 'Manual');
+  const out = fatia(porColheita, 'Outros');
+  const larg = t => total ? (Number(t) || 0) * 100 / total : 0;
+  // Texto dentro da faixa só quando a faixa comporta: escrito por cima de
+  // uma fatia de 3% ele vaza para a vizinha e some no meio dela.
+  const dentro = (l, txt) => l >= 12 ? txt : '';
+  let barra = '';
+  if (Number(mec.toneladas) > 0)
+    barra += `<div class="mec" style="width:${larg(mec.toneladas)}%">${dentro(larg(mec.toneladas), 'Mecanizada ' + fmtNum(mec.pct) + '%')}</div>`;
+  if (Number(out.toneladas) > 0)
+    barra += `<div style="width:${larg(out.toneladas)}%;background:var(--origem-outros)">${dentro(larg(out.toneladas), 'Outros ' + fmtNum(out.pct) + '%')}</div>`;
+  if (Number(man.toneladas) > 0)
+    barra += `<div class="man" style="width:${larg(man.toneladas)}%">${dentro(larg(man.toneladas), 'Manual ' + fmtNum(man.pct) + '%')}</div>`;
+
+  let abaixo = `<span><i style="background:${COR_MEC}"></i>Mecanizada · <b>${fmtInt(mec.toneladas)} t</b> (${fmtNum(mec.pct)}%)</span>`;
+  if (Number(out.toneladas) > 0)
+    abaixo += `<span><i style="background:var(--origem-outros)"></i>Outros · <b>${fmtInt(out.toneladas)} t</b> (${fmtNum(out.pct)}%)</span>`;
+  abaixo += `<span><i style="background:${COR_MANUAL}"></i>Manual · <b>${fmtInt(man.toneladas)} t</b> (${fmtNum(man.pct)}%)</span>`;
+
+  return `<div class="split">${barra}</div><div class="abaixo">${abaixo}</div>`;
+}
+
+function tabelaCrua(linhas, titulo, total) {
+  if (!linhas || !linhas.length) return '<div class="estado">Nada nesta safra.</div>';
+  const ordenadas = linhas.slice().sort((a, b) => Number(b.toneladas) - Number(a.toneladas));
+  return `<table>
+    <thead><tr><th>${esc(titulo)}</th><th class="num">Toneladas</th><th class="num">%</th></tr></thead>
+    <tbody>${ordenadas.map(l => `<tr>
+      <td>${esc(l.descricao)}</td>
+      <td class="num">${fmtInt(l.toneladas)}</td>
+      <td class="num">${total ? fmtNum(Number(l.toneladas) * 100 / total) : '0,0'}%</td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+// ── Gráfico ─────────────────────────────────────────────────────────────
+
+function graficoMeses(meses) {
+  criar('gMeses', {
+    type: 'bar',
+    data: {
+      labels: meses.map(m => m.label),
+      datasets: ORIGENS.map(o => ({
+        label: o.nome,
+        data: meses.map(m => Number(m[o.chave]) || 0),
+        backgroundColor: o.cor,
+        // 2px de papel entre os pedaços empilhados, para a divisão existir
+        // sem precisar de contorno.
+        borderColor: '#ffffff', borderWidth: { top: 2 },
+        borderRadius: 3, borderSkipped: false
+      }))
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      layout: { padding: { top: 22 } },
+      scales: {
+        x: { stacked: true, grid: { display: false }, border: { color: '#e3e8f5' },
+             ticks: { color: '#52514e', font: { size: 12, weight: '700' } } },
+        y: { stacked: true, beginAtZero: true, grid: { color: '#e9edf6' },
+             border: { display: false },
+             ticks: { color: '#898781', font: { size: 11, weight: '600' },
+                      callback: v => v === 0 ? '0' : fmtInt(v/1000) + ' mil t' } }
+      },
+      plugins: { legend: { display: false }, tooltip: {
+        callbacks: { label: c => c.dataset.label + ': ' + fmtInt(c.parsed.y) + ' t' } } }
+    },
+    plugins: [{
+      /* O total acima de cada barra. Numa pilha, a altura sozinha não se lê:
+         ninguém soma quatro pedaços de olho. */
+      id: 'totalDoMes',
+      afterDatasetsDraw(chart) {
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.font = '800 11.5px system-ui, sans-serif';
+        ctx.fillStyle = '#0f2460';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        const ultimo = chart.getDatasetMeta(chart.data.datasets.length - 1).data;
+        meses.forEach((m, i) => {
+          const total = Number(m.total) || 0;
+          if (!total || !ultimo[i]) return;
+          // O topo da pilha é o menor y entre todos os pedaços do mês.
+          let topo = ultimo[i].y;
+          chart.data.datasets.forEach((_, di) => {
+            const p = chart.getDatasetMeta(di).data[i];
+            if (p && p.y < topo) topo = p.y;
+          });
+          ctx.fillText(fmtInt(total), ultimo[i].x, topo - 5);
+        });
+        ctx.restore();
+      }
+    }]
+  });
+}
+
+const observador = typeof ResizeObserver !== 'undefined'
+  ? new ResizeObserver(es => { for (const e of es) {
+      const g = graficos[e.target.dataset.gid]; if (g) g.resize(); } })
+  : null;
+
+function criar(id, config) {
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  if (graficos[id]) graficos[id].destroy();
+  graficos[id] = new Chart(canvas, config);
+  const caixa = canvas.parentElement;
+  if (observador && caixa) { caixa.dataset.gid = id; observador.observe(caixa); }
+}
+
+SAFRA_ATUAL = safraDaUrl();
+document.getElementById('btnTv').href = 'cana-tv.html?safra=' + encodeURIComponent(SAFRA_ATUAL);
+carregarSafras();
+carregar();
+</script>
+<script src="js/icones-modulos.js?v=20260819a"></script>
+<script src="js/sidebar-nav.js?v=20260819a" defer></script>
+<script src="js/agro-chat-widget.js" defer></script>
+</body>
+</html>
