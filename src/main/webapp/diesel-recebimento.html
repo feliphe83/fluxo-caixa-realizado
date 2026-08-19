@@ -223,9 +223,18 @@ async function carregar() {
 }
 
 function falhar(msg) {
+  // Um ORA-xxxxx sozinho na tela não ajuda ninguém: o que resolve é abrir o
+  // diagnóstico, que pergunta ao próprio Oracle quais colunas a tabela tem,
+  // de que tipo, e como os valores da data realmente se parecem.
   document.getElementById('resultado').innerHTML =
     `<div class="estado erro"><b>Não foi possível carregar o recebimento de diesel.</b>
-     <code>${esc(msg)}</code></div>`;
+     <code>${esc(msg)}</code>
+     <div style="margin-top:14px;color:var(--ink-2);font-size:13px">
+       Erro de coluna ou de conversão vem do banco.
+       <a href="api/diesel-recebimento/diagnostico" target="_blank"
+          style="color:var(--atual);font-weight:700">Abrir o diagnóstico</a>
+       — ele mostra as colunas de material.itensentrada e uma amostra da data como está gravada.
+     </div></div>`;
 }
 
 function desenhar(d) {

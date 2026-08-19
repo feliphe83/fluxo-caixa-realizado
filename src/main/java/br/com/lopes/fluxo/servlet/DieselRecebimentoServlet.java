@@ -28,8 +28,9 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * GET /api/diesel-recebimento        -> painel dos últimos 6 meses vs. ano anterior
- * GET /api/diesel-recebimento/sql    -> o SQL literal (administrador)
+ * GET /api/diesel-recebimento             -> painel dos últimos 6 meses vs. ano anterior
+ * GET /api/diesel-recebimento/sql         -> o SQL literal
+ * GET /api/diesel-recebimento/diagnostico -> o que material.itensentrada tem de verdade
  *
  * A JANELA. Seis meses terminando HOJE, e o comparativo é o mesmo intervalo
  * de dias um ano atrás — não o mês fechado. O mês corrente está pela metade;
@@ -80,6 +81,20 @@ public class DieselRecebimentoServlet extends HttpServlet {
         resp.setHeader("Cache-Control", "no-store");
 
         try {
+            // Este painel foi escrito sem nunca poder executar nada neste
+            // Oracle. Em vez de adivinhar o nome e o formato das colunas
+            // mais uma vez, esta rota pergunta ao banco — e é ela que a tela
+            // de erro manda abrir quando a consulta falha.
+            if ("/diagnostico".equals(req.getPathInfo())) {
+                JsonObject o = new JsonObject();
+                o.addProperty("ok", true);
+                o.add("colunasItensEntrada", GSON.toJsonTree(dao.colunas("MATERIAL", "ITENSENTRADA")));
+                o.add("colunasNotaFiscal",   GSON.toJsonTree(dao.colunas("MATERIAL", "NOTAFISCAL")));
+                o.add("amostraDataEntrada",  GSON.toJsonTree(dao.amostraData()));
+                escrever(resp, GSON.toJson(o));
+                return;
+            }
+
             if ("/sql".equals(req.getPathInfo())) {
                 JsonObject o = new JsonObject();
                 o.addProperty("ok", true);
