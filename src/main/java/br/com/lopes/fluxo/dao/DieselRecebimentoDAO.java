@@ -38,17 +38,25 @@ import java.util.logging.Logger;
  *    que ele encontrou. Recebimento de diesel são algumas dezenas de notas
  *    por mês; somar isso em Java não custa nada.
  *
- * 3. A DATA é convertida por CASE aninhado, e não por to_date direto.
- *    dataentrada_seq é a coluna que {@link OrdemCompraDAO} compara com
- *    '01011900' e '01012050' — literais que só são datas lidos como DDMMYYYY.
- *    Mas um to_date direto nela devolveu ORA-01858 em produção: alguma linha
- *    não tem oito dígitos ali. O CASE de fora funciona como porteiro (só
- *    passa quem é 8 dígitos) e o de dentro decide entre YYYYMMDD e DDMMYYYY
- *    pelo pedaço que parece ano — CASE aninhado é a única forma de garantir
- *    que o porteiro roda antes, porque dentro de um mesmo WHEN o Oracle não
- *    promete ordem de avaliação. Linha que não vira data sai como null e é
- *    descartada pelo filtro de período, em vez de derrubar a consulta
- *    inteira.
+ * 3. A DATA não é adivinhada: o DAO PERGUNTA o tipo de dataentrada_seq a
+ *    all_tab_columns e monta a expressão conforme a resposta.
+ *
+ *    Isso não é zelo — é o resultado de dois palpites errados seguidos.
+ *    {@link OrdemCompraDAO} compara essa coluna com '01011900' e '01012050',
+ *    literais que só são datas lidos como DDMMYYYY, e daí veio a suposição de
+ *    que fosse texto. Um to_date direto devolveu ORA-01858 ("caractere não
+ *    numérico onde se esperava numérico") — que é exatamente o que
+ *    to_date('19/08/26','ddmmyyyy') dá, por causa da barra: sinal de coluna
+ *    DATE convertida implicitamente pelo NLS. Trocado por um CASE que só
+ *    aceita oito dígitos, o painel parou de estourar e passou a devolver
+ *    zero, porque a conversão implícita nunca casa com oito dígitos.
+ *
+ *    Com o tipo em mãos os dois casos são atendidos sem chute: sendo DATE, a
+ *    coluna é usada direta; sendo texto, entra o CASE aninhado — o de fora
+ *    como porteiro (só passa ^[0-9]{8}) e o de dentro escolhendo entre
+ *    YYYYMMDD e DDMMYYYY pelo pedaço que parece ano. CASE aninhado é a única
+ *    forma de garantir que o porteiro roda antes: dentro de um mesmo WHEN o
+ *    Oracle não promete ordem de avaliação.
  */
 public class DieselRecebimentoDAO {
 
@@ -64,6 +72,27 @@ public class DieselRecebimentoDAO {
      * cabeçalho casado continua sendo diesel que chegou, e sumir com ele
      * daria um painel que não fecha com o estoque.
      */
+    /** Como o Oracle chama o tipo da coluna de data — descoberto, não suposto. */
+    private static volatile String tipoDataEntrada;
+
+    /**
+     * A expressão que vira a data da entrada, conforme o tipo real da coluna.
+     * Nada aqui vem de fora: é escolha entre dois textos fixos.
+     */
+    private static String expressaoData(String tipo) {
+        if (tipo != null && (tipo.startsWith("DATE") || tipo.startsWith("TIMESTAMP"))) {
+            return "trunc(it.dataentrada_seq)";
+        }
+        return """
+                   case when regexp_like(it.dataentrada_seq, '^[0-9]{8}') then
+                          case when to_number(substr(it.dataentrada_seq,1,4)) between 1900 and 2100
+                                    then to_date(substr(it.dataentrada_seq,1,8),'yyyymmdd')
+                               when to_number(substr(it.dataentrada_seq,5,4)) between 1900 and 2100
+                                    then to_date(substr(it.dataentrada_seq,1,8),'ddmmyyyy')
+                          end
+                   end""";
+    }
+
     private static final String SQL = """
         select v.*
              , to_char(v.entrada_dt, 'YYYY-MM-DD') data_entrada
@@ -75,13 +104,7 @@ public class DieselRecebimentoDAO {
                  , nf.serie                                                 nota_serie
                  , oc.cod_fornecedor                                        fornecedor_codigo
                  , material.fn_buscanomefornec(oc.cod_fornecedor, sysdate)  fornecedor_nome
-                 , case when regexp_like(it.dataentrada_seq, '^[0-9]{8}') then
-                          case when to_number(substr(it.dataentrada_seq,1,4)) between 1900 and 2100
-                                    then to_date(substr(it.dataentrada_seq,1,8),'yyyymmdd')
-                               when to_number(substr(it.dataentrada_seq,5,4)) between 1900 and 2100
-                                    then to_date(substr(it.dataentrada_seq,1,8),'ddmmyyyy')
-                          end
-                   end                                                      entrada_dt
+                 , %EXPRESSAO_DATA%                                         entrada_dt
             from       material.itensentrada it
             inner join material.material     m
                     on m.cod_material = it.cod_material
@@ -99,8 +122,17 @@ public class DieselRecebimentoDAO {
 
     /** Uma linha por item de entrada de diesel no período. */
     public List<Map<String, Object>> buscar(LocalDate ini, LocalDate fim) {
-        try (Connection conn = OracleConnectionUtil.getConnection();
-             PreparedStatement ps = conn.prepareStatement(SQL)) {
+        try (Connection conn = OracleConnectionUtil.getConnection()) {
+            return buscar(conn, ini, fim);
+        } catch (SQLException e) {
+            LOG.log(Level.SEVERE, "Erro ao buscar recebimento de diesel", e);
+            throw new RuntimeException(mensagem(e), e);
+        }
+    }
+
+    private List<Map<String, Object>> buscar(Connection conn, LocalDate ini, LocalDate fim) {
+        String sql = SQL.replace("%EXPRESSAO_DATA%", expressaoData(descobrirTipoData(conn)));
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, ini.toString());
             ps.setString(2, fim.toString());
@@ -108,7 +140,8 @@ public class DieselRecebimentoDAO {
 
             try (ResultSet rs = ps.executeQuery()) {
                 List<Map<String, Object>> linhas = RowMapperUtil.toList(rs);
-                LOG.info("Recebimento de diesel " + ini + " a " + fim + ": " + linhas.size() + " itens");
+                LOG.info("Recebimento de diesel " + ini + " a " + fim + ": " + linhas.size()
+                         + " itens (dataentrada_seq é " + tipoDataEntrada + ")");
                 return linhas;
             }
 
@@ -119,6 +152,37 @@ public class DieselRecebimentoDAO {
             // esconder isso atrás de "erro ao consultar".
             throw new RuntimeException(mensagem(e), e);
         }
+    }
+
+    /**
+     * O tipo de material.itensentrada.dataentrada_seq, guardado depois da
+     * primeira vez. Se a consulta ao dicionário falhar, devolve null e a
+     * expressão cai no caminho de texto — degradar para o palpite antigo é
+     * melhor do que derrubar o painel por causa do dicionário.
+     */
+    private static String descobrirTipoData(Connection conn) {
+        String cache = tipoDataEntrada;
+        if (cache != null) return "?".equals(cache) ? null : cache;
+
+        String sql = "select data_type from all_tab_columns "
+                   + "where owner = 'MATERIAL' and table_name = 'ITENSENTRADA' "
+                   + "and column_name = 'DATAENTRADA_SEQ'";
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            String tipo = rs.next() ? rs.getString(1) : null;
+            tipoDataEntrada = tipo == null ? "?" : tipo.trim().toUpperCase();
+            LOG.info("material.itensentrada.dataentrada_seq é do tipo " + tipoDataEntrada);
+            return tipo == null ? null : tipoDataEntrada;
+        } catch (SQLException e) {
+            LOG.log(Level.WARNING, "Não foi possível ler o tipo de dataentrada_seq", e);
+            tipoDataEntrada = "?";
+            return null;
+        }
+    }
+
+    /** O tipo descoberto, para o painel poder mostrar de onde veio a data. */
+    public String tipoDataEntrada() {
+        return tipoDataEntrada == null || "?".equals(tipoDataEntrada) ? "" : tipoDataEntrada;
     }
 
     // ── Diagnóstico ───────────────────────────────────────────────────────
@@ -181,8 +245,10 @@ public class DieselRecebimentoDAO {
         }
     }
 
-    /** O SQL literal, para o diagnóstico e para colar no PL/SQL Developer. */
-    public String sql() { return SQL; }
+    /** O SQL como ele realmente vai ao banco, para colar no PL/SQL Developer. */
+    public String sql() {
+        return SQL.replace("%EXPRESSAO_DATA%", expressaoData(tipoDataEntrada()));
+    }
 
     private static String mensagem(SQLException e) {
         String m = e.getMessage() == null ? e.getClass().getName() : e.getMessage().trim();

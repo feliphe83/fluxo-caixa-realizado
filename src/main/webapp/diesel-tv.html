@@ -262,6 +262,11 @@ async function carregar() {
     esconderAviso();
     DADOS = j;
     ULTIMO_OK = Date.now();
+    if (!Number(j.atual.litros) && !Number(j.anterior.litros)) {
+      // Parede de zeros numa TV parece número apurado. Melhor dizer.
+      aviso('Nenhuma entrada de diesel no período', j.periodo + ' — a consulta voltou vazia');
+      return;
+    }
     desenhar(j);
 
   } catch (e) {

@@ -216,10 +216,35 @@ async function carregar() {
     if (j.redirect) { location.href = 'login.html'; return; }
     if (!j.ok) { falhar(j.erro || 'Erro ao consultar'); return; }
     DADOS = j;
+    // Zero linhas não é um painel de zeros: é "não achei nada", e tem que
+    // estar escrito. Uma parede de 0 parece número apurado, e foi assim que
+    // esta tela escondeu que a consulta não trazia nada.
+    if (!Number(j.atual.litros) && !Number(j.anterior.litros)) { vazio(j); return; }
     desenhar(j);
   } catch (e) {
     falhar(e.message || String(e));
   }
+}
+
+function vazio(d) {
+  document.getElementById('resultado').innerHTML = `
+    <div class="periodo">
+      <div class="titulo">${esc(d.periodo)}</div>
+      <div class="contra">comparado com <b>${esc(d.periodoAnterior)}</b></div>
+      <div class="atualizado">Atualizado em ${esc(d.atualizadoEm)}</div>
+    </div>
+    <div class="estado">
+      <b style="color:var(--ink);font-size:16px">Nenhuma entrada de diesel encontrada no período.</b>
+      <div style="margin-top:10px;line-height:1.6">
+        A consulta rodou sem erro e voltou vazia — nem neste ano nem no anterior.
+        ${d.diag && d.diag.tipoDataEntrada
+          ? 'A data da entrada foi lida de <b>dataentrada_seq</b> (' + esc(d.diag.tipoDataEntrada) + ').'
+          : ''}
+        <br><a href="api/diesel-recebimento/diagnostico" target="_blank"
+               style="color:var(--atual);font-weight:700">Abrir o diagnóstico</a>
+        — ele mostra as colunas de material.itensentrada e uma amostra da data como está gravada.
+      </div>
+    </div>`;
 }
 
 function falhar(msg) {

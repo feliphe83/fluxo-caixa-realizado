@@ -110,7 +110,11 @@ public class DieselRecebimentoServlet extends HttpServlet {
             List<Map<String, Object>> atual    = dao.buscar(ini, fim);
             List<Map<String, Object>> anterior = dao.buscar(ini.minusYears(1), fim.minusYears(1));
 
-            escrever(resp, GSON.toJson(montar(ini, fim, atual, anterior)));
+            JsonObject r = montar(ini, fim, atual, anterior);
+            // De onde saiu a data — o painel mostra, porque foi justamente
+            // aqui que ele já devolveu zero calado uma vez.
+            r.getAsJsonObject("diag").addProperty("tipoDataEntrada", dao.tipoDataEntrada());
+            escrever(resp, GSON.toJson(r));
 
         } catch (RuntimeException e) {
             LOG.log(Level.SEVERE, "Erro no painel de recebimento de diesel", e);
