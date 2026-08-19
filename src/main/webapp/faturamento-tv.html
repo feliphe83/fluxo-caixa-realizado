@@ -53,7 +53,10 @@
     width: 1920px; height: 1080px;
     transform-origin: center center;
     padding: 22px 26px 20px;
-    display: grid; grid-template-rows: auto auto 1fr 1fr; gap: 14px;
+    /* A linha de cima leva mais altura: é onde estão o gráfico da safra e a
+       tabela por produto, que é o que se lê de longe. A de baixo tem três
+       gráficos pequenos e duas listas curtas, e sobrava espaço nela. */
+    display: grid; grid-template-rows: auto auto 1.5fr 1fr; gap: 14px;
   }
 
   /* ── Cabeçalho ── */
@@ -141,17 +144,15 @@
   .mini .tela { margin-top: 4px; }
 
   /* ── Cortes: quatro listas curtas ── */
-  .cortes { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto 1fr;
-            gap: 10px 18px; flex: 1; min-height: 0; }
-  .corte.largo { grid-column: 1 / -1; }
+  .cortes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px;
+            flex: 1; min-height: 0; align-content: start; }
   .corte h3 { font-size: 11px; font-weight: 800; color: var(--rotulo);
               text-transform: uppercase; letter-spacing: .8px; margin-bottom: 2px; }
   .corte table { font-size: 12.5px; font-weight: 700; }
   .corte tbody td { padding: 3.5px 4px; border-bottom: none; }
   .corte .nome { max-width: 210px; overflow: hidden; text-overflow: ellipsis;
                  white-space: nowrap; }
-  /* Ocupando a linha toda, o destino tem espaço para o nome inteiro. */
-  .corte.largo .nome { max-width: 520px; }
+
 
   /* ── Estados ── */
   .aviso { position: fixed; inset: 0; display: none; place-items: center;
@@ -202,7 +203,7 @@
       <div class="minis" id="minis"></div>
     </div>
     <div class="bloco">
-      <div class="cab"><h2>Cliente, estado e destino</h2><span class="dica">maiores</span></div>
+      <div class="cab"><h2>Cliente e estado</h2><span class="dica">maiores</span></div>
       <div class="cortes" id="cortes"></div>
     </div>
   </div>
@@ -412,20 +413,18 @@ function montarCortes(d) {
     <div class="corte ${classe || ''}">
       <h3>${esc(titulo)}</h3>
       <table><tbody>
-        ${linhas.slice(0, 5).map(l => `
+        ${linhas.slice(0, 8).map(l => `
           <tr><td class="nome">${esc(l.nome)}</td>
               <td class="num">${fmtMoedaCurta(l.valor)}</td>
               <td class="num" style="color:var(--ink-3);width:52px">${fmtNum(l.pct, 1)}%</td></tr>`).join('')}
       </tbody></table>
     </div>`;
-  // Rotina fiscal saiu: é classificação contábil da nota, não diz nada sobre
-  // a venda para quem olha o painel da parede. O destino ocupa a linha
-  // inteira porque os nomes dele são longos e vinham truncados em meia
-  // largura.
+  // Ficaram cliente e estado. Rotina fiscal e destino do item saíram: são
+  // classificação da nota, não da venda — repetem em outras palavras o que a
+  // tabela por produto já diz, e ocupavam espaço que o gráfico precisava.
   document.getElementById('cortes').innerHTML =
       bloco('Cliente', d.porCliente)
-    + bloco('Estado', d.porEstado)
-    + bloco('Destino do item', d.porDestino, 'largo');
+    + bloco('Estado', d.porEstado);
 }
 
 // ── Gráficos ──────────────────────────────────────────────────────────────
