@@ -190,7 +190,7 @@
      Fora de /js/ de propósito: aquele caminho é liberado sem sessão. -->
 <script src="dre-historico.js?v=20260819a"></script>
 <script>
-const linhaDe = ch => DRE.find(l => l.chave === ch);
+const linhaDe = ch => QUADRO.find(l => l.chave === ch);
 const valor = (ch, ano) => { const l = linhaDe(ch); const i = ANOS.indexOf(ano);
                              return l && i >= 0 ? l.v[i] : null; };
 
@@ -228,8 +228,10 @@ async function carregar() {
     if (j.redirect) { location.href = 'login.html'; return; }
     if (!j.ok) throw new Error(j.erro || 'Erro ao consultar');
     FECHADO = j;
+    const vivo = aplicarBalancete(j.linhas);
     document.getElementById('fechado').innerHTML =
-      `contabilidade fechada até <b>${esc(j.fechadoAte)}</b> · ${j.totalContas} contas no balancete`;
+      `contabilidade fechada até <b>${esc(j.fechadoAte)}</b> · ${j.totalContas} contas no balancete`
+      + (vivo ? '' : ' · <span class="erro">sem o de/para, ' + ANOS[0] + ' fica no valor fixo</span>');
     document.getElementById('atualizado').textContent = 'Atualizado em ' + j.atualizadoEm;
     desenhar();
   } catch (e) {
@@ -309,7 +311,7 @@ function capa(ano) {
 function tabela(parcial) {
   const cab = ANOS.map((a, i) =>
     `<th class="${i === 0 && parcial ? 'parcial' : ''}">${a}${i === 0 && parcial ? '*' : ''}</th>`).join('');
-  const corpo = DRE.map(l => `
+  const corpo = QUADRO.map(l => `
     <tr class="${l.tipo === 'destaque' ? 'destaque' : (l.tipo === 'sub' ? 'item sub' : 'item')}">
       <td>${esc(l.rotulo)}</td>
       ${l.v.map((v, i) => {
@@ -327,6 +329,8 @@ function tabela(parcial) {
 }
 
 function nota(parcial, mesFechado, anoCorrente) {
+  const sem = FECHADO && FECHADO.conferencia
+            ? (FECHADO.conferencia.contasSemLinhaNoIndice || []).length : 0;
   return `<div class="nota-box"><div>
     <b>De onde vêm os números:</b> de 2018 a ${anoCorrente - 1} são os valores fechados das
     demonstrações financeiras, fixos nesta tela — transcritos como a planilha da controladoria
@@ -337,11 +341,13 @@ function nota(parcial, mesFechado, anoCorrente) {
          ${parcial} ${parcial === 1 ? 'mês' : 'meses'} com anos inteiros é a leitura errada mais
          fácil de fazer aqui.`
       : ''}
-    <br><b>Falta um passo:</b> ${anoCorrente} ainda sai dos valores fixos. Para ele passar a vir
-    do balancete do ERP a cada fechamento, falta carregar o de/para entre conta contábil e linha
-    do demonstrativo — a lista de classificações. Enquanto ela não existir, esta tela prefere
-    repetir o número oficial a montar um DRE por conta própria: no demonstrativo, uma conta na
-    linha errada não deixa rastro, porque os totais continuam somando.
+    <br><b>${anoCorrente} vem do balancete</b>, somado pelo de/para da controladoria — 232 contas
+    analíticas, cada uma com a sua linha. A conversão é −(saldo) ÷ 1000, porque o demonstrativo é o
+    inverso do balancete: receita é credora e chega negativa de lá. Conferido contra o fechamento
+    oficial de ${anoCorrente}, as dezoito linhas batem ao centavo.
+    ${sem ? `<br><b>Atenção:</b> ${sem} conta(s) analítica(s) do balancete ficaram sem linha no
+             de/para e não entraram no quadro. Conta sem destino é dinheiro que some do
+             demonstrativo sem nada avisar — vale conferir o índice.` : ''}
   </div></div>`;
 }
 

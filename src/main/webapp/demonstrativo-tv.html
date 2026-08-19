@@ -162,6 +162,7 @@ async function carregar() {
     if (!j.ok) throw new Error(j.erro || 'Consulta recusada');
     document.getElementById('tarja').classList.remove('on');
     FECHADO = j;
+    aplicarBalancete(j.linhas);
     desenhar();
   } catch (e) {
     // Sem a contabilidade, o quadro continua: só a data do fechamento fica
@@ -183,7 +184,7 @@ function desenhar() {
   const cab = ANOS.map((a, i) =>
     `<th class="${i === 0 && parcial ? 'parcial' : ''}">${a}${i === 0 && parcial ? '*' : ''}</th>`).join('');
 
-  const corpo = DRE.map(l => `
+  const corpo = QUADRO.map(l => `
     <tr class="${l.tipo === 'destaque' ? 'destaque' : (l.tipo === 'sub' ? 'item sub' : 'item')}">
       <td>${esc(l.rotulo)}</td>
       ${l.v.map((v, i) => {

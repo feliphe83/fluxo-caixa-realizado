@@ -76,3 +76,33 @@ const DRE = [
     v:[-27646, -65444,   5886,  10190,  11396,  29050,  23123, -16480,  -9702] }
 ];
 
+
+/**
+ * O quadro que as telas desenham: os valores fixos, com a coluna do ano
+ * corrente trocada pelo que veio do balancete quando ele responde.
+ *
+ * Começa igual ao histórico de propósito. Se o Oracle não responder, a tela
+ * não fica em branco — mostra o ano corrente pelo último número oficial, que
+ * é melhor do que buraco, e a tela diz de onde veio.
+ */
+let QUADRO = DRE;
+
+function aplicarBalancete(linhas) {
+  if (!linhas) { QUADRO = DRE; return false; }
+  QUADRO = DRE.map(function (l) {
+    const v = l.v.slice();
+    if (Object.prototype.hasOwnProperty.call(linhas, l.chave)) {
+      const n = Number(linhas[l.chave]);
+      // Arredondado para R$ mil inteiro, como todo o resto do quadro. O
+      // servlet manda com centavos, e uma coluna com "66.782,78" ao lado de
+      // oito colunas com "183.978" alarga a célula e faz o ano corrente
+      // parecer outra unidade de medida.
+      //
+      // Zero exato vira vazio: num DRE, linha zerada e linha ausente são a
+      // mesma coisa, e a planilha da controladoria as deixa em branco.
+      if (Number.isFinite(n)) v[0] = (Math.round(n) === 0 ? null : Math.round(n));
+    }
+    return { chave: l.chave, rotulo: l.rotulo, tipo: l.tipo, v: v };
+  });
+  return true;
+}
