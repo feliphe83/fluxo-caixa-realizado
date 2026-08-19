@@ -113,6 +113,13 @@
   .pilula { display: inline-flex; align-items: center; gap: 8px; }
   .pilula i { width: 10px; height: 10px; border-radius: 3px; flex: none; }
 
+  /* A tabela estica até o fim do bloco: com seis produtos ela ocupava metade
+     da altura e deixava um vazio embaixo. Com height 100% as linhas se
+     distribuem, e quanto menos produtos, mais folgada — que é o certo numa
+     tela vista de longe. */
+  #tabProduto { display: flex; }
+  #tabProduto table { height: 100%; }
+
   /* ── Preços: um gráfico por produto ── */
   .minis { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 12px;
            flex: 1; min-height: 0; }
@@ -407,30 +414,38 @@ function desenharMeses(d) {
     type: 'bar',
     data: {
       labels: meses.map(m => m.label),
+      // Lado a lado, não empilhado: empilhado mostra bem o total do mês, mas
+      // esconde o produto — para comparar açúcar contra etanol é preciso ler
+      // alturas que não partem da mesma base. Agrupado, cada produto tem o
+      // seu pé no zero.
       datasets: series.map(nome => ({
         label: nome,
         data: meses.map(m => Number((m.produtos || {})[nome]) || 0),
         backgroundColor: corDoProduto(nome),
-        // Borda na cor do cartão: é ela que abre o vão entre os pedaços
-        // empilhados. Sem o vão, duas cores encostadas criam uma terceira.
-        borderColor: '#ffffff', borderWidth: 1.5, borderRadius: 2, borderSkipped: false
+        borderRadius: 2, borderSkipped: false,
+        // Sem borda branca: com 7 produtos por mês a barra fica fina, e 1,5px
+        // de borda de cada lado comeria metade dela.
+        borderWidth: 0,
+        barPercentage: 0.96, categoryPercentage: 0.82
       }))
     },
     options: {
       responsive: true, maintainAspectRatio: false, animation: false,
       layout: { padding: { top: 20 } },
       scales: {
-        x: { stacked: true, grid: { display: false }, border: { color: '#e3e8f5' },
+        x: { grid: { display: false }, border: { color: '#e3e8f5' },
              ticks: { color: '#52514e', font: { size: 13, weight: '600' } } },
-        y: { stacked: true, grid: { color: '#e9edf6' }, border: { display: false },
+        y: { grid: { color: '#e9edf6' }, border: { display: false },
              ticks: { color: '#898781', font: { size: 12 }, maxTicksLimit: 6,
                       callback: v => fmtMoedaCurta(v) } }
       },
       plugins: {
-        legend: { position: 'top', align: 'end',
-                  labels: { boxWidth: 10, boxHeight: 10, usePointStyle: true,
+        // Legenda à esquerda do topo e compacta: com sete produtos ela
+        // quebrava em duas linhas e tirava altura justamente do gráfico.
+        legend: { position: 'top', align: 'start',
+                  labels: { boxWidth: 9, boxHeight: 9, usePointStyle: true,
                             pointStyle: 'rectRounded', color: '#52514e',
-                            padding: 9, font: { size: 12, weight: '600' } } },
+                            padding: 7, font: { size: 11, weight: '600' } } },
         tooltip: { enabled: false }
       }
     },
@@ -438,14 +453,34 @@ function desenharMeses(d) {
       id: 'totalNoTopo',
       afterDatasetsDraw(chart) {
         const ctx = chart.ctx;
-        const ult = chart.getDatasetMeta(chart.data.datasets.length - 1);
-        if (!ult) return;
+        const metas = chart.data.datasets.map((_, d) => chart.getDatasetMeta(d));
+        if (!metas.length) return;
         ctx.save();
         ctx.font = '700 13px system-ui, sans-serif';
-        ctx.fillStyle = '#0f2460'; ctx.textAlign = 'center';
-        ult.data.forEach((b, i) => {
-          if (!totais[i]) return;
-          ctx.fillText(fmtMoedaCurta(totais[i]), b.x, chart.scales.y.getPixelForValue(totais[i]) - 7);
+        ctx.fillStyle = '#0f2460';
+        ctx.textAlign = 'center';
+
+        // Largura do grupo do mês: é dentro dela que o rótulo tem de caber.
+        // No print anterior "R$ 42,4 mi" e "R$ 42,5 mi" se encostaram porque
+        // o texto era desenhado sem ninguém medir se havia espaço.
+        const area = chart.chartArea.right - chart.chartArea.left;
+        const larguraMes = area / Math.max(1, chart.data.labels.length);
+
+        chart.data.labels.forEach((_, i) => {
+          const t = totais[i];
+          if (!t) return;
+          const texto = fmtMoedaCurta(t);
+          if (ctx.measureText(texto).width > larguraMes - 8) return;
+          // Acima da barra MAIS ALTA do grupo, e centrado no grupo.
+          let topo = Infinity, somaX = 0, n = 0;
+          metas.forEach(m => {
+            const b = m.data[i];
+            if (!b) return;
+            somaX += b.x; n++;
+            if (b.y < topo) topo = b.y;
+          });
+          if (!n) return;
+          ctx.fillText(texto, somaX / n, topo - 7);
         });
         ctx.restore();
       }
@@ -488,11 +523,30 @@ function desenharPrecos(d) {
   });
 }
 
+const observador = typeof ResizeObserver !== 'undefined'
+  ? new ResizeObserver(entradas => {
+      // O Chart.js mede o container no instante em que o gráfico nasce. Aqui
+      // os blocos ainda estão sendo montados quando isso acontece — tabela,
+      // minis e cortes mudam a altura depois —, e o canvas ficava menor que o
+      // espaço final, deixando a sobra branca embaixo do gráfico.
+      for (const e of entradas) {
+        const g = graficos[e.target.dataset.gid];
+        if (g) g.resize();
+      }
+    })
+  : null;
+
 function criar(id, config) {
   const canvas = document.getElementById(id);
   if (!canvas) return;
   if (graficos[id]) graficos[id].destroy();
   graficos[id] = new Chart(canvas, config);
+
+  const caixa = canvas.parentElement;
+  if (observador && caixa) {
+    caixa.dataset.gid = id;
+    observador.observe(caixa);
+  }
 }
 
 // ── Estados ───────────────────────────────────────────────────────────────
