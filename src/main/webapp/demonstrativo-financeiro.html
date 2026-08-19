@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Demonstrativo Financeiro · USC</title>
+<style>
+  :root {
+    --serie-1: #2a78d6;
+    --serie-2: #eb6834;
+    --serie-3: #1baf7a;
+    --serie-4: #eda100;
+    --serie-5: #e87ba4;
+    --serie-6: #008300;
+    --serie-outros: #98a2b3;
+
+    --lucro:   #008300;
+    --prejuizo:#d03b3b;
+
+    --ink:    #0f2460;
+    --ink-2:  #52514e;
+    --ink-3:  #898781;
+    --rotulo: #64748b;
+    --grade:  #e9edf6;
+    --borda:  #e3e8f5;
+    --papel:  #ffffff;
+    --papel-2:#f8faff;
+    --fundo:  #f4f6fb;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--fundo); color: #1a1a2e; min-height: 100vh;
+    font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased;
+  }
+
+  .header { background: var(--ink); color: white; padding: 0 32px; height: 62px;
+            display: flex; align-items: center; justify-content: space-between; }
+  .header-left { display: flex; align-items: center; gap: 13px; }
+  .header-logo { width: 36px; height: 36px; border-radius: 8px; background: white;
+                 display: flex; align-items: center; justify-content: center;
+                 overflow: hidden; padding: 4px; flex-shrink: 0; }
+  .header-logo img { width: 100%; height: 100%; object-fit: contain; }
+  .header-title { font-size: 15px; font-weight: 650; }
+  .header-sub { font-size: 11px; color: rgba(255,255,255,.55); margin-top: 1px;
+                text-transform: uppercase; letter-spacing: .9px; font-weight: 600; }
+  .btn-voltar { display: flex; align-items: center; gap: 7px; padding: 8px 14px;
+                border-radius: 8px; border: 1px solid rgba(255,255,255,.16);
+                background: transparent; color: rgba(255,255,255,.85);
+                font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+                text-decoration: none; }
+  .btn-voltar:hover { background: rgba(255,255,255,.10); color: #fff; }
+
+  .conteudo { max-width: 1480px; margin: 0 auto; padding: 24px 24px 60px; }
+
+  /* ── Faixa do período ── */
+  .periodo { background: var(--papel); border: 1px solid var(--borda); border-radius: 14px;
+             padding: 14px 22px; margin-bottom: 18px; display: flex; gap: 14px;
+             align-items: center; flex-wrap: wrap; }
+  .periodo .titulo { font-size: 15px; font-weight: 800; color: var(--ink); }
+  .periodo .contra { font-size: 12.5px; color: var(--ink-2); }
+  .periodo .contra b { color: var(--ink); }
+  .atualizado { margin-left: auto; font-size: 12px; color: var(--ink-3); }
+
+  /* ── Capa ── */
+  .capa { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
+  .capa .cartao { background: var(--papel); border: 1px solid var(--borda);
+                  border-radius: 14px; padding: 18px 20px; position: relative; overflow: hidden; }
+  .capa .cartao::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+                          background: var(--cor, var(--ink)); }
+  .capa .rot { font-size: 10.5px; font-weight: 700; color: var(--rotulo);
+               text-transform: uppercase; letter-spacing: .6px; }
+  .capa .cifra { font-size: 27px; font-weight: 800; color: var(--ink);
+                 line-height: 1.15; margin-top: 8px; letter-spacing: -.7px; white-space: nowrap; }
+  .capa .cifra.neg { color: var(--prejuizo); }
+  .capa .un { font-size: 13px; font-weight: 600; color: var(--ink-3); margin-left: 4px; }
+  .capa .base { font-size: 11.5px; color: var(--ink-3); margin-top: 7px; }
+
+  .var { font-weight: 800; }
+  .var.sobe  { color: var(--lucro); }
+  .var.desce { color: var(--prejuizo); }
+  .var.igual { color: var(--ink-3); }
+
+  /* ── Seções ── */
+  .secao { background: var(--papel); border: 1px solid var(--borda); border-radius: 14px;
+           padding: 20px 24px; margin-bottom: 18px; }
+  .secao-header { display: flex; align-items: baseline; gap: 10px; }
+  .secao-num { width: 22px; height: 22px; border-radius: 6px; background: var(--ink);
+               color: white; font-size: 11px; font-weight: 800; display: flex;
+               align-items: center; justify-content: center; flex-shrink: 0; }
+  .secao-titulo { font-size: 16px; font-weight: 800; color: var(--ink); }
+  .secao-sub { font-size: 12px; color: var(--ink-3); margin: 3px 0 14px 32px; }
+
+  .legenda { display: flex; gap: 18px; margin: 0 0 8px 32px; flex-wrap: wrap; }
+  .legenda span { display: inline-flex; align-items: center; gap: 7px;
+                  font-size: 12px; font-weight: 700; color: var(--ink-2); }
+  .legenda i { width: 11px; height: 11px; border-radius: 3px; flex: none; }
+
+  .grafico-caixa { position: relative; height: 300px; margin-top: 4px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .grid-2 .secao { margin-bottom: 0; }
+
+  /* ── A tabela do DRE ──
+     Desenhada como a planilha da controladoria: as linhas de subtotal em
+     azul cheio e os detalhes em branco. Não é enfeite — é o que deixa a
+     hierarquia legível sem ninguém precisar decorar quais linhas somam
+     quais. */
+  .dre-rolagem { overflow-x: auto; margin-top: 4px; }
+  table.dre { width: 100%; border-collapse: separate; border-spacing: 0 2px; font-size: 13px; }
+  table.dre thead th { text-align: right; font-size: 12px; font-weight: 800; color: #fff;
+                       background: var(--ink); padding: 9px 12px; white-space: nowrap; }
+  table.dre thead th:first-child { text-align: left; border-radius: 6px 0 0 6px; }
+  table.dre thead th:last-child { border-radius: 0 6px 6px 0; }
+  table.dre thead th.parcial { color: #ffd98a; }
+  table.dre td { padding: 8px 12px; white-space: nowrap; text-align: right; }
+  table.dre td:first-child { text-align: left; font-weight: 700; }
+  table.dre tr.destaque td { background: var(--ink); color: #fff; font-weight: 800; }
+  table.dre tr.destaque td:first-child { border-radius: 6px 0 0 6px; }
+  table.dre tr.destaque td:last-child { border-radius: 0 6px 6px 0; }
+  table.dre tr.item td { background: var(--papel); color: var(--ink-2); }
+  table.dre tr.item td:first-child { color: var(--ink); }
+  table.dre tr.sub td:first-child { padding-left: 30px; font-weight: 600; }
+  table.dre tr.destaque td.neg { color: #ffb0b0; }
+  table.dre tr.item td.neg { color: var(--prejuizo); }
+  table.dre td.vazio { color: #cfd7e6; }
+  /* A coluna do ano corrente é a única que ainda anda; marcá-la evita que
+     alguém compare um ano de quatro meses com um ano inteiro sem perceber. */
+  table.dre .col-parcial { background: #fff8e6 !important; }
+  table.dre tr.destaque .col-parcial { background: #1b3a7a !important; }
+
+  .nota-box { display: flex; gap: 10px; align-items: flex-start; background: #fffaf0;
+              border-left: 3px solid var(--serie-4); border-radius: 8px; padding: 10px 16px;
+              font-size: 12px; color: var(--ink-2); line-height: 1.55; margin-top: 18px; }
+  .nota-box b { color: var(--ink); }
+
+  .estado { text-align: center; padding: 40px 20px; color: var(--ink-3); font-size: 14px; }
+  .spinner { width: 24px; height: 24px; border: 2.5px solid var(--borda);
+             border-top-color: var(--serie-1); border-radius: 50%;
+             margin: 0 auto 12px; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .erro { color: var(--prejuizo); }
+
+  @media (max-width: 1000px) {
+    .capa { grid-template-columns: repeat(2, 1fr); }
+    .grid-2 { grid-template-columns: 1fr; }
+    .header { padding: 0 16px; }
+    .conteudo { padding: 16px 14px 40px; }
+  }
+</style>
+<link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+<meta name="theme-color" content="#0f2460">
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="header-logo"><img src="img/logo.png" alt="USC"></div>
+    <div>
+      <div class="header-title">Demonstrativo Financeiro</div>
+      <div class="header-sub">Últimos 9 anos</div>
+    </div>
+  </div>
+  <a class="btn-voltar" href="hub.html">
+    <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+    Voltar ao Hub
+  </a>
+</div>
+
+<div class="conteudo">
+  <div class="periodo">
+    <div class="titulo">Demonstrativo do Resultado do Exercício</div>
+    <div class="contra" id="fechado">verificando até onde a contabilidade fechou…</div>
+    <div class="atualizado" id="atualizado"></div>
+  </div>
+  <div id="corpo"></div>
+</div>
+
+<script src="js/chart.umd.min.js"></script>
+<script>
+/* ═════════════════════════════════════════════════════════════════════════
+   DRE — VALORES FIXOS DE 2018 A 2025, em R$ mil.
+
+   Transcritos da planilha da controladoria como ela mostra, inclusive onde
+   a apresentação diverge do sinal contábil: nas colunas de 2018, 2019 e
+   2020 os custos e as despesas aparecem positivos, e alguns subtotais
+   aparecem sem parênteses mesmo sendo negativos. Não "consertei" nada —
+   este painel tem que bater com o documento que a diretoria já conhece, e
+   um número diferente do que está no relatório oficial vira discussão sobre
+   qual dos dois está certo em vez de sobre o resultado.
+
+   Conferência que fiz linha a linha antes de fixar: receita líquida =
+   bruta − tributos; lucro bruto = líquida − custos − ociosidade; despesas
+   operacionais = a soma dos cinco detalhes; resultado operacional = lucro
+   bruto + despesas; antes do IRPJ = operacional + financeiro. Fecha nos
+   nove anos, o que dá confiança de que a transcrição não trocou nenhuma
+   coluna de lugar.
+
+   O ano corrente vem daqui também, como base — e é substituído assim que o
+   de/para entre conta contábil e linha do DRE existir (ver a nota no fim
+   da tela).
+   ═════════════════════════════════════════════════════════════════════════ */
+const ANOS = [2026, 2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018];
+
+const DRE = [
+  { chave:'receita_bruta', rotulo:'(+) RECEITA BRUTA DE VENDAS', tipo:'destaque',
+    v:[ 66783, 183978, 325769, 352873, 271389, 237371, 176025, 100978,  88411] },
+  { chave:'tributos', rotulo:'(-) TRIBUTOS SOBRE VENDAS', tipo:'item',
+    v:[  -237, -10820,  -2228,   -504,  -2584,   -577,    818,   6637,   4297] },
+  { chave:'receita_liquida', rotulo:'(=) RECEITA LÍQUIDA DE VENDAS', tipo:'destaque',
+    v:[ 66546, 173157, 323541, 352370, 268805, 236794, 175206,  94341,  84114] },
+  { chave:'cpv', rotulo:'(-) CUSTOS DOS PRODUTOS VENDIDOS', tipo:'item',
+    v:[-79975,-197381,-275281,-257479,-196795,-167565, 117128,  92699,  87654] },
+  { chave:'ociosidade', rotulo:'(-) CUSTOS DE OCIOSIDADE', tipo:'item',
+    v:[  null,   null,   null, -36063, -27967,   null,   null,   null,   null] },
+  { chave:'lucro_bruto', rotulo:'(=) LUCRO BRUTO', tipo:'destaque',
+    v:[-13429, -24224,  48260,  58828,  44042,  69229,  58078,   1642,   3540] },
+  { chave:'despesas_op', rotulo:'(-) DESPESAS E OUTRAS RECEITAS OPERACIONAIS', tipo:'destaque',
+    v:[-10487, -21197, -22733, -36151,  -1465, 127493,  19604,  13753,   2162] },
+  { chave:'desp_vendas', rotulo:'DESPESAS COM VENDAS', tipo:'sub',
+    v:[ -2896, -10072, -11605, -13405,  -8936,  -6556,   7267,   4364,   4072] },
+  { chave:'desp_admin', rotulo:'DESPESAS GERAIS E ADMINISTRATIVAS', tipo:'sub',
+    v:[ -7857, -23424, -28715, -24353, -22928, -18193,  13888,  12700,  18926] },
+  { chave:'outras_op', rotulo:'OUTRAS (RECEITAS)/ DESPESAS OPERACIONAIS', tipo:'sub',
+    v:[   435,    601,   5061,   -227,   5923,  14091,  -1551,  -3311, -20836] },
+  { chave:'equivalencia', rotulo:'RESULTADO DE EQUIVALÊNCIA PATRIMONIAL', tipo:'sub',
+    v:[  null,   4850,   3446,   1834,   null,   null,   null,   null,   null] },
+  { chave:'nao_recorrente', rotulo:'DESPESAS/RECEITAS NÃO RECORRENTE', tipo:'sub',
+    v:[  -169,   6849,   9080,   null,  24477, 138152,   null,   null,   null] },
+  { chave:'resultado_op', rotulo:'(=) RESULTADO OPERACIONAL ANTES DO RESULTADO FINANCEIRO', tipo:'destaque',
+    v:[-23916, -45421,  25526,  22676,  42578, 196722,  38474,  12111,   5702] },
+  { chave:'financeiro', rotulo:'RESULTADO FINANCEIRO LÍQUIDO', tipo:'destaque',
+    v:[ -3899, -13174, -10560, -12487,  -6704,  -6362,  15204,   4369,   4000] },
+  { chave:'antes_ir', rotulo:'RESULTADO ANTES DO IRPJ E CSLL', tipo:'destaque',
+    v:[-27815, -58595,  14966,  10190,  35873, 190360,  23270, -16480,  -9702] },
+  { chave:'ir_csll', rotulo:'IMPOSTO DE RENDA E CONTRIBUIÇÃO SOCIAL', tipo:'destaque',
+    v:[  null,   null,   null,   null,   null,    728,    147,   null,   null] },
+  { chave:'resultado_liquido', rotulo:'RESULTADO LÍQUIDO', tipo:'destaque',
+    v:[-27815, -58595,  14966,  10190,  35873, 167202,  23123, -16480,  -9702] },
+  { chave:'resultado_ajustado', rotulo:'RESULTADO LÍQUIDO - AJUSTADO', tipo:'destaque',
+    v:[-27646, -65444,   5886,  10190,  11396,  29050,  23123, -16480,  -9702] }
+];
+
+const linhaDe = ch => DRE.find(l => l.chave === ch);
+const valor = (ch, ano) => { const l = linhaDe(ch); const i = ANOS.indexOf(ano);
+                             return l && i >= 0 ? l.v[i] : null; };
+
+const graficos = {};
+let FECHADO = null;
+
+const fmtMil = v => v === null || v === undefined ? '—'
+  : (v < 0 ? '(' + Math.abs(v).toLocaleString('pt-BR') + ')' : v.toLocaleString('pt-BR'));
+const fmtNum = (v, c) => (Number(v)||0).toLocaleString('pt-BR',
+  {minimumFractionDigits: c==null?1:c, maximumFractionDigits: c==null?1:c});
+const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+/** R$ mil -> "R$ 352,9 mi" quando passa do milhão. */
+function curto(v) {
+  if (v === null || v === undefined) return '—';
+  const sinal = v < 0 ? '-' : '';
+  const n = Math.abs(v);
+  if (n >= 1000) return sinal + 'R$ ' + fmtNum(n / 1000, 1) + ' mi';
+  return sinal + 'R$ ' + fmtNum(n, 0) + ' mil';
+}
+
+function varHtml(agora, antes) {
+  if (agora === null || antes === null || antes === 0) return '<span class="var igual">sem base</span>';
+  const p = (agora - antes) * 100 / Math.abs(antes);
+  const classe = p > 0.05 ? 'sobe' : (p < -0.05 ? 'desce' : 'igual');
+  const seta = p > 0.05 ? '↑' : (p < -0.05 ? '↓' : '=');
+  return `<span class="var ${classe}">${seta} ${fmtNum(Math.abs(p), 1)}%</span>`;
+}
+
+async function carregar() {
+  desenhar();   // a tabela é fixa: aparece antes e não depende do Oracle
+  try {
+    const r = await fetch('api/demonstrativo-financeiro', {headers: {'Accept':'application/json'}});
+    const j = await r.json();
+    if (j.redirect) { location.href = 'login.html'; return; }
+    if (!j.ok) throw new Error(j.erro || 'Erro ao consultar');
+    FECHADO = j;
+    document.getElementById('fechado').innerHTML =
+      `contabilidade fechada até <b>${esc(j.fechadoAte)}</b> · ${j.totalContas} contas no balancete`;
+    document.getElementById('atualizado').textContent = 'Atualizado em ' + j.atualizadoEm;
+    desenhar();
+  } catch (e) {
+    // O demonstrativo é fixo até 2025: uma falha no Oracle não pode apagar
+    // oito anos de número da tela. Ela só tira a informação do mês fechado.
+    document.getElementById('fechado').innerHTML =
+      `<span class="erro">não foi possível falar com a contabilidade: ${esc(e.message || e)}</span>`;
+  }
+}
+
+function desenhar() {
+  const anoCorrente = ANOS[0];
+  const mesFechado = FECHADO ? FECHADO.mesNome : null;
+  const parcial = FECHADO && FECHADO.ano === anoCorrente ? FECHADO.mes : null;
+
+  document.getElementById('corpo').innerHTML = `
+    ${capa(anoCorrente)}
+
+    <div class="secao">
+      <div class="secao-header"><div class="secao-num">1</div>
+        <div class="secao-titulo">Demonstrativo do Resultado do Exercício</div></div>
+      <div class="secao-sub">Valores em R$ mil${parcial ? ` · ${anoCorrente} vai até ${esc(mesFechado)}, os demais são anos inteiros` : ''}</div>
+      <div class="dre-rolagem">${tabela(parcial)}</div>
+    </div>
+
+    <div class="grid-2">
+      <div class="secao">
+        <div class="secao-header"><div class="secao-num">2</div>
+          <div class="secao-titulo">Receita</div></div>
+        <div class="secao-sub">Bruta e líquida, ano a ano · R$ mil</div>
+        <div class="legenda">
+          <span><i style="background:#2a78d6"></i>Receita bruta</span>
+          <span><i style="background:#1baf7a"></i>Receita líquida</span>
+        </div>
+        <div class="grafico-caixa"><canvas id="gReceita"></canvas></div>
+      </div>
+      <div class="secao">
+        <div class="secao-header"><div class="secao-num">3</div>
+          <div class="secao-titulo">Resultado líquido</div></div>
+        <div class="secao-sub">Verde é lucro, vermelho é prejuízo · R$ mil</div>
+        <div class="grafico-caixa"><canvas id="gResultado"></canvas></div>
+      </div>
+    </div>
+
+    <div class="secao">
+      <div class="secao-header"><div class="secao-num">4</div>
+        <div class="secao-titulo">Margem bruta</div></div>
+      <div class="secao-sub">Lucro bruto ÷ receita líquida · em % da receita líquida</div>
+      <div class="grafico-caixa" style="height:240px"><canvas id="gMargem"></canvas></div>
+    </div>
+
+    ${nota(parcial, mesFechado, anoCorrente)}`;
+
+  graficoReceita();
+  graficoResultado();
+  graficoMargem();
+}
+
+function capa(ano) {
+  const ant = ano - 1;
+  const cartoes = [
+    { rot:'Receita bruta',     cor:'var(--serie-1)', ch:'receita_bruta' },
+    { rot:'Lucro bruto',       cor:'var(--serie-3)', ch:'lucro_bruto' },
+    { rot:'Resultado líquido', cor:'var(--ink)',     ch:'resultado_liquido' },
+    { rot:'Resultado ajustado',cor:'var(--serie-4)', ch:'resultado_ajustado' }
+  ];
+  return `<div class="capa">${cartoes.map(c => {
+    const a = valor(c.ch, ano), b = valor(c.ch, ant);
+    return `<div class="cartao" style="--cor:${c.cor}">
+      <div class="rot">${esc(c.rot)} · ${ano}</div>
+      <div class="cifra${a !== null && a < 0 ? ' neg' : ''}">${curto(a)}</div>
+      <div class="base">${varHtml(a, b)} · ${ant} ${curto(b)}</div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function tabela(parcial) {
+  const cab = ANOS.map((a, i) =>
+    `<th class="${i === 0 && parcial ? 'parcial' : ''}">${a}${i === 0 && parcial ? '*' : ''}</th>`).join('');
+  const corpo = DRE.map(l => `
+    <tr class="${l.tipo === 'destaque' ? 'destaque' : (l.tipo === 'sub' ? 'item sub' : 'item')}">
+      <td>${esc(l.rotulo)}</td>
+      ${l.v.map((v, i) => {
+        const classes = [];
+        if (v === null) classes.push('vazio');
+        else if (v < 0) classes.push('neg');
+        if (i === 0 && parcial) classes.push('col-parcial');
+        return `<td class="${classes.join(' ')}">${fmtMil(v)}</td>`;
+      }).join('')}
+    </tr>`).join('');
+  return `<table class="dre">
+    <thead><tr><th>Descrição</th>${cab}</tr></thead>
+    <tbody>${corpo}</tbody>
+  </table>`;
+}
+
+function nota(parcial, mesFechado, anoCorrente) {
+  return `<div class="nota-box"><div>
+    <b>De onde vêm os números:</b> de 2018 a ${anoCorrente - 1} são os valores fechados das
+    demonstrações financeiras, fixos nesta tela — transcritos como a planilha da controladoria
+    os mostra, inclusive onde a apresentação de 2018 a 2020 traz custos e despesas em positivo.
+    ${parcial
+      ? `A coluna de <b>${anoCorrente}</b> está destacada porque é parcial: vai só até
+         <b>${esc(mesFechado)}</b>, o último mês que a contabilidade fechou. Comparar um ano de
+         ${parcial} ${parcial === 1 ? 'mês' : 'meses'} com anos inteiros é a leitura errada mais
+         fácil de fazer aqui.`
+      : ''}
+    <br><b>Falta um passo:</b> ${anoCorrente} ainda sai dos valores fixos. Para ele passar a vir
+    do balancete do ERP a cada fechamento, falta carregar o de/para entre conta contábil e linha
+    do demonstrativo — a lista de classificações. Enquanto ela não existir, esta tela prefere
+    repetir o número oficial a montar um DRE por conta própria: no demonstrativo, uma conta na
+    linha errada não deixa rastro, porque os totais continuam somando.
+  </div></div>`;
+}
+
+// ── Gráficos ────────────────────────────────────────────────────────────
+// Os anos vêm do mais antigo para o mais novo: a tabela é lida da direita
+// para a esquerda por herança da planilha, mas uma série temporal que anda
+// para trás no eixo x ninguém lê.
+const ANOS_ASC = ANOS.slice().reverse();
+const serie = ch => ANOS_ASC.map(a => valor(ch, a));
+
+/**
+ * Rótulo no topo da barra.
+ *
+ * `apenas` limita a uma série: receita bruta e líquida diferem por poucos
+ * por cento, as barras ficam quase da mesma altura e os dois números saíam
+ * um por cima do outro. Rotulando só a bruta, os dois valores continuam
+ * disponíveis — no tooltip e na tabela do DRE logo acima — sem virar
+ * borrão no gráfico.
+ *
+ * O SINAL vai junto. Num gráfico de resultado, "9,7" embaixo do eixo lido
+ * rápido é lucro de 9,7; a cor diz prejuízo, mas o número tem que dizer
+ * também, porque é ele que a pessoa copia.
+ */
+const rotuloNoTopo = (apenas) => ({
+  id: 'topo',
+  afterDatasetsDraw(chart) {
+    const ctx = chart.ctx;
+    ctx.save();
+    ctx.font = '800 10px system-ui, sans-serif';
+    ctx.fillStyle = '#0f2460';
+    ctx.textAlign = 'center';
+    chart.data.datasets.forEach((ds, di) => {
+      if (apenas !== undefined && apenas !== di) return;
+      chart.getDatasetMeta(di).data.forEach((p, i) => {
+        const v = ds.data[i];
+        if (v === null || v === undefined) return;
+        // Barra negativa escreve embaixo: em cima o número cairia dentro da
+        // linha do zero, em cima da barra vizinha.
+        const acima = v >= 0;
+        ctx.textBaseline = acima ? 'bottom' : 'top';
+        ctx.fillText((v < 0 ? '-' : '') + fmtNum(Math.abs(v) / 1000, 1), p.x, p.y + (acima ? -4 : 4));
+      });
+    });
+    ctx.restore();
+  }
+});
+
+function graficoReceita() {
+  criar('gReceita', {
+    type: 'bar',
+    data: { labels: ANOS_ASC, datasets: [
+      { label:'Receita bruta',   data: serie('receita_bruta'),   backgroundColor:'#2a78d6',
+        borderRadius:4, borderSkipped:false, barPercentage:.9, categoryPercentage:.74 },
+      { label:'Receita líquida', data: serie('receita_liquida'), backgroundColor:'#1baf7a',
+        borderRadius:4, borderSkipped:false, barPercentage:.9, categoryPercentage:.74 }
+    ]},
+    options: {
+      responsive:true, maintainAspectRatio:false, animation:false,
+      layout:{ padding:{ top:18 } },
+      scales:{
+        x:{ grid:{display:false}, border:{color:'#e3e8f5'},
+            ticks:{ color:'#52514e', font:{size:11.5, weight:'700'} } },
+        y:{ beginAtZero:true, grid:{color:'#e9edf6'}, border:{display:false},
+            ticks:{ color:'#898781', font:{size:11, weight:'600'},
+                    callback:v => v === 0 ? '0' : fmtNum(v/1000, 0) + ' mi' } }
+      },
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{
+        label: c => c.dataset.label + ': ' + curto(c.parsed.y) } } }
+    },
+    plugins:[rotuloNoTopo(0)]
+  });
+}
+
+function graficoResultado() {
+  const dados = serie('resultado_liquido');
+  criar('gResultado', {
+    type: 'bar',
+    data: { labels: ANOS_ASC, datasets: [{
+      label:'Resultado líquido', data: dados,
+      // A cor diz o sinal. Não é paleta categórica: é lucro contra
+      // prejuízo, e nesse caso a cor carrega significado, não identidade.
+      backgroundColor: dados.map(v => (v === null ? '#98a2b3' : (v >= 0 ? '#008300' : '#d03b3b'))),
+      borderRadius:4, borderSkipped:false, barPercentage:.72, categoryPercentage:.9
+    }]},
+    options: {
+      responsive:true, maintainAspectRatio:false, animation:false,
+      layout:{ padding:{ top:18, bottom:14 } },
+      scales:{
+        x:{ grid:{display:false}, border:{color:'#e3e8f5'},
+            ticks:{ color:'#52514e', font:{size:11.5, weight:'700'} } },
+        y:{ grid:{color:'#e9edf6'}, border:{display:false},
+            ticks:{ color:'#898781', font:{size:11, weight:'600'},
+                    callback:v => v === 0 ? '0' : fmtNum(v/1000, 0) + ' mi' } }
+      },
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{
+        label: c => curto(c.parsed.y) } } }
+    },
+    plugins:[rotuloNoTopo()]
+  });
+}
+
+function graficoMargem() {
+  const margem = ANOS_ASC.map(a => {
+    const lb = valor('lucro_bruto', a), rl = valor('receita_liquida', a);
+    return (lb === null || !rl) ? null : lb * 100 / rl;
+  });
+  criar('gMargem', {
+    type: 'line',
+    data: { labels: ANOS_ASC, datasets: [{
+      label:'Margem bruta', data: margem,
+      borderColor:'#eb6834', backgroundColor:'transparent', borderWidth:2.5,
+      pointRadius:4.5, pointBackgroundColor:'#eb6834', pointBorderColor:'#fff',
+      pointBorderWidth:1.5, tension:.25, spanGaps:false
+    }]},
+    options: {
+      responsive:true, maintainAspectRatio:false, animation:false,
+      layout:{ padding:{ top:22, bottom:8, left:22, right:16 } },
+      scales:{
+        x:{ grid:{display:false}, border:{color:'#e3e8f5'},
+            ticks:{ color:'#52514e', font:{size:11.5, weight:'700'} } },
+        y:{ grid:{color:'#e9edf6'}, border:{display:false}, grace:'20%',
+            ticks:{ color:'#898781', font:{size:11, weight:'600'},
+                    callback:v => fmtNum(v, 0) + '%' } }
+      },
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{
+        label: c => fmtNum(c.parsed.y, 1) + '% da receita líquida' } } }
+    },
+    plugins:[{
+      id:'pontos',
+      afterDatasetsDraw(chart) {
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.font = '800 11px system-ui, sans-serif';
+        ctx.fillStyle = '#0f2460';
+        ctx.textAlign = 'center';
+        const v = chart.data.datasets[0].data;
+        const ultimo = v.length - 1;
+        chart.getDatasetMeta(0).data.forEach((p, i) => {
+          if (v[i] === null) return;
+          const acima = v[i] >= 0;
+          ctx.textBaseline = acima ? 'bottom' : 'top';
+          // As pontas escrevem para dentro. Centralizado, o rótulo do
+          // primeiro ano cavalgava a marca do eixo Y ("10%4,2%") e o do
+          // último saía pela borda do quadro.
+          ctx.textAlign = i === 0 ? 'left' : (i === ultimo ? 'right' : 'center');
+          ctx.fillText(fmtNum(v[i], 1) + '%', p.x, p.y + (acima ? -9 : 9));
+        });
+        ctx.restore();
+      }
+    }]
+  });
+}
+
+const observador = typeof ResizeObserver !== 'undefined'
+  ? new ResizeObserver(es => { for (const e of es) {
+      const g = graficos[e.target.dataset.gid]; if (g) g.resize(); } })
+  : null;
+
+function criar(id, config) {
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  if (graficos[id]) graficos[id].destroy();
+  graficos[id] = new Chart(canvas, config);
+  const caixa = canvas.parentElement;
+  if (observador && caixa) { caixa.dataset.gid = id; observador.observe(caixa); }
+}
+
+carregar();
+</script>
+<script src="js/icones-modulos.js?v=20260819a"></script>
+<script src="js/sidebar-nav.js?v=20260819a" defer></script>
+<script src="js/agro-chat-widget.js" defer></script>
+</body>
+</html>
