@@ -23,12 +23,13 @@ import java.util.logging.Logger;
  *
  * TRÊS DECISÕES QUE VALE EXPLICAR:
  *
- * 1. O diesel é escolhido pela DESCRIÇÃO do material, não pelo código.
- *    AgroCombustivelDAO fixa 389497 (Óleo Diesel B S10) porque lá o filtro é
- *    de um combustível só. No recebimento isso seria um erro: chega S10,
- *    chega S500, e um material novo cadastrado amanhã sumiria do painel sem
- *    ninguém perceber. Casando por '%DIESEL%' um material novo entra sozinho,
- *    e a tela mostra a quebra por material para que dê para ver o que entrou.
+ * 1. Só o ÓLEO DIESEL B S10 entra — é o combustível que o painel acompanha,
+ *    definido assim por quem pediu a tela. O casamento é por descrição
+ *    ('%DIESEL B S10%') e não por cod_material: pega tanto "ÓLEO" quanto
+ *    "OLEO", que o cadastro escreve das duas formas, e não depende de um
+ *    código fixo no meio do Java. A quebra por material continua na tela,
+ *    agora como conferência: se aparecer mais de uma linha ali, é porque o
+ *    ERP tem mais de um cadastro de S10.
  *
  * 2. A consulta traz itensentrada.* em vez de somar no banco. Quantidade e
  *    valor do item não têm nome documentado em lugar nenhum deste projeto, e
@@ -64,6 +65,14 @@ public class DieselRecebimentoDAO {
 
     /** Teto de linhas — recebimento de diesel é dezenas por mês, não milhares. */
     private static final int MAX_LINHAS = 20000;
+
+    /**
+     * O material que este painel acompanha. Fica num lugar só porque a
+     * consulta principal e a amostra de diagnóstico precisam olhar exatamente
+     * o mesmo recorte — amostra de um recorte e painel de outro é como se
+     * descobre tarde que estavam medindo coisas diferentes.
+     */
+    private static final String FILTRO_MATERIAL = "upper(m.descricao) like '%DIESEL B S10%'";
 
     /**
      * Binds: data inicial, data final (ambas 'YYYY-MM-DD').
@@ -114,7 +123,7 @@ public class DieselRecebimentoDAO {
                    and nf.serie        = it.serie
             left join  material.ordemcompra  oc
                     on oc.nroc = it.nroc
-            where upper(m.descricao) like '%DIESEL%'
+            where %FILTRO_MATERIAL%
         ) v
         where v.entrada_dt between to_date(?, 'YYYY-MM-DD') and to_date(?, 'YYYY-MM-DD')
         order by v.entrada_dt
@@ -131,7 +140,8 @@ public class DieselRecebimentoDAO {
     }
 
     private List<Map<String, Object>> buscar(Connection conn, LocalDate ini, LocalDate fim) {
-        String sql = SQL.replace("%EXPRESSAO_DATA%", expressaoData(descobrirTipoData(conn)));
+        String sql = SQL.replace("%EXPRESSAO_DATA%", expressaoData(descobrirTipoData(conn)))
+                        .replace("%FILTRO_MATERIAL%", FILTRO_MATERIAL);
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, ini.toString());
@@ -226,7 +236,7 @@ public class DieselRecebimentoDAO {
         from  ( select it.dataentrada_seq
                 from       material.itensentrada it
                 inner join material.material     m on m.cod_material = it.cod_material
-                where upper(m.descricao) like '%DIESEL%'
+                where %FILTRO_MATERIAL%
                 and   rownum <= 500 )
         group by dataentrada_seq
         order by 1 desc
@@ -234,7 +244,8 @@ public class DieselRecebimentoDAO {
 
     public List<Map<String, Object>> amostraData() {
         try (Connection conn = OracleConnectionUtil.getConnection();
-             PreparedStatement ps = conn.prepareStatement(SQL_AMOSTRA_DATA)) {
+             PreparedStatement ps = conn.prepareStatement(
+                     SQL_AMOSTRA_DATA.replace("%FILTRO_MATERIAL%", FILTRO_MATERIAL))) {
             ps.setMaxRows(40);
             try (ResultSet rs = ps.executeQuery()) {
                 return RowMapperUtil.toList(rs);
@@ -247,7 +258,8 @@ public class DieselRecebimentoDAO {
 
     /** O SQL como ele realmente vai ao banco, para colar no PL/SQL Developer. */
     public String sql() {
-        return SQL.replace("%EXPRESSAO_DATA%", expressaoData(tipoDataEntrada()));
+        return SQL.replace("%EXPRESSAO_DATA%", expressaoData(tipoDataEntrada()))
+                  .replace("%FILTRO_MATERIAL%", FILTRO_MATERIAL);
     }
 
     private static String mensagem(SQLException e) {
