@@ -62,6 +62,38 @@
   .campo input { padding: 9px 11px; border: 1px solid #cfd7e6; border-radius: 8px;
                  font-size: 13.5px; font-family: inherit; color: #1a1a2e; outline: none; }
   .campo input:focus { border-color: var(--serie-1); box-shadow: 0 0 0 3px rgba(42,120,214,.12); }
+  .campo select { padding: 9px 11px; border: 1px solid #cfd7e6; border-radius: 8px;
+                  font-size: 13.5px; font-family: inherit; color: #1a1a2e;
+                  background: var(--papel); outline: none; cursor: pointer; min-width: 170px; }
+  .campo select:focus { border-color: var(--serie-1); box-shadow: 0 0 0 3px rgba(42,120,214,.12); }
+  .periodo-txt { padding: 9px 2px; font-size: 13.5px; color: var(--ink-2); font-weight: 600; }
+
+  /* ── Faixa de capa ──
+     Os quatro números que respondem "como foi a safra". Ficam acima de tudo
+     e num bloco mais forte que os demais, porque são o que se olha primeiro. */
+  /* Colunas iguais: os cartões de preço carregam número comprido ("R$ 3.262,22
+     / M3") e, com a receita ocupando mais espaço, a unidade quebrava para a
+     linha de baixo. */
+  .capa { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+  .capa .cartao { background: var(--papel); border: 1px solid var(--borda);
+                  border-radius: 14px; padding: 18px 20px; position: relative; overflow: hidden; }
+  .capa .cartao::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
+  .capa .c-receita::before { background: var(--ink); }
+  .capa .c-acucar::before  { background: var(--serie-4); }
+  .capa .c-etanol::before  { background: var(--serie-1); }
+  .capa .c-cana::before    { background: var(--serie-3); }
+  .capa .rot { font-size: 10.5px; font-weight: 700; color: var(--rotulo);
+               text-transform: uppercase; letter-spacing: .6px; }
+  /* nowrap: valor e unidade são uma coisa só — "R$ 3.262,22" sozinho numa
+     linha e "M3" na outra dá dois cacos em vez de um número. */
+  .capa .cifra { font-size: 27px; font-weight: 800; color: var(--ink);
+                 line-height: 1.15; margin-top: 8px; letter-spacing: -.7px;
+                 white-space: nowrap; }
+  .capa .c-receita .cifra { font-size: 31px; }
+  .capa .un { font-size: 14px; font-weight: 600; color: var(--ink-3); margin-left: 4px;
+              letter-spacing: 0; }
+  .capa .base { font-size: 11px; color: var(--ink-3); margin-top: 7px; line-height: 1.4; }
+  .capa .vazio { font-size: 22px; font-weight: 700; color: var(--ink-3); margin-top: 8px; }
   .btn-gerar { display: flex; align-items: center; gap: 8px; padding: 10px 20px;
                background: var(--ink); color: white; border: none; border-radius: 8px;
                font-size: 13.5px; font-weight: 650; cursor: pointer; font-family: inherit; }
@@ -176,25 +208,18 @@
   <div class="filtros">
     <div class="filtros-linha">
       <div class="campo">
-        <label for="dataIni">Data início</label>
-        <input type="date" id="dataIni">
+        <label for="selSafra">Safra</label>
+        <select id="selSafra" onchange="carregar()"></select>
       </div>
       <div class="campo">
-        <label for="dataFim">Data fim</label>
-        <input type="date" id="dataFim">
+        <label>Período</label>
+        <div class="periodo-txt" id="periodoTxt">—</div>
       </div>
       <button class="btn-gerar" id="btnGerar" onclick="carregar()">
         <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <polygon points="5 3 19 12 5 21 5 3"/></svg>
         Gerar
       </button>
-    </div>
-    <div class="atalhos">
-      <button class="atalho" onclick="periodo('mes')">Mês atual</button>
-      <button class="atalho" onclick="periodo('mes-1')">Mês anterior</button>
-      <button class="atalho" onclick="periodo('90')">Últimos 90 dias</button>
-      <button class="atalho" onclick="periodo('ano')">Ano atual</button>
-      <button class="atalho" onclick="periodo('12m')">Últimos 12 meses</button>
     </div>
   </div>
 
@@ -231,26 +256,56 @@ function corDoProduto(nome) {
   return i >= 0 && i < CORES.length ? CORES[i] : COR_OUTROS;
 }
 
-function periodo(qual) {
-  const hoje = new Date();
-  const iso = d => d.toISOString().slice(0,10);
-  let ini, fim = hoje;
-  if (qual === 'mes')        ini = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-  else if (qual === 'mes-1') { ini = new Date(hoje.getFullYear(), hoje.getMonth()-1, 1);
-                               fim = new Date(hoje.getFullYear(), hoje.getMonth(), 0); }
-  else if (qual === '90')    { ini = new Date(hoje); ini.setDate(ini.getDate()-90); }
-  else if (qual === 'ano')   ini = new Date(hoje.getFullYear(), 0, 1);
-  else                       { ini = new Date(hoje); ini.setMonth(ini.getMonth()-12); }
-  document.getElementById('dataIni').value = iso(ini);
-  document.getElementById('dataFim').value = iso(fim);
-  carregar();
+/* ── Safra ──
+   A safra vai de 01/03 de um ano a 28/02 do seguinte. O fim é calculado com
+   "dia 0 de março", que o próprio JavaScript resolve como o último dia de
+   fevereiro — assim ano bissexto vira 29/02 sozinho, sem regra escrita à
+   mão. */
+function safraDe(ano) {
+  const doisDig = n => String(n).padStart(2, '0');
+  const fim = new Date(ano + 1, 2, 0);           // 0 de março = fim de fevereiro
+  return {
+    ano,
+    rotulo: ano + '/' + (ano + 1),
+    ini: ano + '-03-01',
+    fim: (ano + 1) + '-' + doisDig(fim.getMonth() + 1) + '-' + doisDig(fim.getDate())
+  };
+}
+
+/** A safra corrente hoje: antes de março ainda é a que começou no ano passado. */
+function safraAtual() {
+  const h = new Date();
+  return safraDe(h.getMonth() >= 2 ? h.getFullYear() : h.getFullYear() - 1);
+}
+
+let SAFRAS = [];
+
+function montarSafras() {
+  const atual = safraAtual().ano;
+  SAFRAS = [];
+  for (let a = atual; a >= atual - 5; a--) SAFRAS.push(safraDe(a));
+  const sel = document.getElementById('selSafra');
+  sel.innerHTML = SAFRAS.map((s, i) =>
+    `<option value="${i}">Safra ${s.rotulo}${i === 0 ? ' (atual)' : ''}</option>`).join('');
+  sel.value = '0';
+  mostrarPeriodo();
+}
+
+function safraEscolhida() {
+  return SAFRAS[Number(document.getElementById('selSafra').value) || 0];
+}
+
+function mostrarPeriodo() {
+  const s = safraEscolhida();
+  document.getElementById('periodoTxt').textContent =
+    s ? fmtData(s.ini) + ' a ' + fmtData(s.fim) : '—';
 }
 
 async function carregar() {
-  const ini = document.getElementById('dataIni').value;
-  const fim = document.getElementById('dataFim').value;
-  if (!ini || !fim) { alert('Informe o período completo.'); return; }
-  if (fim < ini) { alert('Data fim não pode ser anterior à data início.'); return; }
+  mostrarPeriodo();
+  const s = safraEscolhida();
+  if (!s) return;
+  const ini = s.ini, fim = s.fim;
 
   const btn = document.getElementById('btnGerar');
   btn.disabled = true;
@@ -282,6 +337,8 @@ function render(d) {
   const ticket = d.notas > 0 ? Number(d.valorNotas) / d.notas : 0;
 
   document.getElementById('resultado').innerHTML = `
+    ${faixaCapa(d)}
+
     <div class="secao">
       <div class="secao-header"><span class="secao-num">1</span>
         <span class="secao-titulo">Resumo</span></div>
@@ -372,30 +429,16 @@ function render(d) {
   desenharPrecos(d);
 }
 
-/* Quais produtos entram na evolução de preço. Casa por trecho do nome, e
-   não por descrição exata: o cadastro escreve "AÇÚCAR VHP", "Acucar Cristal"
-   e afins, e um nome fixo aqui quebraria no primeiro produto renomeado.
-
-   O "exceto" existe por causa de CANA DE AÇÚCAR: ela contém "açúcar" no
-   nome, mas é matéria-prima, não o produto vendido — o preço dela não
-   pertence a esta seção. */
-const PRECO_FAMILIAS = [
-  { casa: /acucar/, exceto: /cana/ },
-  { casa: /anidro/ },
-  { casa: /hidratado/ }
-];
-
-function semAcento(v) {
-  return String(v == null ? '' : v).normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '').toLowerCase();
-}
-function ehProdutoDePreco(nome) {
-  const t = semAcento(nome);
-  return PRECO_FAMILIAS.some(f => f.casa.test(t) && !(f.exceto && f.exceto.test(t)));
+/* Quem decide se um produto é açúcar ou etanol é o SERVLET — ele marca a
+   família em cada série. Antes essa regra existia aqui também, em regex
+   própria, e duas cópias da mesma regra é o começo de duas respostas
+   diferentes para a mesma pergunta. */
+function ehProdutoDePreco(serie) {
+  return !!(serie && serie.familia);
 }
 
 function secaoPreco(d) {
-  const alvo = (d.precoMensal || []).filter(p => ehProdutoDePreco(p.produto)
+  const alvo = (d.precoMensal || []).filter(p => ehProdutoDePreco(p)
                                              && (p.pontos || []).length > 0);
   if (!alvo.length) return '';
 
@@ -435,7 +478,7 @@ function cartaoPreco(p, i) {
 }
 
 function desenharPrecos(d) {
-  const alvo = (d.precoMensal || []).filter(p => ehProdutoDePreco(p.produto)
+  const alvo = (d.precoMensal || []).filter(p => ehProdutoDePreco(p)
                                              && (p.pontos || []).length > 0);
   alvo.forEach((p, i) => {
     const pts = p.pontos;
@@ -487,6 +530,52 @@ function desenharPrecos(d) {
       }
     });
   });
+}
+
+/** Os quatro números de capa da safra. */
+function faixaCapa(d) {
+  const c = d.capa || {};
+  const preco = (bloco, rotulo, classe, base) => {
+    if (!bloco || bloco.indisponivel) {
+      return `<div class="cartao ${classe}">
+                <div class="rot">${rotulo}</div>
+                <div class="vazio">—</div>
+                <div class="base">Sem venda no período</div>
+              </div>`;
+    }
+    return `<div class="cartao ${classe}">
+              <div class="rot">${rotulo}</div>
+              <div class="cifra">${fmtMoeda(bloco.preco)}<span class="un">/ ${esc(bloco.unidade)}</span></div>
+              <div class="base">${base(bloco)}</div>
+            </div>`;
+  };
+
+  const cana = c.canaEquivalente || {};
+  const cartaoCana = cana.indisponivel
+    ? `<div class="cartao c-cana">
+         <div class="rot">Preço médio · cana equiv.</div>
+         <div class="vazio">—</div>
+         <div class="base">Tonelagem de cana indisponível</div>
+       </div>`
+    : `<div class="cartao c-cana">
+         <div class="rot">Preço médio · cana equiv.</div>
+         <div class="cifra">${fmtMoeda(cana.preco)}<span class="un">/ t</span></div>
+         <div class="base">Receita bruta ÷ ${fmtNum(cana.toneladas, 0)} t de cana da safra</div>
+       </div>`;
+
+  return `
+    <div class="capa">
+      <div class="cartao c-receita">
+        <div class="rot">Receita bruta total</div>
+        <div class="cifra">${fmtMoedaCurta(c.receitaBruta)}</div>
+        <div class="base">${fmtMoeda(c.receitaBruta)} · valor total das notas</div>
+      </div>
+      ${preco(c.acucar, 'Preço médio · açúcar', 'c-acucar',
+              b => `${fmtNum(b.quantidade, 0)} ${esc(b.unidade)} vendidas · valor do item`)}
+      ${preco(c.etanol, 'Preço médio · etanol', 'c-etanol',
+              b => `${fmtNum(b.quantidade, 0)} ${esc(b.unidade)} vendidos · anidro + hidratado`)}
+      ${cartaoCana}
+    </div>`;
 }
 
 function tabelaCorte(num, titulo, linhas, rotulo) {
@@ -634,8 +723,8 @@ function fmtData(iso) {
   return m ? `${m[3]}/${m[2]}/${m[1]}` : (iso || '');
 }
 
-// Abre no mês atual, como as outras telas do projeto.
-periodo('mes');
+montarSafras();
+carregar();
 </script>
 
 <script src="js/icones-modulos.js?v=20260818e"></script>

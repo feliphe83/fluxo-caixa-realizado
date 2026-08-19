@@ -89,6 +89,43 @@ public class CanaEntradaDAO {
         order  by data_inicio desc
         """;
 
+    /**
+     * Toneladas de cana da safra, somadas por PERÍODO de data da ordem.
+     *
+     * Existe separada de {@link #buscar} porque o painel de faturamento
+     * trabalha com a safra como intervalo de datas (01/03 a 28/02), e não
+     * com o cod_safra do ERP. Mesma fonte e mesma conta do painel de Entrada
+     * de Cana — se os dois divergissem, um dos números estaria mentindo.
+     */
+    private static final String SQL_TOTAL_PERIODO = """
+        select nvl(sum(nvl(oc.producao_realizada, 0) + nvl(oc.pesomuda, 0)), 0) toneladas
+        from   agricola.ordem_corte_unica oc
+        where  oc.cod_grupoempresa = 1
+        and    oc.cod_empresa      = 1
+        and    oc.cod_filial       = 1
+        and    oc.data_ordem      >= to_date(?, 'YYYY-MM-DD')
+        and    oc.data_ordem      <= to_date(?, 'YYYY-MM-DD')
+        """;
+
+    /** @return toneladas no período, ou null se a consulta não puder ser feita. */
+    public java.math.BigDecimal toneladasNoPeriodo(String dataIni, String dataFim) {
+        try (Connection conn = AgroOracleConnectionUtil.getConnection();
+             PreparedStatement ps = conn.prepareStatement(SQL_TOTAL_PERIODO)) {
+            ps.setString(1, dataIni);
+            ps.setString(2, dataFim);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getBigDecimal(1);
+            }
+            return java.math.BigDecimal.ZERO;
+        } catch (SQLException e) {
+            // Não derruba quem chamou: o cartão da cana equivalente fica sem
+            // número, e o resto do painel continua valendo.
+            LOG.log(Level.WARNING, "Toneladas de cana indisponíveis (" + dataIni
+                    + " a " + dataFim + "): " + e.getMessage());
+            return null;
+        }
+    }
+
     public List<Map<String, Object>> buscar(String codSafra) {
         try (Connection conn = AgroOracleConnectionUtil.getConnection();
              PreparedStatement ps = conn.prepareStatement(SQL)) {

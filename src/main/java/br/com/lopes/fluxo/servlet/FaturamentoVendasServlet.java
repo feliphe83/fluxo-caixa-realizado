@@ -48,12 +48,32 @@ public class FaturamentoVendasServlet extends HttpServlet {
     private static final DateTimeFormatter ISO = DateTimeFormatter.ISO_LOCAL_DATE;
     private static final Gson GSON = new Gson();
 
+    /**
+     * Famílias de produto usadas nos cartões de preço médio.
+     *
+     * Casa por trecho do nome, e não por descrição exata: o cadastro escreve
+     * "AÇÚCAR VHP", "Acucar Cristal", "ETANOL ANIDRO" e variantes, e um nome
+     * fixo aqui quebraria no primeiro produto renomeado.
+     *
+     * CANA DE AÇÚCAR fica de fora do açúcar apesar de conter a palavra: é
+     * matéria-prima, não o produto vendido, e o preço dela não pertence ao
+     * cartão de R$/t de açúcar.
+     *
+     * A classificação vive aqui e só aqui — a tela usa o que vem pronto, para
+     * não haver duas regras que possam divergir.
+     */
+    private static final Object[][] FAMILIAS = {
+        { "acucar", java.util.regex.Pattern.compile("acucar"),   java.util.regex.Pattern.compile("cana") },
+        { "etanol", java.util.regex.Pattern.compile("anidro|hidratado"), null }
+    };
+
     /** Quantos produtos viram série própria no gráfico; o resto vira "Outros". */
     private static final int MAX_SERIES_PRODUTO = 6;
     /** Teto das listas de cliente/estado/destino. */
     private static final int MAX_LISTA = 12;
 
     private final FaturamentoVendasDAO dao = new FaturamentoVendasDAO();
+    private final br.com.lopes.fluxo.dao.CanaEntradaDAO canaDAO = new br.com.lopes.fluxo.dao.CanaEntradaDAO();
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -74,7 +94,11 @@ public class FaturamentoVendasServlet extends HttpServlet {
         }
 
         try {
-            escrever(resp, GSON.toJson(montar(dao.buscar(ini.format(ISO), fim.format(ISO)), ini, fim)));
+            // A cana é de outra base (agro). Se ela falhar, o cartão fica sem
+            // número e o resto do painel continua de pé.
+            BigDecimal cana = canaDAO.toneladasNoPeriodo(ini.format(ISO), fim.format(ISO));
+            escrever(resp, GSON.toJson(
+                montar(dao.buscar(ini.format(ISO), fim.format(ISO)), ini, fim, cana)));
         } catch (RuntimeException e) {
             LOG.log(Level.SEVERE, "Erro no painel de faturamento", e);
             resp.setStatus(500);
@@ -90,7 +114,8 @@ public class FaturamentoVendasServlet extends HttpServlet {
 
     // ── Montagem ──────────────────────────────────────────────────────────
 
-    static JsonObject montar(List<Map<String, Object>> linhas, LocalDate ini, LocalDate fim) {
+    static JsonObject montar(List<Map<String, Object>> linhas, LocalDate ini, LocalDate fim,
+                             BigDecimal toneladasDeCana) {
         Map<String, Acum> porProduto  = new HashMap<>();
         Map<String, Acum> porCliente  = new HashMap<>();
         Map<String, Acum> porEstado   = new HashMap<>();
@@ -98,6 +123,9 @@ public class FaturamentoVendasServlet extends HttpServlet {
         Map<String, Acum> porRotina   = new HashMap<>();
         // TreeMap: a chave é AAAA-MM, então os meses já saem em ordem.
         Map<String, Map<String, BigDecimal>> meses = new TreeMap<>();
+
+        // Açúcar e etanol somados por família, para os cartões de preço médio.
+        Map<String, Acum> porFamilia = new HashMap<>();
 
         // produto -> mês -> quantidade e valor, para o preço médio mensal.
         Map<String, Map<String, Acum>> precoMes = new HashMap<>();
@@ -119,6 +147,11 @@ public class FaturamentoVendasServlet extends HttpServlet {
             quantidade = quantidade.add(qtd);
 
             porProduto.computeIfAbsent(produto, k -> new Acum()).somar(qtd, vItem, txt(l.get("descricaounidade"), ""));
+            String familia = familiaDe(produto);
+            if (familia != null) {
+                porFamilia.computeIfAbsent(familia, k -> new Acum())
+                          .somar(qtd, vItem, txt(l.get("descricaounidade"), ""));
+            }
             porCliente.computeIfAbsent(txt(l.get("nome"), "Sem cliente"), k -> new Acum()).somar(qtd, vItem, "");
             porEstado .computeIfAbsent(txt(l.get("estado"), "—"),         k -> new Acum()).somar(qtd, vItem, "");
             porDestino.computeIfAbsent(txt(l.get("destino"), "—"),        k -> new Acum()).somar(qtd, vItem, "");
@@ -210,6 +243,31 @@ public class FaturamentoVendasServlet extends HttpServlet {
         r.add("seriesProduto", nomesSerie);
 
         r.add("precoMensal", precoMensal(precoMes, ordemProdutos));
+
+        // ── Os quatro números de capa ──
+        //
+        // Receita bruta é o valor total das NOTAS (contado uma vez por nota),
+        // que é a receita faturada com impostos. Os preços médios por produto
+        // saem do VALOR DO ITEM, porque é o único que separa por produto. Os
+        // dois não são a mesma base, e cada cartão diz de onde veio.
+        JsonObject capa = new JsonObject();
+        capa.addProperty("receitaBruta", valorNotas);
+
+        capa.add("acucar", cartaoPreco(porFamilia.get("acucar"), "t"));
+        capa.add("etanol", cartaoPreco(porFamilia.get("etanol"), "m³"));
+
+        BigDecimal tonCana = toneladasDeCana;
+        JsonObject cana = new JsonObject();
+        if (tonCana == null) {
+            cana.addProperty("indisponivel", true);
+        } else {
+            cana.addProperty("toneladas", tonCana);
+            cana.addProperty("preco", tonCana.signum() == 0 ? BigDecimal.ZERO
+                    : valorNotas.divide(tonCana, 4, RoundingMode.HALF_UP));
+        }
+        capa.add("canaEquivalente", cana);
+        r.add("capa", capa);
+
         return r;
     }
 
@@ -247,10 +305,26 @@ public class FaturamentoVendasServlet extends HttpServlet {
             JsonObject o = new JsonObject();
             o.addProperty("produto", produto);
             o.addProperty("unidade", unidade);
+            o.addProperty("familia", familiaDe(produto));
             o.add("pontos", pontos);
             arr.add(o);
         }
         return arr;
+    }
+
+    /** Preço médio de uma família: valor ÷ quantidade, ponderado pelo volume. */
+    private static JsonObject cartaoPreco(Acum a, String unidadePadrao) {
+        JsonObject o = new JsonObject();
+        if (a == null || a.qtd.signum() == 0) {
+            o.addProperty("indisponivel", true);
+            o.addProperty("unidade", unidadePadrao);
+            return o;
+        }
+        o.addProperty("quantidade", a.qtd);
+        o.addProperty("valor", a.valor);
+        o.addProperty("preco", a.valor.divide(a.qtd, 4, RoundingMode.HALF_UP));
+        o.addProperty("unidade", a.unidade.isEmpty() ? unidadePadrao : a.unidade);
+        return o;
     }
 
     /** Acumulador de quantidade e valor por dimensão. */
@@ -309,6 +383,25 @@ public class FaturamentoVendasServlet extends HttpServlet {
     }
 
     // ── Apoio ─────────────────────────────────────────────────────────────
+
+    /** "acucar", "etanol" ou null. */
+    static String familiaDe(String produto) {
+        String t = semAcento(produto);
+        for (Object[] f : FAMILIAS) {
+            java.util.regex.Pattern casa = (java.util.regex.Pattern) f[1];
+            java.util.regex.Pattern exceto = (java.util.regex.Pattern) f[2];
+            if (casa.matcher(t).find() && (exceto == null || !exceto.matcher(t).find())) {
+                return (String) f[0];
+            }
+        }
+        return null;
+    }
+
+    static String semAcento(String v) {
+        if (v == null) return "";
+        return java.text.Normalizer.normalize(v, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "").toLowerCase();
+    }
 
     /** "2026-03-14..." -> "2026-03". Aceita a data já convertida em texto ISO. */
     static String mesDe(Object v) {
