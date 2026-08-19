@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Demonstrativo Financeiro — Usina Santa Clotilde</title>
+<link rel="icon" href="img/logo.png">
+<style>
+/* ────────────────────────────────────────────────────────────────────────
+   Painel de televisão do demonstrativo.
+
+   Só o QUADRO e a data do fechamento — foi o que se pediu, e é a decisão
+   certa: um DRE inteiro já é dezoito linhas por nove anos, e qualquer
+   cartão ou gráfico ao lado roubaria a altura que faz esses números serem
+   legíveis de longe.
+
+   Palco de 1920×1080 fixos, ESCALADO para caber na tela em vez de se
+   reorganizar. Numa TV ninguém corrige layout quebrado: o que se vê é o
+   que fica o dia inteiro.
+   ──────────────────────────────────────────────────────────────────────── */
+  :root {
+    --ink:    #0f2460;
+    --ink-2:  #52514e;
+    --ink-3:  #898781;
+    --rotulo: #64748b;
+    --borda:  #e3e8f5;
+    --papel:  #ffffff;
+    --papel-2:#f8faff;
+    --fundo:  #f4f6fb;
+    --neg:    #d03b3b;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%; background: var(--fundo); color: var(--ink-2);
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    overflow: hidden; font-variant-numeric: tabular-nums;
+  }
+
+  #palco-wrap { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
+  #palco {
+    position: absolute; left: 50%; top: 50%;
+    width: 1920px; height: 1080px;
+    transform-origin: center center;
+    padding: 20px 26px 18px;
+    display: grid; grid-template-rows: auto 1fr; gap: 14px;
+  }
+
+  /* ── Topo ── */
+  .topo { display: flex; align-items: center; gap: 18px; }
+  .marca { width: 46px; height: 46px; border-radius: 11px; background: var(--ink);
+           display: flex; align-items: center; justify-content: center; padding: 6px; flex: none; }
+  .marca img { width: 100%; height: 100%; object-fit: contain; }
+  .topo h1 { font-size: 30px; font-weight: 800; color: var(--ink); letter-spacing: -.6px; }
+  .topo .sub { font-size: 13.5px; font-weight: 700; color: var(--ink-3);
+               text-transform: uppercase; letter-spacing: .8px; margin-top: 1px; }
+  .topo .direita { margin-left: auto; text-align: right; }
+  /* O fechamento é a segunda informação mais importante da tela, depois dos
+     números: é ele que diz de quando é o retrato. */
+  .topo .fechamento { font-size: 20px; font-weight: 800; color: var(--ink);
+                      background: var(--papel); border: 1px solid var(--borda);
+                      border-radius: 11px; padding: 8px 18px; display: inline-block; }
+  .topo .fechamento b { color: #0a7d3a; }
+  .topo .unidade { font-size: 13px; font-weight: 800; color: var(--ink-3);
+                   margin-top: 6px; text-transform: uppercase; letter-spacing: .7px; }
+
+  /* ── O quadro ──
+     Mesmo desenho da planilha da controladoria: subtotal em azul cheio,
+     detalhe em branco. Não é enfeite — é o que deixa a hierarquia legível
+     sem ninguém decorar quais linhas somam quais. */
+  .quadro { background: var(--papel); border: 1px solid var(--borda); border-radius: 13px;
+            padding: 12px 16px 14px; min-height: 0; display: flex; flex-direction: column; }
+  table.dre { width: 100%; border-collapse: separate; border-spacing: 0 3px;
+              font-size: 21px; table-layout: fixed; }
+  table.dre thead th { text-align: right; font-size: 21px; font-weight: 800; color: #fff;
+                       background: var(--ink); padding: 12px; white-space: nowrap; }
+  table.dre thead th:first-child { text-align: left; border-radius: 7px 0 0 7px; }
+  table.dre thead th:last-child { border-radius: 0 7px 7px 0; }
+  table.dre thead th.parcial { color: #ffd98a; }
+  /* Linha folgada de propósito: são 19 linhas em 1080px e, apertadas, sobrava
+     uma faixa branca no pé do quadro. Numa parede, altura sobrando é altura
+     de leitura jogada fora. */
+  table.dre td { padding: 12px; white-space: nowrap; text-align: right; font-weight: 700; }
+  table.dre td:first-child { text-align: left; font-weight: 800; font-size: 19.5px;
+                             overflow: hidden; text-overflow: ellipsis; }
+  table.dre tr.destaque td { background: var(--ink); color: #fff; font-weight: 800; }
+  table.dre tr.destaque td:first-child { border-radius: 7px 0 0 7px; }
+  table.dre tr.destaque td:last-child { border-radius: 0 7px 7px 0; }
+  table.dre tr.item td { background: var(--papel); color: var(--ink); }
+  table.dre tr.sub td:first-child { padding-left: 34px; font-weight: 700; }
+  table.dre tr.destaque td.neg { color: #ffb0b0; }
+  table.dre tr.item td.neg { color: var(--neg); }
+  table.dre td.vazio { color: #cfd7e6; }
+  /* A coluna do ano corrente é a única que ainda anda. Marcá-la evita que
+     alguém, de longe, compare cinco meses com anos inteiros sem perceber. */
+  table.dre .col-parcial { background: #fff3d6 !important; }
+  table.dre tr.destaque .col-parcial { background: #1b3a7a !important; }
+
+  .tarja { position: fixed; top: 0; left: 0; right: 0; background: #eda100;
+           color: #1a1a19; font-size: 17px; font-weight: 800; text-align: center;
+           padding: 7px; display: none; z-index: 40; }
+  .tarja.on { display: block; }
+</style>
+</head>
+<body>
+
+<div class="tarja" id="tarja"></div>
+
+<div id="palco-wrap"><div id="palco">
+
+  <div class="topo">
+    <div class="marca"><img src="img/logo.png" alt="USC"></div>
+    <div>
+      <h1>Demonstrativo do Resultado do Exercício</h1>
+      <div class="sub">Usina Santa Clotilde S/A · últimos 9 anos</div>
+    </div>
+    <div class="direita">
+      <div class="fechamento" id="fechamento">—</div>
+      <div class="unidade">Valores em R$ mil</div>
+    </div>
+  </div>
+
+  <div class="quadro"><div id="quadro"></div></div>
+
+</div></div>
+
+<!-- Os valores fixos do DRE, os mesmos da tela de computador.
+     Fora de /js/ de propósito: aquele caminho é liberado sem sessão. -->
+<script src="dre-historico.js?v=20260819a"></script>
+<script>
+// A contabilidade fecha uma vez por mês; de meia em meia hora é de sobra
+// para a TV pegar o fechamento novo no mesmo dia em que ele acontece.
+const INTERVALO_MS = 30 * 60 * 1000;
+
+let FECHADO = null;
+
+const fmtMil = v => v === null || v === undefined ? '—'
+  : (v < 0 ? '(' + Math.abs(v).toLocaleString('pt-BR') + ')' : v.toLocaleString('pt-BR'));
+const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+function ajustarEscala() {
+  const s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+  document.getElementById('palco').style.transform =
+    'translate(-50%, -50%) scale(' + s + ')';
+}
+window.addEventListener('resize', ajustarEscala);
+
+async function carregar() {
+  // O quadro é fixo até o ano passado: desenha primeiro e não fica na
+  // dependência do Oracle. Numa parede, tabela em branco esperando servidor
+  // é pior do que tabela sem a data do fechamento.
+  desenhar();
+  try {
+    const r = await fetch('api/demonstrativo-financeiro', {headers: {'Accept':'application/json'}});
+    if (r.status === 401) {
+      document.getElementById('tarja').textContent =
+        '⚠ Sessão expirada — faça login neste navegador para o painel voltar a atualizar';
+      document.getElementById('tarja').classList.add('on');
+      return;
+    }
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro || 'Consulta recusada');
+    document.getElementById('tarja').classList.remove('on');
+    FECHADO = j;
+    desenhar();
+  } catch (e) {
+    // Sem a contabilidade, o quadro continua: só a data do fechamento fica
+    // sem responder, e a tela diz isso em vez de mentir uma data.
+    document.getElementById('fechamento').innerHTML =
+      'Fechamento <b style="color:#d03b3b">indisponível</b>';
+  }
+}
+
+function desenhar() {
+  const anoCorrente = ANOS[0];
+  const parcial = FECHADO && FECHADO.ano === anoCorrente ? FECHADO.mes : null;
+
+  if (FECHADO) {
+    document.getElementById('fechamento').innerHTML =
+      'Contabilidade fechada até <b>' + esc(FECHADO.fechadoAte) + '</b>';
+  }
+
+  const cab = ANOS.map((a, i) =>
+    `<th class="${i === 0 && parcial ? 'parcial' : ''}">${a}${i === 0 && parcial ? '*' : ''}</th>`).join('');
+
+  const corpo = DRE.map(l => `
+    <tr class="${l.tipo === 'destaque' ? 'destaque' : (l.tipo === 'sub' ? 'item sub' : 'item')}">
+      <td>${esc(l.rotulo)}</td>
+      ${l.v.map((v, i) => {
+        const classes = [];
+        if (v === null) classes.push('vazio');
+        else if (v < 0) classes.push('neg');
+        if (i === 0 && parcial) classes.push('col-parcial');
+        return `<td class="${classes.join(' ')}">${fmtMil(v)}</td>`;
+      }).join('')}
+    </tr>`).join('');
+
+  document.getElementById('quadro').innerHTML = `
+    <table class="dre">
+      <!-- 690px medidos, não estimados: o rótulo mais longo do DRE
+           ("(=) RESULTADO OPERACIONAL ANTES DO RESULTADO FINANCEIRO") ocupa
+           641px nesta fonte, mais 24 de padding. Sobram 127px por coluna de
+           ano, e o número mais largo do quadro ("(196.795)") precisa de 122. -->
+      <colgroup>
+        <col style="width:690px">
+        ${ANOS.map(() => '<col>').join('')}
+      </colgroup>
+      <thead><tr><th>Descrição</th>${cab}</tr></thead>
+      <tbody>${corpo}</tbody>
+    </table>`;
+}
+
+ajustarEscala();
+carregar();
+setInterval(carregar, INTERVALO_MS);
+</script>
+</body>
+</html>
