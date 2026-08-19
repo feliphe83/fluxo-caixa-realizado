@@ -10,6 +10,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
 import java.util.Map;
@@ -24,11 +25,16 @@ import java.util.logging.Logger;
  * ninguém deve reescrever. Fora do arquivo ela só ganha três substituições:
  * o anomes e as duas datas do período.
  *
- * O MÊS. "Até onde o sistema está fechado" não é uma data que se escreve no
- * código: é o maior anomes que existe em ctb.saldoconta. Perguntando ao
- * banco, o painel anda sozinho quando a contabilidade fecha mais um mês, e
- * ninguém precisa lembrar de vir aqui mudar um número — que é exatamente o
- * tipo de manutenção que se esquece de fazer e ninguém percebe.
+ * O MÊS. Vem de geral.filial.inicioperiodocontabil menos um dia — o dia
+ * anterior ao início do período aberto é o último dia fechado. É o próprio
+ * ERP dizendo até onde fechou, então o painel anda sozinho a cada
+ * fechamento e ninguém precisa vir aqui mudar número.
+ *
+ * A primeira tentativa foi max(anomes) de ctb.saldoconta, e ela deu
+ * "fechada até julho de 4201": a tabela de saldos guarda lançamento com
+ * competência absurda, e o máximo pega justamente esse. Máximo de uma
+ * coluna de dados não é o mesmo que estado do sistema — o estado tem que
+ * ser perguntado a quem o guarda.
  */
 public class DemonstrativoFinanceiroDAO {
 
@@ -36,32 +42,44 @@ public class DemonstrativoFinanceiroDAO {
 
     private static final String RECURSO_SQL = "/sql/dre-saldos.sql";
 
-    /** O último mês FECHADO na contabilidade — o que manda no painel. */
-    private static final String SQL_ULTIMO_ANOMES = """
-        select max(anomes) anomes
-        from   ctb.saldoconta
-        where  cod_grupoempresa = 1
-        and    cod_empresa      = 1
-        and    cod_filial       = 1
-        and    cod_planocontas  = 1
+    /**
+     * O último dia FECHADO na contabilidade: o dia anterior ao início do
+     * período contábil aberto. Consulta indicada pela controladoria.
+     */
+    private static final String SQL_FECHAMENTO = """
+        select f.inicioperiodocontabil - 1 fechamento
+        from   geral.filial f
+        where  f.cod_empresa = 1
+        and    f.cod_filial  = 1
         """;
 
     private static volatile String sqlBase;
 
-    /** @return anomes no formato AAAAMM, ou null se a contabilidade não responder. */
-    public Integer ultimoAnomesFechado() {
+    /** @return o último dia fechado, ou null se a filial não responder. */
+    public LocalDate fechamentoContabil() {
         try (Connection conn = OracleConnectionUtil.getConnection();
-             PreparedStatement ps = conn.prepareStatement(SQL_ULTIMO_ANOMES);
+             PreparedStatement ps = conn.prepareStatement(SQL_FECHAMENTO);
              ResultSet rs = ps.executeQuery()) {
+            if (!rs.next()) return null;
+            java.sql.Date d = rs.getDate(1);
+            LocalDate fechamento = d == null ? null : d.toLocalDate();
+            // Mais de uma filial casando com o filtro significaria escolher
+            // um fechamento entre vários sem critério. Não é o caso hoje, e
+            // se passar a ser é melhor aparecer no log do que ser sorteado.
             if (rs.next()) {
-                int v = rs.getInt(1);
-                return rs.wasNull() ? null : v;
+                LOG.warning("geral.filial devolveu mais de uma linha para empresa 1 / filial 1; "
+                          + "usando o primeiro fechamento: " + fechamento);
             }
-            return null;
+            return fechamento;
         } catch (SQLException e) {
-            LOG.log(Level.SEVERE, "Erro ao descobrir o último mês fechado", e);
+            LOG.log(Level.SEVERE, "Erro ao ler o fechamento contábil da filial", e);
             throw new RuntimeException(mensagem(e), e);
         }
+    }
+
+    /** AAAAMM do dia fechado — é assim que ctb.saldoconta guarda a competência. */
+    public static int anomesDe(LocalDate dia) {
+        return dia.getYear() * 100 + dia.getMonthValue();
     }
 
     /** Uma linha por conta contábil, do grau 1 ao 5, no anomes pedido. */

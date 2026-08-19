@@ -221,7 +221,13 @@ function varHtml(agora, antes) {
 }
 
 async function carregar() {
-  desenhar();   // a tabela é fixa: aparece antes e não depende do Oracle
+  // NÃO desenha antes de perguntar. O quadro chegava com o ano corrente no
+  // valor fixo e trocava de número um instante depois — quem olhasse nessa
+  // fração de segundo levava embora o número errado, e pior: sem saber que
+  // tinha visto outro. Espera a resposta; só se ela não vier é que o valor
+  // fixo aparece, e aí a tela diz que é ele.
+  document.getElementById('corpo').innerHTML =
+    '<div class="estado"><div class="spinner"></div>Consultando o balancete…</div>';
   try {
     const r = await fetch('api/demonstrativo-financeiro', {headers: {'Accept':'application/json'}});
     const j = await r.json();
@@ -230,15 +236,21 @@ async function carregar() {
     FECHADO = j;
     const vivo = aplicarBalancete(j.linhas);
     document.getElementById('fechado').innerHTML =
-      `contabilidade fechada até <b>${esc(j.fechadoAte)}</b> · ${j.totalContas} contas no balancete`
+      `contabilidade fechada até <b>${esc(j.fechadoAte)}</b>`
+      + (j.fechamento ? ` (${esc(j.fechamento)})` : '')
+      + ` · ${j.totalContas} contas no balancete`
       + (vivo ? '' : ' · <span class="erro">sem o de/para, ' + ANOS[0] + ' fica no valor fixo</span>');
     document.getElementById('atualizado').textContent = 'Atualizado em ' + j.atualizadoEm;
     desenhar();
   } catch (e) {
-    // O demonstrativo é fixo até 2025: uma falha no Oracle não pode apagar
-    // oito anos de número da tela. Ela só tira a informação do mês fechado.
+    // O demonstrativo é fixo até o ano passado: uma falha no Oracle não pode
+    // apagar oito anos de número da tela. Aí sim o ano corrente cai no valor
+    // fixo — e a tela escreve isso, em vez de deixar parecer apurado.
     document.getElementById('fechado').innerHTML =
-      `<span class="erro">não foi possível falar com a contabilidade: ${esc(e.message || e)}</span>`;
+      `<span class="erro">não foi possível falar com a contabilidade: ${esc(e.message || e)}</span>`
+      + ` · ${ANOS[0]} está no valor fixo`;
+    aplicarBalancete(null);
+    desenhar();
   }
 }
 

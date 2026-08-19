@@ -74,7 +74,11 @@ public class DemonstrativoFinanceiroServlet extends HttpServlet {
 
         try {
             Integer anomes = anomesPedido(req);
-            if (anomes == null) anomes = dao.ultimoAnomesFechado();
+            java.time.LocalDate fechamento = null;
+            if (anomes == null) {
+                fechamento = dao.fechamentoContabil();
+                if (fechamento != null) anomes = DemonstrativoFinanceiroDAO.anomesDe(fechamento);
+            }
 
             if ("/sql".equals(req.getPathInfo())) {
                 JsonObject o = new JsonObject();
@@ -87,11 +91,16 @@ public class DemonstrativoFinanceiroServlet extends HttpServlet {
 
             if (anomes == null) {
                 resp.setStatus(500);
-                escrever(resp, "{\"ok\":false,\"erro\":\"A contabilidade não devolveu nenhum mês fechado\"}");
+                escrever(resp, "{\"ok\":false,\"erro\":\"geral.filial não devolveu o início do período contábil\"}");
                 return;
             }
 
-            escrever(resp, GSON.toJson(montar(anomes, dao.saldos(anomes), indice())));
+            JsonObject r = montar(anomes, dao.saldos(anomes), indice());
+            if (fechamento != null) {
+                r.addProperty("fechamento",
+                        fechamento.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+            }
+            escrever(resp, GSON.toJson(r));
 
         } catch (RuntimeException e) {
             LOG.log(Level.SEVERE, "Erro no demonstrativo financeiro", e);

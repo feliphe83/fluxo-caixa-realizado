@@ -96,6 +96,8 @@
   table.dre .col-parcial { background: #fff3d6 !important; }
   table.dre tr.destaque .col-parcial { background: #1b3a7a !important; }
 
+  .carregando { color: var(--ink-3); font-size: 22px; font-weight: 700; padding: 40px 4px; }
+
   .tarja { position: fixed; top: 0; left: 0; right: 0; background: #eda100;
            color: #1a1a19; font-size: 17px; font-weight: 800; text-align: center;
            padding: 7px; display: none; z-index: 40; }
@@ -120,7 +122,12 @@
     </div>
   </div>
 
-  <div class="quadro"><div id="quadro"></div></div>
+  <!-- O aviso vai num FILHO, não no #quadro. Estilo no próprio #quadro
+       sobrevive à troca do innerHTML, e o padding do aviso continuava
+       empurrando a tabela para baixo — a última linha saía cortada. -->
+  <div class="quadro"><div id="quadro">
+    <div class="carregando">Consultando o balancete…</div>
+  </div></div>
 
 </div></div>
 
@@ -146,10 +153,11 @@ function ajustarEscala() {
 window.addEventListener('resize', ajustarEscala);
 
 async function carregar() {
-  // O quadro é fixo até o ano passado: desenha primeiro e não fica na
-  // dependência do Oracle. Numa parede, tabela em branco esperando servidor
-  // é pior do que tabela sem a data do fechamento.
-  desenhar();
+  // NÃO desenha antes de perguntar. O quadro subia com o ano corrente no
+  // valor fixo e trocava de número um instante depois; numa parede, esse
+  // pisca-pisca de número é pior do que meio segundo de espera. Se a
+  // contabilidade não responder, aí sim o valor fixo entra — e o topo diz
+  // que o fechamento está indisponível.
   try {
     const r = await fetch('api/demonstrativo-financeiro', {headers: {'Accept':'application/json'}});
     if (r.status === 401) {
@@ -165,10 +173,13 @@ async function carregar() {
     aplicarBalancete(j.linhas);
     desenhar();
   } catch (e) {
-    // Sem a contabilidade, o quadro continua: só a data do fechamento fica
-    // sem responder, e a tela diz isso em vez de mentir uma data.
+    // Sem a contabilidade o quadro continua, com o ano corrente no valor
+    // fixo — numa parede, tabela em branco é pior. Mas a data não se
+    // inventa: fica escrito que o fechamento não respondeu.
     document.getElementById('fechamento').innerHTML =
       'Fechamento <b style="color:#d03b3b">indisponível</b>';
+    aplicarBalancete(null);
+    desenhar();
   }
 }
 
@@ -178,7 +189,9 @@ function desenhar() {
 
   if (FECHADO) {
     document.getElementById('fechamento').innerHTML =
-      'Contabilidade fechada até <b>' + esc(FECHADO.fechadoAte) + '</b>';
+      'Contabilidade fechada até <b>' + esc(FECHADO.fechadoAte) + '</b>'
+      + (FECHADO.fechamento ? ' <span style="font-size:15px;color:var(--ink-3)">('
+                              + esc(FECHADO.fechamento) + ')</span>' : '');
   }
 
   const cab = ANOS.map((a, i) =>
