@@ -99,6 +99,9 @@ public class FaturamentoVendasServlet extends HttpServlet {
         // TreeMap: a chave é AAAA-MM, então os meses já saem em ordem.
         Map<String, Map<String, BigDecimal>> meses = new TreeMap<>();
 
+        // produto -> mês -> quantidade e valor, para o preço médio mensal.
+        Map<String, Map<String, Acum>> precoMes = new HashMap<>();
+
         // Uma entrada por nota — é aqui que os valores de nota são contados
         // uma vez só, em vez de uma vez por item.
         Map<String, Nota> notas = new LinkedHashMap<>();
@@ -124,6 +127,14 @@ public class FaturamentoVendasServlet extends HttpServlet {
             if (mes != null) {
                 meses.computeIfAbsent(mes, k -> new HashMap<>())
                      .merge(produto, vItem, BigDecimal::add);
+                // Para o preço médio do mês: guarda valor E quantidade. O
+                // preço sai da divisão dos dois no fim — média PONDERADA.
+                // Média simples de valor_unitario trataria uma venda de 10
+                // toneladas igual a uma de 10 mil, e o gráfico mostraria o
+                // preço de tabela em vez do preço praticado.
+                precoMes.computeIfAbsent(produto, k -> new TreeMap<>())
+                        .computeIfAbsent(mes, k -> new Acum())
+                        .somar(qtd, vItem, txt(l.get("descricaounidade"), ""));
             }
 
             // Chave da nota: número + emissão. Só o número se repete entre
@@ -198,7 +209,48 @@ public class FaturamentoVendasServlet extends HttpServlet {
         if (temOutros) nomesSerie.add("Outros");
         r.add("seriesProduto", nomesSerie);
 
+        r.add("precoMensal", precoMensal(precoMes, ordemProdutos));
         return r;
+    }
+
+    /**
+     * Preço médio de cada produto, mês a mês.
+     *
+     * O preço é valor ÷ quantidade do mês — ponderado pelo volume, e não a
+     * média dos preços unitários das notas. Mês sem quantidade não vira
+     * ponto: dividir por zero daria zero, e um zero no meio da linha lê como
+     * "o preço despencou", que é o contrário do que aconteceu.
+     */
+    private static JsonArray precoMensal(Map<String, Map<String, Acum>> porProdutoMes,
+                                         List<String> ordem) {
+        JsonArray arr = new JsonArray();
+        for (String produto : ordem) {
+            Map<String, Acum> porMes = porProdutoMes.get(produto);
+            if (porMes == null || porMes.isEmpty()) continue;
+
+            JsonArray pontos = new JsonArray();
+            String unidade = "";
+            for (Map.Entry<String, Acum> e : porMes.entrySet()) {
+                Acum a = e.getValue();
+                if (a.qtd.signum() == 0) continue;
+                if (unidade.isEmpty()) unidade = a.unidade;
+                JsonObject pt = new JsonObject();
+                pt.addProperty("mes", e.getKey());
+                pt.addProperty("label", rotuloMes(e.getKey()));
+                pt.addProperty("preco", a.valor.divide(a.qtd, 4, RoundingMode.HALF_UP));
+                pt.addProperty("quantidade", a.qtd);
+                pt.addProperty("valor", a.valor);
+                pontos.add(pt);
+            }
+            if (pontos.size() == 0) continue;
+
+            JsonObject o = new JsonObject();
+            o.addProperty("produto", produto);
+            o.addProperty("unidade", unidade);
+            o.add("pontos", pontos);
+            arr.add(o);
+        }
+        return arr;
     }
 
     /** Acumulador de quantidade e valor por dimensão. */

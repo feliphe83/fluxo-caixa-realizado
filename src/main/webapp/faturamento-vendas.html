@@ -116,6 +116,26 @@
 
   .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 
+  /* Um gráfico por produto, cada um com a sua escala. Açúcar em tonelada e
+     etanol em metro cúbico num eixo só deixaria o açúcar rente ao zero — dois
+     eixos no mesmo gráfico é pior ainda, porque deixa comparar alturas que
+     não são comparáveis. */
+  .mini-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; }
+  .mini { border: 1px solid var(--borda); border-radius: 12px; padding: 14px 16px 10px;
+          background: var(--papel-2); }
+  .mini .cab { display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px; }
+  .mini .nome { font-size: 13.5px; font-weight: 700; color: var(--ink);
+                display: flex; align-items: center; gap: 8px; }
+  .mini .nome i { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  .mini .un { font-size: 11px; color: var(--ink-3); text-transform: uppercase;
+              letter-spacing: .5px; font-weight: 600; margin-left: auto; }
+  .mini .atual { font-size: 22px; font-weight: 800; color: var(--ink); margin-top: 6px; }
+  .mini .var { font-size: 12px; font-weight: 700; margin-top: 2px; }
+  .mini .var.sobe { color: #0ca30c; }
+  .mini .var.desce { color: #d03b3b; }
+  .mini .var.igual { color: var(--ink-3); }
+  .mini .tela { position: relative; height: 130px; margin-top: 8px; }
+
   .estado { text-align: center; padding: 60px 20px; color: var(--ink-3); font-size: 14px; }
   .spinner { width: 28px; height: 28px; border: 2.5px solid var(--borda);
              border-top-color: var(--serie-1); border-radius: 50%;
@@ -335,18 +355,138 @@ function render(d) {
       <div class="grafico-caixa alto"><canvas id="gMeses"></canvas></div>
     </div>
 
+    ${secaoPreco(d)}
+
     <div class="grid-2">
-      ${tabelaCorte('4', 'Por cliente', d.porCliente, 'Cliente')}
-      ${tabelaCorte('5', 'Por estado', d.porEstado, 'UF')}
+      ${tabelaCorte('5', 'Por cliente', d.porCliente, 'Cliente')}
+      ${tabelaCorte('6', 'Por estado', d.porEstado, 'UF')}
     </div>
     <div class="grid-2">
-      ${tabelaCorte('6', 'Por destino do item', d.porDestino, 'Destino')}
-      ${tabelaCorte('7', 'Por rotina fiscal', d.porRotina, 'Rotina')}
+      ${tabelaCorte('7', 'Por destino do item', d.porDestino, 'Destino')}
+      ${tabelaCorte('8', 'Por rotina fiscal', d.porRotina, 'Rotina')}
     </div>
   `;
 
   desenharProduto(d);
   desenharMeses(d);
+  desenharPrecos(d);
+}
+
+/* Quais produtos entram na evolução de preço. Casa por trecho do nome, e
+   não por descrição exata: o cadastro escreve "AÇÚCAR VHP", "Acucar Cristal"
+   e afins, e um nome fixo aqui quebraria no primeiro produto renomeado.
+
+   O "exceto" existe por causa de CANA DE AÇÚCAR: ela contém "açúcar" no
+   nome, mas é matéria-prima, não o produto vendido — o preço dela não
+   pertence a esta seção. */
+const PRECO_FAMILIAS = [
+  { casa: /acucar/, exceto: /cana/ },
+  { casa: /anidro/ },
+  { casa: /hidratado/ }
+];
+
+function semAcento(v) {
+  return String(v == null ? '' : v).normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+function ehProdutoDePreco(nome) {
+  const t = semAcento(nome);
+  return PRECO_FAMILIAS.some(f => f.casa.test(t) && !(f.exceto && f.exceto.test(t)));
+}
+
+function secaoPreco(d) {
+  const alvo = (d.precoMensal || []).filter(p => ehProdutoDePreco(p.produto)
+                                             && (p.pontos || []).length > 0);
+  if (!alvo.length) return '';
+
+  return `
+    <div class="secao">
+      <div class="secao-header"><span class="secao-num">4</span>
+        <span class="secao-titulo">Evolução do preço</span></div>
+      <div class="secao-sub">Preço médio por mês — valor faturado ÷ quantidade,
+        ponderado pelo volume. Cada produto na sua própria escala e unidade.</div>
+      <div class="mini-grid">
+        ${alvo.map((p, i) => cartaoPreco(p, i)).join('')}
+      </div>
+    </div>`;
+}
+
+function cartaoPreco(p, i) {
+  const pts = p.pontos;
+  const ultimo = Number(pts[pts.length - 1].preco) || 0;
+  const primeiro = Number(pts[0].preco) || 0;
+  const varPct = primeiro > 0 ? (ultimo / primeiro - 1) * 100 : 0;
+  const classe = Math.abs(varPct) < 0.05 ? 'igual' : (varPct > 0 ? 'sobe' : 'desce');
+  const seta = classe === 'igual' ? '→' : (varPct > 0 ? '↑' : '↓');
+  const cor = corDoProduto(p.produto);
+
+  return `
+    <div class="mini">
+      <div class="cab">
+        <span class="nome"><i style="background:${cor}"></i>${esc(p.produto)}</span>
+        <span class="un">R$ / ${esc(p.unidade || 'un')}</span>
+      </div>
+      <div class="atual">${fmtMoeda(ultimo)}</div>
+      <div class="var ${classe}">${seta} ${fmtNum(Math.abs(varPct), 1)}%
+        <span style="color:var(--ink-3);font-weight:500">
+          desde ${esc(pts[0].label)}${pts.length > 1 ? ' · ' + pts.length + ' meses' : ''}</span></div>
+      <div class="tela"><canvas id="gPreco${i}"></canvas></div>
+    </div>`;
+}
+
+function desenharPrecos(d) {
+  const alvo = (d.precoMensal || []).filter(p => ehProdutoDePreco(p.produto)
+                                             && (p.pontos || []).length > 0);
+  alvo.forEach((p, i) => {
+    const pts = p.pontos;
+    const valores = pts.map(x => Number(x.preco) || 0);
+    // A escala não começa no zero: variação de preço se lê na inclinação, e
+    // um eixo de 0 a 3.500 achataria uma oscilação de 8% até ela sumir. O
+    // eixo vem rotulado para ninguém ler a altura da linha como se fosse o
+    // valor.
+    //
+    // A folga sai por "grace", e não por min/max calculados: fixando os
+    // limites, o Chart.js rotulava exatamente eles e o eixo saía com números
+    // quebrados como "R$ 3.469". Com grace ele escolhe marcas redondas.
+
+    criar('gPreco' + i, {
+      type: 'line',
+      data: {
+        labels: pts.map(x => x.label),
+        datasets: [{
+          data: valores,
+          borderColor: corDoProduto(p.produto),
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          pointRadius: pts.length > 14 ? 0 : 4,
+          pointBackgroundColor: corDoProduto(p.produto),
+          pointBorderColor: '#ffffff',
+          pointBorderWidth: 2,
+          tension: .25
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        scales: {
+          x: { grid: { display: false }, border: { color: '#e3e8f5' },
+               ticks: { color: '#898781', font: { size: 10 }, maxRotation: 0,
+                        autoSkipPadding: 12 } },
+          y: { grace: '25%', beginAtZero: false,
+               grid: { color: '#e9edf6' }, border: { display: false },
+               ticks: { color: '#898781', font: { size: 10 }, maxTicksLimit: 4,
+                        callback: v => 'R$ ' + fmtNum(v, 0) } }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: {
+            label: c => fmtMoeda(c.raw) + ' / ' + (p.unidade || 'un'),
+            afterLabel: c => 'Volume: ' + fmtNum(pts[c.dataIndex].quantidade)
+                           + ' ' + (p.unidade || '')
+          } }
+        }
+      }
+    });
+  });
 }
 
 function tabelaCorte(num, titulo, linhas, rotulo) {
