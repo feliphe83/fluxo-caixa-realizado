@@ -14,8 +14,10 @@
    que fica o dia inteiro. Sai idêntico em 4K, em 1366×768 ou na janela de
    quem for conferir do computador.
 
-   Nem tudo cabe de uma vez, então o painel tem VISÕES: a capa fica sempre à
-   mostra e o miolo troca pelos botões do topo.
+   TUDO em uma tela só, sem botão para trocar de assunto: numa parede não há
+   quem clique, e informação atrás de clique é informação que ninguém vê. O
+   preço disso é fonte menor e listas cortadas nos maiores — o que cabe é o
+   que importa primeiro.
    ──────────────────────────────────────────────────────────────────────── */
   :root {
     --serie-1: #2a78d6;
@@ -41,7 +43,7 @@
   html, body {
     height: 100%; background: var(--fundo); color: var(--ink-2);
     font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-    overflow: hidden;                 /* TV não rola */
+    overflow: hidden;
     font-variant-numeric: tabular-nums;
   }
 
@@ -50,104 +52,93 @@
     position: absolute; left: 50%; top: 50%;
     width: 1920px; height: 1080px;
     transform-origin: center center;
-    padding: 34px 42px 30px;
-    display: grid; grid-template-rows: auto auto 1fr; gap: 20px;
+    padding: 22px 26px 20px;
+    display: grid; grid-template-rows: auto auto 1fr 1fr; gap: 14px;
   }
 
   /* ── Cabeçalho ── */
-  .topo { display: flex; align-items: center; gap: 20px;
-          padding-bottom: 16px; border-bottom: 1px solid var(--borda); }
-  .topo img { width: 56px; height: 56px; object-fit: contain;
-              background: var(--ink); border-radius: 12px; padding: 6px; }
-  .topo h1 { font-size: 36px; font-weight: 750; letter-spacing: -.5px; color: var(--ink); }
-  .topo .sub { font-size: 16px; color: var(--ink-3); margin-top: 3px; letter-spacing: .2px; }
+  .topo { display: flex; align-items: center; gap: 16px; }
+  .topo img { width: 46px; height: 46px; object-fit: contain;
+              background: var(--ink); border-radius: 10px; padding: 5px; }
+  .topo h1 { font-size: 30px; font-weight: 750; letter-spacing: -.5px; color: var(--ink); }
+  .topo .sub { font-size: 14px; color: var(--ink-3); margin-top: 2px; }
   .topo .direita { margin-left: auto; text-align: right; }
-  .selo-safra { font-size: 24px; font-weight: 700; color: var(--ink);
+  .selo-safra { font-size: 21px; font-weight: 700; color: var(--ink);
                 background: var(--papel); border: 1px solid var(--borda);
-                border-radius: 10px; padding: 7px 16px; font-family: inherit;
-                cursor: pointer; appearance: none; text-align: center;
-                text-align-last: center; }
-  .selo-safra:hover { border-color: #b9c6e0; }
-  .relogio { font-size: 14px; color: var(--ink-3); margin-top: 7px; }
+                border-radius: 9px; padding: 6px 14px; font-family: inherit;
+                cursor: pointer; appearance: none; text-align: center; text-align-last: center; }
+  .relogio { font-size: 13px; color: var(--ink-3); margin-top: 5px; }
 
-  /* ── Capa: sempre à mostra ── */
-  .capa { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  /* ── Capa ── */
+  .capa { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
   .cartao { background: var(--papel); border: 1px solid var(--borda);
-            border-radius: 14px; padding: 16px 20px 18px; position: relative; overflow: hidden; }
+            border-radius: 12px; padding: 12px 18px 13px; position: relative; overflow: hidden; }
   .cartao::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
   .c-receita::before { background: var(--ink); }
   .c-acucar::before  { background: var(--serie-4); }
   .c-etanol::before  { background: var(--serie-1); }
   .c-cana::before    { background: var(--serie-3); }
-  .cartao .rot { font-size: 14px; font-weight: 700; color: var(--rotulo);
+  .cartao .rot { font-size: 12.5px; font-weight: 700; color: var(--rotulo);
                  text-transform: uppercase; letter-spacing: .9px; }
-  .cartao .cifra { font-size: 40px; font-weight: 800; color: var(--ink);
-                   line-height: 1.12; margin-top: 8px; letter-spacing: -1.2px;
-                   white-space: nowrap; }
-  .c-receita .cifra { font-size: 46px; }
-  .cartao .un { font-size: 20px; font-weight: 600; color: var(--ink-3); margin-left: 5px;
-                letter-spacing: 0; }
-  .cartao .base { font-size: 13px; color: var(--ink-3); margin-top: 7px; line-height: 1.35; }
-  .cartao .vazio { font-size: 32px; font-weight: 700; color: var(--ink-3); margin-top: 8px; }
+  .cartao .cifra { font-size: 34px; font-weight: 800; color: var(--ink);
+                   line-height: 1.1; margin-top: 5px; letter-spacing: -1px; white-space: nowrap; }
+  .c-receita .cifra { font-size: 38px; }
+  .cartao .un { font-size: 17px; font-weight: 600; color: var(--ink-3); margin-left: 4px; }
+  .cartao .base { font-size: 11.5px; color: var(--ink-3); margin-top: 4px; }
+  .cartao .vazio { font-size: 28px; font-weight: 700; color: var(--ink-3); margin-top: 5px; }
 
-  /* ── Visões ── */
-  .painel { background: var(--papel); border: 1px solid var(--borda); border-radius: 16px;
-            padding: 18px 24px 16px; display: flex; flex-direction: column; min-height: 0; }
-  .painel-cab { display: flex; align-items: center; gap: 16px; margin-bottom: 10px; }
-  .painel-cab h2 { font-size: 22px; font-weight: 750; color: var(--ink); }
-  .painel-cab .dica { font-size: 14px; color: var(--ink-3); text-transform: uppercase;
-                      letter-spacing: 1px; font-weight: 600; }
-  .botoes { display: flex; gap: 8px; margin-left: auto; }
-  .botao { padding: 9px 18px; border-radius: 999px; border: 1px solid var(--borda);
-           background: var(--papel-2); color: var(--ink-2); font-size: 15px;
-           font-weight: 650; cursor: pointer; font-family: inherit; transition: all .15s; }
-  .botao:hover { border-color: #b9c6e0; color: var(--ink); }
-  .botao.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+  /* ── Quadrantes ── */
+  .linha { display: grid; gap: 14px; min-height: 0; }
+  .linha.a { grid-template-columns: 1.32fr 1fr; }
+  .linha.b { grid-template-columns: 1.55fr 1fr; }
 
-  .visao { display: none; flex: 1; min-height: 0; }
-  .visao.on { display: flex; flex-direction: column; }
+  .bloco { background: var(--papel); border: 1px solid var(--borda); border-radius: 12px;
+           padding: 12px 16px 10px; display: flex; flex-direction: column; min-height: 0; }
+  .bloco h2 { font-size: 17px; font-weight: 750; color: var(--ink); }
+  .bloco .dica { font-size: 11.5px; color: var(--ink-3); text-transform: uppercase;
+                 letter-spacing: .9px; font-weight: 600; }
+  .bloco .cab { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; flex: none; }
   .tela { flex: 1; position: relative; min-height: 0; }
 
-  /* Por produto: gráfico e tabela lado a lado, que numa TV cabem juntos. */
-  .lado-a-lado { display: grid; grid-template-columns: 1.15fr 1fr; gap: 24px;
-                 flex: 1; min-height: 0; }
-  table { width: 100%; border-collapse: collapse; font-size: 17px; }
-  thead th { text-align: left; font-size: 13px; font-weight: 700; color: var(--rotulo);
-             text-transform: uppercase; letter-spacing: .6px; padding: 8px 10px;
+  /* ── Tabelas ── */
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  thead th { text-align: left; font-size: 10.5px; font-weight: 700; color: var(--rotulo);
+             text-transform: uppercase; letter-spacing: .6px; padding: 4px 7px;
              border-bottom: 1.5px solid var(--borda); white-space: nowrap; }
-  tbody td { padding: 9px 10px; border-bottom: 1px solid #f0f3f9; }
+  tbody td { padding: 6px 7px; border-bottom: 1px solid #f4f6fb; }
   tbody tr:last-child td { border-bottom: none; }
   .num { text-align: right; white-space: nowrap; }
-  tfoot td { padding: 10px; font-weight: 800; color: var(--ink);
-             border-top: 1.5px solid var(--borda); font-size: 18px; }
-  .pilula { display: inline-flex; align-items: center; gap: 9px; }
-  .pilula i { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+  tfoot td { padding: 7px; font-weight: 800; color: var(--ink);
+             border-top: 1.5px solid var(--borda); font-size: 15px; }
+  .pilula { display: inline-flex; align-items: center; gap: 8px; }
+  .pilula i { width: 10px; height: 10px; border-radius: 3px; flex: none; }
 
-  /* Preços: um gráfico por produto, cada um na sua escala. */
-  .mini-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
-               gap: 20px; flex: 1; min-height: 0; }
-  .mini { border: 1px solid var(--borda); border-radius: 12px; padding: 14px 18px 10px;
+  /* ── Preços: um gráfico por produto ── */
+  .minis { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 12px;
+           flex: 1; min-height: 0; }
+  .mini { border: 1px solid var(--borda); border-radius: 10px; padding: 9px 12px 6px;
           background: var(--papel-2); display: flex; flex-direction: column; min-height: 0; }
-  .mini .cab { display: flex; align-items: baseline; gap: 10px; }
-  .mini .nome { font-size: 17px; font-weight: 700; color: var(--ink);
-                display: flex; align-items: center; gap: 9px; }
-  .mini .nome i { width: 11px; height: 11px; border-radius: 3px; flex: none; }
-  .mini .un { font-size: 13px; color: var(--ink-3); text-transform: uppercase;
-              letter-spacing: .6px; font-weight: 600; margin-left: auto; }
-  .mini .atual { font-size: 28px; font-weight: 800; color: var(--ink); margin-top: 6px; }
-  .mini .var { font-size: 14px; font-weight: 700; margin-top: 2px; }
+  .mini .nome { font-size: 13px; font-weight: 700; color: var(--ink);
+                display: flex; align-items: center; gap: 7px; }
+  .mini .nome i { width: 9px; height: 9px; border-radius: 2px; flex: none; }
+  .mini .atual { font-size: 21px; font-weight: 800; color: var(--ink); margin-top: 3px;
+                 white-space: nowrap; }
+  .mini .atual small { font-size: 11px; font-weight: 600; color: var(--ink-3); margin-left: 3px; }
+  .mini .var { font-size: 11.5px; font-weight: 700; margin-top: 1px; }
   .mini .var.sobe { color: #0ca30c; }
   .mini .var.desce { color: #d03b3b; }
   .mini .var.igual { color: var(--ink-3); }
-  .mini .tela { margin-top: 8px; }
+  .mini .tela { margin-top: 4px; }
 
-  /* Cortes: quatro tabelas em grade. */
-  .quatro { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
-            gap: 18px 28px; flex: 1; min-height: 0; }
-  .corte { display: flex; flex-direction: column; min-height: 0; }
-  .corte h3 { font-size: 15px; font-weight: 700; color: var(--rotulo);
-              text-transform: uppercase; letter-spacing: .9px; margin-bottom: 6px; }
-  .corte .rolagem { overflow: hidden; }
+  /* ── Cortes: quatro listas curtas ── */
+  .cortes { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
+            gap: 8px 18px; flex: 1; min-height: 0; }
+  .corte h3 { font-size: 11px; font-weight: 700; color: var(--rotulo);
+              text-transform: uppercase; letter-spacing: .8px; margin-bottom: 2px; }
+  .corte table { font-size: 13px; }
+  .corte tbody td { padding: 3.5px 4px; border-bottom: none; }
+  .corte .nome { max-width: 210px; overflow: hidden; text-overflow: ellipsis;
+                 white-space: nowrap; }
 
   /* ── Estados ── */
   .aviso { position: fixed; inset: 0; display: none; place-items: center;
@@ -181,25 +172,26 @@
 
   <div class="capa" id="capa"></div>
 
-  <div class="painel">
-    <div class="painel-cab">
-      <h2 id="tituloVisao">Mês a mês</h2>
-      <span class="dica" id="dicaVisao"></span>
-      <div class="botoes" id="botoes"></div>
+  <div class="linha a">
+    <div class="bloco">
+      <div class="cab"><h2>Mês a mês, por produto</h2><span class="dica">valor faturado dos itens</span></div>
+      <div class="tela"><canvas id="gMeses"></canvas></div>
     </div>
-
-    <div class="visao on" id="v-meses"><div class="tela"><canvas id="gMeses"></canvas></div></div>
-
-    <div class="visao" id="v-produto">
-      <div class="lado-a-lado">
-        <div class="tela"><canvas id="gProduto"></canvas></div>
-        <div id="tabProduto"></div>
-      </div>
+    <div class="bloco">
+      <div class="cab"><h2>Por produto</h2><span class="dica">quantidade, preço médio e %</span></div>
+      <div id="tabProduto" style="flex:1;min-height:0;overflow:hidden"></div>
     </div>
+  </div>
 
-    <div class="visao" id="v-precos"><div class="mini-grid" id="miniGrid"></div></div>
-
-    <div class="visao" id="v-cortes"><div class="quatro" id="cortes"></div></div>
+  <div class="linha b">
+    <div class="bloco">
+      <div class="cab"><h2>Evolução do preço</h2><span class="dica">média mensal ponderada pelo volume</span></div>
+      <div class="minis" id="minis"></div>
+    </div>
+    <div class="bloco">
+      <div class="cab"><h2>Cliente, estado, destino e rotina</h2><span class="dica">maiores</span></div>
+      <div class="cortes" id="cortes"></div>
+    </div>
   </div>
 
 </div></div>
@@ -213,21 +205,12 @@
 <script>
 const CORES = ['#2a78d6','#eb6834','#1baf7a','#eda100','#e87ba4','#008300'];
 const COR_OUTROS = '#98a2b3';
-/* De quanto em quanto tempo o painel se atualiza sozinho. Faturamento muda
-   por nota emitida, não por minuto — dez minutos basta e não castiga o
-   Oracle. */
+/* Faturamento muda por nota emitida, não por minuto — dez minutos basta e
+   não castiga o Oracle. */
 const INTERVALO_MS = 10 * 60 * 1000;
-/* A partir daqui o dado na tela é velho o bastante para avisar. */
 const VELHO_MS = 40 * 60 * 1000;
 
-const VISOES = [
-  { id: 'meses',   botao: 'Mês a mês',  titulo: 'Mês a mês, por produto', dica: 'valor faturado dos itens' },
-  { id: 'produto', botao: 'Produtos',   titulo: 'Por produto',            dica: 'quantidade, preço médio e participação' },
-  { id: 'precos',  botao: 'Preços',     titulo: 'Evolução do preço',      dica: 'preço médio por mês, ponderado pelo volume' },
-  { id: 'cortes',  botao: 'Cortes',     titulo: 'Cliente, estado, destino e rotina', dica: 'maiores primeiro' }
-];
-
-let DADOS = null, ULTIMO_OK = 0, VISAO = 'meses';
+let DADOS = null, ULTIMO_OK = 0;
 const graficos = {};
 
 const fmtMoeda = v => 'R$ ' + (Number(v)||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
@@ -239,22 +222,19 @@ const fmtMoedaCurta = v => {
 };
 const fmtNum = (v, c) => (Number(v)||0).toLocaleString('pt-BR',
   {minimumFractionDigits: c==null?2:c, maximumFractionDigits: c==null?2:c});
-const fmtInt = v => (Number(v)||0).toLocaleString('pt-BR');
 const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const fmtData = iso => {
   const m = String(iso||'').match(/^(\d{4})-(\d{2})-(\d{2})/);
   return m ? `${m[3]}/${m[2]}/${m[1]}` : (iso||'');
 };
 
-/* A escala é fixa por posição na lista de produtos: a cor segue o produto, e
-   não o lugar dele no ranking do mês. */
+/* A cor segue o produto, e não o lugar dele no ranking do mês. */
 function corDoProduto(nome) {
   if (!DADOS || nome === 'Outros') return COR_OUTROS;
   const i = (DADOS.seriesProduto || []).indexOf(nome);
   return i >= 0 && i < CORES.length ? CORES[i] : COR_OUTROS;
 }
 
-/* O palco tem tamanho fixo e é escalado — nunca reorganizado. */
 function ajustarEscala() {
   const s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
   document.getElementById('palco').style.transform =
@@ -262,9 +242,9 @@ function ajustarEscala() {
 }
 window.addEventListener('resize', ajustarEscala);
 
-// ── Safra ─────────────────────────────────────────────────────────────────
-// De 01/03 a 28/02. O fim sai de "dia 0 de março", que o próprio JavaScript
-// resolve como o último dia de fevereiro — ano bissexto vira 29/02 sozinho.
+// ── Safra: 01/03 a 28/02 ──────────────────────────────────────────────────
+// O fim sai de "dia 0 de março", que o próprio JavaScript resolve como o
+// último dia de fevereiro — ano bissexto vira 29/02 sozinho.
 function safraDe(ano) {
   const dd = n => String(n).padStart(2, '0');
   const fim = new Date(ano + 1, 2, 0);
@@ -287,33 +267,6 @@ function montarSafras() {
 }
 const safraEscolhida = () => SAFRAS[Number(document.getElementById('selSafra').value) || 0];
 
-// ── Visões ────────────────────────────────────────────────────────────────
-function montarBotoes() {
-  document.getElementById('botoes').innerHTML = VISOES.map(v =>
-    `<button class="botao ${v.id === VISAO ? 'on' : ''}" onclick="trocarVisao('${v.id}')">${esc(v.botao)}</button>`
-  ).join('');
-}
-
-function trocarVisao(id) {
-  VISAO = id;
-  const v = VISOES.find(x => x.id === id) || VISOES[0];
-  document.getElementById('tituloVisao').textContent = v.titulo;
-  document.getElementById('dicaVisao').textContent = v.dica;
-  VISOES.forEach(x =>
-    document.getElementById('v-' + x.id).classList.toggle('on', x.id === id));
-  montarBotoes();
-  // Chart.js só mede o canvas quando ele está visível: um gráfico desenhado
-  // dentro de uma visão escondida sai com 0 de altura e some ao aparecer.
-  // Por isso o desenho acontece na TROCA, e não uma vez só no carregamento.
-  if (DADOS) desenharVisao(id);
-}
-
-function desenharVisao(id) {
-  if (id === 'meses')   desenharMeses(DADOS);
-  if (id === 'produto') desenharProduto(DADOS);
-  if (id === 'precos')  desenharPrecos(DADOS);
-}
-
 // ── Carregamento ──────────────────────────────────────────────────────────
 async function carregar() {
   const s = safraEscolhida();
@@ -322,8 +275,6 @@ async function carregar() {
     const r = await fetch(`api/faturamento-vendas?dataIni=${s.ini}&dataFim=${s.fim}`,
                           { headers: { 'Accept': 'application/json' }, cache: 'no-store' });
     if (r.status === 401) {
-      // Numa TV, mandar para o formulário de login troca o painel por uma
-      // tela que ninguém vai preencher — melhor manter os números e dizer.
       document.getElementById('tarja').textContent =
         '⚠ Sessão expirada — faça login neste navegador para o painel voltar a atualizar';
       document.getElementById('tarja').classList.add('on');
@@ -355,7 +306,8 @@ function render(d) {
   montarTabelaProduto(d);
   montarMinis(d);
   montarCortes(d);
-  desenharVisao(VISAO);
+  desenharMeses(d);
+  desenharPrecos(d);
 }
 
 function faixaCapa(d) {
@@ -373,7 +325,7 @@ function faixaCapa(d) {
          <div class="vazio">—</div><div class="base">Tonelagem indisponível</div></div>`
     : `<div class="cartao c-cana"><div class="rot">Preço médio · cana equiv.</div>
          <div class="cifra">${fmtMoeda(cana.preco)}<span class="un">/ t</span></div>
-         <div class="base">Receita bruta ÷ ${fmtNum(cana.toneladas, 0)} t de cana</div></div>`;
+         <div class="base">Receita ÷ ${fmtNum(cana.toneladas, 0)} t de cana</div></div>`;
 
   return `
     <div class="cartao c-receita">
@@ -389,11 +341,11 @@ function faixaCapa(d) {
 }
 
 function montarTabelaProduto(d) {
-  const linhas = (d.porProduto || []).slice(0, 10);
+  const linhas = (d.porProduto || []).slice(0, 9);
   document.getElementById('tabProduto').innerHTML = `
     <table>
       <thead><tr><th>Produto</th><th class="num">Qtd.</th><th>Un.</th>
-        <th class="num">Preço médio</th><th class="num">%</th></tr></thead>
+        <th class="num">Preço médio</th><th class="num">Faturado</th><th class="num">%</th></tr></thead>
       <tbody>
         ${linhas.map(p => `
           <tr>
@@ -401,17 +353,18 @@ function montarTabelaProduto(d) {
             <td class="num">${fmtNum(p.quantidade, 0)}</td>
             <td>${esc(p.unidade || '—')}</td>
             <td class="num">${fmtMoeda(p.precoMedio)}</td>
+            <td class="num">${fmtMoedaCurta(p.valor)}</td>
             <td class="num">${fmtNum(p.pct, 1)}%</td>
           </tr>`).join('')}
       </tbody>
-      <tfoot><tr><td>TOTAL</td><td class="num"></td><td></td>
+      <tfoot><tr><td>TOTAL</td><td class="num"></td><td></td><td></td>
         <td class="num">${fmtMoedaCurta(d.valorItens)}</td><td class="num">100%</td></tr></tfoot>
     </table>`;
 }
 
 function montarMinis(d) {
   const alvo = (d.precoMensal || []).filter(p => p.familia && (p.pontos || []).length);
-  document.getElementById('miniGrid').innerHTML = alvo.map((p, i) => {
+  document.getElementById('minis').innerHTML = alvo.map((p, i) => {
     const pts = p.pontos;
     const ultimo = Number(pts[pts.length - 1].preco) || 0;
     const primeiro = Number(pts[0].preco) || 0;
@@ -420,37 +373,30 @@ function montarMinis(d) {
     const seta = cl === 'igual' ? '→' : (vp > 0 ? '↑' : '↓');
     return `
       <div class="mini">
-        <div class="cab">
-          <span class="nome"><i style="background:${corDoProduto(p.produto)}"></i>${esc(p.produto)}</span>
-          <span class="un">R$ / ${esc(p.unidade || 'un')}</span>
-        </div>
-        <div class="atual">${fmtMoeda(ultimo)}</div>
+        <div class="nome"><i style="background:${corDoProduto(p.produto)}"></i>${esc(p.produto)}</div>
+        <div class="atual">${fmtMoeda(ultimo)}<small>/ ${esc(p.unidade || 'un')}</small></div>
         <div class="var ${cl}">${seta} ${fmtNum(Math.abs(vp), 1)}% desde ${esc(pts[0].label)}</div>
         <div class="tela"><canvas id="gPreco${i}"></canvas></div>
       </div>`;
-  }).join('') || '<div style="color:var(--ink-3);font-size:22px">Sem venda de açúcar ou etanol na safra</div>';
+  }).join('') || '<div style="color:var(--ink-3);font-size:16px">Sem venda de açúcar ou etanol na safra</div>';
 }
 
 function montarCortes(d) {
   const bloco = (titulo, linhas) => !linhas || !linhas.length ? '' : `
     <div class="corte">
       <h3>${esc(titulo)}</h3>
-      <div class="rolagem">
-        <table>
-          <tbody>
-            ${linhas.slice(0, 6).map(l => `
-              <tr><td>${esc(l.nome)}</td>
-                  <td class="num">${fmtMoedaCurta(l.valor)}</td>
-                  <td class="num" style="color:var(--ink-3);width:70px">${fmtNum(l.pct, 1)}%</td></tr>`).join('')}
-          </tbody>
-        </table>
-      </div>
+      <table><tbody>
+        ${linhas.slice(0, 5).map(l => `
+          <tr><td class="nome">${esc(l.nome)}</td>
+              <td class="num">${fmtMoedaCurta(l.valor)}</td>
+              <td class="num" style="color:var(--ink-3);width:52px">${fmtNum(l.pct, 1)}%</td></tr>`).join('')}
+      </tbody></table>
     </div>`;
   document.getElementById('cortes').innerHTML =
-      bloco('Por cliente', d.porCliente)
-    + bloco('Por estado', d.porEstado)
-    + bloco('Por destino do item', d.porDestino)
-    + bloco('Por rotina fiscal', d.porRotina);
+      bloco('Cliente', d.porCliente)
+    + bloco('Estado', d.porEstado)
+    + bloco('Destino do item', d.porDestino)
+    + bloco('Rotina fiscal', d.porRotina);
 }
 
 // ── Gráficos ──────────────────────────────────────────────────────────────
@@ -467,23 +413,24 @@ function desenharMeses(d) {
         backgroundColor: corDoProduto(nome),
         // Borda na cor do cartão: é ela que abre o vão entre os pedaços
         // empilhados. Sem o vão, duas cores encostadas criam uma terceira.
-        borderColor: '#ffffff', borderWidth: 2, borderRadius: 3, borderSkipped: false
+        borderColor: '#ffffff', borderWidth: 1.5, borderRadius: 2, borderSkipped: false
       }))
     },
     options: {
       responsive: true, maintainAspectRatio: false, animation: false,
-      layout: { padding: { top: 30 } },
+      layout: { padding: { top: 20 } },
       scales: {
         x: { stacked: true, grid: { display: false }, border: { color: '#e3e8f5' },
-             ticks: { color: '#52514e', font: { size: 17, weight: '600' } } },
+             ticks: { color: '#52514e', font: { size: 13, weight: '600' } } },
         y: { stacked: true, grid: { color: '#e9edf6' }, border: { display: false },
-             ticks: { color: '#898781', font: { size: 15 }, callback: v => fmtMoedaCurta(v) } }
+             ticks: { color: '#898781', font: { size: 12 }, maxTicksLimit: 6,
+                      callback: v => fmtMoedaCurta(v) } }
       },
       plugins: {
         legend: { position: 'top', align: 'end',
-                  labels: { boxWidth: 14, boxHeight: 14, usePointStyle: true,
+                  labels: { boxWidth: 10, boxHeight: 10, usePointStyle: true,
                             pointStyle: 'rectRounded', color: '#52514e',
-                            font: { size: 16, weight: '600' } } },
+                            padding: 9, font: { size: 12, weight: '600' } } },
         tooltip: { enabled: false }
       }
     },
@@ -494,49 +441,11 @@ function desenharMeses(d) {
         const ult = chart.getDatasetMeta(chart.data.datasets.length - 1);
         if (!ult) return;
         ctx.save();
-        ctx.font = '700 18px system-ui, sans-serif';
+        ctx.font = '700 13px system-ui, sans-serif';
         ctx.fillStyle = '#0f2460'; ctx.textAlign = 'center';
         ult.data.forEach((b, i) => {
           if (!totais[i]) return;
-          ctx.fillText(fmtMoedaCurta(totais[i]), b.x, chart.scales.y.getPixelForValue(totais[i]) - 10);
-        });
-        ctx.restore();
-      }
-    }]
-  });
-}
-
-function desenharProduto(d) {
-  const dados = (d.porProduto || []).slice(0, 10);
-  criar('gProduto', {
-    type: 'bar',
-    data: {
-      labels: dados.map(p => p.nome),
-      datasets: [{ data: dados.map(p => Number(p.valor) || 0),
-                   backgroundColor: dados.map(p => corDoProduto(p.nome)),
-                   borderRadius: 4, borderSkipped: false }]
-    },
-    options: {
-      indexAxis: 'y', responsive: true, maintainAspectRatio: false, animation: false,
-      layout: { padding: { right: 96 } },
-      scales: {
-        x: { grid: { color: '#e9edf6' }, border: { display: false },
-             ticks: { color: '#898781', font: { size: 14 }, callback: v => fmtMoedaCurta(v) } },
-        y: { grid: { display: false }, border: { color: '#e3e8f5' },
-             ticks: { color: '#52514e', font: { size: 16, weight: '600' } } }
-      },
-      plugins: { legend: { display: false }, tooltip: { enabled: false } }
-    },
-    plugins: [{
-      id: 'valorNaPonta',
-      afterDatasetsDraw(chart) {
-        const ctx = chart.ctx;
-        ctx.save();
-        ctx.font = '700 16px system-ui, sans-serif';
-        ctx.fillStyle = '#0f2460'; ctx.textBaseline = 'middle';
-        chart.getDatasetMeta(0).data.forEach((b, i) => {
-          const v = chart.data.datasets[0].data[i];
-          if (v) ctx.fillText(fmtMoedaCurta(v), b.x + 10, b.y);
+          ctx.fillText(fmtMoedaCurta(totais[i]), b.x, chart.scales.y.getPixelForValue(totais[i]) - 7);
         });
         ctx.restore();
       }
@@ -555,22 +464,22 @@ function desenharPrecos(d) {
         datasets: [{
           data: pts.map(x => Number(x.preco) || 0),
           borderColor: corDoProduto(p.produto), backgroundColor: 'transparent',
-          borderWidth: 3, pointRadius: pts.length > 14 ? 0 : 5,
+          borderWidth: 2.5, pointRadius: pts.length > 12 ? 0 : 3.5,
           pointBackgroundColor: corDoProduto(p.produto),
-          pointBorderColor: '#ffffff', pointBorderWidth: 2, tension: .25
+          pointBorderColor: '#ffffff', pointBorderWidth: 1.5, tension: .25
         }]
       },
       options: {
         responsive: true, maintainAspectRatio: false, animation: false,
         scales: {
           x: { grid: { display: false }, border: { color: '#e3e8f5' },
-               ticks: { color: '#898781', font: { size: 13 }, maxRotation: 0, autoSkipPadding: 14 } },
+               ticks: { color: '#898781', font: { size: 10 }, maxRotation: 0, autoSkipPadding: 10 } },
           // Sem começar no zero: variação de preço se lê na inclinação, e um
           // eixo de 0 a 3.500 achataria uma oscilação de 8% até sumir. A folga
           // sai por "grace" para as marcas ficarem redondas.
           y: { grace: '25%', beginAtZero: false,
                grid: { color: '#e9edf6' }, border: { display: false },
-               ticks: { color: '#898781', font: { size: 13 }, maxTicksLimit: 4,
+               ticks: { color: '#898781', font: { size: 10 }, maxTicksLimit: 3,
                         callback: v => 'R$ ' + fmtNum(v, 0) } }
         },
         plugins: { legend: { display: false }, tooltip: { enabled: false } }
@@ -610,8 +519,6 @@ function conferirIdade() {
 
 ajustarEscala();
 montarSafras();
-montarBotoes();
-trocarVisao('meses');
 carregar();
 setInterval(carregar, INTERVALO_MS);
 setInterval(conferirIdade, 60 * 1000);
