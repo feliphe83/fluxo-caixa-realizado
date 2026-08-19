@@ -93,7 +93,9 @@
   /* ── Quadrantes ── */
   .linha { display: grid; gap: 14px; min-height: 0; }
   .linha.a { grid-template-columns: 1.32fr 1fr; }
-  .linha.b { grid-template-columns: 1.55fr 1fr; }
+  /* O bloco de preços puxa para a esquerda: são três gráficos que precisam de
+     largura para a linha respirar, contra duas listas curtas ao lado. */
+  .linha.b { grid-template-columns: 2.15fr 1fr; }
 
   .bloco { background: var(--papel); border: 1px solid var(--borda); border-radius: 12px;
            padding: 12px 16px 10px; display: flex; flex-direction: column; min-height: 0; }
@@ -536,11 +538,22 @@ function desenharMeses(d) {
 function desenharPrecos(d) {
   const alvo = (d.precoMensal || []).filter(p => p.familia && (p.pontos || []).length);
 
-  // Eixo de tempo COMUM a todos: um produto que só começou a vender em abril
-  // desenhava um gráfico com onze meses enquanto o vizinho tinha doze, e as
-  // duas linhas ficavam desalinhadas — comparar duas evoluções exige que o
-  // mesmo mês caia na mesma posição em todos os quadros.
-  const meses = (d.meses || []).map(m => ({ mes: m.mes, label: m.label }));
+  // Eixo de tempo COMUM a todos, recortado ao período com venda.
+  //
+  // Comum porque comparar duas evoluções exige que o mesmo mês caia na mesma
+  // posição em todos os quadros. Recortado porque a safra vai até agosto e a
+  // última venda foi em março: cinco meses vazios à direita empurravam as
+  // linhas para a esquerda e encolhiam o que há para ver.
+  //
+  // O recorte é do CONJUNTO, não de cada produto: cortar cada um no seu
+  // próprio último mês desalinharia os quadros de novo.
+  const todos = (d.meses || []).map(m => ({ mes: m.mes, label: m.label }));
+  const comVenda = new Set();
+  alvo.forEach(p => p.pontos.forEach(x => comVenda.add(x.mes)));
+  const indices = todos.map((m, i) => comVenda.has(m.mes) ? i : -1).filter(i => i >= 0);
+  const meses = indices.length
+    ? todos.slice(indices[0], indices[indices.length - 1] + 1)
+    : todos;
   const rotulos = meses.length ? meses.map(m => m.label)
                               : (alvo[0] ? alvo[0].pontos.map(x => x.label) : []);
 
@@ -568,7 +581,7 @@ function desenharPrecos(d) {
       },
       options: {
         responsive: true, maintainAspectRatio: false, animation: false,
-        layout: { padding: { top: 16, right: 34, left: 6 } },
+        layout: { padding: { top: 22, right: 16, left: 6 } },
         scales: {
           x: { grid: { display: false }, border: { color: '#e3e8f5' },
                ticks: { color: '#898781', font: { size: 10, weight: '700' },
@@ -586,7 +599,49 @@ function desenharPrecos(d) {
                         callback: v => 'R$ ' + fmtNum(v, 0) } }
         },
         plugins: { legend: { display: false }, tooltip: { enabled: false } }
-      }
+      },
+      plugins: [{
+        /*
+         * Rótulo em cada PICO — os pontos onde a linha muda de direção para
+         * baixo. São eles que marcam o topo de cada movimento de preço; o
+         * resto da linha é o caminho entre um e outro.
+         *
+         * Antes o rótulo ia no primeiro e no último ponto, que é informação
+         * que o cabeçalho do cartão já dá ("R$ 3,40 · ↑19,3% desde set/25").
+         *
+         * Dois picos vizinhos podem ficar perto demais: cada rótulo é medido
+         * contra o anterior e só sai se não encostar.
+         */
+        id: 'picos',
+        afterDatasetsDraw(chart) {
+          const ctx = chart.ctx;
+          const pts = chart.getDatasetMeta(0).data;
+          const v = chart.data.datasets[0].data;
+          ctx.save();
+          ctx.font = '800 12px system-ui, sans-serif';
+          ctx.fillStyle = '#0f2460';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+
+          let ocupadoAte = -Infinity;
+          for (let i = 0; i < v.length; i++) {
+            if (v[i] == null || !pts[i]) continue;
+            // Vizinhos com valor, saltando os meses sem venda.
+            let a = i - 1; while (a >= 0 && v[a] == null) a--;
+            let b = i + 1; while (b < v.length && v[b] == null) b++;
+            const subiu  = a < 0 || v[i] > v[a];
+            const desceu = b >= v.length || v[i] > v[b];
+            if (!(subiu && desceu)) continue;      // não é topo
+
+            const texto = fmtNum(v[i], v[i] < 100 ? 2 : 0);
+            const meia = ctx.measureText(texto).width / 2 + 6;
+            if (pts[i].x - meia < ocupadoAte) continue;
+            ctx.fillText(texto, pts[i].x, pts[i].y - 9);
+            ocupadoAte = pts[i].x + meia;
+          }
+          ctx.restore();
+        }
+      }]
     });
   });
 }
