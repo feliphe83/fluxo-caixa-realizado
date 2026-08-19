@@ -59,14 +59,12 @@
   .filtros-linha { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; }
   .campo label { display: block; font-size: 10.5px; font-weight: 700; color: var(--rotulo);
                  text-transform: uppercase; letter-spacing: .5px; margin-bottom: 5px; }
-  .campo input { padding: 9px 11px; border: 1px solid #cfd7e6; border-radius: 8px;
-                 font-size: 13.5px; font-family: inherit; color: #1a1a2e; outline: none; }
-  .campo input:focus { border-color: var(--serie-1); box-shadow: 0 0 0 3px rgba(42,120,214,.12); }
-  .campo select { padding: 9px 11px; border: 1px solid #cfd7e6; border-radius: 8px;
-                  font-size: 13.5px; font-family: inherit; color: #1a1a2e;
-                  background: var(--papel); outline: none; cursor: pointer; min-width: 170px; }
+  .campo select { padding: 10px 14px; border: 1px solid #cfd7e6; border-radius: 8px;
+                  font-size: 14.5px; font-weight: 600; font-family: inherit; color: var(--ink);
+                  background: var(--papel); outline: none; cursor: pointer; min-width: 210px; }
+  .campo select:disabled { opacity: .6; cursor: progress; }
   .campo select:focus { border-color: var(--serie-1); box-shadow: 0 0 0 3px rgba(42,120,214,.12); }
-  .periodo-txt { padding: 9px 2px; font-size: 13.5px; color: var(--ink-2); font-weight: 600; }
+  .atualizado { margin-left: auto; font-size: 12px; color: var(--ink-3); padding-bottom: 10px; }
 
   /* ── Faixa de capa ──
      Os quatro números que respondem "como foi a safra". Ficam acima de tudo
@@ -94,16 +92,6 @@
               letter-spacing: 0; }
   .capa .base { font-size: 11px; color: var(--ink-3); margin-top: 7px; line-height: 1.4; }
   .capa .vazio { font-size: 22px; font-weight: 700; color: var(--ink-3); margin-top: 8px; }
-  .btn-gerar { display: flex; align-items: center; gap: 8px; padding: 10px 20px;
-               background: var(--ink); color: white; border: none; border-radius: 8px;
-               font-size: 13.5px; font-weight: 650; cursor: pointer; font-family: inherit; }
-  .btn-gerar:hover { background: #16336f; }
-  .btn-gerar:disabled { opacity: .6; cursor: default; }
-  .atalhos { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-  .atalho { padding: 6px 13px; border: 1px solid var(--borda); border-radius: 999px;
-            background: var(--papel); font-size: 12.5px; color: var(--ink-2);
-            cursor: pointer; font-family: inherit; }
-  .atalho:hover { border-color: var(--serie-1); color: var(--ink); }
 
   /* ── Seções ── */
   .secao { background: var(--papel); border: 1px solid var(--borda); border-radius: 14px;
@@ -129,6 +117,9 @@
               border-left: 3px solid var(--serie-4); border-radius: 8px; padding: 10px 16px;
               font-size: 12px; color: var(--ink-2); line-height: 1.55; margin-top: 16px; }
   .nota-box b { color: var(--ink); }
+  /* Fora de seção: a nota deixou de ser rodapé do resumo e passou a comentar
+     a faixa de capa, logo acima dela. */
+  .nota-solta { margin-top: 0; margin-bottom: 20px; }
 
   /* ── Tabelas ── */
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -211,15 +202,7 @@
         <label for="selSafra">Safra</label>
         <select id="selSafra" onchange="carregar()"></select>
       </div>
-      <div class="campo">
-        <label>Período</label>
-        <div class="periodo-txt" id="periodoTxt">—</div>
-      </div>
-      <button class="btn-gerar" id="btnGerar" onclick="carregar()">
-        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <polygon points="5 3 19 12 5 21 5 3"/></svg>
-        Gerar
-      </button>
+      <div class="atualizado" id="atualizado"></div>
     </div>
   </div>
 
@@ -288,27 +271,22 @@ function montarSafras() {
   sel.innerHTML = SAFRAS.map((s, i) =>
     `<option value="${i}">Safra ${s.rotulo}${i === 0 ? ' (atual)' : ''}</option>`).join('');
   sel.value = '0';
-  mostrarPeriodo();
 }
 
 function safraEscolhida() {
   return SAFRAS[Number(document.getElementById('selSafra').value) || 0];
 }
 
-function mostrarPeriodo() {
-  const s = safraEscolhida();
-  document.getElementById('periodoTxt').textContent =
-    s ? fmtData(s.ini) + ' a ' + fmtData(s.fim) : '—';
-}
+
 
 async function carregar() {
-  mostrarPeriodo();
   const s = safraEscolhida();
   if (!s) return;
   const ini = s.ini, fim = s.fim;
 
-  const btn = document.getElementById('btnGerar');
-  btn.disabled = true;
+  const sel = document.getElementById('selSafra');
+  sel.disabled = true;
+  document.getElementById('atualizado').textContent = '';
   document.getElementById('resultado').innerHTML =
     '<div class="estado"><div class="spinner"></div>Consultando notas fiscais…</div>';
 
@@ -319,11 +297,13 @@ async function carregar() {
     if (!j.ok) throw new Error(j.erro || 'Consulta recusada');
     DADOS = j;
     render(j);
+    document.getElementById('atualizado').textContent =
+      fmtData(j.dataIni) + ' a ' + fmtData(j.dataFim) + ' · atualizado em ' + j.atualizadoEm;
   } catch (e) {
     document.getElementById('resultado').innerHTML =
       '<div class="estado erro">❌ ' + esc(e.message) + '</div>';
   } finally {
-    btn.disabled = false;
+    sel.disabled = false;
   }
 }
 
@@ -334,51 +314,23 @@ function render(d) {
     return;
   }
 
-  const ticket = d.notas > 0 ? Number(d.valorNotas) / d.notas : 0;
-
   document.getElementById('resultado').innerHTML = `
     ${faixaCapa(d)}
 
-    <div class="secao">
-      <div class="secao-header"><span class="secao-num">1</span>
-        <span class="secao-titulo">Resumo</span></div>
-      <div class="secao-sub">${esc(fmtData(d.dataIni))} a ${esc(fmtData(d.dataFim))} · atualizado em ${esc(d.atualizadoEm)}</div>
-      <div class="kpi-row">
-        <div class="kpi">
-          <div class="valor">${fmtMoedaCurta(d.valorItens)}</div>
-          <div class="rotulo">Faturado (itens)</div>
-          <div class="sub">${fmtMoeda(d.valorItens)}</div>
-        </div>
-        <div class="kpi">
-          <div class="valor">${fmtInt(d.notas)}</div>
-          <div class="rotulo">Notas fiscais</div>
-          <div class="sub">${fmtInt(d.itens)} itens</div>
-        </div>
-        <div class="kpi">
-          <div class="valor">${fmtMoedaCurta(ticket)}</div>
-          <div class="rotulo">Ticket médio por nota</div>
-          <div class="sub">valor total da nota ÷ notas</div>
-        </div>
-        <div class="kpi">
-          <div class="valor">${fmtInt(d.porProduto.length)}</div>
-          <div class="rotulo">Produtos vendidos</div>
-          <div class="sub">${esc(d.porProduto[0].nome)} lidera</div>
-        </div>
-      </div>
-      <div class="nota-box">
-        <span>⚠️</span>
-        <span><b>Impostos e total da nota são por NOTA, não por produto.</b>
-        Eles vêm repetidos em cada item, então são somados uma vez por nota —
-        no período: ICMS ${fmtMoeda(d.icms)}, IPI ${fmtMoeda(d.ipi)},
-        ICMS ST ${fmtMoeda(d.icmsSt)}, desconto ${fmtMoeda(d.desconto)},
-        outras despesas ${fmtMoeda(d.outrasDesp)}.
-        A quebra por produto usa o <b>valor do item</b>, que é o único que
-        separa por produto de verdade.</span>
-      </div>
+    <div class="nota-box nota-solta">
+      <span>⚠️</span>
+      <span><b>Impostos e total da nota são por NOTA, não por produto.</b>
+      Vêm repetidos em cada item, então são somados uma vez por nota — na safra:
+      ICMS ${fmtMoeda(d.icms)}, IPI ${fmtMoeda(d.ipi)},
+      ICMS ST ${fmtMoeda(d.icmsSt)}, desconto ${fmtMoeda(d.desconto)},
+      outras despesas ${fmtMoeda(d.outrasDesp)}.
+      Faturado nos itens: ${fmtMoeda(d.valorItens)} em ${fmtInt(d.notas)} nota(s),
+      ${fmtInt(d.itens)} item(ns). A quebra por produto usa o <b>valor do item</b>,
+      que é o único que separa por produto de verdade.</span>
     </div>
 
     <div class="secao">
-      <div class="secao-header"><span class="secao-num">2</span>
+      <div class="secao-header"><span class="secao-num">1</span>
         <span class="secao-titulo">Por produto</span></div>
       <div class="secao-sub">Quantidade, valor faturado e participação — ordenado do maior para o menor</div>
       <div class="grafico-caixa alto"><canvas id="gProduto"></canvas></div>
@@ -406,7 +358,7 @@ function render(d) {
     </div>
 
     <div class="secao">
-      <div class="secao-header"><span class="secao-num">3</span>
+      <div class="secao-header"><span class="secao-num">2</span>
         <span class="secao-titulo">Mês a mês, por produto</span></div>
       <div class="secao-sub">Valor faturado dos itens · o número acima de cada mês é o total</div>
       <div class="grafico-caixa alto"><canvas id="gMeses"></canvas></div>
@@ -415,12 +367,12 @@ function render(d) {
     ${secaoPreco(d)}
 
     <div class="grid-2">
-      ${tabelaCorte('5', 'Por cliente', d.porCliente, 'Cliente')}
-      ${tabelaCorte('6', 'Por estado', d.porEstado, 'UF')}
+      ${tabelaCorte('4', 'Por cliente', d.porCliente, 'Cliente')}
+      ${tabelaCorte('5', 'Por estado', d.porEstado, 'UF')}
     </div>
     <div class="grid-2">
-      ${tabelaCorte('7', 'Por destino do item', d.porDestino, 'Destino')}
-      ${tabelaCorte('8', 'Por rotina fiscal', d.porRotina, 'Rotina')}
+      ${tabelaCorte('6', 'Por destino do item', d.porDestino, 'Destino')}
+      ${tabelaCorte('7', 'Por rotina fiscal', d.porRotina, 'Rotina')}
     </div>
   `;
 
@@ -444,7 +396,7 @@ function secaoPreco(d) {
 
   return `
     <div class="secao">
-      <div class="secao-header"><span class="secao-num">4</span>
+      <div class="secao-header"><span class="secao-num">3</span>
         <span class="secao-titulo">Evolução do preço</span></div>
       <div class="secao-sub">Preço médio por mês — valor faturado ÷ quantidade,
         ponderado pelo volume. Cada produto na sua própria escala e unidade.</div>
