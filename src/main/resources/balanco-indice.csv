@@ -1,0 +1,298 @@
+# GERADO por ferramentas/gerar-balanco.py a partir de balanco.xlsx.
+# Não edite à mão: rode o script de novo.
+#
+# Formato: conta;tipo;grupo;nivel;nivel 2
+#
+# O rótulo do índice sozinho não resolve: cinco nomes existem duas
+# vezes no balanço (circulante e longo prazo). O prefixo da conta é
+# que decide, e a resolução já vem feita aqui.
+# resultado do exercício (grupo 3) -> Prejuízos acumulados
+1.1.1.01.001;Ativo;Ativo  Circulante;Ativo  Circulante;Caixa e Equivalentes de Caixa
+1.1.1.01.002;Ativo;Ativo  Circulante;Ativo  Circulante;Caixa e Equivalentes de Caixa
+1.1.1.01.003;Ativo;Ativo  Circulante;Ativo  Circulante;Caixa e Equivalentes de Caixa
+1.1.1.01.005;Ativo;Ativo  Circulante;Ativo  Circulante;Caixa e Equivalentes de Caixa
+1.1.1.01.006;Ativo;Ativo  Circulante;Ativo  Circulante;Caixa e Equivalentes de Caixa
+1.1.1.02.001;Ativo;Ativo  Circulante;Ativo  Circulante;Caixa e Equivalentes de Caixa
+1.1.1.02.003;Ativo;Ativo  Circulante;Ativo  Circulante;Caixa e Equivalentes de Caixa
+1.1.1.02.007;Ativo;Ativo  Circulante;Ativo  Circulante;Caixa e Equivalentes de Caixa
+1.1.1.02.010;Ativo;Ativo  Circulante;Ativo  Circulante;Caixa e Equivalentes de Caixa
+1.1.1.02.011;Ativo;Ativo  Circulante;Ativo  Circulante;Caixa e Equivalentes de Caixa
+1.1.1.02.013;Ativo;Ativo  Circulante;Ativo  Circulante;Caixa e Equivalentes de Caixa
+1.1.1.02.014;Ativo;Ativo  Circulante;Ativo  Circulante;Caixa e Equivalentes de Caixa
+1.1.1.03.001;Ativo;Ativo  Circulante;Ativo  Circulante;Caixa e Equivalentes de Caixa
+1.1.1.03.007;Ativo;Ativo  Circulante;Ativo  Circulante;Caixa e Equivalentes de Caixa
+1.1.1.05.002;Ativo;Ativo  Circulante;Ativo  Circulante;Caixa e Equivalentes de Caixa
+1.1.1.05.004;Ativo;Ativo  Circulante;Ativo  Circulante;Caixa e Equivalentes de Caixa
+1.1.1.05.006;Ativo;Ativo  Circulante;Ativo  Circulante;Caixa e Equivalentes de Caixa
+1.1.2.01.001;Ativo;Ativo  Circulante;Ativo  Circulante;Contas a Receber - Clientes
+1.1.2.01.998;Ativo;Ativo  Circulante;Ativo  Circulante;Contas a Receber - Clientes
+1.1.3.01.001;Ativo;Ativo  Circulante;Ativo  Circulante;Adiantamento a Fornecedores
+1.1.3.01.002;Ativo;Ativo  Circulante;Ativo  Circulante;Adiantamento a Fornecedores
+1.1.3.01.003;Ativo;Ativo  Circulante;Ativo  Circulante;Adiantamento a Fornecedores
+1.1.3.01.004;Ativo;Ativo  Circulante;Ativo  Circulante;Adiantamento a Fornecedores
+1.1.3.01.006;Ativo;Ativo  Circulante;Ativo  Circulante;Adiantamento a Fornecedores
+1.1.3.01.009;Ativo;Ativo  Circulante;Ativo  Circulante;Adiantamento a Fornecedores
+1.1.3.01.011;Ativo;Ativo  Circulante;Ativo  Circulante;Adiantamento a Fornecedores
+1.1.3.01.012;Ativo;Ativo  Circulante;Ativo  Circulante;Adiantamento a Fornecedores
+1.1.3.01.013;Ativo;Ativo  Circulante;Ativo  Circulante;Adiantamento a Fornecedores
+1.1.3.01.999;Ativo;Ativo  Circulante;Ativo  Circulante;Adiantamento a Fornecedores
+1.1.3.02.001;Ativo;Ativo  Circulante;Ativo  Circulante;Adiantamento a Fornecedores
+1.1.4.01.001;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.01.002;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.01.003;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.01.009;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.01.021;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.01.022;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.01.023;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.01.024;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.01.025;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.01.026;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.01.027;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.02.002;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.02.003;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.02.004;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.02.005;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.02.006;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.02.007;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.02.009;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.02.010;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.02.011;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.02.013;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.02.015;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.02.016;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.03.002;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.03.003;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.03.004;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.03.005;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.03.006;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.03.007;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.03.009;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.03.010;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.03.011;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.03.013;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.03.015;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.03.016;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.04.003;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.04.004;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.04.005;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.04.006;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.04.007;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.04.008;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.04.009;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.4.04.010;Ativo;Ativo  Circulante;Ativo  Circulante;Tributos a Recuperar
+1.1.5.01.001;Ativo;Ativo  Circulante;Ativo  Circulante;Outros Créditos
+1.1.5.01.002;Ativo;Ativo  Circulante;Ativo  Circulante;Outros Créditos
+1.1.6.01.001;Ativo;Ativo  Circulante;Ativo  Circulante;Estoques
+1.1.6.01.002;Ativo;Ativo  Circulante;Ativo  Circulante;Estoques
+1.1.6.01.003;Ativo;Ativo  Circulante;Ativo  Circulante;Estoques
+1.1.6.01.005;Ativo;Ativo  Circulante;Ativo  Circulante;Estoques
+1.1.6.02.004;Ativo;Ativo  Circulante;Ativo  Circulante;Estoques
+1.1.6.03.001;Ativo;Ativo  Circulante;Ativo  Circulante;Estoques
+1.1.6.03.002;Ativo;Ativo  Circulante;Ativo  Circulante;Estoques
+1.1.6.03.004;Ativo;Ativo  Circulante;Ativo  Circulante;Estoques
+1.1.6.03.006;Ativo;Ativo  Circulante;Ativo  Circulante;Estoques
+1.1.6.04.003;Ativo;Ativo  Circulante;Ativo  Circulante;Estoques
+1.1.6.08.001;Ativo;Ativo  Circulante;Ativo  Circulante;Estoques
+1.1.6.08.002;Ativo;Ativo  Circulante;Ativo  Circulante;Estoques
+1.1.6.08.003;Ativo;Ativo  Circulante;Ativo  Circulante;Estoques
+1.1.7.01.001;Ativo;Ativo  Circulante;Ativo  Circulante;Despesas do Exercício Seguinte
+1.1.7.01.002;Ativo;Ativo  Circulante;Ativo  Circulante;Despesas do Exercício Seguinte
+1.1.7.01.003;Ativo;Ativo  Circulante;Ativo  Circulante;Despesas do Exercício Seguinte
+1.1.7.03.002;Ativo;Ativo  Circulante;Ativo  Circulante;Despesas do Exercício Seguinte
+1.1.7.04.001;Ativo;Ativo  Circulante;Ativo  Circulante;Ativo Biológico
+1.1.7.04.002;Ativo;Ativo  Circulante;Ativo  Circulante;Ativo Biológico
+1.1.7.04.003;Ativo;Ativo  Circulante;Ativo  Circulante;Ativo Biológico
+1.1.7.04.099;Ativo;Ativo  Circulante;Ativo  Circulante;Ativo Biológico
+1.1.8.01.016;Ativo;Ativo  Circulante;Ativo  Circulante;Outros Créditos
+1.1.9.01.001;Ativo;Ativo  Circulante;Ativo  Circulante;Depositos Judiciais
+1.1.9.01.002;Ativo;Ativo  Circulante;Ativo  Circulante;Depositos Judiciais
+1.1.9.01.003;Ativo;Ativo  Circulante;Ativo  Circulante;Depositos Judiciais
+1.2.1.02.001;Ativo;Não Circulante;Realizável a Longo Prazo;Transações com Partes Relacionadas
+1.2.1.02.005;Ativo;Não Circulante;Realizável a Longo Prazo;Transações com Partes Relacionadas
+1.2.1.03.001;Ativo;Não Circulante;Realizável a Longo Prazo;Depositos Judiciais
+1.2.1.03.002;Ativo;Não Circulante;Realizável a Longo Prazo;Depositos Judiciais
+1.2.1.03.003;Ativo;Não Circulante;Realizável a Longo Prazo;Depositos Judiciais
+1.2.1.03.004;Ativo;Não Circulante;Realizável a Longo Prazo;Depositos Judiciais
+1.2.1.09.001;Ativo;Não Circulante;Realizável a Longo Prazo;Outros Créditos
+1.2.1.09.002;Ativo;Não Circulante;Realizável a Longo Prazo;Outros Créditos
+1.3.1.01.001;Ativo;Não Circulante;Investimentos;Investimentos
+1.3.1.01.002;Ativo;Não Circulante;Investimentos;Investimentos
+1.3.1.01.003;Ativo;Não Circulante;Investimentos;Investimentos
+1.3.1.01.004;Ativo;Não Circulante;Investimentos;Investimentos
+1.3.1.01.005;Ativo;Não Circulante;Investimentos;Investimentos
+1.3.1.01.006;Ativo;Não Circulante;Investimentos;Investimentos
+1.3.1.01.007;Ativo;Não Circulante;Investimentos;Investimentos
+1.3.1.01.008;Ativo;Não Circulante;Investimentos;Investimentos
+1.3.1.01.009;Ativo;Não Circulante;Investimentos;Investimentos
+1.3.1.01.010;Ativo;Não Circulante;Investimentos;Investimentos
+1.3.1.01.011;Ativo;Não Circulante;Investimentos;Investimentos
+1.3.1.01.012;Ativo;Não Circulante;Investimentos;Investimentos
+1.3.1.01.013;Ativo;Não Circulante;Investimentos;Investimentos
+1.3.1.01.014;Ativo;Não Circulante;Investimentos;Investimentos
+1.3.1.01.020;Ativo;Não Circulante;Investimentos;Investimentos
+1.3.1.01.021;Ativo;Não Circulante;Investimentos;Investimentos
+1.3.1.01.022;Ativo;Não Circulante;Investimentos;Investimentos
+1.3.1.02.001;Ativo;Não Circulante;Investimentos;Investimentos
+1.3.1.02.002;Ativo;Não Circulante;Investimentos;Investimentos
+1.3.1.02.003;Ativo;Não Circulante;Investimentos;Investimentos
+1.3.1.02.004;Ativo;Não Circulante;Investimentos;Investimentos
+1.3.1.02.005;Ativo;Não Circulante;Investimentos;Investimentos
+1.3.1.02.006;Ativo;Não Circulante;Investimentos;Investimentos
+1.3.1.02.007;Ativo;Não Circulante;Investimentos;Investimentos
+1.3.1.02.008;Ativo;Não Circulante;Investimentos;Investimentos
+1.3.1.02.009;Ativo;Não Circulante;Investimentos;Investimentos
+1.3.1.02.010;Ativo;Não Circulante;Investimentos;Investimentos
+1.3.1.02.011;Ativo;Não Circulante;Investimentos;Investimentos
+1.3.1.02.012;Ativo;Não Circulante;Investimentos;Investimentos
+1.3.1.02.013;Ativo;Não Circulante;Investimentos;Investimentos
+1.3.1.02.014;Ativo;Não Circulante;Investimentos;Investimentos
+1.3.2.01.001;Ativo;Não Circulante;Imobilizado;Imobilizado
+1.3.2.01.008;Ativo;Não Circulante;Imobilizado;Imobilizado
+1.3.2.01.090;Ativo;Não Circulante;Imobilizado;Imobilizado
+1.3.2.02.001;Ativo;Não Circulante;Imobilizado;Imobilizado
+1.3.2.02.002;Ativo;Não Circulante;Imobilizado;Imobilizado
+1.3.2.02.003;Ativo;Não Circulante;Imobilizado;Imobilizado
+1.3.2.02.004;Ativo;Não Circulante;Imobilizado;Imobilizado
+1.3.2.03.001;Ativo;Não Circulante;Imobilizado;Imobilizado
+1.3.2.04.001;Ativo;Não Circulante;Imobilizado;Imobilizado
+1.3.2.05.001;Ativo;Não Circulante;Imobilizado;Imobilizado
+1.3.2.05.002;Ativo;Não Circulante;Imobilizado;Imobilizado
+1.3.2.05.007;Ativo;Não Circulante;Imobilizado;Imobilizado
+1.3.2.05.008;Ativo;Não Circulante;Imobilizado;Imobilizado
+1.3.2.06.007;Ativo;Não Circulante;Imobilizado;Imobilizado
+1.3.2.06.008;Ativo;Não Circulante;Imobilizado;Imobilizado
+1.3.2.06.009;Ativo;Não Circulante;Imobilizado;Imobilizado
+1.3.2.06.010;Ativo;Não Circulante;Imobilizado;Imobilizado
+1.3.2.07.019;Ativo;Não Circulante;Imobilizado;Imobilizado
+1.3.2.07.020;Ativo;Não Circulante;Imobilizado;Imobilizado
+1.3.2.07.021;Ativo;Não Circulante;Imobilizado;Imobilizado
+1.3.2.07.022;Ativo;Não Circulante;Imobilizado;Imobilizado
+1.3.2.07.023;Ativo;Não Circulante;Imobilizado;Imobilizado
+1.3.2.07.024;Ativo;Não Circulante;Imobilizado;Imobilizado
+1.3.2.07.025;Ativo;Não Circulante;Imobilizado;Imobilizado
+1.3.2.07.026;Ativo;Não Circulante;Imobilizado;Imobilizado
+1.3.2.07.027;Ativo;Não Circulante;Imobilizado;Imobilizado
+1.3.2.08.001;Ativo;Não Circulante;Imobilizado;Imobilizado
+1.3.2.08.021;Ativo;Não Circulante;Imobilizado;Imobilizado
+1.3.2.08.022;Ativo;Não Circulante;Imobilizado;Imobilizado
+1.3.2.08.023;Ativo;Não Circulante;Imobilizado;Imobilizado
+1.3.2.08.024;Ativo;Não Circulante;Imobilizado;Imobilizado
+1.3.2.08.025;Ativo;Não Circulante;Imobilizado;Imobilizado
+1.3.2.08.026;Ativo;Não Circulante;Imobilizado;Imobilizado
+1.3.2.08.027;Ativo;Não Circulante;Imobilizado;Imobilizado
+1.3.2.08.090;Ativo;Não Circulante;Imobilizado;Imobilizado
+2.1.1.01.001;Passivo;Passivo Circulante;Passivo Circulante;Fornecedores
+2.1.1.01.002;Passivo;Passivo Circulante;Passivo Circulante;Fornecedores
+2.1.1.01.003;Passivo;Passivo Circulante;Passivo Circulante;Fornecedores
+2.1.1.01.004;Passivo;Passivo Circulante;Passivo Circulante;Fornecedores
+2.1.1.01.005;Passivo;Passivo Circulante;Passivo Circulante;Fornecedores
+2.1.1.07.001;Passivo;Passivo Circulante;Passivo Circulante;Outras contas a pagar
+2.1.2.02.050;Passivo;Passivo Circulante;Passivo Circulante;Empréstimos e financiamentos
+2.1.2.02.052;Passivo;Passivo Circulante;Passivo Circulante;Empréstimos e financiamentos
+2.1.2.02.053;Passivo;Passivo Circulante;Passivo Circulante;Empréstimos e financiamentos
+2.1.2.02.999;Passivo;Passivo Circulante;Passivo Circulante;Empréstimos e financiamentos
+2.1.2.03.003;Passivo;Passivo Circulante;Passivo Circulante;Salarios e provisão de férias
+2.1.2.03.007;Passivo;Passivo Circulante;Passivo Circulante;Salarios e provisão de férias
+2.1.2.03.008;Passivo;Passivo Circulante;Passivo Circulante;Salarios e provisão de férias
+2.1.2.03.010;Passivo;Passivo Circulante;Passivo Circulante;Salarios e provisão de férias
+2.1.2.03.013;Passivo;Passivo Circulante;Passivo Circulante;Salarios e provisão de férias
+2.1.2.03.014;Passivo;Passivo Circulante;Passivo Circulante;Salarios e provisão de férias
+2.1.2.03.015;Passivo;Passivo Circulante;Passivo Circulante;Salarios e provisão de férias
+2.1.2.03.016;Passivo;Passivo Circulante;Passivo Circulante;Salarios e provisão de férias
+2.1.2.03.018;Passivo;Passivo Circulante;Passivo Circulante;Salarios e provisão de férias
+2.1.2.03.019;Passivo;Passivo Circulante;Passivo Circulante;Salarios e provisão de férias
+2.1.2.04.001;Passivo;Passivo Circulante;Passivo Circulante;Impostos taxas e Contribuições Diversas
+2.1.2.04.002;Passivo;Passivo Circulante;Passivo Circulante;Impostos taxas e Contribuições Diversas
+2.1.2.04.003;Passivo;Passivo Circulante;Passivo Circulante;Impostos taxas e Contribuições Diversas
+2.1.2.04.004;Passivo;Passivo Circulante;Passivo Circulante;Impostos taxas e Contribuições Diversas
+2.1.2.04.008;Passivo;Passivo Circulante;Passivo Circulante;Impostos taxas e Contribuições Diversas
+2.1.2.04.010;Passivo;Passivo Circulante;Passivo Circulante;Impostos taxas e Contribuições Diversas
+2.1.2.04.012;Passivo;Passivo Circulante;Passivo Circulante;Impostos taxas e Contribuições Diversas
+2.1.2.04.027;Passivo;Passivo Circulante;Passivo Circulante;Impostos taxas e Contribuições Diversas
+2.1.2.04.029;Passivo;Passivo Circulante;Passivo Circulante;Impostos taxas e Contribuições Diversas
+2.1.2.04.031;Passivo;Passivo Circulante;Passivo Circulante;Impostos taxas e Contribuições Diversas
+2.1.2.04.032;Passivo;Passivo Circulante;Passivo Circulante;Impostos taxas e Contribuições Diversas
+2.1.2.04.033;Passivo;Passivo Circulante;Passivo Circulante;Impostos taxas e Contribuições Diversas
+2.1.2.04.042;Passivo;Passivo Circulante;Passivo Circulante;Impostos taxas e Contribuições Diversas
+2.1.2.05.001;Passivo;Passivo Circulante;Passivo Circulante;Impostos taxas e Contribuições Diversas
+2.1.2.05.002;Passivo;Passivo Circulante;Passivo Circulante;Impostos taxas e Contribuições Diversas
+2.1.2.05.003;Passivo;Passivo Circulante;Passivo Circulante;Impostos taxas e Contribuições Diversas
+2.1.2.05.004;Passivo;Passivo Circulante;Passivo Circulante;Impostos taxas e Contribuições Diversas
+2.1.2.05.005;Passivo;Passivo Circulante;Passivo Circulante;Impostos taxas e Contribuições Diversas
+2.1.2.05.006;Passivo;Passivo Circulante;Passivo Circulante;Impostos taxas e Contribuições Diversas
+2.1.2.05.009;Passivo;Passivo Circulante;Passivo Circulante;Impostos taxas e Contribuições Diversas
+2.1.2.05.012;Passivo;Passivo Circulante;Passivo Circulante;Impostos taxas e Contribuições Diversas
+2.1.2.05.016;Passivo;Passivo Circulante;Passivo Circulante;Impostos taxas e Contribuições Diversas
+2.1.2.05.026;Passivo;Passivo Circulante;Passivo Circulante;Impostos taxas e Contribuições Diversas
+2.1.2.06.001;Passivo;Passivo Circulante;Passivo Circulante;Salarios e provisão de férias
+2.1.2.06.004;Passivo;Passivo Circulante;Passivo Circulante;Salarios e provisão de férias
+2.1.2.06.007;Passivo;Passivo Circulante;Passivo Circulante;Salarios e provisão de férias
+2.1.2.06.008;Passivo;Passivo Circulante;Passivo Circulante;Salarios e provisão de férias
+2.1.2.06.009;Passivo;Passivo Circulante;Passivo Circulante;Salarios e provisão de férias
+2.1.2.06.010;Passivo;Passivo Circulante;Passivo Circulante;Salarios e provisão de férias
+2.1.2.08.001;Passivo;Passivo Circulante;Passivo Circulante;Outras contas a pagar
+2.1.2.09.005;Passivo;Passivo Circulante;Passivo Circulante;Outras contas a pagar
+2.1.2.09.009;Passivo;Passivo Circulante;Passivo Circulante;Outras contas a pagar
+2.1.2.09.010;Passivo;Passivo Circulante;Passivo Circulante;Outras contas a pagar
+2.1.2.09.064;Passivo;Passivo Circulante;Passivo Circulante;Outras contas a pagar
+2.1.2.10.004;Passivo;Passivo Circulante;Passivo Circulante;Parcelamentos Fiscais
+2.1.2.10.007;Passivo;Passivo Circulante;Passivo Circulante;Parcelamentos Fiscais
+2.1.2.10.023;Passivo;Passivo Circulante;Passivo Circulante;Parcelamentos Fiscais
+2.1.2.10.030;Passivo;Passivo Circulante;Passivo Circulante;Parcelamentos Fiscais
+2.1.2.10.035;Passivo;Passivo Circulante;Passivo Circulante;Parcelamentos Fiscais
+2.1.2.10.038;Passivo;Passivo Circulante;Passivo Circulante;Parcelamentos Fiscais
+2.1.2.10.039;Passivo;Passivo Circulante;Passivo Circulante;Parcelamentos Fiscais
+2.1.2.10.040;Passivo;Passivo Circulante;Passivo Circulante;Parcelamentos Fiscais
+2.1.2.10.041;Passivo;Passivo Circulante;Passivo Circulante;Parcelamentos Fiscais
+2.1.2.10.042;Passivo;Passivo Circulante;Passivo Circulante;Parcelamentos Fiscais
+2.1.2.10.043;Passivo;Passivo Circulante;Passivo Circulante;Parcelamentos Fiscais
+2.1.2.10.047;Passivo;Passivo Circulante;Passivo Circulante;Parcelamentos Fiscais
+2.1.2.10.048;Passivo;Passivo Circulante;Passivo Circulante;Parcelamentos Fiscais
+2.1.2.10.049;Passivo;Passivo Circulante;Passivo Circulante;Parcelamentos Fiscais
+2.1.2.10.051;Passivo;Passivo Circulante;Passivo Circulante;Parcelamentos Fiscais
+2.1.2.10.052;Passivo;Passivo Circulante;Passivo Circulante;Parcelamentos Fiscais
+2.1.2.10.053;Passivo;Passivo Circulante;Passivo Circulante;Parcelamentos Fiscais
+2.1.2.10.054;Passivo;Passivo Circulante;Passivo Circulante;Parcelamentos Fiscais
+2.1.2.13.001;Passivo;Passivo Circulante;Passivo Circulante;Adiantamentos de clientes
+2.1.2.14.001;Passivo;Passivo Circulante;Passivo Circulante;Adiantamentos de clientes
+2.1.2.15.002;Passivo;Passivo Circulante;Passivo Circulante;Credores sob contrato
+2.1.2.15.004;Passivo;Passivo Circulante;Passivo Circulante;Credores sob contrato
+2.1.2.15.005;Passivo;Passivo Circulante;Passivo Circulante;Credores sob contrato
+2.1.2.15.999;Passivo;Passivo Circulante;Passivo Circulante;Credores sob contrato
+2.1.2.18.001;Passivo;Passivo Circulante;Passivo Circulante;Provisão Para Perdas
+2.1.2.19.001;Passivo;Passivo Circulante;Passivo Circulante;Adiantamentos De dividendos
+2.1.3.01.001;Passivo;Passivo Circulante;Passivo Circulante;Dividendos a Distribuir Proposto
+2.2.1.01.007;Passivo;Não Circulante;Passivo Não Circulante;Empréstimos e financiamentos.
+2.2.1.01.009;Passivo;Não Circulante;Passivo Não Circulante;Empréstimos e financiamentos.
+2.2.1.01.999;Passivo;Não Circulante;Passivo Não Circulante;Empréstimos e financiamentos.
+2.2.1.02.004;Passivo;Não Circulante;Passivo Não Circulante;Parcelamento fiscais
+2.2.1.02.012;Passivo;Não Circulante;Passivo Não Circulante;Parcelamento fiscais
+2.2.1.02.016;Passivo;Não Circulante;Passivo Não Circulante;Parcelamento fiscais
+2.2.1.02.020;Passivo;Não Circulante;Passivo Não Circulante;Parcelamento fiscais
+2.2.1.02.035;Passivo;Não Circulante;Passivo Não Circulante;Parcelamento fiscais
+2.2.1.02.041;Passivo;Não Circulante;Passivo Não Circulante;Parcelamento fiscais
+2.2.1.02.042;Passivo;Não Circulante;Passivo Não Circulante;Parcelamento fiscais
+2.2.1.02.043;Passivo;Não Circulante;Passivo Não Circulante;Parcelamento fiscais
+2.2.1.02.046;Passivo;Não Circulante;Passivo Não Circulante;Parcelamento fiscais
+2.2.1.02.047;Passivo;Não Circulante;Passivo Não Circulante;Parcelamento fiscais
+2.2.1.02.048;Passivo;Não Circulante;Passivo Não Circulante;Parcelamento fiscais
+2.2.1.02.049;Passivo;Não Circulante;Passivo Não Circulante;Parcelamento fiscais
+2.2.1.02.051;Passivo;Não Circulante;Passivo Não Circulante;Parcelamento fiscais
+2.2.1.02.052;Passivo;Não Circulante;Passivo Não Circulante;Parcelamento fiscais
+2.2.1.02.053;Passivo;Não Circulante;Passivo Não Circulante;Parcelamento fiscais
+2.2.1.03.003;Passivo;Não Circulante;Passivo Não Circulante;Partes relacionadas
+2.2.1.03.004;Passivo;Não Circulante;Passivo Não Circulante;Partes relacionadas
+2.2.1.06.001;Passivo;Não Circulante;Passivo Não Circulante;Provisão Para Perdas
+2.2.1.11.001;Passivo;Não Circulante;Passivo Não Circulante;Credores sob contrato.
+2.2.1.12.001;Passivo;Não Circulante;Passivo Não Circulante;Impostos taxas e Contribuições Diversas.
+2.2.9.01.001;Passivo;Não Circulante;Passivo Não Circulante;Credores recuperação judicial
+2.2.9.02.001;Passivo;Não Circulante;Passivo Não Circulante;Credores recuperação judicial
+2.2.9.03.001;Passivo;Não Circulante;Passivo Não Circulante;Credores recuperação judicial
+2.2.9.04.001;Passivo;Não Circulante;Passivo Não Circulante;Credores recuperação judicial
+2.4.1.01.001;Passivo;Patrimônio líquido;Patrimônio líquido;Capital social
+2.4.1.04.001;Passivo;Patrimônio líquido;Patrimônio líquido;Reserva de lucro
+2.4.1.04.003;Passivo;Patrimônio líquido;Patrimônio líquido;Reserva de lucro
+2.4.1.04.004;Passivo;Patrimônio líquido;Patrimônio líquido;Reserva de lucro
+2.4.1.04.006;Passivo;Patrimônio líquido;Patrimônio líquido;Reserva de lucro
+2.4.1.05.003;Passivo;Patrimônio líquido;Patrimônio líquido;Reserva de lucro
+2.4.1.05.004;Passivo;Patrimônio líquido;Patrimônio líquido;Prejuízos acumulados

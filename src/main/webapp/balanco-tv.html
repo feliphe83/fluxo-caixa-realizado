@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Balanço Patrimonial — Usina Santa Clotilde</title>
+<link rel="icon" href="img/logo.png">
+<style>
+/* ────────────────────────────────────────────────────────────────────────
+   Painel de televisão do balanço.
+
+   Só o quadro e a data do fechamento, como o do demonstrativo.
+
+   ATIVO E PASSIVO SE ALTERNAM SOZINHOS, a cada 20 segundos. Na tela de
+   computador eles são dois botões; numa parede não há quem clique, e
+   informação atrás de clique é informação que ninguém vê. O lado em
+   exibição fica escrito em cima, grande, para quem chegar no meio da
+   troca saber o que está olhando.
+
+   Palco de 1920×1080 fixos, ESCALADO para caber na tela em vez de se
+   reorganizar.
+   ──────────────────────────────────────────────────────────────────────── */
+  :root {
+    --ink: #0f2460; --ink-2: #52514e; --ink-3: #898781; --rotulo: #64748b;
+    --borda: #e3e8f5; --papel: #ffffff; --papel-2: #f8faff; --fundo: #f4f6fb;
+    --neg: #d03b3b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--fundo); color: var(--ink-2);
+               font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+               overflow: hidden; font-variant-numeric: tabular-nums; }
+
+  #palco-wrap { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
+  #palco { position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px;
+           transform-origin: center center; padding: 20px 26px 18px;
+           display: grid; grid-template-rows: auto 1fr; gap: 12px; }
+
+  .topo { display: flex; align-items: center; gap: 18px; }
+  .marca { width: 46px; height: 46px; border-radius: 11px; background: var(--ink);
+           display: flex; align-items: center; justify-content: center; padding: 6px; flex: none; }
+  .marca img { width: 100%; height: 100%; object-fit: contain; }
+  .topo h1 { font-size: 30px; font-weight: 800; color: var(--ink); letter-spacing: -.6px; }
+  .topo .sub { font-size: 13.5px; font-weight: 700; color: var(--ink-3);
+               text-transform: uppercase; letter-spacing: .8px; margin-top: 1px; }
+
+  /* O lado em exibição, no meio e grande: quem chega no meio da troca
+     precisa saber num relance se está vendo ativo ou passivo. */
+  .lados { display: flex; gap: 8px; margin-left: 26px; }
+  .lados span { font-size: 20px; font-weight: 800; padding: 8px 26px; border-radius: 10px;
+                color: var(--ink-3); background: var(--papel); border: 1px solid var(--borda); }
+  .lados span.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+  .direita { margin-left: auto; text-align: right; }
+  .fechamento { font-size: 20px; font-weight: 800; color: var(--ink); background: var(--papel);
+                border: 1px solid var(--borda); border-radius: 11px; padding: 8px 18px;
+                display: inline-block; }
+  .fechamento b { color: #0a7d3a; }
+  .unidade { font-size: 13px; font-weight: 800; color: var(--ink-3); margin-top: 6px;
+             text-transform: uppercase; letter-spacing: .7px; }
+
+  .quadro { background: var(--papel); border: 1px solid var(--borda); border-radius: 13px;
+            padding: 12px 16px 14px; min-height: 0; overflow: hidden; }
+  .carregando { color: var(--ink-3); font-size: 22px; font-weight: 700; padding: 40px 4px; }
+
+  /* Tudo em em: a folga e a coluna de rótulo acompanham a fonte, então
+     mudar --fonte encolhe ou aumenta a tabela inteira de uma vez. É o que
+     permite encaixar 22 linhas (ativo) e 34 (passivo) na mesma altura sem
+     dois conjuntos de medidas. */
+  table.bp { width: 100%; border-collapse: separate; border-spacing: 0 3px;
+             font-size: var(--fonte, 19px); table-layout: fixed; }
+  table.bp thead th { text-align: right; font-size: 1em; font-weight: 800; color: #fff;
+                      background: var(--ink); padding: .42em 12px; white-space: nowrap; }
+  table.bp thead th:first-child { text-align: left; border-radius: 7px 0 0 7px; }
+  table.bp thead th:last-child { border-radius: 0 7px 7px 0; }
+  table.bp thead th.parcial { color: #ffd98a; }
+  table.bp td { padding: .42em 12px; white-space: nowrap; text-align: right; font-weight: 700; }
+  table.bp td:first-child { text-align: left; font-weight: 800; font-size: .92em;
+                            overflow: hidden; text-overflow: ellipsis; }
+  table.bp tr.grupo td, table.bp tr.nivel td, table.bp tr.total td {
+    background: var(--ink); color: #fff; font-weight: 800; }
+  table.bp tr.grupo td:first-child, table.bp tr.nivel td:first-child,
+  table.bp tr.total td:first-child { border-radius: 7px 0 0 7px; }
+  table.bp tr.grupo td:last-child, table.bp tr.nivel td:last-child,
+  table.bp tr.total td:last-child { border-radius: 0 7px 7px 0; }
+  table.bp tr.nivel td:first-child { padding-left: 30px; }
+  table.bp tr.item td { background: var(--papel); color: var(--ink); }
+  table.bp tr.item td:first-child { padding-left: 46px; font-weight: 700; }
+  table.bp td.neg { color: var(--neg); }
+  table.bp tr.grupo td.neg, table.bp tr.nivel td.neg, table.bp tr.total td.neg { color: #ffb0b0; }
+  table.bp td.vazio { color: #cfd7e6; }
+  table.bp .col-parcial { background: #fff3d6 !important; }
+  table.bp tr.grupo .col-parcial, table.bp tr.nivel .col-parcial,
+  table.bp tr.total .col-parcial { background: #1b3a7a !important; }
+
+  .tarja { position: fixed; top: 0; left: 0; right: 0; background: #eda100; color: #1a1a19;
+           font-size: 17px; font-weight: 800; text-align: center; padding: 7px;
+           display: none; z-index: 40; }
+  .tarja.on { display: block; }
+</style>
+</head>
+<body>
+
+<div class="tarja" id="tarja"></div>
+
+<div id="palco-wrap"><div id="palco">
+
+  <div class="topo">
+    <div class="marca"><img src="img/logo.png" alt="USC"></div>
+    <div>
+      <h1>Balanço Patrimonial</h1>
+      <div class="sub">Usina Santa Clotilde S/A · últimos 9 anos</div>
+    </div>
+    <div class="lados">
+      <span id="lAtivo" class="on">Ativo</span>
+      <span id="lPassivo">Passivo</span>
+    </div>
+    <div class="direita">
+      <div class="fechamento" id="fechamento">—</div>
+      <div class="unidade">Valores em R$ mil</div>
+    </div>
+  </div>
+
+  <div class="quadro"><div id="quadro"><div class="carregando">Consultando o balancete…</div></div></div>
+
+</div></div>
+
+<script src="balanco-historico.js?v=20260819a"></script>
+<script src="balanco-quadro.js?v=20260819a"></script>
+<script>
+// Quanto tempo cada lado fica na tela. Vinte segundos: dá para ler um
+// balanço inteiro sem pressa, e não deixa ninguém esperando demais pelo
+// outro lado.
+const TROCA_MS = 20 * 1000;
+// A contabilidade fecha uma vez por mês; meia hora é de sobra.
+const INTERVALO_MS = 30 * 60 * 1000;
+
+let LADO = 'Ativo', FECHADO = null;
+
+const fmtMil = v => (v === null || v === undefined || Math.round(v) === 0) ? '—'
+  : (v < 0 ? '(' + Math.abs(Math.round(v)).toLocaleString('pt-BR') + ')'
+           : Math.round(v).toLocaleString('pt-BR'));
+const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+function ajustarEscala() {
+  const s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+  document.getElementById('palco').style.transform = 'translate(-50%, -50%) scale(' + s + ')';
+}
+window.addEventListener('resize', ajustarEscala);
+
+async function carregar() {
+  try {
+    const r = await fetch('api/balanco-patrimonial', {headers: {'Accept':'application/json'}});
+    if (r.status === 401) {
+      const t = document.getElementById('tarja');
+      t.textContent = '⚠ Sessão expirada — faça login neste navegador para o painel voltar a atualizar';
+      t.classList.add('on');
+      return;
+    }
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro || 'Consulta recusada');
+    document.getElementById('tarja').classList.remove('on');
+    FECHADO = j;
+    balAplicar(j.linhas);
+  } catch (e) {
+    // Sem a contabilidade o quadro continua, no último número oficial —
+    // numa parede, tabela em branco é pior. Mas a data não se inventa.
+    balAplicar(null);
+    document.getElementById('fechamento').innerHTML =
+      'Fechamento <b style="color:#d03b3b">indisponível</b>';
+  }
+  desenhar();
+}
+
+function desenhar() {
+  const parcial = FECHADO && FECHADO.ano === BAL_ANOS[0] ? FECHADO.mes : null;
+
+  if (FECHADO) {
+    document.getElementById('fechamento').innerHTML =
+      'Contabilidade fechada até <b>' + esc(FECHADO.fechadoAte) + '</b>'
+      + (FECHADO.fechamento ? ' <span style="font-size:15px;color:var(--ink-3)">('
+                              + esc(FECHADO.fechamento) + ')</span>' : '');
+  }
+  document.getElementById('lAtivo').classList.toggle('on', LADO === 'Ativo');
+  document.getElementById('lPassivo').classList.toggle('on', LADO === 'Passivo');
+
+  const linhas = balMontar(LADO);
+  const cab = BAL_ANOS.map((a, i) =>
+    `<th class="${i === 0 && parcial ? 'parcial' : ''}">${a}${i === 0 && parcial ? '*' : ''}</th>`).join('');
+  const corpo = linhas.map(l => `
+    <tr class="${l.tipo}">
+      <td>${esc(l.rotulo)}</td>
+      ${l.v.map((v, i) => {
+        const cl = [];
+        if (!Math.round(v)) cl.push('vazio'); else if (v < 0) cl.push('neg');
+        if (i === 0 && parcial) cl.push('col-parcial');
+        return `<td class="${cl.join(' ')}">${fmtMil(v)}</td>`;
+      }).join('')}
+    </tr>`).join('');
+
+  document.getElementById('quadro').innerHTML = `
+    <table class="bp">
+      <colgroup><col style="width:520px">${BAL_ANOS.map(() => '<col>').join('')}</colgroup>
+      <thead><tr><th>Grupo</th>${cab}</tr></thead>
+      <tbody>${corpo}</tbody>
+    </table>`;
+
+  encaixar();
+}
+
+/**
+ * Encaixa a tabela na altura do quadro MEDINDO, não estimando.
+ *
+ * O ativo tem 22 linhas e o passivo 34; a mesma fonte que preenche um
+ * derruba o outro para fora da tela. Na primeira tentativa eu calculei a
+ * folga por uma conta de altura de linha, e o passivo vazou mesmo assim —
+ * porque a altura real de uma linha depende da fonte, do padding e do
+ * border-spacing juntos, e errar em 3px por linha vira 100px em 34.
+ *
+ * Aqui a tabela é desenhada, medida, e a fonte ajustada pela razão entre o
+ * que cabe e o que ocupou. Uma segunda passada corrige o resíduo do
+ * arredondamento de subpixel.
+ */
+function encaixar() {
+  const caixa = document.querySelector('.quadro');
+  const tabela = caixa.querySelector('table');
+  if (!tabela) return;
+  const disponivel = caixa.clientHeight - 26;   // o padding do próprio quadro
+  let fonte = 19;
+  for (let passada = 0; passada < 2; passada++) {
+    document.documentElement.style.setProperty('--fonte', fonte.toFixed(2) + 'px');
+    const ocupado = tabela.offsetHeight;
+    if (!ocupado) return;
+    // 0.99 de margem: encostar exato no limite arrisca o último pixel.
+    const razao = (disponivel * 0.99) / ocupado;
+    if (passada === 0 && razao > 1) break;      // já cabe; não estica
+    fonte = Math.max(9, Math.min(21, fonte * razao));
+  }
+  document.documentElement.style.setProperty('--fonte', fonte.toFixed(2) + 'px');
+}
+
+function alternar() {
+  LADO = (LADO === 'Ativo') ? 'Passivo' : 'Ativo';
+  desenhar();
+}
+
+ajustarEscala();
+carregar();
+setInterval(alternar, TROCA_MS);
+setInterval(carregar, INTERVALO_MS);
+</script>
+</body>
+</html>

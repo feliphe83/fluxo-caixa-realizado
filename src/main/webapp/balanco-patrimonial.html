@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Balanço Patrimonial · USC</title>
+<style>
+  :root {
+    --serie-1: #2a78d6; --serie-2: #eb6834; --serie-3: #1baf7a;
+    --serie-4: #eda100; --serie-5: #e87ba4; --serie-6: #008300;
+    --ink: #0f2460; --ink-2: #52514e; --ink-3: #898781; --rotulo: #64748b;
+    --borda: #e3e8f5; --papel: #ffffff; --papel-2: #f8faff; --fundo: #f4f6fb;
+    --neg: #d03b3b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+         background: var(--fundo); color: #1a1a2e; min-height: 100vh;
+         font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }
+
+  .header { background: var(--ink); color: white; padding: 0 32px; height: 62px;
+            display: flex; align-items: center; justify-content: space-between; }
+  .header-left { display: flex; align-items: center; gap: 13px; }
+  .header-logo { width: 36px; height: 36px; border-radius: 8px; background: white;
+                 display: flex; align-items: center; justify-content: center;
+                 overflow: hidden; padding: 4px; flex-shrink: 0; }
+  .header-logo img { width: 100%; height: 100%; object-fit: contain; }
+  .header-title { font-size: 15px; font-weight: 650; }
+  .header-sub { font-size: 11px; color: rgba(255,255,255,.55); margin-top: 1px;
+                text-transform: uppercase; letter-spacing: .9px; font-weight: 600; }
+  .btn-voltar { display: flex; align-items: center; gap: 7px; padding: 8px 14px;
+                border-radius: 8px; border: 1px solid rgba(255,255,255,.16);
+                background: transparent; color: rgba(255,255,255,.85);
+                font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+                text-decoration: none; }
+  .btn-voltar:hover { background: rgba(255,255,255,.10); color: #fff; }
+
+  .conteudo { max-width: 1480px; margin: 0 auto; padding: 24px 24px 60px; }
+
+  /* ── Ativo × Passivo ──
+     Duas metades do mesmo documento, e não dois relatórios: por isso um par
+     de abas, e não dois links. O selecionado é sólido; o outro é contorno. */
+  .abas { display: inline-flex; background: var(--papel); border: 1px solid var(--borda);
+          border-radius: 12px; padding: 4px; gap: 4px; }
+  .abas button { border: none; background: transparent; font-family: inherit;
+                 font-size: 14px; font-weight: 800; color: var(--ink-3);
+                 padding: 9px 30px; border-radius: 9px; cursor: pointer;
+                 letter-spacing: .3px; }
+  .abas button.on { background: var(--ink); color: #fff; }
+  .abas button:not(.on):hover { background: var(--papel-2); color: var(--ink); }
+
+  .periodo { background: var(--papel); border: 1px solid var(--borda); border-radius: 14px;
+             padding: 14px 22px; margin-bottom: 18px; display: flex; gap: 18px;
+             align-items: center; flex-wrap: wrap; }
+  .periodo .contra { font-size: 12.5px; color: var(--ink-2); }
+  .periodo .contra b { color: var(--ink); }
+  .atualizado { margin-left: auto; font-size: 12px; color: var(--ink-3); }
+  .erro { color: var(--neg); }
+
+  .capa { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
+  .capa .cartao { background: var(--papel); border: 1px solid var(--borda);
+                  border-radius: 14px; padding: 18px 20px; position: relative; overflow: hidden; }
+  .capa .cartao::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+                          width: 3px; background: var(--cor, var(--ink)); }
+  .capa .rot { font-size: 10.5px; font-weight: 700; color: var(--rotulo);
+               text-transform: uppercase; letter-spacing: .6px; }
+  .capa .cifra { font-size: 27px; font-weight: 800; color: var(--ink); line-height: 1.15;
+                 margin-top: 8px; letter-spacing: -.7px; white-space: nowrap; }
+  .capa .cifra.neg { color: var(--neg); }
+  .capa .base { font-size: 11.5px; color: var(--ink-3); margin-top: 7px; }
+  .var { font-weight: 800; }
+  .var.sobe { color: #0ca30c; } .var.desce { color: var(--neg); } .var.igual { color: var(--ink-3); }
+
+  .secao { background: var(--papel); border: 1px solid var(--borda); border-radius: 14px;
+           padding: 20px 24px; margin-bottom: 18px; }
+  .secao-header { display: flex; align-items: baseline; gap: 10px; }
+  .secao-num { width: 22px; height: 22px; border-radius: 6px; background: var(--ink);
+               color: white; font-size: 11px; font-weight: 800; display: flex;
+               align-items: center; justify-content: center; flex-shrink: 0; }
+  .secao-titulo { font-size: 16px; font-weight: 800; color: var(--ink); }
+  .secao-sub { font-size: 12px; color: var(--ink-3); margin: 3px 0 14px 32px; }
+  .grafico-caixa { position: relative; height: 300px; margin-top: 4px; }
+  .legenda { display: flex; gap: 16px; margin: 0 0 8px 32px; flex-wrap: wrap; }
+  .legenda span { display: inline-flex; align-items: center; gap: 7px;
+                  font-size: 12px; font-weight: 700; color: var(--ink-2); }
+  .legenda i { width: 11px; height: 11px; border-radius: 3px; flex: none; }
+
+  /* ── O quadro ── */
+  .rolagem { overflow-x: auto; margin-top: 4px; }
+  table.bp { width: 100%; border-collapse: separate; border-spacing: 0 2px; font-size: 13px; }
+  table.bp thead th { text-align: right; font-size: 12px; font-weight: 800; color: #fff;
+                      background: var(--ink); padding: 9px 12px; white-space: nowrap; }
+  table.bp thead th:first-child { text-align: center; border-radius: 6px 0 0 6px; }
+  table.bp thead th:last-child { border-radius: 0 6px 6px 0; }
+  table.bp thead th.parcial { color: #ffd98a; }
+  table.bp td { padding: 8px 12px; white-space: nowrap; text-align: right; }
+  table.bp td:first-child { text-align: left; }
+  /* Grupo, nível e total em azul cheio; só o nível 2 em branco. É o desenho
+     da planilha, e é o que deixa a hierarquia legível sem decorar nada. */
+  table.bp tr.grupo td, table.bp tr.nivel td, table.bp tr.total td {
+    background: var(--ink); color: #fff; font-weight: 800; }
+  table.bp tr.grupo td:first-child, table.bp tr.nivel td:first-child,
+  table.bp tr.total td:first-child { border-radius: 6px 0 0 6px; }
+  table.bp tr.grupo td:last-child, table.bp tr.nivel td:last-child,
+  table.bp tr.total td:last-child { border-radius: 0 6px 6px 0; }
+  table.bp tr.nivel td:first-child { padding-left: 26px; }
+  table.bp tr.item td { background: var(--papel); color: var(--ink); font-weight: 600; }
+  table.bp tr.item td:first-child { padding-left: 40px; font-weight: 700; }
+  table.bp tr.total td { font-size: 14px; }
+  table.bp td.neg { color: var(--neg); }
+  table.bp tr.grupo td.neg, table.bp tr.nivel td.neg, table.bp tr.total td.neg { color: #ffb0b0; }
+  table.bp td.vazio { color: #cfd7e6; }
+  table.bp .col-parcial { background: #fff8e6 !important; }
+  table.bp tr.grupo .col-parcial, table.bp tr.nivel .col-parcial,
+  table.bp tr.total .col-parcial { background: #1b3a7a !important; }
+
+  .nota-box { display: flex; gap: 10px; align-items: flex-start; background: #fffaf0;
+              border-left: 3px solid var(--serie-4); border-radius: 8px; padding: 10px 16px;
+              font-size: 12px; color: var(--ink-2); line-height: 1.55; margin-top: 18px; }
+  .nota-box b { color: var(--ink); }
+  .estado { text-align: center; padding: 40px 20px; color: var(--ink-3); font-size: 14px; }
+  .spinner { width: 24px; height: 24px; border: 2.5px solid var(--borda);
+             border-top-color: var(--serie-1); border-radius: 50%;
+             margin: 0 auto 12px; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 1000px) {
+    .capa { grid-template-columns: repeat(2, 1fr); }
+    .header { padding: 0 16px; } .conteudo { padding: 16px 14px 40px; }
+  }
+</style>
+<link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+<meta name="theme-color" content="#0f2460">
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="header-logo"><img src="img/logo.png" alt="USC"></div>
+    <div>
+      <div class="header-title">Balanço Patrimonial</div>
+      <div class="header-sub">Últimos 9 anos</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <a class="btn-voltar" href="balanco-tv.html" target="_blank" title="Abrir a versão para televisão">
+      <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <rect x="2" y="4" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/>
+        <line x1="12" y1="18" x2="12" y2="21"/></svg>
+      Modo TV
+    </a>
+    <a class="btn-voltar" href="hub.html">
+      <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      Voltar ao Hub
+    </a>
+  </div>
+</div>
+
+<div class="conteudo">
+  <div class="periodo">
+    <div class="abas">
+      <button id="bAtivo" class="on" onclick="trocarLado('Ativo')">Ativo</button>
+      <button id="bPassivo" onclick="trocarLado('Passivo')">Passivo</button>
+    </div>
+    <div class="contra" id="fechado">consultando o balancete…</div>
+    <div class="atualizado" id="atualizado"></div>
+  </div>
+  <div id="corpo"><div class="estado"><div class="spinner"></div>Consultando o balancete…</div></div>
+</div>
+
+<script src="js/chart.umd.min.js"></script>
+<!-- Estrutura e valores fixos, compartilhados com a tela de televisão.
+     Fora de /js/ de propósito: aquele caminho é liberado sem sessão. -->
+<script src="balanco-historico.js?v=20260819a"></script>
+<script src="balanco-quadro.js?v=20260819a"></script>
+<script>
+let LADO = 'Ativo', FECHADO = null;
+const graficos = {};
+const CORES = ['#2a78d6','#eb6834','#1baf7a','#eda100','#e87ba4','#008300'];
+
+const fmtMil = v => (v === null || v === undefined || v === 0) ? '—'
+  : (v < 0 ? '(' + Math.abs(Math.round(v)).toLocaleString('pt-BR') + ')'
+           : Math.round(v).toLocaleString('pt-BR'));
+const fmtNum = (v, c) => (Number(v)||0).toLocaleString('pt-BR',
+  {minimumFractionDigits: c==null?1:c, maximumFractionDigits: c==null?1:c});
+const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+function curto(v) {
+  if (v === null || v === undefined) return '—';
+  const s = v < 0 ? '-' : '', n = Math.abs(v);
+  return n >= 1000 ? s + 'R$ ' + fmtNum(n/1000, 1) + ' mi' : s + 'R$ ' + fmtNum(n, 0) + ' mil';
+}
+function varHtml(agora, antes) {
+  if (!antes) return '<span class="var igual">sem base</span>';
+  const p = (agora - antes) * 100 / Math.abs(antes);
+  const c = p > 0.05 ? 'sobe' : (p < -0.05 ? 'desce' : 'igual');
+  return `<span class="var ${c}">${p > 0.05 ? '↑' : (p < -0.05 ? '↓' : '=')} ${fmtNum(Math.abs(p),1)}%</span>`;
+}
+
+function trocarLado(lado) {
+  LADO = lado;
+  document.getElementById('bAtivo').classList.toggle('on', lado === 'Ativo');
+  document.getElementById('bPassivo').classList.toggle('on', lado === 'Passivo');
+  desenhar();
+}
+
+async function carregar() {
+  try {
+    const r = await fetch('api/balanco-patrimonial', {headers: {'Accept':'application/json'}});
+    const j = await r.json();
+    if (j.redirect) { location.href = 'login.html'; return; }
+    if (!j.ok) throw new Error(j.erro || 'Erro ao consultar');
+    FECHADO = j;
+    balAplicar(j.linhas);
+    const sem = (j.conferencia && j.conferencia.contasSemLinhaNoIndice || []).length;
+    document.getElementById('fechado').innerHTML =
+      `contabilidade fechada até <b>${esc(j.fechadoAte)}</b>`
+      + (j.fechamento ? ` (${esc(j.fechamento)})` : '')
+      + (sem ? ` · <span class="erro">${sem} conta(s) fora do balanço</span>` : '');
+    document.getElementById('atualizado').textContent = 'Atualizado em ' + j.atualizadoEm;
+  } catch (e) {
+    // Sem a contabilidade o quadro continua, no último número oficial — e a
+    // tela escreve isso, em vez de deixar parecer apurado.
+    balAplicar(null);
+    document.getElementById('fechado').innerHTML =
+      `<span class="erro">não foi possível falar com a contabilidade: ${esc(e.message || e)}</span>`
+      + ` · ${BAL_ANOS[0]} está no valor fixo`;
+  }
+  desenhar();
+}
+
+function desenhar() {
+  const parcial = FECHADO && FECHADO.ano === BAL_ANOS[0] ? FECHADO.mes : null;
+  const linhas = balMontar(LADO);
+
+  document.getElementById('corpo').innerHTML = `
+    ${capa(parcial)}
+    <div class="secao">
+      <div class="secao-header"><div class="secao-num">1</div>
+        <div class="secao-titulo">Balanço Patrimonial — ${esc(LADO)}</div></div>
+      <div class="secao-sub">Valores em R$ mil${parcial
+        ? ` · ${BAL_ANOS[0]} vai até ${esc(FECHADO.mesNome)}; os demais são o fechamento de 31/12`
+        : ''}</div>
+      <div class="rolagem">${tabela(linhas, parcial)}</div>
+    </div>
+    <div class="secao">
+      <div class="secao-header"><div class="secao-num">2</div>
+        <div class="secao-titulo">Composição do ${esc(LADO.toLowerCase())}</div></div>
+      <div class="secao-sub">Cada grupo ano a ano · R$ mil</div>
+      <div class="legenda" id="legenda"></div>
+      <div class="grafico-caixa"><canvas id="gComposicao"></canvas></div>
+    </div>
+    ${nota(parcial)}`;
+
+  graficoComposicao();
+}
+
+function capa(parcial) {
+  const ano = BAL_ANOS[0], iAnt = 1;
+  const ativo = balTotal('Ativo', 0), ativoAnt = balTotal('Ativo', iAnt);
+  const circ = balGrupo('Ativo', 'Ativo  Circulante', 0);
+  const pcirc = balGrupo('Passivo', 'Passivo Circulante', 0);
+  const pl = balGrupo('Passivo', 'Patrimônio líquido', 0);
+  const plAnt = balGrupo('Passivo', 'Patrimônio líquido', iAnt);
+  // Liquidez corrente: quanto o circulante cobre do que vence no curto prazo.
+  // É a leitura que um balanço responde primeiro.
+  const liq = pcirc ? circ / pcirc : null;
+  const cartoes = [
+    { rot: 'Ativo total · ' + ano, cor: 'var(--serie-1)', v: curto(ativo),
+      base: varHtml(ativo, ativoAnt) + ' · ' + (ano-1) + ' ' + curto(ativoAnt), neg: ativo < 0 },
+    { rot: 'Ativo circulante · ' + ano, cor: 'var(--serie-3)', v: curto(circ),
+      base: fmtNum(ativo ? circ*100/ativo : 0, 1) + '% do ativo', neg: circ < 0 },
+    { rot: 'Passivo circulante · ' + ano, cor: 'var(--serie-2)', v: curto(pcirc),
+      base: 'liquidez corrente ' + (liq === null ? '—' : fmtNum(liq, 2)), neg: pcirc < 0 },
+    { rot: 'Patrimônio líquido · ' + ano, cor: 'var(--ink)', v: curto(pl),
+      base: varHtml(pl, plAnt) + ' · ' + (ano-1) + ' ' + curto(plAnt), neg: pl < 0 }
+  ];
+  return `<div class="capa">${cartoes.map(c => `
+    <div class="cartao" style="--cor:${c.cor}">
+      <div class="rot">${esc(c.rot)}</div>
+      <div class="cifra${c.neg ? ' neg' : ''}">${c.v}</div>
+      <div class="base">${c.base}</div>
+    </div>`).join('')}</div>`;
+}
+
+function tabela(linhas, parcial) {
+  const cab = BAL_ANOS.map((a, i) =>
+    `<th class="${i === 0 && parcial ? 'parcial' : ''}">${a}${i === 0 && parcial ? '*' : ''}</th>`).join('');
+  const corpo = linhas.map(l => `
+    <tr class="${l.tipo}">
+      <td>${esc(l.rotulo)}</td>
+      ${l.v.map((v, i) => {
+        const cl = [];
+        if (!v) cl.push('vazio'); else if (v < 0) cl.push('neg');
+        if (i === 0 && parcial) cl.push('col-parcial');
+        return `<td class="${cl.join(' ')}">${fmtMil(v)}</td>`;
+      }).join('')}
+    </tr>`).join('');
+  return `<table class="bp"><thead><tr><th>Grupo</th>${cab}</tr></thead>
+          <tbody>${corpo}</tbody></table>`;
+}
+
+function nota(parcial) {
+  const sem = FECHADO && FECHADO.conferencia
+            ? (FECHADO.conferencia.contasSemLinhaNoIndice || []).length : 0;
+  const fora = balNaoFecha();
+  return `<div class="nota-box"><div>
+    <b>De onde vêm os números:</b> de ${BAL_ANOS[BAL_ANOS.length-1]} a ${BAL_ANOS[1]} são os
+    fechamentos de 31/12, fixos nesta tela. <b>${BAL_ANOS[0]}</b> vem do balancete do ERP,
+    somado pelo de/para da controladoria — 289 contas, cada uma com o seu grupo.
+    O passivo inverte de sinal porque é credor no balancete, e o resultado do exercício entra no
+    patrimônio líquido: sem ele o balanço não fecha.
+    Conferido contra a planilha: as 41 linhas batem, e ativo e passivo dão o mesmo total.
+    ${parcial ? `<br>A coluna de <b>${BAL_ANOS[0]}</b> está destacada porque é uma posição de
+       <b>${esc(FECHADO.mesNome)}</b>, e não um fechamento de exercício.` : ''}
+    ${sem ? `<br><b>Atenção:</b> ${sem} conta(s) do balancete ficaram sem grupo e não entraram —
+       conta fora do balanço faz um lado deixar de bater com o outro sem nada avisar.` : ''}
+    ${fora.length ? `<br><b>Ativo e passivo não fecham em ${fora.map(f => f.ano).join(', ')}</b>
+       (${fora.map(f => f.ano + ': ' + fmtNum(Math.abs(f.diferenca)/1000, 1) + ' mi').join(' · ')}).
+       A diferença já vem da planilha — ${BAL_ANOS[0]}, ${BAL_ANOS[1]} e ${BAL_ANOS[2]} fecham ao
+       centavo, e os anteriores não. Não corrigi nada: o número aqui é o mesmo do documento oficial.`
+     : `<br>Ativo e passivo fecham em todos os ${BAL_ANOS.length} anos.`}
+  </div></div>`;
+}
+
+function graficoComposicao() {
+  const grupos = balGrupos(LADO);
+  const anosAsc = BAL_ANOS.slice().reverse();
+  document.getElementById('legenda').innerHTML = grupos.map((g, i) =>
+    `<span><i style="background:${CORES[i % CORES.length]}"></i>${esc(g)}</span>`).join('');
+
+  const canvas = document.getElementById('gComposicao');
+  if (graficos.c) graficos.c.destroy();
+  graficos.c = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: anosAsc,
+      datasets: grupos.map((g, i) => ({
+        label: g,
+        data: anosAsc.map(a => balGrupo(LADO, g, BAL_ANOS.indexOf(a))),
+        backgroundColor: CORES[i % CORES.length],
+        // 2px de papel entre os pedaços empilhados.
+        borderColor: '#ffffff', borderWidth: { top: 2 },
+        borderRadius: 3, borderSkipped: false
+      }))
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      layout: { padding: { top: 22 } },
+      scales: {
+        x: { stacked: true, grid: { display: false }, border: { color: '#e3e8f5' },
+             ticks: { color: '#52514e', font: { size: 11.5, weight: '700' } } },
+        y: { stacked: true, beginAtZero: true, grid: { color: '#e9edf6' }, border: { display: false },
+             ticks: { color: '#898781', font: { size: 11, weight: '600' },
+                      callback: v => v === 0 ? '0' : fmtNum(v/1000, 0) + ' mi' } }
+      },
+      plugins: { legend: { display: false }, tooltip: {
+        callbacks: { label: c => c.dataset.label + ': ' + curto(c.parsed.y) } } }
+    },
+    plugins: [{
+      /* O total acima da pilha: ninguém soma três pedaços de olho. */
+      id: 'totalDoAno',
+      afterDatasetsDraw(chart) {
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.font = '800 11px system-ui, sans-serif';
+        ctx.fillStyle = '#0f2460'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        anosAsc.forEach((a, i) => {
+          const idx = BAL_ANOS.indexOf(a);
+          const total = balTotal(LADO, idx);
+          if (!total) return;
+          let topo = Infinity, x = 0;
+          chart.data.datasets.forEach((_, di) => {
+            const p = chart.getDatasetMeta(di).data[i];
+            if (p && p.y < topo) { topo = p.y; x = p.x; }
+          });
+          if (topo !== Infinity) ctx.fillText(fmtNum(total/1000, 0) + ' mi', x, topo - 5);
+        });
+        ctx.restore();
+      }
+    }]
+  });
+}
+
+carregar();
+</script>
+<script src="js/icones-modulos.js?v=20260819a"></script>
+<script src="js/sidebar-nav.js?v=20260819a" defer></script>
+<script src="js/agro-chat-widget.js" defer></script>
+</body>
+</html>
