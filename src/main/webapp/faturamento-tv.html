@@ -141,14 +141,17 @@
   .mini .tela { margin-top: 4px; }
 
   /* ── Cortes: quatro listas curtas ── */
-  .cortes { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
-            gap: 8px 18px; flex: 1; min-height: 0; }
+  .cortes { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto 1fr;
+            gap: 10px 18px; flex: 1; min-height: 0; }
+  .corte.largo { grid-column: 1 / -1; }
   .corte h3 { font-size: 11px; font-weight: 800; color: var(--rotulo);
               text-transform: uppercase; letter-spacing: .8px; margin-bottom: 2px; }
   .corte table { font-size: 12.5px; font-weight: 700; }
   .corte tbody td { padding: 3.5px 4px; border-bottom: none; }
   .corte .nome { max-width: 210px; overflow: hidden; text-overflow: ellipsis;
                  white-space: nowrap; }
+  /* Ocupando a linha toda, o destino tem espaço para o nome inteiro. */
+  .corte.largo .nome { max-width: 520px; }
 
   /* ── Estados ── */
   .aviso { position: fixed; inset: 0; display: none; place-items: center;
@@ -184,7 +187,7 @@
 
   <div class="linha a">
     <div class="bloco">
-      <div class="cab"><h2>Mês a mês, por produto</h2><span class="dica">composição · total em reais acima de cada mês</span></div>
+      <div class="cab"><h2>Mês a mês, por produto</h2><span class="dica">valor faturado · participação de cada produto na barra</span></div>
       <div class="tela"><canvas id="gMeses"></canvas></div>
     </div>
     <div class="bloco">
@@ -199,7 +202,7 @@
       <div class="minis" id="minis"></div>
     </div>
     <div class="bloco">
-      <div class="cab"><h2>Cliente, estado, destino e rotina</h2><span class="dica">maiores</span></div>
+      <div class="cab"><h2>Cliente, estado e destino</h2><span class="dica">maiores</span></div>
       <div class="cortes" id="cortes"></div>
     </div>
   </div>
@@ -264,18 +267,19 @@ function ajustarEscala() {
 }
 window.addEventListener('resize', ajustarEscala);
 
-// ── Safra: 01/03 a 28/02 ──────────────────────────────────────────────────
-// O fim sai de "dia 0 de março", que o próprio JavaScript resolve como o
-// último dia de fevereiro — ano bissexto vira 29/02 sozinho.
+// ── Safra: 01/09 a 31/08 ──────────────────────────────────────────────────
+// Agosto tem 31 dias sempre, então aqui não existe a conversa de ano
+// bissexto que um fim em fevereiro exigiria. O "ano" da safra é o de INÍCIO:
+// a safra 2025/2026 começa em setembro de 2025.
 function safraDe(ano) {
-  const dd = n => String(n).padStart(2, '0');
-  const fim = new Date(ano + 1, 2, 0);
-  return { ano, rotulo: ano + '/' + (ano + 1), ini: ano + '-03-01',
-           fim: (ano + 1) + '-' + dd(fim.getMonth() + 1) + '-' + dd(fim.getDate()) };
+  return { ano, rotulo: ano + '/' + (ano + 1),
+           ini: ano + '-09-01', fim: (ano + 1) + '-08-31' };
 }
 function safraAtual() {
   const h = new Date();
-  return safraDe(h.getMonth() >= 2 ? h.getFullYear() : h.getFullYear() - 1);
+  // getMonth() é base zero: 8 é setembro. Antes de setembro ainda se está na
+  // safra que começou no ano anterior.
+  return safraDe(h.getMonth() >= 8 ? h.getFullYear() : h.getFullYear() - 1);
 }
 let SAFRAS = [];
 function montarSafras() {
@@ -404,8 +408,8 @@ function montarMinis(d) {
 }
 
 function montarCortes(d) {
-  const bloco = (titulo, linhas) => !linhas || !linhas.length ? '' : `
-    <div class="corte">
+  const bloco = (titulo, linhas, classe) => !linhas || !linhas.length ? '' : `
+    <div class="corte ${classe || ''}">
       <h3>${esc(titulo)}</h3>
       <table><tbody>
         ${linhas.slice(0, 5).map(l => `
@@ -414,30 +418,27 @@ function montarCortes(d) {
               <td class="num" style="color:var(--ink-3);width:52px">${fmtNum(l.pct, 1)}%</td></tr>`).join('')}
       </tbody></table>
     </div>`;
+  // Rotina fiscal saiu: é classificação contábil da nota, não diz nada sobre
+  // a venda para quem olha o painel da parede. O destino ocupa a linha
+  // inteira porque os nomes dele são longos e vinham truncados em meia
+  // largura.
   document.getElementById('cortes').innerHTML =
       bloco('Cliente', d.porCliente)
     + bloco('Estado', d.porEstado)
-    + bloco('Destino do item', d.porDestino)
-    + bloco('Rotina fiscal', d.porRotina);
+    + bloco('Destino do item', d.porDestino, 'largo');
 }
 
 // ── Gráficos ──────────────────────────────────────────────────────────────
 /**
- * Mês a mês: COMPOSIÇÃO em barra cheia, com o total escrito em cima.
+ * Mês a mês: VALOR faturado, empilhado por produto.
  *
- * As duas formas anteriores falhavam pela mesma razão — a escala real é
- * torta demais. Um produto responde por 68% do faturamento e os meses vão de
- * R$ 577 mil a R$ 42,5 milhões, 73 vezes de diferença:
+ * A normalização a 100% deixava os doze meses com a mesma altura, e a safra
+ * perdia a sua forma — que é o que salta aos olhos aqui: sete meses fracos
+ * e depois o pico da colheita. Em valor, o desenho conta essa história
+ * sozinho, e a composição continua legível dentro de cada barra.
  *
- * - empilhado em valor: os meses fracos viram traços rentes ao eixo e os
- *   produtos pequenos, linhas de um pixel;
- * - lado a lado: pior ainda, porque cada produto pequeno passa a ter a sua
- *   própria barra invisível.
- *
- * Normalizando cada mês a 100%, a MISTURA fica comparável entre meses — que
- * é a pergunta que este gráfico responde ("de que se compôs o faturamento
- * deste mês"). O TAMANHO não se perde: vai escrito acima de cada barra, que
- * é onde um número grande se lê melhor do que numa altura.
+ * Os meses fracos ficam pequenos mesmo. Isso não é defeito do gráfico: eles
+ * são pequenos. O número em cima resolve quem quiser o valor exato.
  */
 function desenharMeses(d) {
   const meses = d.meses || [], series = d.seriesProduto || [];
@@ -448,12 +449,7 @@ function desenharMeses(d) {
       labels: meses.map(m => m.label),
       datasets: series.map(nome => ({
         label: nome,
-        data: meses.map((m, i) => {
-          const v = Number((m.produtos || {})[nome]) || 0;
-          return totais[i] > 0 ? (v / totais[i]) * 100 : 0;
-        }),
-        // O valor em reais viaja junto, para o rótulo de dentro do pedaço.
-        reais: meses.map(m => Number((m.produtos || {})[nome]) || 0),
+        data: meses.map(m => Number((m.produtos || {})[nome]) || 0),
         backgroundColor: corDoProduto(nome),
         borderRadius: 2, borderSkipped: false,
         borderColor: '#ffffff', borderWidth: 1,
@@ -466,10 +462,10 @@ function desenharMeses(d) {
       scales: {
         x: { stacked: true, grid: { display: false }, border: { color: '#e3e8f5' },
              ticks: { color: '#52514e', font: { size: 13, weight: '700' } } },
-        y: { stacked: true, min: 0, max: 100,
+        y: { stacked: true, beginAtZero: true,
              grid: { color: '#e9edf6' }, border: { display: false },
              ticks: { color: '#898781', font: { size: 12, weight: '700' },
-                      stepSize: 25, callback: v => v + '%' } }
+                      maxTicksLimit: 6, callback: v => fmtMoedaCurta(v) } }
       },
       plugins: {
         // Legenda à esquerda do topo e compacta: com sete produtos ela
@@ -490,31 +486,44 @@ function desenharMeses(d) {
 
         // Total do mês, em reais, acima da barra.
         ctx.save();
-        // 12px em vez de 14: a 14 o texto de meses grandes ("R$ 35,4 mi")
-        // passava da largura da coluna e era suprimido pela medição — metade
-        // dos meses ficava sem total, que é a informação principal daqui.
+        // O total vai logo ACIMA DA PRÓPRIA BARRA, não numa régua no alto do
+        // gráfico. Com meses de R$ 577 mil ao lado de R$ 42 milhões, a régua
+        // deixava o número a meia tela de distância da barra a que se refere
+        // — e ainda encostava na legenda.
         ctx.font = '800 12px system-ui, sans-serif';
         ctx.fillStyle = '#0f2460';
         ctx.textAlign = 'center';
-        const topo = chart.getDatasetMeta(0).data;
+        ctx.textBaseline = 'bottom';
         chart.data.labels.forEach((_, i) => {
-          if (!totais[i] || !topo[i]) return;
+          if (!totais[i]) return;
           const texto = fmtMoedaCurta(totais[i]);
           if (ctx.measureText(texto).width > larguraMes - 2) return;
-          ctx.fillText(texto, topo[i].x, chart.chartArea.top - 6);
+          // Topo da pilha: o menor y entre os pedaços deste mês.
+          let topo = Infinity, x = null;
+          chart.data.datasets.forEach((_, di) => {
+            const b = chart.getDatasetMeta(di).data[i];
+            if (!b) return;
+            x = b.x;
+            if (b.y < topo) topo = b.y;
+          });
+          if (x == null || !isFinite(topo)) return;
+          ctx.fillText(texto, x, topo - 5);
         });
 
-        // Percentual dentro do pedaço, quando ele é alto o bastante para o
-        // texto caber sem encostar nas bordas.
+        // Participação dentro do pedaço, só onde o pedaço comporta o texto.
+        // Num mês fraco nada é escrito — e está certo: ali o que importa é o
+        // total de cima, não a divisão de R$ 577 mil.
         ctx.font = '800 11px system-ui, sans-serif';
         ctx.textBaseline = 'middle';
         chart.data.datasets.forEach((ds, di) => {
           const meta = chart.getDatasetMeta(di);
           meta.data.forEach((b, i) => {
-            const pct = ds.data[i];
-            if (!pct || pct < 9) return;
+            const v = ds.data[i];
+            if (!v || !totais[i]) return;
             const altura = Math.abs(b.base - b.y);
-            if (altura < 17) return;
+            if (altura < 18) return;
+            const pct = (v / totais[i]) * 100;
+            if (pct < 8) return;
             ctx.fillStyle = corLegivel(ds.backgroundColor);
             ctx.fillText(fmtNum(pct, 0) + '%', b.x, (b.base + b.y) / 2);
           });
@@ -578,35 +587,7 @@ function desenharPrecos(d) {
                         callback: v => 'R$ ' + fmtNum(v, 0) } }
         },
         plugins: { legend: { display: false }, tooltip: { enabled: false } }
-      },
-      plugins: [{
-        // Só o primeiro e o último ponto ganham número: com doze pontos, um
-        // rótulo em cada um vira uma faixa de dígitos onde a linha some — e
-        // o que se quer saber é de onde saiu e onde chegou.
-        id: 'pontasDaLinha',
-        afterDatasetsDraw(chart) {
-          const ctx = chart.ctx;
-          const pontos = chart.getDatasetMeta(0).data;
-          const dados = chart.data.datasets[0].data;
-          const validos = [];
-          dados.forEach((v, k) => { if (v != null && pontos[k]) validos.push(k); });
-          if (!validos.length) return;
-
-          ctx.save();
-          ctx.font = '800 12px system-ui, sans-serif';
-          ctx.fillStyle = '#0f2460';
-          ctx.textBaseline = 'bottom';
-          const marcar = (k, alinhamento) => {
-            const b = pontos[k];
-            ctx.textAlign = alinhamento;
-            const dx = alinhamento === 'left' ? 5 : -5;
-            ctx.fillText(fmtNum(dados[k], dados[k] < 100 ? 2 : 0), b.x + dx, b.y - 7);
-          };
-          marcar(validos[0], 'left');
-          if (validos.length > 1) marcar(validos[validos.length - 1], 'right');
-          ctx.restore();
-        }
-      }]
+      }
     });
   });
 }

@@ -248,25 +248,23 @@ function corDoProduto(nome) {
 }
 
 /* ── Safra ──
-   A safra vai de 01/03 de um ano a 28/02 do seguinte. O fim é calculado com
-   "dia 0 de março", que o próprio JavaScript resolve como o último dia de
-   fevereiro — assim ano bissexto vira 29/02 sozinho, sem regra escrita à
-   mão. */
+   Vai de 01/09 de um ano a 31/08 do seguinte. Agosto tem 31 dias sempre, então
+   aqui não existe a conversa de ano bissexto que um fim em fevereiro exigiria.
+   O "ano" da safra é o de INÍCIO: a safra 2025/2026 começa em setembro de 2025. */
 function safraDe(ano) {
-  const doisDig = n => String(n).padStart(2, '0');
-  const fim = new Date(ano + 1, 2, 0);           // 0 de março = fim de fevereiro
   return {
     ano,
     rotulo: ano + '/' + (ano + 1),
-    ini: ano + '-03-01',
-    fim: (ano + 1) + '-' + doisDig(fim.getMonth() + 1) + '-' + doisDig(fim.getDate())
+    ini: ano + '-09-01',
+    fim: (ano + 1) + '-08-31'
   };
 }
 
-/** A safra corrente hoje: antes de março ainda é a que começou no ano passado. */
+/** A safra corrente hoje: antes de setembro ainda é a que começou no ano passado. */
 function safraAtual() {
   const h = new Date();
-  return safraDe(h.getMonth() >= 2 ? h.getFullYear() : h.getFullYear() - 1);
+  // getMonth() é base zero: 8 é setembro.
+  return safraDe(h.getMonth() >= 8 ? h.getFullYear() : h.getFullYear() - 1);
 }
 
 let SAFRAS = [];
