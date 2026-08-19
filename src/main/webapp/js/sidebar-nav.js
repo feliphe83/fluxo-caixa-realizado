@@ -96,10 +96,32 @@
     .snav-nav::-webkit-scrollbar { width: 6px; }
     .snav-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.22); border-radius: 3px; }
     .snav-nav::-webkit-scrollbar-track { background: transparent; }
-    .snav-sec { font-size: 9.5px; font-weight: 700; color: #8492a5;
-                text-transform: uppercase; letter-spacing: 1px;
-                padding: 0 12px; margin: 18px 0 6px; }
-    .snav-sec:first-child { margin-top: 4px; }
+    /* ── Sanfona ──
+       A categoria virou botão: mostra o nome, quantos módulos tem e uma seta
+       que gira ao abrir. Fonte maior que o rótulo de antes porque agora ela
+       é o item que se clica, e não uma legenda. */
+    .snav-grupo { margin-bottom: 2px; }
+    .snav-sec {
+      display: flex; align-items: center; gap: 8px; width: 100%;
+      padding: 9px 10px 9px 12px; border: none; border-radius: 8px;
+      background: none; color: #c5d2e6; font-family: inherit;
+      font-size: 12px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .9px; cursor: pointer; text-align: left;
+      transition: background .15s, color .15s;
+    }
+    .snav-sec:hover { background: rgba(255,255,255,.07); color: #ffffff; }
+    .snav-sec .txt { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .snav-sec .qtde { font-size: 10.5px; font-weight: 700; color: #8492a5;
+                      background: rgba(255,255,255,.08); border-radius: 999px;
+                      padding: 1px 7px; letter-spacing: 0; }
+    .snav-sec .seta { flex: none; opacity: .65; transition: transform .18s; }
+    .snav-grupo.aberto .snav-sec { color: #ffffff; }
+    .snav-grupo.aberto .snav-sec .seta { transform: rotate(180deg); opacity: 1; }
+
+    /* Fechado de verdade, e não só escondido: com display:none o teclado
+       também deixa de alcançar os itens de uma categoria fechada. */
+    .snav-itens { display: none; padding: 2px 0 6px 8px; }
+    .snav-grupo.aberto .snav-itens { display: block; }
     /* A barra de acento à esquerda nasce transparente e ganha cor no hover
        e no item atual. Assim o realce entra pelo mesmo lugar nos dois casos,
        em vez de o fundo mudar num e a cor do texto no outro. */
@@ -251,6 +273,32 @@
       </div>`;
   }).catch(() => {});
 
+  /**
+   * Abre ou fecha uma categoria.
+   *
+   * Vai no window porque o onclick do HTML gerado é avaliado no escopo
+   * global — este arquivo inteiro roda dentro de uma função anônima, e uma
+   * função declarada aqui dentro não existiria para o atributo.
+   *
+   * Só uma aberta por vez: abrir a segunda fecha a primeira. Com todas
+   * abertas volta a parede de texto que a sanfona veio resolver.
+   */
+  window.snavAlternar = function (i) {
+    const alvo = sidebar.querySelector('.snav-grupo[data-grupo="' + i + '"]');
+    if (!alvo) return;
+    const vaiAbrir = !alvo.classList.contains('aberto');
+    sidebar.querySelectorAll('.snav-grupo').forEach(g => {
+      g.classList.remove('aberto');
+      const b = g.querySelector('.snav-sec');
+      if (b) b.setAttribute('aria-expanded', 'false');
+    });
+    if (vaiAbrir) {
+      alvo.classList.add('aberto');
+      const b = alvo.querySelector('.snav-sec');
+      if (b) b.setAttribute('aria-expanded', 'true');
+    }
+  };
+
   // ── Módulos liberados (api/hub) ──────────────────────────────────────────
   fetch('api/hub').then(r => r.json()).then(j => {
     const nav = document.getElementById('snavNav');
@@ -267,15 +315,35 @@
       return;
     }
 
-    nav.innerHTML = itemHub + j.categorias.map(cat => `
-      <div class="snav-sec">${escapeHtml(cat.nome)}</div>
-      ${cat.modulos.map(mod => `
-        <a class="snav-item ${ultimoSegmento(mod.urlDestino) === ARQUIVO_ATUAL ? 'ativo' : ''}"
-           href="${escapeHtml(mod.urlDestino)}" title="${escapeHtml(mod.descricao || mod.nome)}">
-          ${iconeDoModulo(mod, 16)}
-          <span class="txt">${escapeHtml(mod.nome)}</span>
-        </a>`).join('')}
-    `).join('');
+    // Sanfona: a lista mostra só as categorias, e cada uma abre para baixo
+    // ao ser clicada. Com quinze módulos em oito grupos, a lista inteira
+    // aberta é uma parede de texto onde nada se destaca — fechada, cabe de
+    // uma vez e a pessoa escolhe o assunto antes do item.
+    //
+    // A categoria da tela atual já nasce aberta: quem está dentro de um
+    // módulo precisa ver onde está sem ter de procurar.
+    nav.innerHTML = itemHub + j.categorias.map((cat, i) => {
+      const daTela = cat.modulos.some(m => ultimoSegmento(m.urlDestino) === ARQUIVO_ATUAL);
+      return `
+      <div class="snav-grupo ${daTela ? 'aberto' : ''}" data-grupo="${i}">
+        <button class="snav-sec" type="button" onclick="window.snavAlternar(${i})"
+                aria-expanded="${daTela ? 'true' : 'false'}">
+          <span class="txt">${escapeHtml(cat.nome)}</span>
+          <span class="qtde">${cat.modulos.length}</span>
+          <svg class="seta" width="14" height="14" fill="none" viewBox="0 0 24 24"
+               stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="snav-itens">
+          ${cat.modulos.map(mod => `
+            <a class="snav-item ${ultimoSegmento(mod.urlDestino) === ARQUIVO_ATUAL ? 'ativo' : ''}"
+               href="${escapeHtml(mod.urlDestino)}" title="${escapeHtml(mod.descricao || mod.nome)}">
+              ${iconeDoModulo(mod, 16)}
+              <span class="txt">${escapeHtml(mod.nome)}</span>
+            </a>`).join('')}
+        </div>
+      </div>`;
+    }).join('');
   }).catch(() => {
     document.getElementById('snavNav').innerHTML =
       '<a class="snav-item" href="hub.html">Hub</a><div class="snav-erro">Erro ao carregar módulos.</div>';
