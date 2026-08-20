@@ -16,7 +16,7 @@
    que se quer ver de longe: quem estourou.
 
    MAS ACEITA CLIQUE, porque muita TV fica ao alcance da mão: dá para trocar
-   de mês e abrir um grupo nos empenhos.
+   de mês, filtrar por negócio e abrir um grupo nos empenhos.
 
    E VOLTA SOZINHO. Toda interação numa parede é temporária: quem clicou vai
    embora e o painel ficaria presos naquele mês para sempre, mostrando abril
@@ -39,7 +39,7 @@
   #palco-wrap { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
   #palco { position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px;
            transform-origin: center center; padding: 18px 24px 16px;
-           display: grid; grid-template-rows: auto auto 1fr 300px; gap: 11px; }
+           display: grid; grid-template-rows: auto auto auto 1fr 300px; gap: 10px; }
 
   /* ── Topo ── */
   .topo { display: flex; align-items: center; gap: 16px; }
@@ -76,6 +76,19 @@
   .meses button.on { background: var(--realizado); color: #fff; }
   .meses button.futuro { opacity: .4; }
   .meses button:not(.on):hover { background: var(--papel-2); color: var(--ink); }
+
+  /* O negócio é filtro, não navegação: tira mais baixa e em pílula, para
+     não competir com a dos meses, que é a escolha principal. */
+  .negocios { display: flex; gap: 7px; align-items: center; background: var(--papel);
+              border: 1px solid var(--borda); border-radius: 12px; padding: 6px 14px; }
+  .negocios .rot { font-size: 12px; font-weight: 800; color: var(--rotulo);
+                   text-transform: uppercase; letter-spacing: .8px; margin-right: 4px; }
+  .negocios button { font-size: 14.5px; font-weight: 800; color: var(--ink-2);
+                     padding: 6px 18px; border-radius: 999px; border: 1px solid var(--borda);
+                     background: var(--papel-2); font-family: inherit; cursor: pointer;
+                     white-space: nowrap; }
+  .negocios button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .negocios button:not(.on):hover { background: #e9eefb; color: var(--ink); }
 
   /* Linha de grupo clicável, como na tela de computador. */
   table.q tbody tr.grupo { cursor: pointer; }
@@ -171,6 +184,7 @@
   </div>
 
   <div class="meses" id="meses"></div>
+  <div class="negocios" id="negocios" style="display:none"></div>
 
   <div class="bloco"><div id="quadro"><div class="carregando">Consultando o orçamento…</div></div></div>
 
@@ -212,6 +226,7 @@ const graficos = {};
 const VOLTA_MS = 3 * 60 * 1000;
 let MANUAL = false;          // alguém mexeu?
 let ABERTOS = {};            // grupos abertos
+let NEGOCIO = '';            // '' = todos
 let relogioVolta = null;     // conta o tempo até voltar ao automático
 
 function mexeu() {
@@ -224,6 +239,7 @@ function mexeu() {
 function voltarAoAutomatico() {
   MANUAL = false;
   ABERTOS = {};
+  NEGOCIO = '';
   clearTimeout(relogioVolta);
   document.getElementById('manual').classList.remove('on');
   MES = mesAutomatico();
@@ -263,6 +279,16 @@ function trocarMes(anomes) {
 
 function alternarGrupo(k) {
   ABERTOS[k] = !ABERTOS[k];
+  mexeu();
+  desenhar();
+}
+
+function trocarNegocio(n) {
+  if (n === NEGOCIO) return;
+  NEGOCIO = n;
+  // Grupo aberto de um negócio não faz sentido depois de trocar de negócio:
+  // fecha tudo, senão sobra uma linha expandida sem nada por dentro.
+  ABERTOS = {};
   mexeu();
   desenhar();
 }
@@ -323,6 +349,7 @@ async function carregar() {
 function agregar() {
   const grupos = new Map();
   for (const l of DADOS.linhas) {
+    if (NEGOCIO && l.negocio !== NEGOCIO) continue;
     const noMes = l.anomes === MES, noAcum = l.anomes <= MES;
     if (!noMes && !noAcum) continue;
     const k = l.codGrupo + '|' + l.grupo;
@@ -347,6 +374,7 @@ function agregar() {
 function serie() {
   const porMes = new Map(DADOS.meses.map(m => [m.anomes, {label:m.label, p:0, r:0}]));
   for (const l of DADOS.linhas) {
+    if (NEGOCIO && l.negocio !== NEGOCIO) continue;
     const m = porMes.get(l.anomes);
     if (m) { m.p += +l.orcado; m.r += +l.realizado; }
   }
@@ -374,6 +402,21 @@ function desenhar() {
   document.getElementById('meses').innerHTML = DADOS.meses.map(m =>
     `<button class="${m.anomes===MES?'on':''} ${comDado.has(m.anomes)?'':'futuro'}"
              onclick="trocarMes(${m.anomes})">${esc(m.nome)}</button>`).join('');
+
+  // A tira de negócios só existe quando há negócio: filtro que não filtra é
+  // pior do que filtro nenhum.
+  const cxNeg = document.getElementById('negocios');
+  if (DADOS.temNegocio && (DADOS.negocios||[]).length) {
+    cxNeg.style.display = '';
+    cxNeg.innerHTML = '<span class="rot">Negócio</span>'
+      + `<button class="${NEGOCIO===''?'on':''}" onclick="trocarNegocio('')">Todos</button>`
+      + DADOS.negocios.map(n =>
+          `<button class="${NEGOCIO===n?'on':''}"
+                   onclick="trocarNegocio('${esc(n).replace(/'/g,"\\'")}')">${esc(n)}</button>`
+        ).join('');
+  } else {
+    cxNeg.style.display = 'none';
+  }
 
   const tp = grupos.reduce((a,g)=>a+g.mp,0), tr = grupos.reduce((a,g)=>a+g.mr,0);
   const tap = grupos.reduce((a,g)=>a+g.ap,0), tar = grupos.reduce((a,g)=>a+g.ar,0);
@@ -439,15 +482,17 @@ function encaixar() {
   if (!tabela) return;
   const disponivel = caixa.clientHeight - 24;
   let fonte = 16;
-  // Encolhe E CRESCE. Na primeira versão ele só encolhia, e um período com
-  // poucos grupos deixava um terço do bloco em branco — numa parede, altura
-  // sobrando é altura de leitura jogada fora. O teto de 22px existe porque
-  // acima disso a tabela vira cartaz e as oito colunas não cabem na largura.
+  // Encolhe E CRESCE. Se só encolhesse, um recorte com poucos grupos —
+  // filtrar por um negócio deixa três ou quatro — esvaziaria metade do
+  // bloco, e numa parede altura sobrando é altura de leitura jogada fora.
+  //
+  // O teto é 26px: acima disso as oito colunas de dinheiro deixam de caber
+  // na largura, que é o limite real aqui, não a altura.
   for (let passada = 0; passada < 3; passada++) {
     document.documentElement.style.setProperty('--fonte', fonte.toFixed(2) + 'px');
     const ocupado = tabela.offsetHeight;
     if (!ocupado) return;
-    fonte = Math.max(8, Math.min(22, fonte * (disponivel * 0.99) / ocupado));
+    fonte = Math.max(8, Math.min(26, fonte * (disponivel * 0.99) / ocupado));
   }
   document.documentElement.style.setProperty('--fonte', fonte.toFixed(2) + 'px');
 }
