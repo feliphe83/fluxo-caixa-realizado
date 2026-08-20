@@ -1,0 +1,355 @@
+package br.com.lopes.fluxo.dao;
+
+import br.com.lopes.fluxo.util.HttpUtil;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+/**
+ * As fontes externas do painel de indicadores econômicos.
+ *
+ * ── POR QUE PELO SERVIDOR, E NÃO PELO NAVEGADOR ──
+ *
+ * O painel que serviu de modelo busca tudo do navegador. Isso tem três
+ * problemas que o servidor resolve:
+ *
+ *  1. as chaves de API ficavam à vista no código-fonte da página — qualquer
+ *     um que abrisse o HTML as levava;
+ *  2. um cache só serve a TV e todos os computadores; do navegador, cada
+ *     tela aberta é mais uma batida na fonte, e fonte gratuita tem limite;
+ *  3. a TV da parede pode não ter internet no cliente. Pelo servidor, ela
+ *     mostra o mesmo número que todo mundo.
+ *
+ * ── CADA FONTE CAI SOZINHA ──
+ *
+ * Uma fonte fora do ar não pode derrubar o painel: cada uma é buscada e
+ * guardada separadamente, e o que falhou vai no JSON como erro, ao lado do
+ * que deu certo. Num painel de indicadores, meia tela com dado bom é útil;
+ * tela em branco não é.
+ *
+ * O cache guarda o ÚLTIMO SUCESSO. Se a fonte cair, o painel continua
+ * mostrando o número de antes, dizendo de quando ele é — melhor do que um
+ * buraco, desde que a idade esteja escrita.
+ */
+public class IndicadoresEconomicosDAO {
+
+    private static final Logger LOG = Logger.getLogger(IndicadoresEconomicosDAO.class.getName());
+
+    /** Cotação muda o dia inteiro; índice do BCB e CEPEA, uma vez por dia. */
+    private static final long TTL_COTACAO = 10 * 60 * 1000L;
+    private static final long TTL_DIARIO  = 3 * 60 * 60 * 1000L;
+
+    private static final String URL_DOLAR =
+        "https://economia.awesomeapi.com.br/json/last/USD-BRL";
+    private static final String URL_DOLAR_HIST =
+        "https://api.frankfurter.app/%s..%s?from=USD&to=BRL";
+    private static final String URL_BCB =
+        "https://api.bcb.gov.br/dados/serie/bcdata.sgs.%d/dados/ultimos/%d?formato=json";
+    /**
+     * A série da poupança (195) NÃO aceita "ultimos/N" — devolve 400 para
+     * qualquer N, conferido de 100 a 380. Ela só responde por intervalo de
+     * datas, porque é uma série de aniversário: um rendimento por dia do mês.
+     */
+    private static final String URL_BCB_PERIODO =
+        "https://api.bcb.gov.br/dados/serie/bcdata.sgs.%d/dados"
+      + "?formato=json&dataInicial=%s&dataFinal=%s";
+    private static final String URL_CEPEA =
+        "https://www.cepea.org.br/br/widgetproduto.js.php"
+      + "?id_indicador%5B%5D=208&id_indicador%5B%5D=209";
+
+    /**
+     * O açúcar NY nº 11.
+     *
+     * O painel de modelo usava a financialmodelingprep, e as três chaves
+     * dele hoje respondem "Legacy Endpoint - no longer supported" — conferi
+     * as três. Sobrou o serviço que vocês mesmos mantêm; ele fica em
+     * variável de ambiente para trocar de endereço sem deploy.
+     */
+    private static final String URL_ACUCAR = env("ACUCAR_API_URL",
+        "http://179.97.38.58:5000/api/dados");
+    private static final String URL_ACUCAR_15D = env("ACUCAR_API_URL_15D",
+        "http://179.97.38.58:5000/api/dados_15d");
+
+    private static String env(String nome, String padrao) {
+        String v = System.getenv(nome);
+        return (v == null || v.isBlank()) ? padrao : v;
+    }
+
+    // ── Cache ─────────────────────────────────────────────────────────────
+
+    private record NoCache(JsonElement valor, long quando, String erro) {}
+
+    private static final Map<String, NoCache> CACHE = new ConcurrentHashMap<>();
+
+    private interface Busca { JsonElement executar() throws Exception; }
+
+    /**
+     * Busca com cache e queda para o último sucesso.
+     *
+     * @return {dado, idadeMinutos, erro} — erro preenchido quando a fonte
+     *         falhou, mesmo que ainda haja dado velho para mostrar.
+     */
+    private JsonObject comCache(String chave, long ttl, Busca busca) {
+        NoCache atual = CACHE.get(chave);
+        long agora = System.currentTimeMillis();
+
+        if (atual != null && atual.erro() == null && (agora - atual.quando()) < ttl) {
+            return envelope(atual.valor(), agora - atual.quando(), null);
+        }
+        try {
+            JsonElement novo = busca.executar();
+            CACHE.put(chave, new NoCache(novo, agora, null));
+            return envelope(novo, 0, null);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "Fonte " + chave + " falhou", e);
+            String msg = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
+            // Guarda o dado velho, mas anota o erro: quem lê tem de saber
+            // que aquilo não veio agora.
+            if (atual != null && atual.valor() != null) {
+                return envelope(atual.valor(), agora - atual.quando(), msg);
+            }
+            return envelope(null, 0, msg);
+        }
+    }
+
+    private static JsonObject envelope(JsonElement dado, long idadeMs, String erro) {
+        JsonObject o = new JsonObject();
+        o.add("dado", dado);
+        o.addProperty("idadeMinutos", Math.round(idadeMs / 60000.0));
+        if (erro != null) o.addProperty("erro", erro);
+        return o;
+    }
+
+    // ── Dólar ─────────────────────────────────────────────────────────────
+
+    public JsonObject dolar() {
+        return comCache("dolar", TTL_COTACAO, () -> {
+            JsonObject raiz = JsonParser.parseString(HttpUtil.get(URL_DOLAR)).getAsJsonObject();
+            JsonObject d = raiz.getAsJsonObject("USDBRL");
+            JsonObject o = new JsonObject();
+            o.addProperty("data", texto(d, "create_date"));
+            o.addProperty("ultimo",   numero(d, "bid"));
+            o.addProperty("abertura", numero(d, "ask"));
+            o.addProperty("alta",     numero(d, "high"));
+            o.addProperty("baixa",    numero(d, "low"));
+            o.addProperty("variacao", numero(d, "pctChange"));
+            return o;
+        });
+    }
+
+    /** Série do dólar dos últimos dias, para o gráfico. */
+    public JsonObject dolarHistorico(int dias) {
+        return comCache("dolarHist" + dias, TTL_COTACAO, () -> {
+            java.time.LocalDate fim = java.time.LocalDate.now();
+            java.time.LocalDate ini = fim.minusDays(dias);
+            String url = String.format(URL_DOLAR_HIST, ini, fim);
+            JsonObject raiz = JsonParser.parseString(HttpUtil.get(url)).getAsJsonObject();
+            JsonObject rates = raiz.getAsJsonObject("rates");
+
+            JsonArray arr = new JsonArray();
+            // TreeMap pela chave ISO: a data em texto ordena sozinha em ordem
+            // cronológica, e a API não promete a ordem do objeto.
+            for (String dia : new java.util.TreeSet<>(rates.keySet())) {
+                JsonObject p = new JsonObject();
+                p.addProperty("data", dia);
+                p.addProperty("valor", rates.getAsJsonObject(dia).get("BRL").getAsDouble());
+                arr.add(p);
+            }
+            return arr;
+        });
+    }
+
+    // ── Indicadores do Banco Central ──────────────────────────────────────
+
+    /** Código da série no SGS e como o painel a chama. */
+    private static final Object[][] SERIES = {
+        {  433, "IPCA"     },
+        {  188, "INPC"     },
+        {  189, "IGP-M"    },
+        { 7453, "INCC"     },
+    };
+
+    public JsonObject indicadores() {
+        return comCache("indicadores", TTL_DIARIO, () -> {
+            JsonArray arr = new JsonArray();
+            for (Object[] s : SERIES) {
+                int codigo = (int) s[0];
+                String nome = (String) s[1];
+                List<double[]> meses = serieMensal(codigo, 13);
+                if (meses.isEmpty()) continue;
+                arr.add(linhaIndicador(nome, meses));
+            }
+            JsonObject poupanca = poupanca();
+            if (poupanca != null) arr.add(poupanca);
+            return arr;
+        });
+    }
+
+    /** @return lista de {anoMes, valorPercentual}, da mais antiga para a mais nova. */
+    private List<double[]> serieMensal(int codigo, int quantos) throws Exception {
+        JsonArray dados = JsonParser.parseString(
+                HttpUtil.get(String.format(URL_BCB, codigo, quantos))).getAsJsonArray();
+        List<double[]> out = new ArrayList<>();
+        for (JsonElement el : dados) {
+            JsonObject o = el.getAsJsonObject();
+            String[] p = o.get("data").getAsString().split("/");
+            if (p.length < 3) continue;
+            double anoMes = Integer.parseInt(p[2]) * 100 + Integer.parseInt(p[1]);
+            out.add(new double[]{ anoMes, Double.parseDouble(o.get("valor").getAsString().replace(',', '.')) });
+        }
+        return out;
+    }
+
+    /**
+     * Uma linha da tabela: mês, acumulado no ano e em 12 meses.
+     *
+     * O acumulado é COMPOSTO, não somado: 1% em janeiro e 1% em fevereiro
+     * dão 2,01% no ano, não 2%. Somar índice de preço é o erro mais comum
+     * desse tipo de tabela, e a diferença cresce com a inflação.
+     */
+    private JsonObject linhaIndicador(String nome, List<double[]> meses) {
+        double[] ultimo = meses.get(meses.size() - 1);
+        int ano = (int) (ultimo[0] / 100);
+
+        double noAno = 1, em12 = 1;
+        for (double[] m : meses) if ((int) (m[0] / 100) == ano) noAno *= 1 + m[1] / 100;
+        // Doze meses, e não a lista inteira: a consulta pede 13 para o caso
+        // de a série já ter publicado o mês corrente.
+        int desde = Math.max(0, meses.size() - 12);
+        for (int i = desde; i < meses.size(); i++) em12 *= 1 + meses.get(i)[1] / 100;
+
+        JsonObject o = new JsonObject();
+        o.addProperty("nome", nome);
+        o.addProperty("anoMes", (int) ultimo[0]);
+        o.addProperty("noMes", arred(ultimo[1]));
+        o.addProperty("noAno", arred((noAno - 1) * 100));
+        o.addProperty("em12Meses", arred((em12 - 1) * 100));
+        return o;
+    }
+
+    /**
+     * Poupança: a série 195 é DIÁRIA (o rendimento do mês que começa naquele
+     * dia), então o acumulado sai pegando uma entrada por mês. Sem isso, os
+     * trinta valores de um mesmo mês entrariam todos no composto e o ano
+     * apareceria com um rendimento absurdo.
+     */
+    private JsonObject poupanca() {
+        try {
+            java.time.format.DateTimeFormatter fmt =
+                    java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            java.time.LocalDate fim = java.time.LocalDate.now();
+            java.time.LocalDate ini = fim.minusMonths(13).withDayOfMonth(1);
+            JsonArray dados = JsonParser.parseString(HttpUtil.get(
+                    String.format(URL_BCB_PERIODO, 195, ini.format(fmt), fim.format(fmt))))
+                    .getAsJsonArray();
+            Map<Integer, Double> porMes = new LinkedHashMap<>();
+            for (JsonElement el : dados) {
+                JsonObject o = el.getAsJsonObject();
+                String[] p = o.get("data").getAsString().split("/");
+                if (p.length < 3) continue;
+                int anoMes = Integer.parseInt(p[2]) * 100 + Integer.parseInt(p[1]);
+                // A primeira entrada de cada mês é a que vale; as seguintes
+                // são o mesmo rendimento começando em outro dia.
+                porMes.putIfAbsent(anoMes, Double.parseDouble(o.get("valor").getAsString().replace(',', '.')));
+            }
+            List<double[]> meses = new ArrayList<>();
+            new java.util.TreeSet<>(porMes.keySet())
+                    .forEach(k -> meses.add(new double[]{ k, porMes.get(k) }));
+            if (meses.isEmpty()) return null;
+            // Só os 12 últimos: o intervalo pede 13 meses para garantir que o
+            // primeiro do ano corrente esteja inteiro na lista.
+            if (meses.size() > 12) meses.subList(0, meses.size() - 12).clear();
+            return linhaIndicador("Poupança", meses);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "Poupança indisponível", e);
+            return null;
+        }
+    }
+
+    // ── CEPEA ─────────────────────────────────────────────────────────────
+
+    private static final Pattern LINHA_CEPEA =
+        Pattern.compile("<tr>(.*?)</tr>", Pattern.DOTALL);
+    private static final Pattern CELULA_CEPEA =
+        Pattern.compile("<td[^>]*>(.*?)</td>", Pattern.DOTALL);
+
+    /**
+     * Etanol anidro e hidratado de Alagoas, do widget do CEPEA.
+     *
+     * O widget devolve JavaScript com um document.write de uma tabela HTML —
+     * não há API. Lê-se o que veio, e por isso a extração é tolerante: se o
+     * formato mudar, a lista vem vazia e o painel mostra o resto.
+     */
+    public JsonObject cepea() {
+        return comCache("cepea", TTL_DIARIO, () -> {
+            String corpo = HttpUtil.get(URL_CEPEA);
+            JsonArray arr = new JsonArray();
+            Matcher mLinha = LINHA_CEPEA.matcher(corpo);
+            while (mLinha.find()) {
+                List<String> celulas = new ArrayList<>();
+                Matcher mCel = CELULA_CEPEA.matcher(mLinha.group(1));
+                while (mCel.find()) celulas.add(limpar(mCel.group(1)));
+                if (celulas.size() < 3) continue;
+
+                String valorTexto = celulas.get(2).replace("R$", "").trim()
+                        .replace(".", "").replace(",", ".");
+                double valor;
+                try { valor = Double.parseDouble(valorTexto); }
+                catch (NumberFormatException e) { continue; }
+
+                JsonObject o = new JsonObject();
+                o.addProperty("data", celulas.get(0));
+                o.addProperty("produto", celulas.get(1).replaceAll("\\s+", " ").trim());
+                o.addProperty("valor", valor);
+                arr.add(o);
+            }
+            return arr;
+        });
+    }
+
+    private static String limpar(String html) {
+        return html.replaceAll("<[^>]+>", " ")
+                   .replace("&nbsp;", " ")
+                   .replaceAll("\\s+", " ")
+                   .trim();
+    }
+
+    // ── Açúcar NY nº 11 ───────────────────────────────────────────────────
+
+    public JsonObject acucar() {
+        return comCache("acucar", TTL_COTACAO, () ->
+                JsonParser.parseString(HttpUtil.get(URL_ACUCAR)));
+    }
+
+    public JsonObject acucar15Dias() {
+        return comCache("acucar15", TTL_COTACAO, () ->
+                JsonParser.parseString(HttpUtil.get(URL_ACUCAR_15D)));
+    }
+
+    // ── Utilidades ────────────────────────────────────────────────────────
+
+    private static String texto(JsonObject o, String campo) {
+        JsonElement e = o.get(campo);
+        return e == null || e.isJsonNull() ? "" : e.getAsString();
+    }
+
+    private static double numero(JsonObject o, String campo) {
+        try { return Double.parseDouble(texto(o, campo).replace(',', '.')); }
+        catch (NumberFormatException e) { return 0; }
+    }
+
+    private static double arred(double v) {
+        return Math.round(v * 100.0) / 100.0;
+    }
+}
