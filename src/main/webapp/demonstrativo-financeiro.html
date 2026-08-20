@@ -139,6 +139,26 @@
              margin: 0 auto 12px; animation: spin .8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   .erro { color: var(--prejuizo); }
+  /* Dizer "N contas ficaram de fora" sem dizer QUAIS obriga a abrir o banco
+     para descobrir — o trabalho que esta tela existe para poupar. */
+  .alerta-link { color: var(--prejuizo); text-decoration: underline; cursor: pointer;
+                 font-weight: 700; }
+  .alerta-link:hover { text-decoration: none; }
+  .fora { display: none; background: #fff5f5; border: 1px solid #f5c2c2;
+          border-left: 3px solid var(--prejuizo); border-radius: 12px;
+          padding: 16px 20px; margin-bottom: 18px; }
+  .fora.on { display: block; }
+  .fora h3 { font-size: 14px; font-weight: 800; color: var(--prejuizo); }
+  .fora .txt { font-size: 12.5px; color: var(--ink-2); line-height: 1.6; margin-top: 6px; }
+  .fora table { margin-top: 12px; width: 100%; border-collapse: collapse; font-size: 13px; }
+  .fora th { text-align: left; font-size: 10.5px; font-weight: 800; color: var(--prejuizo);
+             text-transform: uppercase; letter-spacing: .5px; padding: 7px 10px;
+             border-bottom: 1.5px solid #f5c2c2; }
+  .fora td { padding: 8px 10px; border-bottom: 1px solid #f7dcdc; color: var(--ink); }
+  .fora td.num { text-align: right; white-space: nowrap; }
+  .fora .fechar { float: right; background: none; border: 1px solid #f5c2c2;
+                  color: var(--prejuizo); border-radius: 7px; padding: 5px 12px;
+                  font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }
 
   @media (max-width: 1000px) {
     .capa { grid-template-columns: repeat(2, 1fr); }
@@ -182,6 +202,7 @@
     <div class="contra" id="fechado">verificando até onde a contabilidade fechou…</div>
     <div class="atualizado" id="atualizado"></div>
   </div>
+  <div id="fora" class="fora"></div>
   <div id="corpo"></div>
 </div>
 
@@ -302,6 +323,40 @@ function desenhar() {
   graficoMargem();
 }
 
+/**
+ * Quais contas ficaram sem linha no de/para.
+ *
+ * Conta sem destino não aparece em lugar nenhum do demonstrativo: os
+ * subtotais continuam somando, só que sem ela. Saber quais são é o que
+ * permite corrigir — elas precisam entrar na aba "indice" da planilha e
+ * voltar pela importação em Administração › Índice Contábil.
+ */
+function verForaDoDre() {
+  const cx = document.getElementById('fora');
+  if (cx.classList.contains('on')) { cx.classList.remove('on'); return; }
+  const lista = (FECHADO && FECHADO.conferencia
+              && FECHADO.conferencia.contasSemLinhaNoIndice) || [];
+  const total = lista.reduce((a, c) => a + (Number(c.saldo) || 0), 0);
+  cx.innerHTML = `
+    <button class="fechar" onclick="document.getElementById('fora').classList.remove('on')">Fechar</button>
+    <h3>${lista.length} conta(s) do balancete sem linha no de/para</h3>
+    <div class="txt">
+      Elas não entram em nenhuma linha do demonstrativo. Somam
+      <b>${curto(total / 1000)}</b> no fechamento de ${esc(FECHADO ? FECHADO.fechadoAte : '')}.
+      <br>Para corrigir: inclua essas contas na aba <b>indice</b> da planilha e importe em
+      <b>Administração › Índice Contábil</b>.
+    </div>
+    <table>
+      <thead><tr><th>Conta</th><th>Descrição</th><th style="text-align:right">Saldo (R$)</th></tr></thead>
+      <tbody>${lista.map(c => `<tr>
+        <td>${esc(c.conta)}</td><td>${esc(c.descricao)}</td>
+        <td class="num">${Number(c.saldo).toLocaleString('pt-BR',
+             {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+  cx.classList.add('on');
+}
+
 function capa(ano) {
   const ant = ano - 1;
   const cartoes = [
@@ -357,9 +412,10 @@ function nota(parcial, mesFechado, anoCorrente) {
     analíticas, cada uma com a sua linha. A conversão é −(saldo) ÷ 1000, porque o demonstrativo é o
     inverso do balancete: receita é credora e chega negativa de lá. Conferido contra o fechamento
     oficial de ${anoCorrente}, as dezoito linhas batem ao centavo.
-    ${sem ? `<br><b>Atenção:</b> ${sem} conta(s) analítica(s) do balancete ficaram sem linha no
-             de/para e não entraram no quadro. Conta sem destino é dinheiro que some do
-             demonstrativo sem nada avisar — vale conferir o índice.` : ''}
+    ${sem ? `<br><b>Atenção:</b> <a href="#" class="alerta-link" onclick="verForaDoDre();return false"
+             >${sem} conta(s) analítica(s) do balancete ficaram sem linha no de/para</a>
+             e não entraram no quadro. Conta sem destino é dinheiro que some do demonstrativo
+             sem nada avisar — clique para ver quais são.` : ''}
   </div></div>`;
 }
 

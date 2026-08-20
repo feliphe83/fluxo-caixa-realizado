@@ -55,6 +55,33 @@
   .periodo .contra b { color: var(--ink); }
   .atualizado { margin-left: auto; font-size: 12px; color: var(--ink-3); }
   .erro { color: var(--neg); }
+  /* O aviso é clicável: dizer "2 contas fora" sem dizer QUAIS obriga a
+     pessoa a abrir o banco para descobrir, que é justamente o trabalho que
+     esta tela existe para poupar. */
+  .alerta-link { text-decoration: underline; cursor: pointer; font-weight: 700; }
+  .alerta-link:hover { text-decoration: none; }
+
+  .fora { display: none; background: #fff5f5; border: 1px solid #f5c2c2;
+          border-left: 3px solid var(--neg); border-radius: 12px;
+          padding: 16px 20px; margin-bottom: 18px; }
+  .fora.on { display: block; }
+  .fora h3 { font-size: 14px; font-weight: 800; color: var(--neg); }
+  .fora .txt { font-size: 12.5px; color: var(--ink-2); line-height: 1.6; margin-top: 6px; }
+  /* Tabela própria, sem reusar a classe do quadro. Reusando, a regra
+     "table.bp td { text-align: right }" vencia por especificidade e a
+     descrição saía encostada à direita — brigar por especificidade aqui
+     seria consertar o sintoma. */
+  .fora table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px; }
+  .fora th { text-align: left; font-size: 10.5px; font-weight: 800; color: var(--neg);
+             text-transform: uppercase; letter-spacing: .5px; padding: 7px 10px;
+             border-bottom: 1.5px solid #f5c2c2; }
+  .fora td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #f7dcdc;
+             color: var(--ink); font-weight: 600; }
+  .fora td.num, .fora th.num { text-align: right; white-space: nowrap; }
+  .fora td.neg { color: var(--neg); }
+  .fora .fechar { float: right; background: none; border: 1px solid #f5c2c2;
+                  color: var(--neg); border-radius: 7px; padding: 5px 12px;
+                  font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }
 
   .capa { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
   .capa .cartao { background: var(--papel); border: 1px solid var(--borda);
@@ -165,6 +192,7 @@
     <div class="contra" id="fechado">consultando o balancete…</div>
     <div class="atualizado" id="atualizado"></div>
   </div>
+  <div id="fora" class="fora"></div>
   <div id="corpo"><div class="estado"><div class="spinner"></div>Consultando o balancete…</div></div>
 </div>
 
@@ -216,7 +244,8 @@ async function carregar() {
     document.getElementById('fechado').innerHTML =
       `contabilidade fechada até <b>${esc(j.fechadoAte)}</b>`
       + (j.fechamento ? ` (${esc(j.fechamento)})` : '')
-      + (sem ? ` · <span class="erro">${sem} conta(s) fora do balanço</span>` : '');
+      + (sem ? ` · <a href="#" class="erro alerta-link" onclick="verForaDoBalanco();return false"
+                       title="Ver quais contas">${sem} conta(s) fora do balanço</a>` : '');
     document.getElementById('atualizado').textContent = 'Atualizado em ' + j.atualizadoEm;
   } catch (e) {
     // Sem a contabilidade o quadro continua, no último número oficial — e a
@@ -227,6 +256,45 @@ async function carregar() {
       + ` · ${BAL_ANOS[0]} está no valor fixo`;
   }
   desenhar();
+}
+
+/**
+ * Quais contas ficaram fora.
+ *
+ * Uma conta do balancete sem grupo no índice não aparece em lugar nenhum do
+ * quadro — e, como ela some de um lado só, é ela que faz ativo e passivo
+ * deixarem de bater. Saber QUAIS são é o que permite corrigir: são elas que
+ * precisam entrar na aba "indice" da planilha e voltar pela importação em
+ * Administração › Índice Contábil.
+ */
+function verForaDoBalanco() {
+  const cx = document.getElementById('fora');
+  if (cx.classList.contains('on')) { cx.classList.remove('on'); return; }
+
+  const lista = (FECHADO && FECHADO.conferencia
+              && FECHADO.conferencia.contasSemLinhaNoIndice) || [];
+  const total = lista.reduce((a, c) => a + (Number(c.saldo) || 0), 0);
+
+  cx.innerHTML = `
+    <button class="fechar" onclick="document.getElementById('fora').classList.remove('on')">Fechar</button>
+    <h3>${lista.length} conta(s) do balancete sem grupo no índice</h3>
+    <div class="txt">
+      Elas não entram em nenhuma linha do quadro, e é por elas que um lado do balanço
+      pode deixar de bater com o outro. Somam <b>${curto(total / 1000)}</b> no fechamento de
+      ${esc(FECHADO ? FECHADO.fechadoAte : '')}.
+      <br>Para corrigir: inclua essas contas na aba <b>indice</b> da planilha e importe em
+      <b>Administração › Índice Contábil</b>.
+    </div>
+    <table>
+      <thead><tr><th>Conta</th><th>Descrição</th><th class="num">Saldo (R$)</th></tr></thead>
+      <tbody>${lista.map(c => `<tr>
+        <td>${esc(c.conta)}</td>
+        <td>${esc(c.descricao)}</td>
+        <td class="num ${Number(c.saldo) < 0 ? 'neg' : ''}">${Number(c.saldo).toLocaleString('pt-BR',
+             {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+  cx.classList.add('on');
 }
 
 function desenhar() {
