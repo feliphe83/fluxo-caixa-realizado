@@ -309,8 +309,9 @@ public class ServicosFornecedorServlet extends HttpServlet {
     }
 
     /**
-     * Combustível levado no período pelos fornecedores que aparecem neste
-     * relatório — o que será descontado do que a usina paga a cada um.
+     * Combustível consumido no período pelos fornecedores que aparecem neste
+     * relatório. SOMA ao valor do serviço: é custo do fornecedor no período,
+     * e a tela mostra o custo total, serviço mais combustível.
      *
      * O casamento é pelo CÓDIGO do fornecedor, não pelo nome: os dois lados
      * escrevem o nome por funções diferentes do ERP
@@ -349,11 +350,11 @@ public class ServicosFornecedorServlet extends HttpServlet {
                              || (cod.isEmpty() && nomes.contains(normalizar(nome)));
                 if (!nosso) continue;
 
-                // O desconto é uma GRANDEZA a abater, e o sinal com que o
-                // ERP a devolve não pode inverter esse significado: um
-                // valor negativo vindo de lá faria "total − combustível"
-                // virar soma, e o relatório mandaria pagar a mais sem nada
-                // denunciar. O valor cru vai junto, para conferência.
+                // Uma GRANDEZA consumida, e o sinal com que o ERP a
+                // devolve não pode inverter esse significado: um valor
+                // negativo vindo de lá diminuiria o custo em vez de somá-lo,
+                // sem nada na tela denunciar. O valor cru vai junto, para
+                // conferência.
                 java.math.BigDecimal bruto = numero(c.get("valor_total"));
                 java.math.BigDecimal litros = numero(c.get("total_litros"));
 

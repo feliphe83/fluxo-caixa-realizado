@@ -612,10 +612,15 @@ function renderizarTabela() {
     totalQtd += g.qtdTotal;
     totalValor += g.valorTotal;
     g.combustivel = combustivelDe(g);
-    g.liquido = g.valorTotal - g.combustivel;
+    // SOMA, não abate. O combustível que o fornecedor consumiu é custo dele
+    // no período, e o que a tela mostra é o custo total — serviço mais
+    // combustível. (Na primeira versão eu li como desconto e subtraí: com
+    // isso um fornecedor de R$ 554 de serviço e R$ 4.927 de combustível
+    // aparecia com líquido NEGATIVO, como se a usina tivesse a receber.)
+    g.comCombustivel = g.valorTotal + g.combustivel;
     totalComb += g.combustivel;
   });
-  const totalLiquido = totalValor - totalComb;
+  const totalComCombustivel = totalValor + totalComb;
 
   const comb = temCombustivel();
   const nCols = (comparando() ? 6 : 3) + (comb ? 2 : 0);
@@ -625,8 +630,8 @@ function renderizarTabela() {
         g.somenteGravado ? ' <span style="font-size:10px;font-weight:700;color:#dc2626">(saiu)</span>' : ''}</td>
       <td class="num">${fmtNum(g.qtdTotal)}</td>
       <td class="num">${fmtMoeda(g.valorTotal)}</td>
-      ${comb ? `<td class="num" style="color:#b45309">${g.combustivel ? '−' + fmtMoeda(g.combustivel) : '—'}</td>
-                <td class="num" style="font-weight:700">${fmtMoeda(g.liquido)}</td>` : ''}
+      ${comb ? `<td class="num" style="color:#b45309">${g.combustivel ? fmtMoeda(g.combustivel) : '—'}</td>
+                <td class="num" style="font-weight:700">${fmtMoeda(g.comCombustivel)}</td>` : ''}
       ${tdsComp(gravado(COMPARATIVO && COMPARATIVO.n1, chaveN1(g)), g.valorTotal)}
     </tr>
     <tr class="detalhe-row" id="det-${idx}" style="display:none">
@@ -644,7 +649,7 @@ function renderizarTabela() {
           <tr>
             <th>Fornecedor/Proprietário</th>
             <th class="num">Qtd. Apontada</th><th class="num">Valor Total</th>
-            ${comb ? '<th class="num">Combustível</th><th class="num">Líquido</th>' : ''}
+            ${comb ? '<th class="num">Combustível</th><th class="num">Total c/ Combustível</th>' : ''}
             ${thsComp()}
           </tr>
         </thead>
@@ -654,8 +659,8 @@ function renderizarTabela() {
             <td>TOTAL</td>
             <td class="num">${fmtNum(totalQtd)}</td>
             <td class="num">${fmtMoeda(totalValor)}</td>
-            ${comb ? `<td class="num" style="color:#b45309">−${fmtMoeda(totalComb)}</td>
-                      <td class="num">${fmtMoeda(totalLiquido)}</td>` : ''}
+            ${comb ? `<td class="num" style="color:#b45309">${fmtMoeda(totalComb)}</td>
+                      <td class="num">${fmtMoeda(totalComCombustivel)}</td>` : ''}
             ${tdsComp(refTotal, totalValor)}
           </tr>
         </tfoot>
@@ -1001,12 +1006,13 @@ function montarResumo() {
   const transporteDias = transportePorData.filter(g => g.valor > 0).length;
   const totalGeral = moTotal.valor + encargosTotal.valor + transporteTotal.valor;
 
-  // Combustível levado pelos fornecedores deste relatório. É um abatimento do
-  // que a usina paga, então entra depois do total geral e com sinal negativo —
-  // somá-lo em qualquer uma das linhas de cima inflaria a despesa.
+  // Combustível consumido pelos fornecedores deste relatório. É custo do
+  // período e SOMA ao total geral — entra como uma linha própria depois
+  // dele, e não dentro de mão de obra ou transporte, porque não é nenhum
+  // dos dois e misturá-lo esconderia de onde veio.
   const combTotal = COMBUSTIVEL.reduce((a, c) => a + (Number(c.valor) || 0), 0);
   const combLitros = COMBUSTIVEL.reduce((a, c) => a + (Number(c.litros) || 0), 0);
-  const totalLiquido = totalGeral - combTotal;
+  const totalComCombustivel = totalGeral + combTotal;
 
   const dataIni = document.getElementById('dataIni').value;
   const dataFim = document.getElementById('dataFim').value;
@@ -1038,12 +1044,12 @@ function montarResumo() {
           <tr class="linha-total-geral"><td colspan="4">TOTAL GERAL</td><td class="num">${fmtMoeda(totalGeral)}</td></tr>
           ${combTotal > 0 ? `
           <tr style="color:#b45309">
-            <td>(−) COMBUSTÍVEL</td><td>LITROS</td>
+            <td>(+) COMBUSTÍVEL</td><td>LITROS</td>
             <td class="num">${fmtNum(combLitros)}</td>
             <td class="num">${fmtMoeda(divSafe(combTotal, combLitros))}</td>
-            <td class="num">−${fmtMoeda(combTotal)}</td>
+            <td class="num">${fmtMoeda(combTotal)}</td>
           </tr>
-          <tr class="linha-total-geral"><td colspan="4">TOTAL LÍQUIDO A PAGAR</td><td class="num">${fmtMoeda(totalLiquido)}</td></tr>` : ''}
+          <tr class="linha-total-geral"><td colspan="4">TOTAL COM COMBUSTÍVEL</td><td class="num">${fmtMoeda(totalComCombustivel)}</td></tr>` : ''}
         </tbody>
       </table>
     </div>
