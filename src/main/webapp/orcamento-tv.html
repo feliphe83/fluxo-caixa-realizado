@@ -12,10 +12,16 @@
    Palco de 1920×1080 fixos, ESCALADO para caber na tela em vez de se
    reorganizar. Numa TV ninguém corrige layout quebrado.
 
-   SEM CLIQUE: o mês é o último com movimento, mensal e acumulado aparecem
-   os dois, e o quadro mostra os grupos — o detalhe por empenho fica na tela
-   de computador, que é onde alguém investiga. Aqui o que importa é ver, de
-   longe, quem estourou.
+   SOZINHO ele mostra o último mês com movimento e os grupos fechados — é o
+   que se quer ver de longe: quem estourou.
+
+   MAS ACEITA CLIQUE, porque muita TV fica ao alcance da mão: dá para trocar
+   de mês e abrir um grupo nos empenhos.
+
+   E VOLTA SOZINHO. Toda interação numa parede é temporária: quem clicou vai
+   embora e o painel ficaria presos naquele mês para sempre, mostrando abril
+   em agosto para todo mundo que passasse. Passados três minutos sem
+   ninguém mexer, ele retorna ao estado automático.
    ──────────────────────────────────────────────────────────────────────── */
   :root {
     --orcado: #5b6675; --realizado: #2a78d6;
@@ -63,10 +69,31 @@
   /* ── Tira de meses ── */
   .meses { display: flex; gap: 6px; background: var(--papel); border: 1px solid var(--borda);
            border-radius: 12px; padding: 5px; }
-  .meses span { flex: 1; text-align: center; font-size: 17px; font-weight: 800;
-                color: var(--ink-3); padding: 8px 6px; border-radius: 9px; }
-  .meses span.on { background: var(--realizado); color: #fff; }
-  .meses span.futuro { opacity: .4; }
+  .meses button { flex: 1; text-align: center; font-size: 17px; font-weight: 800;
+                  color: var(--ink-3); padding: 8px 6px; border-radius: 9px;
+                  border: none; background: transparent; font-family: inherit;
+                  cursor: pointer; }
+  .meses button.on { background: var(--realizado); color: #fff; }
+  .meses button.futuro { opacity: .4; }
+  .meses button:not(.on):hover { background: var(--papel-2); color: var(--ink); }
+
+  /* Linha de grupo clicável, como na tela de computador. */
+  table.q tbody tr.grupo { cursor: pointer; }
+  table.q tbody tr.grupo:hover td { background: var(--papel-2); }
+  table.q tbody tr.grupo .seta { display: inline-block; width: .8em; color: var(--ink-3);
+                                 transition: transform .15s; }
+  table.q tbody tr.grupo.aberto .seta { transform: rotate(90deg); }
+  table.q tbody tr.empenho td { background: var(--papel-2); color: var(--ink-2);
+                                font-weight: 600; font-size: .92em; }
+  table.q tbody tr.empenho td.rot { padding-left: 2.2em; }
+  table.q tbody tr.empenho .cod { color: var(--ink-3); font-weight: 800; margin-right: .5em; }
+
+  /* Avisa que o painel está fora do automático e quando volta.
+     Fica no topo, junto do período: flutuando no rodapé ele cobria o rótulo
+     do eixo do gráfico — tapar dado para avisar sobre o painel é troca ruim. */
+  .manual { display: none; margin-top: 5px; background: #eda100; color: #1a1a19;
+            font-size: 13px; font-weight: 800; padding: 5px 14px; border-radius: 999px; }
+  .manual.on { display: inline-block; }
 
   /* ── Quadro ── */
   .bloco { background: var(--papel); border: 1px solid var(--borda); border-radius: 12px;
@@ -139,6 +166,7 @@
     <div class="direita">
       <div class="periodo" id="periodo">—</div>
       <div class="relogio" id="relogio"></div>
+      <div class="manual" id="manual"></div>
     </div>
   </div>
 
@@ -177,6 +205,67 @@ const COR_ORCADO='#5b6675', COR_REALIZADO='#2a78d6', COR_ACUM_PREV='#0ca30c', CO
 const INTERVALO_MS = 10 * 60 * 1000;
 let DADOS = null, MES = null;
 const graficos = {};
+
+/* ── Interação numa parede é temporária ──
+   Quem clica vai embora. Sem isto, o painel ficaria preso no mês escolhido
+   para sempre — mostrando abril em agosto para todo mundo que passasse. */
+const VOLTA_MS = 3 * 60 * 1000;
+let MANUAL = false;          // alguém mexeu?
+let ABERTOS = {};            // grupos abertos
+let relogioVolta = null;     // conta o tempo até voltar ao automático
+
+function mexeu() {
+  MANUAL = true;
+  clearTimeout(relogioVolta);
+  relogioVolta = setTimeout(voltarAoAutomatico, VOLTA_MS);
+  contarVolta();
+}
+
+function voltarAoAutomatico() {
+  MANUAL = false;
+  ABERTOS = {};
+  clearTimeout(relogioVolta);
+  document.getElementById('manual').classList.remove('on');
+  MES = mesAutomatico();
+  desenhar();
+}
+
+/** A contagem regressiva à vista: quem está olhando entende que o painel
+ *  vai voltar sozinho, em vez de achar que travou. */
+function contarVolta() {
+  const cx = document.getElementById('manual');
+  const fim = Date.now() + VOLTA_MS;
+  cx.classList.add('on');
+  clearInterval(contarVolta.tique);
+  contarVolta.tique = setInterval(() => {
+    const resta = Math.max(0, Math.round((fim - Date.now()) / 1000));
+    if (!MANUAL || resta === 0) { clearInterval(contarVolta.tique); return; }
+    cx.textContent = 'Visualização manual · volta ao automático em '
+                   + Math.floor(resta / 60) + ':' + String(resta % 60).padStart(2, '0');
+  }, 1000);
+  cx.textContent = 'Visualização manual · volta ao automático em 3:00';
+}
+
+/** O mês que o painel mostra sozinho: o último com movimento. */
+function mesAutomatico() {
+  if (!DADOS) return null;
+  const comDado = new Set(DADOS.linhas.map(l => l.anomes));
+  const ultimo = DADOS.meses.filter(m => comDado.has(m.anomes)).pop();
+  return ultimo ? ultimo.anomes : DADOS.meses[DADOS.meses.length - 1].anomes;
+}
+
+function trocarMes(anomes) {
+  if (anomes === MES) return;
+  MES = anomes;
+  mexeu();
+  desenhar();
+}
+
+function alternarGrupo(k) {
+  ABERTOS[k] = !ABERTOS[k];
+  mexeu();
+  desenhar();
+}
 
 const fmt0 = v => Math.round(Number(v)||0).toLocaleString('pt-BR');
 const fmt2 = (v,c) => (Number(v)||0).toLocaleString('pt-BR',
@@ -218,10 +307,10 @@ async function carregar() {
     DADOS = j;
     document.getElementById('periodo').textContent = p.rotulo;
     document.getElementById('relogio').textContent = 'Atualizado em ' + j.atualizadoEm;
-    // O mês é o último com movimento: é onde a execução está acontecendo.
-    const comDado = new Set(j.linhas.map(l => l.anomes));
-    const ultimo = j.meses.filter(m => comDado.has(m.anomes)).pop();
-    MES = ultimo ? ultimo.anomes : j.meses[j.meses.length-1].anomes;
+    // A recarga de dez em dez minutos NÃO rouba o mês de quem está olhando:
+    // trocar a tela embaixo da mão de alguém é pior do que o dado ficar
+    // alguns minutos parado.
+    if (!MANUAL || MES === null) MES = mesAutomatico();
     desenhar();
   } catch (e) {
     // Numa parede, tabela em branco é pior do que número de dez minutos
@@ -238,12 +327,21 @@ function agregar() {
     if (!noMes && !noAcum) continue;
     const k = l.codGrupo + '|' + l.grupo;
     let g = grupos.get(k);
-    if (!g) { g = {nome:l.grupo, mp:0, mr:0, ap:0, ar:0}; grupos.set(k, g); }
-    if (noMes)  { g.mp += +l.orcado; g.mr += +l.realizado; }
-    if (noAcum) { g.ap += +l.orcado; g.ar += +l.realizado; }
+    if (!g) { g = {chave:k, nome:l.grupo, mp:0, mr:0, ap:0, ar:0, emp:new Map()};
+              grupos.set(k, g); }
+    let e = g.emp.get(l.codEmpenho);
+    if (!e) { e = {cod:l.codEmpenho, nome:l.empenho, mp:0, mr:0, ap:0, ar:0};
+              g.emp.set(l.codEmpenho, e); }
+    if (noMes)  { g.mp += +l.orcado; g.mr += +l.realizado;
+                  e.mp += +l.orcado; e.mr += +l.realizado; }
+    if (noAcum) { g.ap += +l.orcado; g.ar += +l.realizado;
+                  e.ap += +l.orcado; e.ar += +l.realizado; }
   }
-  return [...grupos.values()].filter(g => g.mp||g.mr||g.ap||g.ar)
-                             .sort((a,b) => Math.max(b.ap,b.ar) - Math.max(a.ap,a.ar));
+  const lista = [...grupos.values()].filter(g => g.mp||g.mr||g.ap||g.ar)
+                                    .sort((a,b) => Math.max(b.ap,b.ar) - Math.max(a.ap,a.ar));
+  lista.forEach(g => { g.empenhos = [...g.emp.values()].filter(e => e.mp||e.mr||e.ap||e.ar)
+                                     .sort((a,b) => Math.max(b.ap,b.ar) - Math.max(a.ap,a.ar)); });
+  return lista;
 }
 
 function serie() {
@@ -274,8 +372,8 @@ function desenhar() {
   const comDado = new Set(DADOS.linhas.map(l => l.anomes));
 
   document.getElementById('meses').innerHTML = DADOS.meses.map(m =>
-    `<span class="${m.anomes===MES?'on':''} ${comDado.has(m.anomes)?'':'futuro'}">${esc(m.nome)}</span>`
-  ).join('');
+    `<button class="${m.anomes===MES?'on':''} ${comDado.has(m.anomes)?'':'futuro'}"
+             onclick="trocarMes(${m.anomes})">${esc(m.nome)}</button>`).join('');
 
   const tp = grupos.reduce((a,g)=>a+g.mp,0), tr = grupos.reduce((a,g)=>a+g.mr,0);
   const tap = grupos.reduce((a,g)=>a+g.ap,0), tar = grupos.reduce((a,g)=>a+g.ar,0);
@@ -308,13 +406,21 @@ function desenhar() {
         <tr><th class="divide">Plan (R$)</th><th>Real (R$)</th><th>Dif.</th><th>%</th>
             <th class="divide">Plan (R$)</th><th>Real (R$)</th><th>Dif.</th><th>%</th></tr>
       </thead>
-      <tbody>${grupos.map(g => `<tr>
-        <td class="rot">${esc(g.nome)}</td>${bloco(g.mp,g.mr)}${bloco(g.ap,g.ar)}
-      </tr>`).join('')}</tbody>
+      <tbody>${grupos.map(g => {
+        const aberto = ABERTOS[g.chave];
+        return `<tr class="grupo ${aberto?'aberto':''}"
+                    onclick="alternarGrupo('${esc(g.chave).replace(/'/g,"\\'")}')">
+          <td class="rot"><span class="seta">▶</span> ${esc(g.nome)}</td>
+          ${bloco(g.mp,g.mr)}${bloco(g.ap,g.ar)}
+        </tr>` + (aberto ? g.empenhos.map(e => `<tr class="empenho">
+          <td class="rot"><span class="cod">${esc(e.cod)}</span>${esc(e.nome)}</td>
+          ${bloco(e.mp,e.mr)}${bloco(e.ap,e.ar)}
+        </tr>`).join('') : '');
+      }).join('')}</tbody>
       <tfoot><tr><td class="rot">Total</td>${bloco(tp,tr)}${bloco(tap,tar)}</tr></tfoot>
     </table>`;
 
-  encaixar(grupos.length + 3);
+  encaixar();
   graficoMensal();
   graficoAcumulado();
 }
