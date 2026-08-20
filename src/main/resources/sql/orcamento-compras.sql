@@ -5,9 +5,9 @@
 --
 --  1. cada perna deixou de agregar sozinha (nvl(sum(lc.valor),0)) e passou a
 --     devolver a linha crua. Quem soma é o SELECT de fora, agora agrupando
---     por grupo de empenho e empenho — é isso que permite a tela abrir o
---     grupo e mostrar os empenhos por dentro. A soma total continua a mesma:
---     somar por partes e somar tudo dá no mesmo;
+--     por MÊS, grupo de empenho e empenho — é isso que permite a tela mostrar
+--     mês a mês, o acumulado e abrir o grupo por dentro. A soma total continua
+--     a mesma: somar por partes e somar tudo dá no mesmo;
 --  2. entraram as colunas de descrição do grupo e do empenho, e o negócio;
 --  3. o anomes e o filtro de negócio viraram marcadores.
 --
@@ -15,7 +15,8 @@
 -- orçamento em custo.lancamento_custo (para as filiais que ainda não têm
 -- atualização de início de produção), orçamento em material.realizado para as
 -- que têm, orçamento lançado à mão (geradomanual = 'M') e o realizado.
-select tmp.cod_negocio
+select tmp.anomes
+     , tmp.cod_negocio
      , tmp.negocio
      , tmp.cod_grupoempenho
      , tmp.grupo
@@ -24,7 +25,8 @@ select tmp.cod_negocio
      , sum(tmp.vlr_orcado)                        orcado
      , sum(tmp.vlr_realizado)                     realizado
      , sum(tmp.vlr_orcado - tmp.vlr_realizado)    diferenca
-from ( select %NEG_COD%                           cod_negocio
+from ( select lc.anomes
+            , %NEG_COD%                           cod_negocio
             , %NEG_DESC%                          negocio
             , grupoempenho.cod_grupoempenho
             , grupoempenho.descricao              grupo
@@ -55,7 +57,8 @@ from ( select %NEG_COD%                           cod_negocio
 
        union  all
 
-       select %NEG_COD%                           cod_negocio
+       select lc.anomes
+            , %NEG_COD%                           cod_negocio
             , %NEG_DESC%                          negocio
             , grupoempenho.cod_grupoempenho
             , grupoempenho.descricao              grupo
@@ -86,7 +89,8 @@ from ( select %NEG_COD%                           cod_negocio
 
        union  all
 
-       select %NEG_COD%                           cod_negocio
+       select lc.anomes
+            , %NEG_COD%                           cod_negocio
             , %NEG_DESC%                          negocio
             , grupoempenho.cod_grupoempenho
             , grupoempenho.descricao              grupo
@@ -111,7 +115,8 @@ from ( select %NEG_COD%                           cod_negocio
 
        union  all
 
-       select %NEG_COD%                           cod_negocio
+       select lc.anomes
+            , %NEG_COD%                           cod_negocio
             , %NEG_DESC%                          negocio
             , grupoempenho.cod_grupoempenho
             , grupoempenho.descricao              grupo
@@ -135,6 +140,6 @@ from ( select %NEG_COD%                           cod_negocio
      ) tmp
 where 1 = 1
 %FILTRO_NEGOCIO%
-group by tmp.cod_negocio, tmp.negocio, tmp.cod_grupoempenho, tmp.grupo
+group by tmp.anomes, tmp.cod_negocio, tmp.negocio, tmp.cod_grupoempenho, tmp.grupo
        , tmp.cod_empenho, tmp.empenho
-order by tmp.grupo, tmp.empenho
+order by tmp.grupo, tmp.empenho, tmp.anomes

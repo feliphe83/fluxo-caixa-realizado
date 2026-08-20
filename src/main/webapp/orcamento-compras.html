@@ -6,16 +6,23 @@
 <title>Orçamento de Compras · USC</title>
 <style>
   :root {
-    /* Orçado é a régua, realizado é o assunto: cinza contra azul, o mesmo
-       par já validado no painel de diesel (separação normal ΔE 15,2, CVD e
-       3:1 de contraste). Não são duas categorias de igual peso. */
+    /* Orçado é a régua, realizado é o assunto: cinza contra azul, o par já
+       validado no painel de diesel (separação normal ΔE 15,2, CVD, 3:1). */
     --orcado:    #5b6675;
     --realizado: #2a78d6;
+    --acum-prev: #0ca30c;
+    --acum-real: #1e3a8a;
     --sobra:     #0ca30c;
     --estouro:   #d03b3b;
 
+    /* Semáforo da execução, lido do painel que serviu de modelo:
+       acima de 100% estourou, 90 a 100 encostou, 85 a 90 atenção. */
+    --sem-vermelho: #e03127;
+    --sem-laranja:  #f0921f;
+    --sem-amarelo:  #ffe14d;
+
     --ink: #0f2460; --ink-2: #52514e; --ink-3: #898781; --rotulo: #64748b;
-    --grade: #e9edf6; --borda: #e3e8f5; --papel: #fff; --papel-2: #f8faff; --fundo: #f4f6fb;
+    --borda: #e3e8f5; --papel: #fff; --papel-2: #f8faff; --fundo: #f4f6fb;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -38,81 +45,92 @@
                 font-weight: 600; cursor: pointer; font-family: inherit; text-decoration: none; }
   .btn-voltar:hover { background: rgba(255,255,255,.10); color: #fff; }
 
-  .conteudo { max-width: 1400px; margin: 0 auto; padding: 24px 24px 60px; }
+  .conteudo { max-width: 1560px; margin: 0 auto; padding: 20px 22px 60px; }
 
-  .filtros { background: var(--papel); border: 1px solid var(--borda); border-radius: 14px;
-             padding: 16px 22px; margin-bottom: 18px; display: flex; gap: 16px;
-             align-items: flex-end; flex-wrap: wrap; }
-  .campo label { display: block; font-size: 10.5px; font-weight: 700; color: var(--rotulo);
-                 text-transform: uppercase; letter-spacing: .5px; margin-bottom: 5px; }
-  .campo select { padding: 9px 14px; border: 1px solid #cfd7e6; border-radius: 8px;
-                  font-size: 14px; font-weight: 600; font-family: inherit; color: var(--ink);
-                  background: var(--papel); outline: none; cursor: pointer; min-width: 210px; }
+  /* ── Topo: cartões + controles ── */
+  .topo { display: grid; grid-template-columns: repeat(3, 200px) 1fr; gap: 14px;
+          align-items: stretch; margin-bottom: 14px; }
+  .cartao { background: var(--papel); border: 1px solid var(--borda); border-radius: 13px;
+            padding: 13px 18px; position: relative; overflow: hidden; }
+  .cartao::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+                    width: 3px; background: var(--cor, var(--ink)); }
+  .cartao .rot { font-size: 10.5px; font-weight: 700; color: var(--rotulo);
+                 text-transform: uppercase; letter-spacing: .6px; }
+  .cartao .cifra { font-size: 26px; font-weight: 800; color: var(--ink); line-height: 1.15;
+                   margin-top: 5px; letter-spacing: -.7px; white-space: nowrap; }
+  .cartao .cifra.mal { color: var(--estouro); }
+  .cartao .base { font-size: 11px; color: var(--ink-3); margin-top: 4px; }
+
+  .controles { background: var(--papel); border: 1px solid var(--borda); border-radius: 13px;
+               padding: 12px 18px; display: flex; gap: 18px; align-items: center;
+               flex-wrap: wrap; }
+  .campo label { display: block; font-size: 10px; font-weight: 700; color: var(--rotulo);
+                 text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+  .campo select { padding: 8px 12px; border: 1px solid #cfd7e6; border-radius: 8px;
+                  font-size: 13.5px; font-weight: 600; font-family: inherit; color: var(--ink);
+                  background: var(--papel); outline: none; cursor: pointer; min-width: 190px; }
   .campo select:disabled { opacity: .6; cursor: progress; }
-  .campo select:focus { border-color: var(--realizado); box-shadow: 0 0 0 3px rgba(42,120,214,.12); }
-  .atualizado { margin-left: auto; font-size: 12px; color: var(--ink-3); padding-bottom: 8px; }
+  .marcas { display: flex; gap: 16px; }
+  .marca { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px;
+           font-weight: 700; color: var(--ink-2); cursor: pointer; user-select: none; }
+  .marca input { width: 16px; height: 16px; accent-color: var(--ink); cursor: pointer; }
+  .atualizado { margin-left: auto; font-size: 11.5px; color: var(--ink-3); }
 
-  .capa { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
-  .capa .cartao { background: var(--papel); border: 1px solid var(--borda); border-radius: 14px;
-                  padding: 18px 20px; position: relative; overflow: hidden; }
-  .capa .cartao::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0;
-                          width: 3px; background: var(--cor, var(--ink)); }
-  .capa .rot { font-size: 10.5px; font-weight: 700; color: var(--rotulo);
-               text-transform: uppercase; letter-spacing: .6px; }
-  .capa .cifra { font-size: 27px; font-weight: 800; color: var(--ink); line-height: 1.15;
-                 margin-top: 8px; letter-spacing: -.7px; white-space: nowrap; }
-  .capa .cifra.mal { color: var(--estouro); }
-  .capa .cifra.bem { color: var(--sobra); }
-  .capa .base { font-size: 11.5px; color: var(--ink-3); margin-top: 7px; }
+  /* ── Tira de meses ── */
+  .meses { display: flex; gap: 6px; background: var(--papel); border: 1px solid var(--borda);
+           border-radius: 13px; padding: 6px; margin-bottom: 14px; overflow-x: auto; }
+  .meses button { flex: 1; min-width: 108px; border: none; background: transparent;
+                  font-family: inherit; font-size: 15px; font-weight: 800; color: var(--ink-3);
+                  padding: 11px 8px; border-radius: 9px; cursor: pointer; white-space: nowrap; }
+  .meses button.on { background: var(--realizado); color: #fff; }
+  .meses button:not(.on):hover { background: var(--papel-2); color: var(--ink); }
+  .meses button.futuro { opacity: .45; }
 
-  .secao { background: var(--papel); border: 1px solid var(--borda); border-radius: 14px;
-           padding: 20px 24px; margin-bottom: 18px; }
-  .secao-header { display: flex; align-items: baseline; gap: 10px; }
-  .secao-num { width: 22px; height: 22px; border-radius: 6px; background: var(--ink);
-               color: white; font-size: 11px; font-weight: 800; display: flex;
-               align-items: center; justify-content: center; flex-shrink: 0; }
-  .secao-titulo { font-size: 16px; font-weight: 800; color: var(--ink); }
-  .secao-sub { font-size: 12px; color: var(--ink-3); margin: 3px 0 14px 32px; }
-  .legenda { display: flex; gap: 18px; margin: 0 0 8px 32px; }
+  .secao { background: var(--papel); border: 1px solid var(--borda); border-radius: 13px;
+           padding: 16px 20px 18px; margin-bottom: 14px; }
+  .secao h2 { font-size: 15px; font-weight: 800; color: var(--ink); }
+  .secao .sub { font-size: 12px; color: var(--ink-3); margin: 3px 0 12px; }
+  .legenda { display: flex; gap: 16px; margin-bottom: 6px; flex-wrap: wrap; }
   .legenda span { display: inline-flex; align-items: center; gap: 7px; font-size: 12px;
                   font-weight: 700; color: var(--ink-2); }
   .legenda i { width: 11px; height: 11px; border-radius: 3px; flex: none; }
-  .grafico-caixa { position: relative; margin-top: 4px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .grid-2 .secao { margin-bottom: 0; }
+  .tela { position: relative; height: 250px; }
 
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  thead th { text-align: right; font-size: 10.5px; font-weight: 700; color: var(--rotulo);
-             text-transform: uppercase; letter-spacing: .5px; padding: 9px 10px;
-             border-bottom: 1.5px solid var(--borda); white-space: nowrap; }
-  thead th:first-child { text-align: left; }
-  tbody td { padding: 10px; border-bottom: 1px solid #f0f3f9; text-align: right;
-             white-space: nowrap; }
-  tbody td:first-child { text-align: left; white-space: normal; }
-
-  /* A linha do grupo é um botão: clicar abre os empenhos por dentro. */
-  tr.grupo { cursor: pointer; }
-  tr.grupo:hover td { background: var(--papel-2); }
-  tr.grupo td { font-weight: 700; color: var(--ink); }
-  tr.grupo .seta { display: inline-block; width: 14px; color: var(--ink-3);
-                   transition: transform .15s; }
-  tr.grupo.aberto .seta { transform: rotate(90deg); }
-  tr.empenho td { background: var(--papel-2); color: var(--ink-2); font-size: 12.5px; }
-  tr.empenho td:first-child { padding-left: 34px; }
-  tr.empenho .cod { color: var(--ink-3); font-weight: 700; margin-right: 8px; }
-  tfoot td { padding: 11px 10px; font-weight: 800; color: var(--ink);
-             border-top: 1.5px solid var(--borda); text-align: right; }
-  tfoot td:first-child { text-align: left; }
-
-  .val-orcado { color: var(--orcado); }
-  .bem { color: var(--sobra); font-weight: 700; }
-  .mal { color: var(--estouro); font-weight: 700; }
-
-  /* Barrinha de execução: a leitura mais rápida da tabela é "passou ou não
-     passou do orçado", e um número de percentual sozinho não dá isso. */
-  .barra { display: inline-block; width: 78px; height: 7px; border-radius: 4px;
-           background: #e6ebf5; overflow: hidden; vertical-align: middle;
-           margin-right: 8px; }
-  .barra i { display: block; height: 100%; background: var(--realizado); }
-  .barra i.passou { background: var(--estouro); }
+  /* ── O quadro ── */
+  .rolagem { overflow-x: auto; }
+  table.q { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.q thead th { background: var(--ink); color: #fff; font-weight: 800; padding: 7px 10px;
+                     white-space: nowrap; text-align: right; font-size: 11.5px;
+                     border-right: 1px solid rgba(255,255,255,.14); }
+  table.q thead th:last-child { border-right: none; }
+  table.q thead th.rot { text-align: left; }
+  table.q thead tr.faixa th { text-align: center; font-size: 12.5px; letter-spacing: .4px; }
+  table.q tbody td { padding: 6px 10px; text-align: right; white-space: nowrap;
+                     border-bottom: 1px solid #eef1f8; }
+  table.q tbody td.rot { text-align: left; }
+  table.q tr.grupo { cursor: pointer; }
+  table.q tr.grupo:hover td { background: var(--papel-2); }
+  table.q tr.grupo td { font-weight: 700; color: var(--ink); }
+  table.q tr.grupo .seta { display: inline-block; width: 13px; color: var(--ink-3);
+                           transition: transform .15s; }
+  table.q tr.grupo.aberto .seta { transform: rotate(90deg); }
+  table.q tr.empenho td { background: var(--papel-2); color: var(--ink-2); font-size: 12px; }
+  table.q tr.empenho td.rot { padding-left: 32px; }
+  table.q tr.empenho .cod { color: var(--ink-3); font-weight: 700; margin-right: 7px; }
+  table.q tfoot td { padding: 9px 10px; font-weight: 800; color: var(--ink); text-align: right;
+                     border-top: 2px solid var(--borda); background: #eef2fa; }
+  table.q tfoot td.rot { text-align: left; }
+  /* O bloco do mês e o do acumulado separados por uma linha, como no
+     original: sem ela, oito colunas de dinheiro viram uma parede só. */
+  table.q .divide { border-left: 2px solid var(--borda); }
+  .plan { color: var(--orcado); }
+  .dif.bem { color: var(--sobra); } .dif.mal { color: var(--estouro); }
+  .pct { font-weight: 800; }
+  .pct.vermelho { background: var(--sem-vermelho); color: #fff; }
+  .pct.laranja  { background: var(--sem-laranja);  color: #3a2400; }
+  .pct.amarelo  { background: var(--sem-amarelo);  color: #3a3400; }
 
   .estado { text-align: center; padding: 50px 20px; color: var(--ink-3); font-size: 14px; }
   .spinner { width: 26px; height: 26px; border: 2.5px solid var(--borda);
@@ -121,9 +139,10 @@
   @keyframes spin { to { transform: rotate(360deg); } }
   .erro { color: var(--estouro); }
 
-  @media (max-width: 1000px) {
-    .capa { grid-template-columns: repeat(2, 1fr); }
-    .header { padding: 0 16px; } .conteudo { padding: 16px 14px 40px; }
+  @media (max-width: 1100px) {
+    .topo { grid-template-columns: repeat(3, 1fr); }
+    .controles { grid-column: 1 / -1; }
+    .grid-2 { grid-template-columns: 1fr; }
   }
 </style>
 <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
@@ -135,7 +154,7 @@
   <div class="header-left">
     <div class="header-logo"><img src="img/logo.png" alt="USC"></div>
     <div>
-      <div class="header-title">Orçamento de Compras</div>
+      <div class="header-title">Acompanhamento do Orçamento de Compras</div>
       <div class="header-sub">Planejado × realizado</div>
     </div>
   </div>
@@ -147,86 +166,104 @@
 </div>
 
 <div class="conteudo">
-  <div class="filtros">
-    <div class="campo">
-      <label for="selSafra">Safra</label>
-      <select id="selSafra" onchange="carregar()"></select>
+  <div class="topo">
+    <div class="cartao" style="--cor:var(--orcado)">
+      <div class="rot">Planejado</div>
+      <div class="cifra" id="cPlan">—</div>
+      <div class="base" id="cPlanBase"></div>
     </div>
-    <div class="campo" id="campoNegocio" style="display:none">
-      <label for="selNegocio">Negócio</label>
-      <select id="selNegocio" onchange="desenhar()"></select>
+    <div class="cartao" style="--cor:var(--realizado)">
+      <div class="rot">Realizado</div>
+      <div class="cifra" id="cReal">—</div>
+      <div class="base" id="cRealBase"></div>
     </div>
-    <div class="atualizado" id="atualizado"></div>
+    <div class="cartao" style="--cor:var(--sem-laranja)">
+      <div class="rot">Execução %</div>
+      <div class="cifra" id="cExec">—</div>
+      <div class="base" id="cExecBase"></div>
+    </div>
+    <div class="controles">
+      <div class="campo">
+        <label for="selPeriodo">Período</label>
+        <select id="selPeriodo" onchange="carregar()"></select>
+      </div>
+      <div class="campo" id="campoNegocio" style="display:none">
+        <label for="selNegocio">Negócio</label>
+        <select id="selNegocio" onchange="desenhar()"></select>
+      </div>
+      <div class="marcas">
+        <label class="marca"><input type="checkbox" id="ckMensal" checked onchange="desenhar()">Mensal</label>
+        <label class="marca"><input type="checkbox" id="ckAcum" checked onchange="desenhar()">Acumulado</label>
+      </div>
+      <div class="atualizado" id="atualizado"></div>
+    </div>
   </div>
+
+  <div class="meses" id="meses"></div>
   <div id="corpo"><div class="estado"><div class="spinner"></div>Consultando o orçamento…</div></div>
 </div>
 
 <script src="js/chart.umd.min.js"></script>
 <script>
-const COR_ORCADO = '#5b6675', COR_REALIZADO = '#2a78d6';
-let DADOS = null, ABERTOS = {};
+const COR_ORCADO='#5b6675', COR_REALIZADO='#2a78d6', COR_ACUM_PREV='#0ca30c', COR_ACUM_REAL='#1e3a8a';
+let DADOS = null, MES = null, ABERTOS = {};
 const graficos = {};
 
-const fmtNum = (v, c) => (Number(v)||0).toLocaleString('pt-BR',
-  {minimumFractionDigits: c==null?1:c, maximumFractionDigits: c==null?1:c});
-const fmtReal = v => 'R$ ' + (Number(v)||0).toLocaleString('pt-BR',
-  {minimumFractionDigits:2, maximumFractionDigits:2});
+const fmt0 = v => Math.round(Number(v)||0).toLocaleString('pt-BR');
+const fmt2 = (v,c) => (Number(v)||0).toLocaleString('pt-BR',
+  {minimumFractionDigits:c==null?2:c, maximumFractionDigits:c==null?2:c});
 const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function curto(v){ const n=Number(v)||0, s=n<0?'-':'', a=Math.abs(n);
+  return a>=1e6 ? s+'R$ '+fmt2(a/1e6,1)+' mi' : (a>=1e3 ? s+'R$ '+fmt2(a/1e3,0)+' mil' : s+'R$ '+fmt2(a)); }
 
-function curto(v) {
-  const n = Number(v) || 0, s = n < 0 ? '-' : '', a = Math.abs(n);
-  if (a >= 1e6) return s + 'R$ ' + fmtNum(a/1e6, 1) + ' mi';
-  if (a >= 1e3) return s + 'R$ ' + fmtNum(a/1e3, 0) + ' mil';
-  return s + fmtReal(a);
+/* ── Períodos ──
+   O ano é partido em dois, como a controladoria acompanha: SAFRA de
+   setembro a fevereiro (a moagem) e ENTRESSAFRA de março a agosto (a parada
+   e a manutenção). Seis meses cada. */
+function safraDe(ano)      { return {chave:'S'+ano, rotulo:'Safra '+ano+'/'+(ano+1),
+                                     ini:ano*100+9,  fim:(ano+1)*100+2}; }
+function entressafraDe(ano){ return {chave:'E'+ano, rotulo:'EntreSafra '+ano,
+                                     ini:ano*100+3,  fim:ano*100+8}; }
+let PERIODOS = [];
+function montarPeriodos() {
+  const h = new Date(), ano = h.getFullYear(), mes = h.getMonth() + 1;
+  PERIODOS = [];
+  // O corrente primeiro: é o que se abre para olhar.
+  if (mes >= 3 && mes <= 8) PERIODOS.push(entressafraDe(ano));
+  else PERIODOS.push(safraDe(mes >= 9 ? ano : ano - 1));
+  for (let a = ano; a >= ano - 4; a--) {
+    for (const p of [entressafraDe(a), safraDe(a)]) {
+      if (!PERIODOS.some(x => x.chave === p.chave)) PERIODOS.push(p);
+    }
+  }
+  document.getElementById('selPeriodo').innerHTML = PERIODOS.map((p,i) =>
+    `<option value="${i}">${esc(p.rotulo)}${i===0?' (atual)':''}</option>`).join('');
 }
-
-/* ── Safra: 01/09 a 31/08, o mesmo recorte do faturamento ──
-   O período que veio com a consulta (202509 a 202608) é exatamente uma
-   safra. Ter dois recortes de "ano" no mesmo sistema é como duas telas
-   passam a discordar sem ninguém achar o motivo. */
-function safraDe(ano) {
-  return { ano, rotulo: ano + '/' + (ano + 1), ini: ano * 100 + 9, fim: (ano + 1) * 100 + 8 };
-}
-function safraAtual() {
-  const h = new Date();
-  return safraDe(h.getMonth() >= 8 ? h.getFullYear() : h.getFullYear() - 1);
-}
-let SAFRAS = [];
-function montarSafras() {
-  const atual = safraAtual().ano;
-  SAFRAS = [];
-  for (let a = atual; a >= atual - 5; a--) SAFRAS.push(safraDe(a));
-  document.getElementById('selSafra').innerHTML = SAFRAS.map((s, i) =>
-    `<option value="${i}">Safra ${s.rotulo}${i === 0 ? ' (atual)' : ''}</option>`).join('');
-}
-function safraEscolhida() { return SAFRAS[Number(document.getElementById('selSafra').value) || 0]; }
+function periodoEscolhido(){ return PERIODOS[Number(document.getElementById('selPeriodo').value)||0]; }
 
 async function carregar() {
-  const s = safraEscolhida();
-  const sel = document.getElementById('selSafra');
-  sel.disabled = true;
-  ABERTOS = {};
+  const p = periodoEscolhido();
+  const sel = document.getElementById('selPeriodo');
+  sel.disabled = true; ABERTOS = {}; MES = null;
   document.getElementById('corpo').innerHTML =
     '<div class="estado"><div class="spinner"></div>Consultando o orçamento…</div>';
   try {
-    const r = await fetch(`api/orcamento-compras?ini=${s.ini}&fim=${s.fim}`,
+    const r = await fetch(`api/orcamento-compras?ini=${p.ini}&fim=${p.fim}`,
                           {headers:{'Accept':'application/json'}});
     const j = await r.json();
-    if (j.redirect) { location.href = 'login.html'; return; }
+    if (j.redirect) { location.href='login.html'; return; }
     if (!j.ok) { falhar(j.erro || 'Erro ao consultar'); return; }
     DADOS = j;
-    document.getElementById('atualizado').textContent =
-      j.periodo + ' · atualizado em ' + j.atualizadoEm;
+    document.getElementById('atualizado').textContent = 'Atualizado em ' + j.atualizadoEm;
     montarNegocios(j);
+    montarMeses(j);
     desenhar();
-  } catch (e) {
-    falhar(e.message || String(e));
-  } finally {
-    sel.disabled = false;
-  }
+  } catch (e) { falhar(e.message || String(e)); }
+  finally { sel.disabled = false; }
 }
 
 function falhar(msg) {
+  document.getElementById('meses').innerHTML = '';
   document.getElementById('corpo').innerHTML =
     `<div class="estado erro"><b>Não foi possível carregar o orçamento de compras.</b>
      <div style="margin-top:10px;font-size:12.5px;color:var(--ink-2)">${esc(msg)}</div>
@@ -236,193 +273,255 @@ function falhar(msg) {
        — mostra as colunas das tabelas de custo e de realizado.</div></div>`;
 }
 
-/** O seletor só existe quando há negócio; filtro que não filtra é pior que nenhum. */
 function montarNegocios(j) {
   const campo = document.getElementById('campoNegocio');
-  if (!j.temNegocio || !(j.negocios || []).length) { campo.style.display = 'none'; return; }
-  const sel = document.getElementById('selNegocio');
-  const antes = sel.value;
+  if (!j.temNegocio || !(j.negocios||[]).length) { campo.style.display='none'; return; }
+  const sel = document.getElementById('selNegocio'), antes = sel.value;
   sel.innerHTML = '<option value="">Todos os negócios</option>'
     + j.negocios.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
   if (antes && j.negocios.includes(antes)) sel.value = antes;
   campo.style.display = '';
 }
+function negocio(){ return document.getElementById('campoNegocio').style.display==='none'
+                      ? '' : document.getElementById('selNegocio').value; }
 
-function negocioEscolhido() {
-  const sel = document.getElementById('selNegocio');
-  return (document.getElementById('campoNegocio').style.display === 'none') ? '' : sel.value;
+/** A tira de meses. O último com movimento abre selecionado — é onde a
+ *  execução está acontecendo; abrir em março obrigaria a clicar sempre. */
+function montarMeses(j) {
+  const comDado = new Set(j.linhas.map(l => l.anomes));
+  const ultimo = j.meses.filter(m => comDado.has(m.anomes)).pop();
+  MES = ultimo ? ultimo.anomes : j.meses[j.meses.length-1].anomes;
+  document.getElementById('meses').innerHTML = j.meses.map(m =>
+    `<button class="${m.anomes===MES?'on':''} ${comDado.has(m.anomes)?'':'futuro'}"
+             onclick="trocarMes(${m.anomes})">${esc(m.nome)}</button>`).join('');
+}
+function trocarMes(anomes) {
+  MES = anomes;
+  document.querySelectorAll('.meses button').forEach((b,i) =>
+    b.classList.toggle('on', DADOS.meses[i].anomes === anomes));
+  desenhar();
+}
+
+// ── Agregação, toda no navegador ────────────────────────────────────────
+// Mês, acumulado, negócio e abrir grupo saem TODOS da mesma consulta. Se
+// cada um fosse uma ida ao Oracle, um deles acabaria somando diferente dos
+// outros e ninguém saberia qual acreditar.
+
+function agregar() {
+  const neg = negocio();
+  const grupos = new Map();
+  for (const l of DADOS.linhas) {
+    if (neg && l.negocio !== neg) continue;
+    const noMes = l.anomes === MES;
+    const noAcum = l.anomes <= MES;
+    if (!noMes && !noAcum) continue;
+
+    const kg = l.codGrupo + '|' + l.grupo;
+    let g = grupos.get(kg);
+    if (!g) { g = {cod:l.codGrupo, nome:l.grupo, mp:0, mr:0, ap:0, ar:0, emp:new Map()};
+              grupos.set(kg, g); }
+    let e = g.emp.get(l.codEmpenho);
+    if (!e) { e = {cod:l.codEmpenho, nome:l.empenho, mp:0, mr:0, ap:0, ar:0};
+              g.emp.set(l.codEmpenho, e); }
+
+    if (noMes)  { g.mp += +l.orcado; g.mr += +l.realizado; e.mp += +l.orcado; e.mr += +l.realizado; }
+    if (noAcum) { g.ap += +l.orcado; g.ar += +l.realizado; e.ap += +l.orcado; e.ar += +l.realizado; }
+  }
+  const lista = [...grupos.values()].filter(g => g.mp||g.mr||g.ap||g.ar);
+  // Maior acumulado primeiro: é por onde se começa a olhar um orçamento.
+  lista.sort((a,b) => Math.max(b.ap,b.ar) - Math.max(a.ap,a.ar));
+  lista.forEach(g => { g.empenhos = [...g.emp.values()].filter(e => e.mp||e.mr||e.ap||e.ar)
+                                     .sort((a,b) => Math.max(b.ap,b.ar) - Math.max(a.ap,a.ar)); });
+  return lista;
+}
+
+/** Série mês a mês para os gráficos, já com o negócio aplicado. */
+function serie() {
+  const neg = negocio();
+  const porMes = new Map(DADOS.meses.map(m => [m.anomes, {label:m.label, p:0, r:0}]));
+  for (const l of DADOS.linhas) {
+    if (neg && l.negocio !== neg) continue;
+    const m = porMes.get(l.anomes);
+    if (m) { m.p += +l.orcado; m.r += +l.realizado; }
+  }
+  const arr = [...porMes.values()];
+  let ap = 0, ar = 0;
+  arr.forEach(m => { ap += m.p; ar += m.r; m.ap = ap; m.ar = ar; });
+  return arr;
+}
+
+/** Sem orçamento não existe percentual: "—", nunca 100%. Gasto sem verba
+ *  prevista virando execução perfeita é erro que passa por parecer bom. */
+function pct(real, plan) { return plan ? real * 100 / plan : null; }
+
+/** O semáforo do painel que serviu de modelo. */
+function classePct(p) {
+  if (p === null) return '';
+  if (p > 100) return 'vermelho';
+  if (p >= 90)  return 'laranja';
+  if (p >= 85)  return 'amarelo';
+  return '';
+}
+function celulaPct(p) {
+  return `<td class="pct ${classePct(p)}">${p===null?'—':fmt2(p)}</td>`;
 }
 
 function desenhar() {
-  const neg = negocioEscolhido();
-  // O filtro é aplicado aqui: os dados vieram inteiros, e trocar de negócio
-  // não custa uma ida ao Oracle.
-  const grupos = (DADOS.grupos || []).map(g => {
-    if (!neg) return g;
-    const det = g.detalhe.filter(e => e.negocio === neg);
-    const o = det.reduce((a, e) => a + Number(e.orcado), 0);
-    const r = det.reduce((a, e) => a + Number(e.realizado), 0);
-    return { ...g, detalhe: det, empenhos: det.length, orcado: o, realizado: r,
-             diferenca: o - r, pct: o ? r * 100 / o : null };
-  }).filter(g => g.detalhe.length);
+  if (!DADOS) return;
+  const grupos = agregar();
+  const mensal = document.getElementById('ckMensal').checked;
+  const acum = document.getElementById('ckAcum').checked;
+  const nomeMes = (DADOS.meses.find(m => m.anomes === MES) || {}).nome || '';
 
-  const orcado = grupos.reduce((a, g) => a + Number(g.orcado), 0);
-  const realizado = grupos.reduce((a, g) => a + Number(g.realizado), 0);
+  // Os cartões seguem o MÊS selecionado, como no painel original.
+  const tp = grupos.reduce((a,g)=>a+g.mp,0), tr = grupos.reduce((a,g)=>a+g.mr,0);
+  const tap = grupos.reduce((a,g)=>a+g.ap,0), tar = grupos.reduce((a,g)=>a+g.ar,0);
+  const ex = pct(tr, tp);
+  document.getElementById('cPlan').textContent = fmt0(tp);
+  document.getElementById('cPlanBase').textContent = nomeMes + ' · R$';
+  document.getElementById('cReal').textContent = fmt0(tr);
+  document.getElementById('cRealBase').textContent = nomeMes + ' · R$';
+  const cx = document.getElementById('cExec');
+  cx.textContent = ex === null ? '—' : fmt2(ex);
+  cx.className = 'cifra' + (ex !== null && ex > 100 ? ' mal' : '');
+  document.getElementById('cExecBase').textContent =
+    'acumulado ' + (pct(tar,tap)===null ? '—' : fmt2(pct(tar,tap)) + '%');
 
   if (!grupos.length) {
     document.getElementById('corpo').innerHTML =
-      '<div class="estado"><b style="color:var(--ink);font-size:16px">Nada no período.</b>' +
-      '<div style="margin-top:8px">A consulta rodou sem erro e não trouxe nenhum empenho.</div></div>';
+      '<div class="estado"><b style="color:var(--ink);font-size:16px">Nada neste recorte.</b>'
+      + '<div style="margin-top:8px">Nenhum empenho com orçado ou realizado.</div></div>';
     return;
   }
 
   document.getElementById('corpo').innerHTML = `
-    ${capa(orcado, realizado, grupos)}
     <div class="secao">
-      <div class="secao-header"><div class="secao-num">1</div>
-        <div class="secao-titulo">Por grupo de empenho</div></div>
-      <div class="secao-sub">Planejado e realizado lado a lado${neg ? ' · ' + esc(neg) : ''}</div>
-      <div class="legenda">
-        <span><i style="background:${COR_ORCADO}"></i>Orçado</span>
-        <span><i style="background:${COR_REALIZADO}"></i>Realizado</span>
-      </div>
-      <div class="grafico-caixa" style="height:${Math.max(240, grupos.length * 42 + 40)}px">
-        <canvas id="gGrupos"></canvas></div>
+      <div class="rolagem">${quadro(grupos, mensal, acum, nomeMes, tp, tr, tap, tar)}</div>
     </div>
-    <div class="secao">
-      <div class="secao-header"><div class="secao-num">2</div>
-        <div class="secao-titulo">Detalhe</div></div>
-      <div class="secao-sub">Clique num grupo para abrir os empenhos</div>
-      ${tabela(grupos, orcado, realizado)}
+    <div class="grid-2">
+      <div class="secao">
+        <h2>Compras de materiais, serviços e investimentos</h2>
+        <div class="sub">Orçado × realizado, mês a mês</div>
+        <div class="legenda">
+          <span><i style="background:${COR_ORCADO}"></i>Previsto</span>
+          <span><i style="background:${COR_REALIZADO}"></i>Realizado</span>
+        </div>
+        <div class="tela"><canvas id="gMensal"></canvas></div>
+      </div>
+      <div class="secao">
+        <h2>Acumulado no período</h2>
+        <div class="sub">Como a execução vai se somando</div>
+        <div class="legenda">
+          <span><i style="background:${COR_ACUM_PREV}"></i>Previsto acumulado</span>
+          <span><i style="background:${COR_ACUM_REAL}"></i>Realizado acumulado</span>
+        </div>
+        <div class="tela"><canvas id="gAcum"></canvas></div>
+      </div>
     </div>`;
 
-  graficoGrupos(grupos);
+  graficoMensal();
+  graficoAcumulado();
 }
 
-function capa(orcado, realizado, grupos) {
-  const dif = orcado - realizado;
-  const pct = orcado ? realizado * 100 / orcado : null;
-  const estourados = grupos.filter(g => Number(g.realizado) > Number(g.orcado)).length;
-  const cartoes = [
-    { rot:'Orçado', cor:'var(--orcado)', v: curto(orcado),
-      base: grupos.length + ' grupo(s) de empenho' },
-    { rot:'Realizado', cor:'var(--realizado)', v: curto(realizado),
-      base: pct === null ? 'sem orçamento' : fmtNum(pct,1) + '% do orçado' },
-    { rot: dif >= 0 ? 'Saldo a realizar' : 'Estouro', cor: dif >= 0 ? 'var(--sobra)' : 'var(--estouro)',
-      v: curto(Math.abs(dif)), classe: dif >= 0 ? 'bem' : 'mal',
-      base: dif >= 0 ? 'ainda dentro do orçado' : 'acima do orçado' },
-    { rot:'Grupos acima do orçado', cor:'var(--estouro)', v: String(estourados),
-      classe: estourados ? 'mal' : '', base: 'de ' + grupos.length + ' no período' }
-  ];
-  return `<div class="capa">${cartoes.map(c => `
-    <div class="cartao" style="--cor:${c.cor}">
-      <div class="rot">${esc(c.rot)}</div>
-      <div class="cifra ${c.classe || ''}">${c.v}</div>
-      <div class="base">${esc(c.base)}</div>
-    </div>`).join('')}</div>`;
-}
+function quadro(grupos, mensal, acum, nomeMes, tp, tr, tap, tar) {
+  const colsMes  = mensal ? 4 : 0, colsAcum = acum ? 4 : 0;
+  if (!colsMes && !colsAcum) {
+    return '<div class="estado">Marque <b>Mensal</b> ou <b>Acumulado</b> para ver o quadro.</div>';
+  }
+  const faixa = `<tr class="faixa">
+      <th class="rot" rowspan="2">Grupo de Empenho</th>
+      ${mensal ? `<th colspan="4" class="divide">${esc(nomeMes)}</th>` : ''}
+      ${acum   ? `<th colspan="4" class="divide">Acumulado</th>` : ''}
+    </tr>`;
+  const cab = `<tr>
+      ${mensal ? '<th class="divide">Plan (R$)</th><th>Real (R$)</th><th>Dif.</th><th>%</th>' : ''}
+      ${acum   ? '<th class="divide">Plan (R$)</th><th>Real (R$)</th><th>Dif.</th><th>%</th>' : ''}
+    </tr>`;
 
-function tabela(grupos, orcado, realizado) {
-  const linhas = grupos.map((g, i) => {
-    const aberto = ABERTOS[g.cod + '|' + g.nome];
+  const bloco = (p, r, primeiro) => {
+    const d = p - r;
+    return `<td class="plan ${primeiro?'divide':''}">${p?fmt0(p):''}</td>
+            <td>${r?fmt0(r):''}</td>
+            <td class="dif ${d>=0?'bem':'mal'}">${(p||r)?fmt0(d):''}</td>
+            ${celulaPct(pct(r,p))}`;
+  };
+
+  const corpo = grupos.map(g => {
+    const k = g.cod + '|' + g.nome, aberto = ABERTOS[k];
     return `
-      <tr class="grupo ${aberto ? 'aberto' : ''}" onclick="alternar('${esc(g.cod)}','${esc(g.nome).replace(/'/g,"\\'")}')">
-        <td><span class="seta">▶</span> ${esc(g.nome)}
-            <span style="color:var(--ink-3);font-weight:600">· ${g.empenhos} empenho(s)</span></td>
-        <td class="val-orcado">${fmtReal(g.orcado)}</td>
-        <td>${fmtReal(g.realizado)}</td>
-        <td class="${Number(g.diferenca) >= 0 ? 'bem' : 'mal'}">${fmtReal(g.diferenca)}</td>
-        <td>${execucao(g.pct)}</td>
+      <tr class="grupo ${aberto?'aberto':''}" onclick="alternar('${esc(k).replace(/'/g,"\\'")}')">
+        <td class="rot"><span class="seta">▶</span> ${esc(g.nome)}</td>
+        ${mensal ? bloco(g.mp, g.mr, true) : ''}
+        ${acum   ? bloco(g.ap, g.ar, true) : ''}
       </tr>
-      ${aberto ? g.detalhe.map(e => `
+      ${aberto ? g.empenhos.map(e => `
         <tr class="empenho">
-          <td><span class="cod">${esc(e.cod)}</span>${esc(e.nome)}</td>
-          <td class="val-orcado">${fmtReal(e.orcado)}</td>
-          <td>${fmtReal(e.realizado)}</td>
-          <td class="${Number(e.diferenca) >= 0 ? 'bem' : 'mal'}">${fmtReal(e.diferenca)}</td>
-          <td>${execucao(e.pct)}</td>
+          <td class="rot"><span class="cod">${esc(e.cod)}</span>${esc(e.nome)}</td>
+          ${mensal ? bloco(e.mp, e.mr, true) : ''}
+          ${acum   ? bloco(e.ap, e.ar, true) : ''}
         </tr>`).join('') : ''}`;
   }).join('');
 
-  const dif = orcado - realizado;
-  return `<table>
-    <thead><tr><th>Grupo de empenho</th><th>Orçado</th><th>Realizado</th>
-               <th>Diferença</th><th style="width:170px">Execução</th></tr></thead>
-    <tbody>${linhas}</tbody>
+  return `<table class="q">
+    <thead>${faixa}${cab}</thead>
+    <tbody>${corpo}</tbody>
     <tfoot><tr>
-      <td>Total</td>
-      <td class="val-orcado">${fmtReal(orcado)}</td>
-      <td>${fmtReal(realizado)}</td>
-      <td class="${dif >= 0 ? 'bem' : 'mal'}">${fmtReal(dif)}</td>
-      <td>${execucao(orcado ? realizado * 100 / orcado : null)}</td>
+      <td class="rot">Total</td>
+      ${mensal ? bloco(tp, tr, true) : ''}
+      ${acum   ? bloco(tap, tar, true) : ''}
     </tr></tfoot>
   </table>`;
 }
 
-/** Sem orçamento não existe percentual de execução — e "100%" ali seria pior
- *  que nada: gasto sem verba prevista viraria execução perfeita. */
-function execucao(pct) {
-  if (pct === null || pct === undefined) return '<span style="color:var(--ink-3)">sem orçamento</span>';
-  const p = Number(pct);
-  const passou = p > 100;
-  return `<span class="barra"><i class="${passou ? 'passou' : ''}"
-            style="width:${Math.min(100, Math.max(0, p))}%"></i></span>
-          <span class="${passou ? 'mal' : ''}">${fmtNum(p, 1)}%</span>`;
-}
+function alternar(k) { ABERTOS[k] = !ABERTOS[k]; desenhar(); }
 
-function alternar(cod, nome) {
-  const k = cod + '|' + nome;
-  ABERTOS[k] = !ABERTOS[k];
-  desenhar();
-}
+// ── Gráficos ────────────────────────────────────────────────────────────
+const eixoMilhoes = {
+  // Cinco marcas bastam. Sem o limite o eixo enche de meio em meio milhão e
+  // vira uma escada de números que compete com a linha pela atenção.
+  ticks: { color:'#898781', font:{size:11, weight:'600'}, maxTicksLimit: 5,
+           callback: v => v === 0 ? '0' : fmt2(v/1e6,1) + ' mi' },
+  grid: { color:'#e9edf6' }, border: { display:false }, beginAtZero: true
+};
 
-function graficoGrupos(grupos) {
-  const canvas = document.getElementById('gGrupos');
-  if (graficos.g) graficos.g.destroy();
-  graficos.g = new Chart(canvas, {
-    type: 'bar',
-    data: {
-      labels: grupos.map(g => g.nome),
-      datasets: [
-        { label:'Orçado', data: grupos.map(g => Number(g.orcado)),
-          backgroundColor: COR_ORCADO, borderRadius: 4, borderSkipped: false,
-          barPercentage: .9, categoryPercentage: .74 },
-        { label:'Realizado', data: grupos.map(g => Number(g.realizado)),
-          backgroundColor: COR_REALIZADO, borderRadius: 4, borderSkipped: false,
-          barPercentage: .9, categoryPercentage: .74 }
-      ]
-    },
+function linha(id, dados, cfg) {
+  const canvas = document.getElementById(id);
+  if (graficos[id]) graficos[id].destroy();
+  graficos[id] = new Chart(canvas, {
+    type: 'line',
+    data: { labels: dados.map(m => m.label), datasets: cfg.series },
     options: {
-      // Barras deitadas: nome de grupo de empenho é comprido, e em pé eles
-      // viram rótulo na diagonal, que é o jeito mais fácil de deixar um
-      // gráfico ilegível.
-      indexAxis: 'y',
-      responsive: true, maintainAspectRatio: false, animation: false,
-      layout: { padding: { right: 70 } },
-      scales: {
-        x: { beginAtZero: true, grid: { color: '#e9edf6' }, border: { display: false },
-             ticks: { color: '#898781', font: { size: 11, weight: '600' },
-                      callback: v => v === 0 ? '0' : fmtNum(v/1e6, 1) + ' mi' } },
-        y: { grid: { display: false }, border: { color: '#e3e8f5' },
-             ticks: { color: '#52514e', font: { size: 12, weight: '700' } } }
-      },
-      plugins: { legend: { display: false }, tooltip: {
-        callbacks: { label: c => c.dataset.label + ': ' + fmtReal(c.parsed.x) } } }
+      responsive:true, maintainAspectRatio:false, animation:false,
+      layout:{ padding:{ top:24, right:14, left:8, bottom:4 } },
+      scales:{ x:{ grid:{display:false}, border:{color:'#e3e8f5'},
+                   ticks:{ color:'#52514e', font:{size:12, weight:'700'} } },
+               y: eixoMilhoes },
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{
+        label: c => c.dataset.label + ': ' + curto(c.parsed.y) } } }
     },
     plugins: [{
-      id: 'valor',
+      /* Rótulo em todos os pontos: de relance, a inclinação diz a tendência
+         mas não o valor — e é o valor que a pessoa copia. */
+      id: 'rotulos',
       afterDatasetsDraw(chart) {
         const ctx = chart.ctx;
         ctx.save();
-        ctx.font = '800 10.5px system-ui, sans-serif';
-        ctx.fillStyle = '#0f2460';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'middle';
+        ctx.font = '800 11px system-ui, sans-serif';
+        ctx.textAlign = 'center';
         chart.data.datasets.forEach((ds, di) => {
+          ctx.fillStyle = ds.borderColor;
+          const outro = chart.getDatasetMeta(1 - di).data;
+          const ultimo = ds.data.length - 1;
           chart.getDatasetMeta(di).data.forEach((p, i) => {
             const v = ds.data[i];
             if (!v) return;
-            ctx.fillText(fmtNum(v/1e6, 1) + ' mi', p.x + 6, p.y);
+            // Quem está mais alto escreve por cima; o outro, por baixo.
+            const acima = !outro[i] || p.y <= outro[i].y;
+            ctx.textBaseline = acima ? 'bottom' : 'top';
+            // As pontas escrevem para dentro: centralizado, o rótulo do
+            // primeiro mês cavalga a marca do eixo e o do último sai do quadro.
+            ctx.textAlign = i === 0 ? 'left' : (i === ultimo ? 'right' : 'center');
+            ctx.fillText(fmt2(v/1e6,1) + ' mi', p.x, p.y + (acima ? -8 : 8));
           });
         });
         ctx.restore();
@@ -431,7 +530,29 @@ function graficoGrupos(grupos) {
   });
 }
 
-montarSafras();
+const estilo = (label, cor, dados) => ({
+  label, data: dados, borderColor: cor, backgroundColor: 'transparent',
+  borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: cor,
+  pointBorderColor: '#fff', pointBorderWidth: 1.5, tension: .3, spanGaps: false
+});
+const zeroNulo = v => (Number(v) || 0) === 0 ? null : Number(v);
+
+function graficoMensal() {
+  const s = serie();
+  linha('gMensal', s, { series: [
+    estilo('Previsto',  COR_ORCADO,    s.map(m => zeroNulo(m.p))),
+    estilo('Realizado', COR_REALIZADO, s.map(m => zeroNulo(m.r)))
+  ]});
+}
+function graficoAcumulado() {
+  const s = serie();
+  linha('gAcum', s, { series: [
+    estilo('Previsto acumulado',  COR_ACUM_PREV, s.map(m => zeroNulo(m.ap))),
+    estilo('Realizado acumulado', COR_ACUM_REAL, s.map(m => zeroNulo(m.ar)))
+  ]});
+}
+
+montarPeriodos();
 carregar();
 </script>
 <script src="js/icones-modulos.js?v=20260819a"></script>

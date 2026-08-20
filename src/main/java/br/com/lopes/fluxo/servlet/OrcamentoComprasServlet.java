@@ -30,17 +30,19 @@ import java.util.logging.Logger;
  * GET /api/orcamento-compras/sql          -> o SQL literal já com o período
  * GET /api/orcamento-compras/diagnostico  -> as colunas das tabelas envolvidas
  *
- * O período é sempre de SAFRA: setembro a agosto, o mesmo recorte do
- * faturamento. O exemplo que veio junto com a consulta (202509 a 202608) é
- * exatamente uma safra, e ter dois recortes diferentes de "ano" no mesmo
- * sistema é como duas telas passam a discordar sem ninguém achar o motivo.
+ * O ANO É PARTIDO EM DOIS, como a controladoria acompanha:
+ *   SAFRA      setembro a fevereiro  (a moagem)
+ *   ENTRESSAFRA março a agosto       (a parada e a manutenção)
+ * São seis meses cada, e é o recorte do painel que serviu de modelo.
  *
- * O FILTRO DE NEGÓCIO É APLICADO AQUI, e não no banco. A consulta vem
- * sempre inteira, por dois motivos: a lista de negócios do seletor sai dos
- * próprios dados do período (filtrando no banco, a lista encolheria a cada
- * escolha e não daria para voltar), e trocar de negócio deixa de custar uma
- * ida ao Oracle. São dezenas de empenhos por safra — não é volume que peça
- * filtro no banco.
+ * DEVOLVE A LINHA CRUA, por mês × grupo × empenho, e não um resumo. A tela
+ * troca de mês, liga o acumulado, filtra negócio e abre grupo sem voltar ao
+ * servidor — e, o que importa mais, todos esses recortes saem da MESMA
+ * consulta. Se cada interação fosse uma ida ao Oracle, uma delas acabaria
+ * somando diferente das outras e ninguém saberia qual acreditar.
+ *
+ * São seis meses de dezenas de empenhos: algumas centenas de linhas, longe
+ * de ser volume que peça agregação no banco.
  */
 @WebServlet({"/api/orcamento-compras", "/api/orcamento-compras/*"})
 public class OrcamentoComprasServlet extends HttpServlet {
@@ -88,16 +90,22 @@ public class OrcamentoComprasServlet extends HttpServlet {
         }
     }
 
-    /** ini/fim em AAAAMM; sem eles, a safra corrente (set a ago). */
+    /**
+     * ini/fim em AAAAMM. Sem eles, o semestre corrente: entressafra de março
+     * a agosto, safra de setembro a fevereiro.
+     */
     static int[] periodo(HttpServletRequest req) {
         Integer ini = anomes(req.getParameter("ini"));
         Integer fim = anomes(req.getParameter("fim"));
-        if (ini == null || fim == null || ini > fim) {
-            LocalDate h = LocalDate.now();
-            int ano = h.getMonthValue() >= 9 ? h.getYear() : h.getYear() - 1;
-            return new int[]{ ano * 100 + 9, (ano + 1) * 100 + 8 };
-        }
-        return new int[]{ ini, fim };
+        if (ini != null && fim != null && ini <= fim) return new int[]{ ini, fim };
+
+        LocalDate h = LocalDate.now();
+        int ano = h.getYear(), mes = h.getMonthValue();
+        if (mes >= 3 && mes <= 8) return new int[]{ ano * 100 + 3, ano * 100 + 8 };
+        // Setembro a dezembro abre a safra do próprio ano; janeiro e
+        // fevereiro ainda são o fim da safra que começou no ano anterior.
+        int inicio = mes >= 9 ? ano : ano - 1;
+        return new int[]{ inicio * 100 + 9, (inicio + 1) * 100 + 2 };
     }
 
     private static Integer anomes(String v) {
@@ -126,99 +134,59 @@ public class OrcamentoComprasServlet extends HttpServlet {
         // esconde o seletor em vez de mostrar um filtro que não filtra.
         r.addProperty("temNegocio", colunaNegocio != null && !colunaNegocio.isEmpty());
 
-        // A lista do seletor sai de TUDO que veio, antes de filtrar.
+        // Os meses do período, TODOS — inclusive os que não tiveram
+        // lançamento. Mês sem movimento sumindo da tira faria a sequência
+        // pular de maio para julho, e quem lê acha que junho não existiu.
+        JsonArray meses = new JsonArray();
+        for (int a = ini; a <= fim; a = proximo(a)) {
+            JsonObject m = new JsonObject();
+            m.addProperty("anomes", a);
+            m.addProperty("label", rotuloMes(a));
+            m.addProperty("nome", nomeMes(a));
+            meses.add(m);
+        }
+        r.add("meses", meses);
+
         TreeSet<String> negocios = new TreeSet<>();
+        JsonArray arr = new JsonArray();
         for (Map<String, Object> l : linhas) {
             String n = texto(l.get("negocio"));
             if (!n.isEmpty()) negocios.add(n);
-        }
-        r.add("negocios", GSON.toJsonTree(negocios));
-
-        boolean filtrar = negocio != null && !negocio.isBlank();
-        Map<String, Grupo> grupos = new LinkedHashMap<>();
-        BigDecimal totalO = BigDecimal.ZERO, totalR = BigDecimal.ZERO;
-
-        for (Map<String, Object> l : linhas) {
-            if (filtrar && !negocio.trim().equals(texto(l.get("negocio")))) continue;
 
             BigDecimal o = decimal(l.get("orcado"));
             BigDecimal rr = decimal(l.get("realizado"));
-            // Empenho sem orçamento e sem realizado é ruído do plano de contas.
+            // Linha zerada dos dois lados é ruído do plano de contas.
             if (o.signum() == 0 && rr.signum() == 0) continue;
 
-            String codGrupo = texto(l.get("cod_grupoempenho"));
-            String nomeGrupo = vazioVira(texto(l.get("grupo")), "Sem grupo");
-            Grupo g = grupos.computeIfAbsent(codGrupo + "|" + nomeGrupo,
-                    k -> new Grupo(codGrupo, nomeGrupo));
-            g.orcado = g.orcado.add(o);
-            g.realizado = g.realizado.add(rr);
-
             JsonObject e = new JsonObject();
-            e.addProperty("cod", texto(l.get("cod_empenho")));
-            e.addProperty("nome", vazioVira(texto(l.get("empenho")), "Sem descrição"));
-            e.addProperty("negocio", texto(l.get("negocio")));
+            e.addProperty("anomes", decimal(l.get("anomes")).intValue());
+            e.addProperty("negocio", n);
+            e.addProperty("codGrupo", texto(l.get("cod_grupoempenho")));
+            e.addProperty("grupo", vazioVira(texto(l.get("grupo")), "Sem grupo"));
+            e.addProperty("codEmpenho", texto(l.get("cod_empenho")));
+            e.addProperty("empenho", vazioVira(texto(l.get("empenho")), "Sem descrição"));
             e.addProperty("orcado", o);
             e.addProperty("realizado", rr);
-            e.addProperty("diferenca", o.subtract(rr));
-            e.addProperty("pct", pct(rr, o));
-            g.empenhos.add(new Object[]{ e, o.add(rr) });
-
-            totalO = totalO.add(o);
-            totalR = totalR.add(rr);
+            arr.add(e);
         }
-
-        // Grupo maior primeiro: é por onde se começa a olhar um orçamento.
-        List<Grupo> ordenados = new ArrayList<>(grupos.values());
-        ordenados.sort(Comparator.comparing((Grupo g) -> g.orcado.max(g.realizado)).reversed());
-
-        JsonArray arr = new JsonArray();
-        for (Grupo g : ordenados) {
-            g.empenhos.sort(Comparator.comparing(
-                    (Object[] x) -> (BigDecimal) x[1]).reversed());
-            JsonArray emps = new JsonArray();
-            for (Object[] x : g.empenhos) emps.add((JsonObject) x[0]);
-
-            JsonObject o = new JsonObject();
-            o.addProperty("cod", g.cod);
-            o.addProperty("nome", g.nome);
-            o.addProperty("orcado", g.orcado);
-            o.addProperty("realizado", g.realizado);
-            o.addProperty("diferenca", g.orcado.subtract(g.realizado));
-            o.addProperty("pct", pct(g.realizado, g.orcado));
-            o.addProperty("empenhos", emps.size());
-            o.add("detalhe", emps);
-            arr.add(o);
-        }
-        r.add("grupos", arr);
-
-        JsonObject capa = new JsonObject();
-        capa.addProperty("orcado", totalO);
-        capa.addProperty("realizado", totalR);
-        capa.addProperty("diferenca", totalO.subtract(totalR));
-        capa.addProperty("pct", pct(totalR, totalO));
-        capa.addProperty("empenhos", linhas.size());
-        r.add("capa", capa);
+        r.add("negocios", GSON.toJsonTree(negocios));
+        r.add("linhas", arr);
+        r.addProperty("totalLinhas", arr.size());
         return r;
     }
 
-    private static final class Grupo {
-        final String cod, nome;
-        BigDecimal orcado = BigDecimal.ZERO, realizado = BigDecimal.ZERO;
-        final List<Object[]> empenhos = new ArrayList<>();
-        Grupo(String cod, String nome) { this.cod = cod; this.nome = nome; }
+    /** 202512 -> 202601. Somar 1 em AAAAMM pularia para o mês 13. */
+    static int proximo(int anomes) {
+        int ano = anomes / 100, mes = anomes % 100;
+        return mes >= 12 ? (ano + 1) * 100 + 1 : ano * 100 + mes + 1;
     }
 
-    /**
-     * Quanto do orçado já foi realizado.
-     *
-     * Sem orçamento não existe percentual de realização — devolve null, e a
-     * tela escreve "sem orçamento". Um "100%" ali seria pior do que nada:
-     * gasto sem verba prevista viraria execução perfeita.
-     */
-    static BigDecimal pct(BigDecimal realizado, BigDecimal orcado) {
-        if (orcado == null || orcado.signum() == 0) return null;
-        return realizado.multiply(BigDecimal.valueOf(100))
-                        .divide(orcado, 1, RoundingMode.HALF_UP);
+    /** 202603 -> "Março". */
+    static String nomeMes(int anomes) {
+        String[] nomes = { "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
+                           "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro" };
+        int m = anomes % 100;
+        return (m >= 1 && m <= 12) ? nomes[m - 1] : String.valueOf(anomes);
     }
 
     /** 202509 -> "set/25". */
