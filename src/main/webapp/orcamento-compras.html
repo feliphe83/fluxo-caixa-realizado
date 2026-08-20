@@ -85,6 +85,8 @@
   .meses button.on { background: var(--realizado); color: #fff; }
   .meses button:not(.on):hover { background: var(--papel-2); color: var(--ink); }
   .meses button.futuro { opacity: .45; }
+  .meses .dica { align-self: center; font-size: 11px; font-weight: 700; color: var(--ink-3);
+                 padding: 0 12px; white-space: nowrap; }
 
   .secao { background: var(--papel); border: 1px solid var(--borda); border-radius: 13px;
            padding: 16px 20px 18px; margin-bottom: 14px; }
@@ -131,7 +133,11 @@
      original: sem ela, oito colunas de dinheiro viram uma parede só. */
   table.q .divide { border-left: 2px solid var(--borda); }
   .plan { color: var(--orcado); }
-  .dif.bem { color: var(--sobra); } .dif.mal { color: var(--estouro); }
+  /* Qualificado com a tabela porque "table.q tr.grupo td" tem mais
+     elementos e vencia por especificidade — a diferença da linha de grupo
+     saía na cor da tinta, e é justamente nela que se vê o estouro. */
+  table.q td.dif.bem { color: var(--sobra); }
+  table.q td.dif.mal { color: var(--estouro); }
   .pct { font-weight: 800; }
   .pct.vermelho { background: var(--sem-vermelho); color: #fff; }
   .pct.laranja  { background: var(--sem-laranja);  color: #3a2400; }
@@ -219,7 +225,11 @@
 <script src="js/chart.umd.min.js"></script>
 <script>
 const COR_ORCADO='#5b6675', COR_REALIZADO='#2a78d6', COR_ACUM_PREV='#0ca30c', COR_ACUM_REAL='#1e3a8a';
-let DADOS = null, MES = null, ABERTOS = {};
+let DADOS = null, ABERTOS = {};
+/* Os meses marcados. Ctrl+clique (ou ⌘ no Mac) soma vários; clique simples
+   troca para um só. Nunca fica vazio: sem mês nenhum o quadro não teria o
+   que somar, e uma tela em branco por causa de um clique é armadilha. */
+let SEL = new Set();
 const graficos = {};
 
 const fmt0 = v => Math.round(Number(v)||0).toLocaleString('pt-BR');
@@ -257,7 +267,7 @@ function periodoEscolhido(){ return PERIODOS[Number(document.getElementById('sel
 async function carregar() {
   const p = periodoEscolhido();
   const sel = document.getElementById('selPeriodo');
-  sel.disabled = true; ABERTOS = {}; MES = null;
+  sel.disabled = true; ABERTOS = {}; SEL = new Set();
   document.getElementById('corpo').innerHTML =
     '<div class="estado"><div class="spinner"></div>Consultando o orçamento…</div>';
   try {
@@ -298,21 +308,54 @@ function montarNegocios(j) {
 function negocio(){ return document.getElementById('campoNegocio').style.display==='none'
                       ? '' : document.getElementById('selNegocio').value; }
 
-/** A tira de meses. O último com movimento abre selecionado — é onde a
+/** A tira de meses. O último com movimento abre marcado — é onde a
  *  execução está acontecendo; abrir em março obrigaria a clicar sempre. */
 function montarMeses(j) {
   const comDado = new Set(j.linhas.map(l => l.anomes));
   const ultimo = j.meses.filter(m => comDado.has(m.anomes)).pop();
-  MES = ultimo ? ultimo.anomes : j.meses[j.meses.length-1].anomes;
-  document.getElementById('meses').innerHTML = j.meses.map(m =>
-    `<button class="${m.anomes===MES?'on':''} ${comDado.has(m.anomes)?'':'futuro'}"
-             onclick="trocarMes(${m.anomes})">${esc(m.nome)}</button>`).join('');
+  SEL = new Set([ ultimo ? ultimo.anomes : j.meses[j.meses.length-1].anomes ]);
+  pintarMeses(comDado);
 }
-function trocarMes(anomes) {
-  MES = anomes;
-  document.querySelectorAll('.meses button').forEach((b,i) =>
-    b.classList.toggle('on', DADOS.meses[i].anomes === anomes));
+
+function pintarMeses(comDado) {
+  const cd = comDado || new Set(DADOS.linhas.map(l => l.anomes));
+  document.getElementById('meses').innerHTML = DADOS.meses.map(m =>
+    `<button class="${SEL.has(m.anomes)?'on':''} ${cd.has(m.anomes)?'':'futuro'}"
+             onclick="trocarMes(${m.anomes}, event)">${esc(m.nome)}</button>`).join('')
+    + '<span class="dica">Ctrl+clique soma vários</span>';
+}
+
+function trocarMes(anomes, ev) {
+  const somando = ev && (ev.ctrlKey || ev.metaKey);   // ⌘ no Mac
+  if (!somando) {
+    SEL = new Set([anomes]);
+  } else if (SEL.has(anomes)) {
+    // Desmarcar o último deixaria o quadro sem nada para somar.
+    if (SEL.size > 1) SEL.delete(anomes);
+  } else {
+    SEL.add(anomes);
+  }
+  pintarMeses();
   desenhar();
+}
+
+/** Até onde o acumulado vai: o ÚLTIMO mês marcado. */
+function mesLimite() { return Math.max(...SEL); }
+
+/**
+ * O nome do primeiro bloco.
+ *
+ * Com um mês é o nome dele. Com vários precisa dizer QUAIS, senão a coluna
+ * vira um número sem procedência — e "Agosto" com março somado dentro é
+ * pior do que não ter a soma. Acima de três nomes vira contagem, que ainda
+ * é honesto e cabe no cabeçalho.
+ */
+function rotuloSelecao() {
+  if (SEL.size === DADOS.meses.length) return 'Período inteiro';
+  const nomes = DADOS.meses.filter(m => SEL.has(m.anomes)).map(m => m.nome);
+  if (nomes.length === 1) return nomes[0];
+  if (nomes.length <= 3) return nomes.join(' + ');
+  return nomes.length + ' meses';
 }
 
 // ── Agregação, toda no navegador ────────────────────────────────────────
@@ -322,11 +365,12 @@ function trocarMes(anomes) {
 
 function agregar() {
   const neg = negocio();
+  const limite = mesLimite();
   const grupos = new Map();
   for (const l of DADOS.linhas) {
     if (neg && l.negocio !== neg) continue;
-    const noMes = l.anomes === MES;
-    const noAcum = l.anomes <= MES;
+    const noMes = SEL.has(l.anomes);
+    const noAcum = l.anomes <= limite;
     if (!noMes && !noAcum) continue;
 
     const kg = l.codGrupo + '|' + l.grupo;
@@ -384,7 +428,7 @@ function desenhar() {
   const grupos = agregar();
   const mensal = document.getElementById('ckMensal').checked;
   const acum = document.getElementById('ckAcum').checked;
-  const nomeMes = (DADOS.meses.find(m => m.anomes === MES) || {}).nome || '';
+  const nomeMes = rotuloSelecao();
 
   // Os cartões seguem o MÊS selecionado, como no painel original.
   const tp = grupos.reduce((a,g)=>a+g.mp,0), tr = grupos.reduce((a,g)=>a+g.mr,0);

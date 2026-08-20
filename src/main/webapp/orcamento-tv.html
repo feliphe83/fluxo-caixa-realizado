@@ -88,6 +88,7 @@
                      background: var(--papel-2); font-family: inherit; cursor: pointer;
                      white-space: nowrap; }
   .negocios button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .negocios .dica { margin-left: auto; font-size: 12px; font-weight: 700; color: var(--ink-3); }
   .negocios button:not(.on):hover { background: #e9eefb; color: var(--ink); }
 
   /* Linha de grupo clicável, como na tela de computador. */
@@ -127,7 +128,11 @@
   table.q tfoot td.rot { text-align: left; }
   table.q .divide { border-left: 2px solid var(--borda); }
   .plan { color: var(--orcado); }
-  .dif.bem { color: var(--sobra); } .dif.mal { color: var(--estouro); }
+  /* Qualificado com a tabela porque "table.q tr.grupo td" tem mais
+     elementos e vencia por especificidade — a diferença da linha de grupo
+     saía na cor da tinta, e é justamente nela que se vê o estouro. */
+  table.q td.dif.bem { color: var(--sobra); }
+  table.q td.dif.mal { color: var(--estouro); }
   .pct { font-weight: 800; }
   .pct.vermelho { background: var(--sem-vermelho); color: #fff; }
   .pct.laranja  { background: var(--sem-laranja);  color: #3a2400; }
@@ -217,7 +222,10 @@ const COR_ORCADO='#5b6675', COR_REALIZADO='#2a78d6', COR_ACUM_PREV='#0ca30c', CO
 // A contabilidade de custo fecha ao longo do mês; de dez em dez minutos a
 // parede acompanha sem martelar o Oracle.
 const INTERVALO_MS = 10 * 60 * 1000;
-let DADOS = null, MES = null;
+let DADOS = null;
+/* Os meses marcados. Ctrl+clique (ou ⌘ no Mac) soma vários; clique simples
+   troca para um só. Nunca fica vazio. */
+let SEL = new Set();
 const graficos = {};
 
 /* ── Interação numa parede é temporária ──
@@ -242,7 +250,7 @@ function voltarAoAutomatico() {
   NEGOCIO = '';
   clearTimeout(relogioVolta);
   document.getElementById('manual').classList.remove('on');
-  MES = mesAutomatico();
+  SEL = new Set([ mesAutomatico() ]);
   desenhar();
 }
 
@@ -270,11 +278,36 @@ function mesAutomatico() {
   return ultimo ? ultimo.anomes : DADOS.meses[DADOS.meses.length - 1].anomes;
 }
 
-function trocarMes(anomes) {
-  if (anomes === MES) return;
-  MES = anomes;
+function trocarMes(anomes, ev) {
+  const somando = ev && (ev.ctrlKey || ev.metaKey);   // ⌘ no Mac
+  if (!somando) {
+    if (SEL.size === 1 && SEL.has(anomes)) return;
+    SEL = new Set([anomes]);
+  } else if (SEL.has(anomes)) {
+    // Desmarcar o último deixaria o quadro sem nada para somar.
+    if (SEL.size === 1) return;
+    SEL.delete(anomes);
+  } else {
+    SEL.add(anomes);
+  }
   mexeu();
   desenhar();
+}
+
+/** Até onde o acumulado vai: o ÚLTIMO mês marcado. */
+function mesLimite() { return Math.max(...SEL); }
+
+/**
+ * O nome do primeiro bloco. Com vários meses precisa dizer QUAIS, senão a
+ * coluna vira um número sem procedência — "Agosto" com março somado dentro
+ * é pior do que não ter a soma.
+ */
+function rotuloSelecao() {
+  if (SEL.size === DADOS.meses.length) return 'Período inteiro';
+  const nomes = DADOS.meses.filter(m => SEL.has(m.anomes)).map(m => m.nome);
+  if (nomes.length === 1) return nomes[0];
+  if (nomes.length <= 3) return nomes.join(' + ');
+  return nomes.length + ' meses';
 }
 
 function alternarGrupo(k) {
@@ -336,7 +369,7 @@ async function carregar() {
     // A recarga de dez em dez minutos NÃO rouba o mês de quem está olhando:
     // trocar a tela embaixo da mão de alguém é pior do que o dado ficar
     // alguns minutos parado.
-    if (!MANUAL || MES === null) MES = mesAutomatico();
+    if (!MANUAL || !SEL.size) SEL = new Set([ mesAutomatico() ]);
     desenhar();
   } catch (e) {
     // Numa parede, tabela em branco é pior do que número de dez minutos
@@ -347,10 +380,11 @@ async function carregar() {
 }
 
 function agregar() {
+  const limite = mesLimite();
   const grupos = new Map();
   for (const l of DADOS.linhas) {
     if (NEGOCIO && l.negocio !== NEGOCIO) continue;
-    const noMes = l.anomes === MES, noAcum = l.anomes <= MES;
+    const noMes = SEL.has(l.anomes), noAcum = l.anomes <= limite;
     if (!noMes && !noAcum) continue;
     const k = l.codGrupo + '|' + l.grupo;
     let g = grupos.get(k);
@@ -396,12 +430,12 @@ function classePct(p) {
 
 function desenhar() {
   const grupos = agregar();
-  const mes = DADOS.meses.find(m => m.anomes === MES) || {};
+  const rotulo = rotuloSelecao();
   const comDado = new Set(DADOS.linhas.map(l => l.anomes));
 
   document.getElementById('meses').innerHTML = DADOS.meses.map(m =>
-    `<button class="${m.anomes===MES?'on':''} ${comDado.has(m.anomes)?'':'futuro'}"
-             onclick="trocarMes(${m.anomes})">${esc(m.nome)}</button>`).join('');
+    `<button class="${SEL.has(m.anomes)?'on':''} ${comDado.has(m.anomes)?'':'futuro'}"
+             onclick="trocarMes(${m.anomes}, event)">${esc(m.nome)}</button>`).join('');
 
   // A tira de negócios só existe quando há negócio: filtro que não filtra é
   // pior do que filtro nenhum.
@@ -413,7 +447,8 @@ function desenhar() {
       + DADOS.negocios.map(n =>
           `<button class="${NEGOCIO===n?'on':''}"
                    onclick="trocarNegocio('${esc(n).replace(/'/g,"\\'")}')">${esc(n)}</button>`
-        ).join('');
+        ).join('')
+      + '<span class="dica">Ctrl+clique nos meses soma vários</span>';
   } else {
     cxNeg.style.display = 'none';
   }
@@ -422,9 +457,9 @@ function desenhar() {
   const tap = grupos.reduce((a,g)=>a+g.ap,0), tar = grupos.reduce((a,g)=>a+g.ar,0);
   const ex = pct(tr, tp), exA = pct(tar, tap);
   document.getElementById('cPlan').textContent = fmt0(tp);
-  document.getElementById('cPlanBase').textContent = (mes.nome||'') + ' · R$';
+  document.getElementById('cPlanBase').textContent = rotulo + ' · R$';
   document.getElementById('cReal').textContent = fmt0(tr);
-  document.getElementById('cRealBase').textContent = (mes.nome||'') + ' · R$';
+  document.getElementById('cRealBase').textContent = rotulo + ' · R$';
   const cx = document.getElementById('cExec');
   cx.textContent = ex === null ? '—' : fmt2(ex);
   cx.className = 'cifra' + (ex !== null && ex > 100 ? ' mal' : '');
@@ -444,7 +479,7 @@ function desenhar() {
       <colgroup><col style="width:430px">${Array(8).fill('<col>').join('')}</colgroup>
       <thead>
         <tr class="faixa"><th class="rot" rowspan="2">Grupo de Empenho</th>
-          <th colspan="4" class="divide">${esc(mes.nome||'')}</th>
+          <th colspan="4" class="divide">${esc(rotulo)}</th>
           <th colspan="4" class="divide">Acumulado</th></tr>
         <tr><th class="divide">Plan (R$)</th><th>Real (R$)</th><th>Dif.</th><th>%</th>
             <th class="divide">Plan (R$)</th><th>Real (R$)</th><th>Dif.</th><th>%</th></tr>
