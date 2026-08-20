@@ -203,6 +203,10 @@
       <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
       Paradas da Moagem
     </div>
+    <div class="sb-item" id="nav-indicecontabil" onclick="setSec('indicecontabil')">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><line x1="9" y1="7" x2="16" y2="7"/><line x1="9" y1="11" x2="16" y2="11"/></svg>
+      Índice Contábil
+    </div>
     <div class="sb-item" id="nav-parametros" onclick="setSec('parametros')">
       <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9c.14.36.46.63.85.74H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
       Parâmetros gerais
@@ -258,6 +262,7 @@
       <button class="tab"    id="tab-reenvio"     onclick="setSec('reenvio')">🔁 Reenviar Alerta</button>
       <button class="tab"    id="tab-externo"     onclick="setSec('externo')">🚛 Empresas Externas</button>
       <button class="tab"    id="tab-paradas"     onclick="setSec('paradas')">🛑 Paradas da Moagem</button>
+      <button class="tab"    id="tab-indicecontabil" onclick="setSec('indicecontabil')">📒 Índice Contábil</button>
       <button class="tab"    id="tab-parametros"  onclick="setSec('parametros')">⚙️ Parâmetros gerais</button>
     </div>
 
@@ -658,6 +663,83 @@
           escolha sem apagar o histórico das paradas que já usaram aquela parte.
         </div>
         <div id="partesParadas" style="padding:14px 18px 18px"></div>
+      </div>
+    </div>
+
+    <div class="sec" id="sec-indicecontabil">
+      <div class="panel" style="margin-bottom:20px">
+        <div style="padding:16px 20px;font-size:12.5px;color:var(--text2);line-height:1.65">
+          O <b>índice contábil</b> é o de/para entre a conta do plano de contas e a linha onde ela
+          aparece no painel — a aba <b>indice</b> das planilhas da controladoria. Trocar o índice
+          muda todo número dos dois painéis.
+          <div style="margin-top:8px;color:var(--text3)">
+            A prévia é obrigatória de propósito: no demonstrativo, uma conta na linha errada
+            <u>não deixa rastro</u> — os totais continuam fechando, só que errados. E conta que fica
+            de fora some do quadro em silêncio. Por isso a planilha inteira é recusada quando alguma
+            conta não puder ser resolvida, em vez de importar pela metade.
+          </div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+        <div class="panel">
+          <div class="ph">
+            <div class="ph-title">Demonstrativo do Resultado</div>
+            <span id="icStatusDre" style="font-size:12px;color:var(--text3)">—</span>
+          </div>
+          <div style="padding:14px 20px 18px">
+            <div style="font-size:12.5px;color:var(--text2);line-height:1.6;margin-bottom:10px">
+              Planilha do DRE (a que tem as abas <b>indice</b> e <b>Export</b>).
+            </div>
+            <input type="file" id="icArqDre" accept=".xlsx"
+                   style="font-size:13px;color:var(--text2);width:100%">
+            <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+              <button class="btn-primary" onclick="icPrevia('dre')">Conferir a planilha</button>
+              <button id="icAplicarDre" onclick="icAplicar('dre')" style="display:none"
+                      class="btn-primary">Aplicar</button>
+              <button onclick="icLimpar('dre')"
+                      style="background:none;border:1px solid var(--bd);color:var(--text3);
+                             border-radius:7px;padding:8px 14px;font-size:13px;cursor:pointer;
+                             font-family:inherit">Voltar ao do sistema</button>
+            </div>
+            <div id="icSaidaDre" style="margin-top:14px"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="ph">
+            <div class="ph-title">Balanço Patrimonial</div>
+            <span id="icStatusBalanco" style="font-size:12px;color:var(--text3)">—</span>
+          </div>
+          <div style="padding:14px 20px 18px">
+            <div style="font-size:12.5px;color:var(--text2);line-height:1.6;margin-bottom:10px">
+              Planilha do balanço (a que tem as abas <b>Ativo</b>, <b>passivo</b> e <b>indice</b>).
+            </div>
+            <input type="file" id="icArqBalanco" accept=".xlsx"
+                   style="font-size:13px;color:var(--text2);width:100%">
+            <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+              <button class="btn-primary" onclick="icPrevia('balanco')">Conferir a planilha</button>
+              <button id="icAplicarBalanco" onclick="icAplicar('balanco')" style="display:none"
+                      class="btn-primary">Aplicar</button>
+              <button onclick="icLimpar('balanco')"
+                      style="background:none;border:1px solid var(--bd);color:var(--text3);
+                             border-radius:7px;padding:8px 14px;font-size:13px;cursor:pointer;
+                             font-family:inherit">Voltar ao do sistema</button>
+            </div>
+            <div id="icSaidaBalanco" style="margin-top:14px"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:20px">
+        <div class="ph"><div class="ph-title">Importações anteriores</div></div>
+        <table>
+          <thead><tr><th style="width:130px">Quando</th><th style="width:110px">Painel</th>
+                     <th>Arquivo</th><th style="width:90px">Contas</th><th style="width:130px">Quem</th></tr></thead>
+          <tbody id="icHistorico">
+            <tr><td colspan="5" style="text-align:center;padding:26px;color:var(--text3)">Carregando…</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
@@ -1170,6 +1252,11 @@ function setSec(s) {
     document.getElementById('tsub').textContent='Apaga o registro de "já avisei" para o alerta sair de novo';
     document.getElementById('btnAcao').style.display='none';
     carregarTiposReenvio();
+  } else if(s==='indicecontabil'){
+    document.getElementById('ttitle').textContent='Índice Contábil';
+    document.getElementById('tsub').textContent='De-para entre conta contábil e linha do Demonstrativo e do Balanço';
+    document.getElementById('btnAcao').style.display='none';
+    icStatus();
   } else if(s==='servicoscorte'){
     document.getElementById('ttitle').textContent='Serviços de Corte';
     document.getElementById('tsub').textContent='Quais tipos de serviço contam como corte de cana (Controle de Serviços Agrícola)';
@@ -2862,6 +2949,139 @@ async function excluirWpp(id, nome) {
 }
 
 </script>
-<script src="js/agro-chat-widget.js" defer></script>
+<script src="js/agro-chat-widget.js" defer>
+</script>
+<script>
+// ── Índice contábil ───────────────────────────────────────────────────────
+// Importar o de/para tem duas etapas separadas de propósito: conferir e
+// aplicar. Trocar o índice muda todo número do Demonstrativo e do Balanço, e
+// uma conta na linha errada não deixa rastro — os totais continuam fechando.
+// Quem aplica precisa ter visto antes o que entra, o que sai e o que muda.
+
+const IC_TITULO = { dre: 'Demonstrativo', balanco: 'Balanço' };
+
+function icCap(p) { return p.charAt(0).toUpperCase() + p.slice(1); }
+function icEsc(v) { return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+async function icStatus() {
+  try {
+    const r = await fetch('api/admin/indice-contabil/status', {headers:{'Accept':'application/json'}});
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro || 'erro');
+    ['dre','balanco'].forEach(p => {
+      const d = j[p] || {};
+      document.getElementById('icStatus' + icCap(p)).textContent =
+        d.contas + ' contas · ' + (d.origem || '');
+    });
+    const tb = document.getElementById('icHistorico');
+    tb.innerHTML = (j.historico && j.historico.length)
+      ? j.historico.map(h => `<tr>
+          <td>${icEsc(h.quando)}</td>
+          <td>${icEsc(IC_TITULO[h.painel] || h.painel)}</td>
+          <td>${icEsc(h.arquivo)}</td>
+          <td>${icEsc(h.contas)}</td>
+          <td>${icEsc(h.quem)}</td></tr>`).join('')
+      : '<tr><td colspan="5" style="text-align:center;padding:26px;color:var(--text3)">'
+        + 'Nenhuma importação ainda — os dois painéis usam o índice do sistema.</td></tr>';
+  } catch (e) {
+    document.getElementById('icHistorico').innerHTML =
+      '<tr><td colspan="5" style="text-align:center;padding:26px;color:#ff8080">'
+      + icEsc(e.message || e) + '</td></tr>';
+  }
+}
+
+async function icPrevia(painel) {
+  const arq = document.getElementById('icArq' + icCap(painel)).files[0];
+  const saida = document.getElementById('icSaida' + icCap(painel));
+  const btn = document.getElementById('icAplicar' + icCap(painel));
+  btn.style.display = 'none';
+  if (!arq) { saida.innerHTML = icAviso('Escolha a planilha .xlsx primeiro.', '#ffb84d'); return; }
+  saida.innerHTML = icAviso('Lendo a planilha…', 'var(--text3)');
+
+  const fd = new FormData();
+  fd.append('arquivo', arq);
+  try {
+    const r = await fetch('api/admin/indice-contabil/previa?painel=' + painel,
+                          {method:'POST', body: fd, headers:{'Accept':'application/json'}});
+    const j = await r.json();
+    if (!j.ok) { saida.innerHTML = icAviso(j.erro || 'Erro ao ler', '#ff8080'); return; }
+
+    if (!j.valida) {
+      saida.innerHTML = icAviso(
+        '<b>Planilha recusada</b> — nada foi alterado.<br>' +
+        (j.problemas || []).slice(0, 8).map(icEsc).join('<br>') +
+        ((j.problemas || []).length > 8 ? '<br>… e mais ' + (j.problemas.length - 8) : ''),
+        '#ff8080');
+      return;
+    }
+
+    const m = j.mudancas || {};
+    const nada = !(m.entram||[]).length && !(m.saem||[]).length && !(m.mudam||[]).length;
+    saida.innerHTML = `
+      <div style="font-size:13px;color:var(--text2);line-height:1.7">
+        <b>${j.contas} contas</b> na planilha · o painel usa <b>${m.emUso}</b> hoje.
+        ${nada ? '<br><span style="color:var(--text3)">Nada muda: a planilha é igual ao índice em uso.</span>' : ''}
+      </div>
+      ${icBloco('Entram', m.entram, '#4ade80', l => l.conta + ' → ' + l.destino)}
+      ${icBloco('Saem',   m.saem,   '#ff8080', l => l.conta + ' (era ' + l.destino + ')')}
+      ${icBloco('Mudam de linha', m.mudam, '#ffb84d', l => l.conta + ': ' + l.de + ' → ' + l.para)}`;
+    btn.style.display = nada ? 'none' : 'flex';
+  } catch (e) {
+    saida.innerHTML = icAviso(e.message || String(e), '#ff8080');
+  }
+}
+
+function icAviso(html, cor) {
+  return `<div style="font-size:12.5px;line-height:1.6;color:${cor}">${html}</div>`;
+}
+
+/** Uma lista de mudanças, cortada: dez linhas bastam para decidir. */
+function icBloco(titulo, lista, cor, texto) {
+  if (!lista || !lista.length) return '';
+  const mostra = lista.slice(0, 10);
+  return `<div style="margin-top:10px">
+    <div style="font-size:11px;font-weight:700;color:${cor};text-transform:uppercase;
+                letter-spacing:.6px">${titulo} (${lista.length})</div>
+    <div style="font-size:12px;color:var(--text2);line-height:1.6;margin-top:3px">
+      ${mostra.map(l => icEsc(texto(l))).join('<br>')}
+      ${lista.length > 10 ? '<br><span style="color:var(--text3)">… e mais '
+        + (lista.length - 10) + '</span>' : ''}
+    </div></div>`;
+}
+
+async function icAplicar(painel) {
+  const saida = document.getElementById('icSaida' + icCap(painel));
+  if (!confirm('Aplicar o índice novo do ' + (IC_TITULO[painel] || painel)
+             + '?\n\nTodo número do painel passa a ser calculado por ele.')) return;
+  try {
+    const r = await fetch('api/admin/indice-contabil/aplicar?painel=' + painel,
+                          {method:'POST', headers:{'Accept':'application/json'}});
+    const j = await r.json();
+    if (!j.ok) { saida.innerHTML = icAviso(j.erro || 'Erro ao aplicar', '#ff8080'); return; }
+    saida.innerHTML = icAviso('✓ ' + icEsc(j.mensagem), '#4ade80');
+    document.getElementById('icAplicar' + icCap(painel)).style.display = 'none';
+    icStatus();
+  } catch (e) {
+    saida.innerHTML = icAviso(e.message || String(e), '#ff8080');
+  }
+}
+
+async function icLimpar(painel) {
+  if (!confirm('Voltar ao índice embutido no sistema?\n\nA planilha importada é esquecida.')) return;
+  const saida = document.getElementById('icSaida' + icCap(painel));
+  try {
+    const r = await fetch('api/admin/indice-contabil/limpar?painel=' + painel,
+                          {method:'POST', headers:{'Accept':'application/json'}});
+    const j = await r.json();
+    saida.innerHTML = icAviso(j.ok ? '✓ ' + icEsc(j.mensagem) : icEsc(j.erro),
+                              j.ok ? '#4ade80' : '#ff8080');
+    document.getElementById('icAplicar' + icCap(painel)).style.display = 'none';
+    icStatus();
+  } catch (e) {
+    saida.innerHTML = icAviso(e.message || String(e), '#ff8080');
+  }
+}
+
+</script>
 </body>
 </html>

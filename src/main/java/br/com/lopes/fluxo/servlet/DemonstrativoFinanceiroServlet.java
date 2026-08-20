@@ -257,10 +257,30 @@ public class DemonstrativoFinanceiroServlet extends HttpServlet {
         return "C".equalsIgnoreCase(texto(c.get("debito_credito")).trim()) ? v.negate() : v;
     }
 
-    /** O de/para, lido uma vez do recurso e guardado. */
+    /**
+     * O de/para em uso: o que a controladoria importou pela administração e,
+     * se ninguém importou nada, o arquivo embutido no sistema.
+     *
+     * A ordem importa: o índice do banco é o que a contabilidade acabou de
+     * corrigir, e o do arquivo é o da última geração por script. Preferir o
+     * arquivo faria uma importação parecer que não pegou.
+     */
     static Map<String, String> indice() {
         Map<String, String> cache = indice;
         if (cache != null) return cache;
+        Map<String, String> doBanco = new br.com.lopes.fluxo.dao.IndiceContabilDAO().dre();
+        Map<String, String> m = doBanco.isEmpty() ? doArquivo() : doBanco;
+        LOG.info("De/para do DRE: " + m.size() + " contas ("
+               + (doBanco.isEmpty() ? "arquivo do sistema" : "planilha importada") + ")");
+        indice = m;
+        return m;
+    }
+
+    /** Esquece o índice guardado — chamado quando a administração importa outro. */
+    static void esquecerIndice() { indice = null; }
+
+    /** O índice embutido no WAR, gerado por ferramentas/gerar-dre-indice.py. */
+    static Map<String, String> doArquivo() {
         Map<String, String> m = new LinkedHashMap<>();
         try (java.io.InputStream in =
                      DemonstrativoFinanceiroServlet.class.getResourceAsStream("/dre-indice.csv")) {
@@ -277,8 +297,6 @@ public class DemonstrativoFinanceiroServlet extends HttpServlet {
         } catch (java.io.IOException e) {
             LOG.log(Level.SEVERE, "Erro ao ler o de/para do DRE", e);
         }
-        LOG.info("De/para do DRE: " + m.size() + " contas");
-        indice = m;
         return m;
     }
 

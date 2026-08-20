@@ -178,9 +178,26 @@ public class BalancoPatrimonialServlet extends HttpServlet {
         return "C".equalsIgnoreCase(texto(c.get("debito_credito")).trim()) ? v.negate() : v;
     }
 
+    /**
+     * O de/para em uso: o importado pela administração e, se ninguém importou
+     * nada, o arquivo embutido no sistema.
+     */
     static Map<String, String[]> indice() {
         Map<String, String[]> cache = indice;
         if (cache != null) return cache;
+        Map<String, String[]> doBanco = new br.com.lopes.fluxo.dao.IndiceContabilDAO().balanco();
+        Map<String, String[]> m = doBanco.isEmpty() ? doArquivo() : doBanco;
+        LOG.info("De/para do balanço: " + m.size() + " contas ("
+               + (doBanco.isEmpty() ? "arquivo do sistema" : "planilha importada") + ")");
+        indice = m;
+        return m;
+    }
+
+    /** Esquece o índice guardado — chamado quando a administração importa outro. */
+    static void esquecerIndice() { indice = null; }
+
+    /** O índice embutido no WAR, gerado por ferramentas/gerar-balanco.py. */
+    static Map<String, String[]> doArquivo() {
         Map<String, String[]> m = new LinkedHashMap<>();
         try (java.io.InputStream in =
                      BalancoPatrimonialServlet.class.getResourceAsStream("/balanco-indice.csv")) {
@@ -199,8 +216,6 @@ public class BalancoPatrimonialServlet extends HttpServlet {
         } catch (java.io.IOException e) {
             LOG.log(Level.SEVERE, "Erro ao ler o de/para do balanço", e);
         }
-        LOG.info("De/para do balanço: " + m.size() + " contas");
-        indice = m;
         return m;
     }
 
