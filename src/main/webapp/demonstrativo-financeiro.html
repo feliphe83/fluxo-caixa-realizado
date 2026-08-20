@@ -128,10 +128,6 @@
   table.dre .col-parcial { background: #fff8e6 !important; }
   table.dre tr.destaque .col-parcial { background: #1b3a7a !important; }
 
-  .nota-box { display: flex; gap: 10px; align-items: flex-start; background: #fffaf0;
-              border-left: 3px solid var(--serie-4); border-radius: 8px; padding: 10px 16px;
-              font-size: 12px; color: var(--ink-2); line-height: 1.55; margin-top: 18px; }
-  .nota-box b { color: var(--ink); }
 
   .estado { text-align: center; padding: 40px 20px; color: var(--ink-3); font-size: 14px; }
   .spinner { width: 24px; height: 24px; border: 2.5px solid var(--borda);
@@ -256,11 +252,16 @@ async function carregar() {
     if (!j.ok) throw new Error(j.erro || 'Erro ao consultar');
     FECHADO = j;
     const vivo = aplicarBalancete(j.linhas);
+    const semLinha = (j.conferencia && j.conferencia.contasSemLinhaNoIndice || []).length;
     document.getElementById('fechado').innerHTML =
       `contabilidade fechada até <b>${esc(j.fechadoAte)}</b>`
       + (j.fechamento ? ` (${esc(j.fechamento)})` : '')
       + ` · ${j.totalContas} contas no balancete`
-      + (vivo ? '' : ' · <span class="erro">sem o de/para, ' + ANOS[0] + ' fica no valor fixo</span>');
+      + (vivo ? '' : ' · <span class="erro">sem o de/para, ' + ANOS[0] + ' fica no valor fixo</span>')
+      // O aviso continua, mas na linha do topo e em uma frase — a nota de
+      // rodapé virou parede de texto que ninguém lia.
+      + (semLinha ? ` · <a href="#" class="alerta-link" onclick="verForaDoDre();return false"
+                         title="Ver quais contas">${semLinha} conta(s) sem linha no de/para</a>` : '');
     document.getElementById('atualizado').textContent = 'Atualizado em ' + j.atualizadoEm;
     desenhar();
   } catch (e) {
@@ -315,8 +316,7 @@ function desenhar() {
       <div class="secao-sub">Lucro bruto ÷ receita líquida · em % da receita líquida</div>
       <div class="grafico-caixa" style="height:240px"><canvas id="gMargem"></canvas></div>
     </div>
-
-    ${nota(parcial, mesFechado, anoCorrente)}`;
+`;
 
   graficoReceita();
   graficoResultado();
@@ -393,30 +393,6 @@ function tabela(parcial) {
     <thead><tr><th>Descrição</th>${cab}</tr></thead>
     <tbody>${corpo}</tbody>
   </table>`;
-}
-
-function nota(parcial, mesFechado, anoCorrente) {
-  const sem = FECHADO && FECHADO.conferencia
-            ? (FECHADO.conferencia.contasSemLinhaNoIndice || []).length : 0;
-  return `<div class="nota-box"><div>
-    <b>De onde vêm os números:</b> de 2018 a ${anoCorrente - 1} são os valores fechados das
-    demonstrações financeiras, fixos nesta tela — transcritos como a planilha da controladoria
-    os mostra, inclusive onde a apresentação de 2018 a 2020 traz custos e despesas em positivo.
-    ${parcial
-      ? `A coluna de <b>${anoCorrente}</b> está destacada porque é parcial: vai só até
-         <b>${esc(mesFechado)}</b>, o último mês que a contabilidade fechou. Comparar um ano de
-         ${parcial} ${parcial === 1 ? 'mês' : 'meses'} com anos inteiros é a leitura errada mais
-         fácil de fazer aqui.`
-      : ''}
-    <br><b>${anoCorrente} vem do balancete</b>, somado pelo de/para da controladoria — 232 contas
-    analíticas, cada uma com a sua linha. A conversão é −(saldo) ÷ 1000, porque o demonstrativo é o
-    inverso do balancete: receita é credora e chega negativa de lá. Conferido contra o fechamento
-    oficial de ${anoCorrente}, as dezoito linhas batem ao centavo.
-    ${sem ? `<br><b>Atenção:</b> <a href="#" class="alerta-link" onclick="verForaDoDre();return false"
-             >${sem} conta(s) analítica(s) do balancete ficaram sem linha no de/para</a>
-             e não entraram no quadro. Conta sem destino é dinheiro que some do demonstrativo
-             sem nada avisar — clique para ver quais são.` : ''}
-  </div></div>`;
 }
 
 // ── Gráficos ────────────────────────────────────────────────────────────

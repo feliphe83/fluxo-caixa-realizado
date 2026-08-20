@@ -140,10 +140,6 @@
   table.bp tr.grupo .col-parcial, table.bp tr.nivel .col-parcial,
   table.bp tr.total .col-parcial { background: #1b3a7a !important; }
 
-  .nota-box { display: flex; gap: 10px; align-items: flex-start; background: #fffaf0;
-              border-left: 3px solid var(--serie-4); border-radius: 8px; padding: 10px 16px;
-              font-size: 12px; color: var(--ink-2); line-height: 1.55; margin-top: 18px; }
-  .nota-box b { color: var(--ink); }
   .estado { text-align: center; padding: 40px 20px; color: var(--ink-3); font-size: 14px; }
   .spinner { width: 24px; height: 24px; border: 2.5px solid var(--borda);
              border-top-color: var(--serie-1); border-radius: 50%;
@@ -318,7 +314,7 @@ function desenhar() {
       <div class="legenda" id="legenda"></div>
       <div class="grafico-caixa"><canvas id="gComposicao"></canvas></div>
     </div>
-    ${nota(parcial)}`;
+`;
 
   graficoComposicao();
 }
@@ -366,29 +362,6 @@ function tabela(linhas, parcial) {
     </tr>`).join('');
   return `<table class="bp"><thead><tr><th>Grupo</th>${cab}</tr></thead>
           <tbody>${corpo}</tbody></table>`;
-}
-
-function nota(parcial) {
-  const sem = FECHADO && FECHADO.conferencia
-            ? (FECHADO.conferencia.contasSemLinhaNoIndice || []).length : 0;
-  const fora = balNaoFecha();
-  return `<div class="nota-box"><div>
-    <b>De onde vêm os números:</b> de ${BAL_ANOS[BAL_ANOS.length-1]} a ${BAL_ANOS[1]} são os
-    fechamentos de 31/12, fixos nesta tela. <b>${BAL_ANOS[0]}</b> vem do balancete do ERP,
-    somado pelo de/para da controladoria — 289 contas, cada uma com o seu grupo.
-    O passivo inverte de sinal porque é credor no balancete, e o resultado do exercício entra no
-    patrimônio líquido: sem ele o balanço não fecha.
-    Conferido contra a planilha: as 41 linhas batem, e ativo e passivo dão o mesmo total.
-    ${parcial ? `<br>A coluna de <b>${BAL_ANOS[0]}</b> está destacada porque é uma posição de
-       <b>${esc(FECHADO.mesNome)}</b>, e não um fechamento de exercício.` : ''}
-    ${sem ? `<br><b>Atenção:</b> ${sem} conta(s) do balancete ficaram sem grupo e não entraram —
-       conta fora do balanço faz um lado deixar de bater com o outro sem nada avisar.` : ''}
-    ${fora.length ? `<br><b>Ativo e passivo não fecham em ${fora.map(f => f.ano).join(', ')}</b>
-       (${fora.map(f => f.ano + ': ' + fmtNum(Math.abs(f.diferenca)/1000, 1) + ' mi').join(' · ')}).
-       A diferença já vem da planilha — ${BAL_ANOS[0]}, ${BAL_ANOS[1]} e ${BAL_ANOS[2]} fecham ao
-       centavo, e os anteriores não. Não corrigi nada: o número aqui é o mesmo do documento oficial.`
-     : `<br>Ativo e passivo fecham em todos os ${BAL_ANOS.length} anos.`}
-  </div></div>`;
 }
 
 function graficoComposicao() {

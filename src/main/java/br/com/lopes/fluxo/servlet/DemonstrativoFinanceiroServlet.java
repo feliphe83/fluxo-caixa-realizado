@@ -180,10 +180,20 @@ public class DemonstrativoFinanceiroServlet extends HttpServlet {
             String chave = indice.get(formatada);
 
             if (chave == null) {
-                // Só a conta ANALÍTICA precisa de destino. A sintética é o
-                // somatório das filhas: se entrasse, cada real seria contado
-                // duas vezes. O formato de cinco níveis é o que as separa.
-                if (formatada.chars().filter(ch -> ch == '.').count() == 4
+                // Só a conta ANALÍTICA de RESULTADO precisa de destino aqui.
+                //
+                // Duas exclusões, e as duas importam:
+                //  - a sintética é o somatório das filhas; se entrasse, cada
+                //    real seria contado duas vezes (o formato de cinco níveis
+                //    é o que as separa);
+                //  - o balancete traz o plano inteiro, e as contas de ativo e
+                //    passivo (grupos 1 e 2) não pertencem ao demonstrativo.
+                //    Sem esta linha o aviso acusava 224 contas "sem destino"
+                //    que estavam certas de estar de fora — alarme que se
+                //    aprende a ignorar é pior do que alarme nenhum, porque
+                //    esconde o dia em que ele estiver certo.
+                if (formatada.startsWith("3.")
+                        && formatada.chars().filter(ch -> ch == '.').count() == 4
                         && assinado(c).signum() != 0) {
                     JsonObject o = new JsonObject();
                     o.addProperty("conta", formatada);
