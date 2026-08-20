@@ -101,12 +101,17 @@
   /* ── O quadro ── */
   .rolagem { overflow-x: auto; }
   table.q { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-  table.q thead th { background: var(--ink); color: #fff; font-weight: 800; padding: 7px 10px;
+  /* O cabeçalho gruda: com quinze grupos abertos em empenhos, rolar faz
+     perder de vista qual coluna é o mês e qual é o acumulado — e aí oito
+     colunas de dinheiro viram adivinhação. */
+  table.q thead th { position: sticky; z-index: 2;
+                     background: var(--ink); color: #fff; font-weight: 800; padding: 7px 10px;
                      white-space: nowrap; text-align: right; font-size: 11.5px;
                      border-right: 1px solid rgba(255,255,255,.14); }
   table.q thead th:last-child { border-right: none; }
   table.q thead th.rot { text-align: left; }
-  table.q thead tr.faixa th { text-align: center; font-size: 12.5px; letter-spacing: .4px; }
+  table.q thead tr.faixa th { top: 0; text-align: center; font-size: 12.5px; letter-spacing: .4px; }
+  table.q thead tr:not(.faixa) th { top: 29px; }
   table.q tbody td { padding: 6px 10px; text-align: right; white-space: nowrap;
                      border-bottom: 1px solid #eef1f8; }
   table.q tbody td.rot { text-align: left; }
@@ -158,11 +163,19 @@
       <div class="header-sub">Planejado × realizado</div>
     </div>
   </div>
-  <a class="btn-voltar" href="hub.html">
-    <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-      <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-    Voltar ao Hub
-  </a>
+  <div style="display:flex;gap:8px;align-items:center">
+    <a class="btn-voltar" href="orcamento-tv.html" target="_blank" title="Abrir a versão para televisão">
+      <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <rect x="2" y="4" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/>
+        <line x1="12" y1="18" x2="12" y2="21"/></svg>
+      Modo TV
+    </a>
+    <a class="btn-voltar" href="hub.html">
+      <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      Voltar ao Hub
+    </a>
+  </div>
 </div>
 
 <div class="conteudo">
@@ -442,7 +455,7 @@ function quadro(grupos, mensal, acum, nomeMes, tp, tr, tap, tar) {
     const d = p - r;
     return `<td class="plan ${primeiro?'divide':''}">${p?fmt0(p):''}</td>
             <td>${r?fmt0(r):''}</td>
-            <td class="dif ${d>=0?'bem':'mal'}">${(p||r)?fmt0(d):''}</td>
+            <td class="dif ${d>=0?'bem':'mal'}">${(p||r)?fmtDif(d):''}</td>
             ${celulaPct(pct(r,p))}`;
   };
 
@@ -473,16 +486,33 @@ function quadro(grupos, mensal, acum, nomeMes, tp, tr, tap, tar) {
   </table>`;
 }
 
+/** Estouro entre parênteses, como no quadro da controladoria: num
+ *  documento de orçamento o sinal de menos passa despercebido, o parêntese
+ *  não. */
+function fmtDif(d) {
+  return d < 0 ? '(' + fmt0(Math.abs(d)) + ')' : fmt0(d);
+}
+
 function alternar(k) { ABERTOS[k] = !ABERTOS[k]; desenhar(); }
 
 // ── Gráficos ────────────────────────────────────────────────────────────
-const eixoMilhoes = {
-  // Cinco marcas bastam. Sem o limite o eixo enche de meio em meio milhão e
-  // vira uma escada de números que compete com a linha pela atenção.
-  ticks: { color:'#898781', font:{size:11, weight:'600'}, maxTicksLimit: 5,
-           callback: v => v === 0 ? '0' : fmt2(v/1e6,1) + ' mi' },
-  grid: { color:'#e9edf6' }, border: { display:false }, beginAtZero: true
-};
+/**
+ * Cinco marcas bastam: sem o limite o eixo enche de meio em meio milhão e
+ * vira uma escada de números que compete com a linha pela atenção.
+ *
+ * `doZero` é a diferença entre os dois gráficos, e não é enfeite:
+ *  - no ACUMULADO a história é o crescimento a partir do zero, e cortar a
+ *    base faria a curva parecer arrancar de um patamar que não existe;
+ *  - no MENSAL a história é a distância entre previsto e realizado, duas
+ *    linhas que andam coladas. Do zero, as duas ficam espremidas no topo e
+ *    a diferença — que é o assunto — some.
+ */
+function eixoMilhoes(doZero) {
+  return { ticks: { color:'#898781', font:{size:11, weight:'600'}, maxTicksLimit: 5,
+                    callback: v => v === 0 ? '0' : fmt2(v/1e6,1) + ' mi' },
+           grid: { color:'#e9edf6' }, border: { display:false },
+           beginAtZero: doZero, grace: doZero ? 0 : '18%' };
+}
 
 function linha(id, dados, cfg) {
   const canvas = document.getElementById(id);
@@ -495,7 +525,7 @@ function linha(id, dados, cfg) {
       layout:{ padding:{ top:24, right:14, left:8, bottom:4 } },
       scales:{ x:{ grid:{display:false}, border:{color:'#e3e8f5'},
                    ticks:{ color:'#52514e', font:{size:12, weight:'700'} } },
-               y: eixoMilhoes },
+               y: eixoMilhoes(cfg.doZero) },
       plugins:{ legend:{display:false}, tooltip:{ callbacks:{
         label: c => c.dataset.label + ': ' + curto(c.parsed.y) } } }
     },
@@ -521,7 +551,10 @@ function linha(id, dados, cfg) {
             // As pontas escrevem para dentro: centralizado, o rótulo do
             // primeiro mês cavalga a marca do eixo e o do último sai do quadro.
             ctx.textAlign = i === 0 ? 'left' : (i === ultimo ? 'right' : 'center');
-            ctx.fillText(fmt2(v/1e6,1) + ' mi', p.x, p.y + (acima ? -8 : 8));
+            // Nas pontas, um respiro horizontal: alinhado exatamente no x do
+            // ponto, o texto encosta no próprio marcador.
+            const dx = i === 0 ? 5 : (i === ultimo ? -5 : 0);
+            ctx.fillText(fmt2(v/1e6,1) + ' mi', p.x + dx, p.y + (acima ? -8 : 8));
           });
         });
         ctx.restore();
@@ -539,14 +572,14 @@ const zeroNulo = v => (Number(v) || 0) === 0 ? null : Number(v);
 
 function graficoMensal() {
   const s = serie();
-  linha('gMensal', s, { series: [
+  linha('gMensal', s, { doZero: false, series: [
     estilo('Previsto',  COR_ORCADO,    s.map(m => zeroNulo(m.p))),
     estilo('Realizado', COR_REALIZADO, s.map(m => zeroNulo(m.r)))
   ]});
 }
 function graficoAcumulado() {
   const s = serie();
-  linha('gAcum', s, { series: [
+  linha('gAcum', s, { doZero: true, series: [
     estilo('Previsto acumulado',  COR_ACUM_PREV, s.map(m => zeroNulo(m.ap))),
     estilo('Realizado acumulado', COR_ACUM_REAL, s.map(m => zeroNulo(m.ar)))
   ]});

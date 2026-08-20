@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orçamento de Compras — Usina Santa Clotilde</title>
+<link rel="icon" href="img/logo.png">
+<style>
+/* ────────────────────────────────────────────────────────────────────────
+   Painel de televisão do orçamento de compras.
+
+   Palco de 1920×1080 fixos, ESCALADO para caber na tela em vez de se
+   reorganizar. Numa TV ninguém corrige layout quebrado.
+
+   SEM CLIQUE: o mês é o último com movimento, mensal e acumulado aparecem
+   os dois, e o quadro mostra os grupos — o detalhe por empenho fica na tela
+   de computador, que é onde alguém investiga. Aqui o que importa é ver, de
+   longe, quem estourou.
+   ──────────────────────────────────────────────────────────────────────── */
+  :root {
+    --orcado: #5b6675; --realizado: #2a78d6;
+    --acum-prev: #0ca30c; --acum-real: #1e3a8a;
+    --sobra: #0ca30c; --estouro: #d03b3b;
+    --sem-vermelho: #e03127; --sem-laranja: #f0921f; --sem-amarelo: #ffe14d;
+    --ink: #0f2460; --ink-2: #52514e; --ink-3: #898781; --rotulo: #64748b;
+    --borda: #e3e8f5; --papel: #fff; --papel-2: #f8faff; --fundo: #f4f6fb;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--fundo); color: var(--ink-2);
+               font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+               overflow: hidden; font-variant-numeric: tabular-nums; }
+
+  #palco-wrap { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
+  #palco { position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px;
+           transform-origin: center center; padding: 18px 24px 16px;
+           display: grid; grid-template-rows: auto auto 1fr 300px; gap: 11px; }
+
+  /* ── Topo ── */
+  .topo { display: flex; align-items: center; gap: 16px; }
+  .marca { width: 44px; height: 44px; border-radius: 11px; background: var(--ink);
+           display: flex; align-items: center; justify-content: center; padding: 6px; flex: none; }
+  .marca img { width: 100%; height: 100%; object-fit: contain; }
+  .topo h1 { font-size: 27px; font-weight: 800; color: var(--ink); letter-spacing: -.5px; }
+  .topo .sub { font-size: 12.5px; font-weight: 700; color: var(--ink-3);
+               text-transform: uppercase; letter-spacing: .8px; margin-top: 1px; }
+  .cartoes { display: flex; gap: 11px; margin-left: 22px; }
+  .cartao { background: var(--papel); border: 1px solid var(--borda); border-radius: 12px;
+            padding: 9px 20px; position: relative; overflow: hidden; min-width: 210px; }
+  .cartao::before { content:''; position:absolute; left:0; top:0; bottom:0; width:4px;
+                    background: var(--cor, var(--ink)); }
+  .cartao .rot { font-size: 11.5px; font-weight: 800; color: var(--rotulo);
+                 text-transform: uppercase; letter-spacing: .7px; }
+  .cartao .cifra { font-size: 30px; font-weight: 800; color: var(--ink); line-height: 1.1;
+                   margin-top: 2px; letter-spacing: -.8px; }
+  .cartao .cifra.mal { color: var(--estouro); }
+  .cartao .base { font-size: 11.5px; font-weight: 700; color: var(--ink-3); margin-top: 1px; }
+  .direita { margin-left: auto; text-align: right; }
+  .periodo { font-size: 19px; font-weight: 800; color: var(--ink); background: var(--papel);
+             border: 1px solid var(--borda); border-radius: 11px; padding: 7px 16px;
+             display: inline-block; }
+  .relogio { font-size: 12.5px; font-weight: 700; color: var(--ink-3); margin-top: 5px; }
+
+  /* ── Tira de meses ── */
+  .meses { display: flex; gap: 6px; background: var(--papel); border: 1px solid var(--borda);
+           border-radius: 12px; padding: 5px; }
+  .meses span { flex: 1; text-align: center; font-size: 17px; font-weight: 800;
+                color: var(--ink-3); padding: 8px 6px; border-radius: 9px; }
+  .meses span.on { background: var(--realizado); color: #fff; }
+  .meses span.futuro { opacity: .4; }
+
+  /* ── Quadro ── */
+  .bloco { background: var(--papel); border: 1px solid var(--borda); border-radius: 12px;
+           padding: 10px 14px 12px; min-height: 0; overflow: hidden; }
+  table.q { width: 100%; border-collapse: collapse; font-size: var(--fonte, 16px);
+            table-layout: fixed; }
+  table.q thead th { background: var(--ink); color: #fff; font-weight: 800; padding: .34em 10px;
+                     white-space: nowrap; text-align: right; font-size: .84em;
+                     border-right: 1px solid rgba(255,255,255,.14); }
+  table.q thead th:last-child { border-right: none; }
+  table.q thead th.rot { text-align: left; }
+  table.q thead tr.faixa th { text-align: center; font-size: .92em; letter-spacing: .4px; }
+  table.q tbody td { padding: .34em 10px; text-align: right; white-space: nowrap;
+                     border-bottom: 1px solid #eef1f8; font-weight: 700; color: var(--ink); }
+  table.q tbody td.rot { text-align: left; overflow: hidden; text-overflow: ellipsis; }
+  table.q tfoot td { padding: .4em 10px; font-weight: 800; color: var(--ink); text-align: right;
+                     border-top: 2px solid var(--borda); background: #eef2fa; }
+  table.q tfoot td.rot { text-align: left; }
+  table.q .divide { border-left: 2px solid var(--borda); }
+  .plan { color: var(--orcado); }
+  .dif.bem { color: var(--sobra); } .dif.mal { color: var(--estouro); }
+  .pct { font-weight: 800; }
+  .pct.vermelho { background: var(--sem-vermelho); color: #fff; }
+  .pct.laranja  { background: var(--sem-laranja);  color: #3a2400; }
+  .pct.amarelo  { background: var(--sem-amarelo);  color: #3a3400; }
+
+  .graficos { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; min-height: 0; }
+  .graficos .bloco { display: flex; flex-direction: column; }
+  .cab { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+  .cab h2 { font-size: 17px; font-weight: 800; color: var(--ink); }
+  .legenda { margin-left: auto; display: flex; gap: 14px; }
+  .legenda span { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px;
+                  font-weight: 800; color: var(--ink-2); }
+  .legenda i { width: 12px; height: 12px; border-radius: 4px; flex: none; }
+  .tela { position: relative; flex: 1; min-height: 0; }
+
+  .carregando { color: var(--ink-3); font-size: 20px; font-weight: 700; padding: 40px 4px; }
+  .tarja { position: fixed; top: 0; left: 0; right: 0; background: #eda100; color: #1a1a19;
+           font-size: 17px; font-weight: 800; text-align: center; padding: 7px;
+           display: none; z-index: 40; }
+  .tarja.on { display: block; }
+</style>
+</head>
+<body>
+
+<div class="tarja" id="tarja"></div>
+
+<div id="palco-wrap"><div id="palco">
+
+  <div class="topo">
+    <div class="marca"><img src="img/logo.png" alt="USC"></div>
+    <div>
+      <h1>Orçamento de Compras</h1>
+      <div class="sub">Usina Santa Clotilde · planejado × realizado</div>
+    </div>
+    <div class="cartoes">
+      <div class="cartao" style="--cor:var(--orcado)">
+        <div class="rot">Planejado</div><div class="cifra" id="cPlan">—</div>
+        <div class="base" id="cPlanBase"></div>
+      </div>
+      <div class="cartao" style="--cor:var(--realizado)">
+        <div class="rot">Realizado</div><div class="cifra" id="cReal">—</div>
+        <div class="base" id="cRealBase"></div>
+      </div>
+      <div class="cartao" style="--cor:var(--sem-laranja)">
+        <div class="rot">Execução %</div><div class="cifra" id="cExec">—</div>
+        <div class="base" id="cExecBase"></div>
+      </div>
+    </div>
+    <div class="direita">
+      <div class="periodo" id="periodo">—</div>
+      <div class="relogio" id="relogio"></div>
+    </div>
+  </div>
+
+  <div class="meses" id="meses"></div>
+
+  <div class="bloco"><div id="quadro"><div class="carregando">Consultando o orçamento…</div></div></div>
+
+  <div class="graficos">
+    <div class="bloco">
+      <div class="cab"><h2>Mês a mês</h2>
+        <div class="legenda">
+          <span><i style="background:#5b6675"></i>Previsto</span>
+          <span><i style="background:#2a78d6"></i>Realizado</span>
+        </div>
+      </div>
+      <div class="tela"><canvas id="gMensal"></canvas></div>
+    </div>
+    <div class="bloco">
+      <div class="cab"><h2>Acumulado no período</h2>
+        <div class="legenda">
+          <span><i style="background:#0ca30c"></i>Previsto</span>
+          <span><i style="background:#1e3a8a"></i>Realizado</span>
+        </div>
+      </div>
+      <div class="tela"><canvas id="gAcum"></canvas></div>
+    </div>
+  </div>
+
+</div></div>
+
+<script src="js/chart.umd.min.js"></script>
+<script>
+const COR_ORCADO='#5b6675', COR_REALIZADO='#2a78d6', COR_ACUM_PREV='#0ca30c', COR_ACUM_REAL='#1e3a8a';
+// A contabilidade de custo fecha ao longo do mês; de dez em dez minutos a
+// parede acompanha sem martelar o Oracle.
+const INTERVALO_MS = 10 * 60 * 1000;
+let DADOS = null, MES = null;
+const graficos = {};
+
+const fmt0 = v => Math.round(Number(v)||0).toLocaleString('pt-BR');
+const fmt2 = (v,c) => (Number(v)||0).toLocaleString('pt-BR',
+  {minimumFractionDigits:c==null?2:c, maximumFractionDigits:c==null?2:c});
+const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+/** Estouro entre parênteses: num quadro de orçamento o sinal de menos passa
+ *  despercebido de longe, o parêntese não. */
+const fmtDif = d => d < 0 ? '(' + fmt0(Math.abs(d)) + ')' : fmt0(d);
+
+function ajustarEscala() {
+  const s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+  document.getElementById('palco').style.transform = 'translate(-50%, -50%) scale(' + s + ')';
+}
+window.addEventListener('resize', ajustarEscala);
+
+/* Períodos: SAFRA de setembro a fevereiro, ENTRESSAFRA de março a agosto. */
+function periodoCorrente() {
+  const h = new Date(), ano = h.getFullYear(), mes = h.getMonth() + 1;
+  if (mes >= 3 && mes <= 8)
+    return { rotulo:'EntreSafra ' + ano, ini: ano*100+3, fim: ano*100+8 };
+  const inicio = mes >= 9 ? ano : ano - 1;
+  return { rotulo:'Safra ' + inicio + '/' + (inicio+1), ini: inicio*100+9, fim: (inicio+1)*100+2 };
+}
+
+async function carregar() {
+  const p = periodoCorrente();
+  try {
+    const r = await fetch(`api/orcamento-compras?ini=${p.ini}&fim=${p.fim}`,
+                          {headers:{'Accept':'application/json'}});
+    if (r.status === 401) {
+      const t = document.getElementById('tarja');
+      t.textContent = '⚠ Sessão expirada — faça login neste navegador para o painel voltar a atualizar';
+      t.classList.add('on');
+      return;
+    }
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro || 'Consulta recusada');
+    document.getElementById('tarja').classList.remove('on');
+    DADOS = j;
+    document.getElementById('periodo').textContent = p.rotulo;
+    document.getElementById('relogio').textContent = 'Atualizado em ' + j.atualizadoEm;
+    // O mês é o último com movimento: é onde a execução está acontecendo.
+    const comDado = new Set(j.linhas.map(l => l.anomes));
+    const ultimo = j.meses.filter(m => comDado.has(m.anomes)).pop();
+    MES = ultimo ? ultimo.anomes : j.meses[j.meses.length-1].anomes;
+    desenhar();
+  } catch (e) {
+    // Numa parede, tabela em branco é pior do que número de dez minutos
+    // atrás. Só a data do fechamento é que não se inventa.
+    if (!DADOS) document.getElementById('quadro').innerHTML =
+      `<div class="carregando" style="color:#d03b3b">Não foi possível consultar: ${esc(e.message||e)}</div>`;
+  }
+}
+
+function agregar() {
+  const grupos = new Map();
+  for (const l of DADOS.linhas) {
+    const noMes = l.anomes === MES, noAcum = l.anomes <= MES;
+    if (!noMes && !noAcum) continue;
+    const k = l.codGrupo + '|' + l.grupo;
+    let g = grupos.get(k);
+    if (!g) { g = {nome:l.grupo, mp:0, mr:0, ap:0, ar:0}; grupos.set(k, g); }
+    if (noMes)  { g.mp += +l.orcado; g.mr += +l.realizado; }
+    if (noAcum) { g.ap += +l.orcado; g.ar += +l.realizado; }
+  }
+  return [...grupos.values()].filter(g => g.mp||g.mr||g.ap||g.ar)
+                             .sort((a,b) => Math.max(b.ap,b.ar) - Math.max(a.ap,a.ar));
+}
+
+function serie() {
+  const porMes = new Map(DADOS.meses.map(m => [m.anomes, {label:m.label, p:0, r:0}]));
+  for (const l of DADOS.linhas) {
+    const m = porMes.get(l.anomes);
+    if (m) { m.p += +l.orcado; m.r += +l.realizado; }
+  }
+  const arr = [...porMes.values()];
+  let ap = 0, ar = 0;
+  arr.forEach(m => { ap += m.p; ar += m.r; m.ap = ap; m.ar = ar; });
+  return arr;
+}
+
+/** Sem orçamento não existe percentual: "—", nunca 100%. */
+function pct(r, p) { return p ? r * 100 / p : null; }
+function classePct(p) {
+  if (p === null) return '';
+  if (p > 100) return 'vermelho';
+  if (p >= 90)  return 'laranja';
+  if (p >= 85)  return 'amarelo';
+  return '';
+}
+
+function desenhar() {
+  const grupos = agregar();
+  const mes = DADOS.meses.find(m => m.anomes === MES) || {};
+  const comDado = new Set(DADOS.linhas.map(l => l.anomes));
+
+  document.getElementById('meses').innerHTML = DADOS.meses.map(m =>
+    `<span class="${m.anomes===MES?'on':''} ${comDado.has(m.anomes)?'':'futuro'}">${esc(m.nome)}</span>`
+  ).join('');
+
+  const tp = grupos.reduce((a,g)=>a+g.mp,0), tr = grupos.reduce((a,g)=>a+g.mr,0);
+  const tap = grupos.reduce((a,g)=>a+g.ap,0), tar = grupos.reduce((a,g)=>a+g.ar,0);
+  const ex = pct(tr, tp), exA = pct(tar, tap);
+  document.getElementById('cPlan').textContent = fmt0(tp);
+  document.getElementById('cPlanBase').textContent = (mes.nome||'') + ' · R$';
+  document.getElementById('cReal').textContent = fmt0(tr);
+  document.getElementById('cRealBase').textContent = (mes.nome||'') + ' · R$';
+  const cx = document.getElementById('cExec');
+  cx.textContent = ex === null ? '—' : fmt2(ex);
+  cx.className = 'cifra' + (ex !== null && ex > 100 ? ' mal' : '');
+  document.getElementById('cExecBase').textContent =
+    'acumulado ' + (exA === null ? '—' : fmt2(exA) + '%');
+
+  const bloco = (p, r) => {
+    const d = p - r;
+    return `<td class="plan divide">${p?fmt0(p):''}</td>
+            <td>${r?fmt0(r):''}</td>
+            <td class="dif ${d>=0?'bem':'mal'}">${(p||r)?fmtDif(d):''}</td>
+            <td class="pct ${classePct(pct(r,p))}">${pct(r,p)===null?'—':fmt2(pct(r,p))}</td>`;
+  };
+
+  document.getElementById('quadro').innerHTML = `
+    <table class="q">
+      <colgroup><col style="width:430px">${Array(8).fill('<col>').join('')}</colgroup>
+      <thead>
+        <tr class="faixa"><th class="rot" rowspan="2">Grupo de Empenho</th>
+          <th colspan="4" class="divide">${esc(mes.nome||'')}</th>
+          <th colspan="4" class="divide">Acumulado</th></tr>
+        <tr><th class="divide">Plan (R$)</th><th>Real (R$)</th><th>Dif.</th><th>%</th>
+            <th class="divide">Plan (R$)</th><th>Real (R$)</th><th>Dif.</th><th>%</th></tr>
+      </thead>
+      <tbody>${grupos.map(g => `<tr>
+        <td class="rot">${esc(g.nome)}</td>${bloco(g.mp,g.mr)}${bloco(g.ap,g.ar)}
+      </tr>`).join('')}</tbody>
+      <tfoot><tr><td class="rot">Total</td>${bloco(tp,tr)}${bloco(tap,tar)}</tr></tfoot>
+    </table>`;
+
+  encaixar(grupos.length + 3);
+  graficoMensal();
+  graficoAcumulado();
+}
+
+/**
+ * Encaixa o quadro na altura do bloco MEDINDO, não estimando.
+ *
+ * O número de grupos varia com o período e com o que a controladoria
+ * cadastrou; a fonte que preenche doze linhas derruba vinte para fora da
+ * tela. Tudo na tabela está em em, então mexer em --fonte encolhe a tabela
+ * inteira de uma vez.
+ */
+function encaixar() {
+  const caixa = document.querySelector('#quadro').parentElement;
+  const tabela = caixa.querySelector('table');
+  if (!tabela) return;
+  const disponivel = caixa.clientHeight - 24;
+  let fonte = 16;
+  // Encolhe E CRESCE. Na primeira versão ele só encolhia, e um período com
+  // poucos grupos deixava um terço do bloco em branco — numa parede, altura
+  // sobrando é altura de leitura jogada fora. O teto de 22px existe porque
+  // acima disso a tabela vira cartaz e as oito colunas não cabem na largura.
+  for (let passada = 0; passada < 3; passada++) {
+    document.documentElement.style.setProperty('--fonte', fonte.toFixed(2) + 'px');
+    const ocupado = tabela.offsetHeight;
+    if (!ocupado) return;
+    fonte = Math.max(8, Math.min(22, fonte * (disponivel * 0.99) / ocupado));
+  }
+  document.documentElement.style.setProperty('--fonte', fonte.toFixed(2) + 'px');
+}
+
+// ── Gráficos ────────────────────────────────────────────────────────────
+/* doZero: no acumulado a história é o crescimento desde o zero; no mensal é
+   a distância entre duas linhas coladas, que do zero ficam espremidas no
+   topo e escondem justamente o assunto. */
+function linha(id, dados, series, doZero) {
+  const canvas = document.getElementById(id);
+  if (graficos[id]) graficos[id].destroy();
+  graficos[id] = new Chart(canvas, {
+    type: 'line',
+    data: { labels: dados.map(m => m.label), datasets: series },
+    options: {
+      responsive:true, maintainAspectRatio:false, animation:false,
+      layout:{ padding:{ top:26, right:16, left:10, bottom:4 } },
+      scales:{
+        x:{ grid:{display:false}, border:{color:'#e3e8f5'},
+            ticks:{ color:'#52514e', font:{size:14, weight:'800'} } },
+        y:{ ticks:{ color:'#898781', font:{size:12, weight:'700'}, maxTicksLimit:5,
+                    callback: v => v === 0 ? '0' : fmt2(v/1e6,1) + ' mi' },
+            grid:{ color:'#e9edf6' }, border:{display:false},
+            beginAtZero: doZero, grace: doZero ? 0 : '18%' }
+      },
+      plugins:{ legend:{display:false}, tooltip:{enabled:false} }
+    },
+    plugins: [{
+      id: 'rotulos',
+      afterDatasetsDraw(chart) {
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.font = '800 13px system-ui, sans-serif';
+        chart.data.datasets.forEach((ds, di) => {
+          ctx.fillStyle = ds.borderColor;
+          const outro = chart.getDatasetMeta(1 - di).data;
+          const ultimo = ds.data.length - 1;
+          chart.getDatasetMeta(di).data.forEach((p, i) => {
+            const v = ds.data[i];
+            if (!v) return;
+            const acima = !outro[i] || p.y <= outro[i].y;
+            ctx.textBaseline = acima ? 'bottom' : 'top';
+            // As pontas escrevem para dentro: centralizado, o primeiro
+            // rótulo cavalga a marca do eixo e o último sai do quadro.
+            ctx.textAlign = i === 0 ? 'left' : (i === ultimo ? 'right' : 'center');
+            // Nas pontas, um respiro horizontal: alinhado exatamente no x do
+            // ponto, o texto encosta no próprio marcador.
+            const dx = i === 0 ? 5 : (i === ultimo ? -5 : 0);
+            ctx.fillText(fmt2(v/1e6,1) + ' mi', p.x + dx, p.y + (acima ? -9 : 9));
+          });
+        });
+        ctx.restore();
+      }
+    }]
+  });
+}
+
+const estilo = (label, cor, dados) => ({
+  label, data: dados, borderColor: cor, backgroundColor: 'transparent',
+  borderWidth: 3, pointRadius: 5, pointBackgroundColor: cor,
+  pointBorderColor: '#fff', pointBorderWidth: 2, tension: .3, spanGaps: false
+});
+const zeroNulo = v => (Number(v)||0) === 0 ? null : Number(v);
+
+function graficoMensal() {
+  const s = serie();
+  linha('gMensal', s, [ estilo('Previsto',  COR_ORCADO,    s.map(m => zeroNulo(m.p))),
+                        estilo('Realizado', COR_REALIZADO, s.map(m => zeroNulo(m.r))) ], false);
+}
+function graficoAcumulado() {
+  const s = serie();
+  linha('gAcum', s, [ estilo('Previsto',  COR_ACUM_PREV, s.map(m => zeroNulo(m.ap))),
+                      estilo('Realizado', COR_ACUM_REAL, s.map(m => zeroNulo(m.ar))) ], true);
+}
+
+ajustarEscala();
+carregar();
+setInterval(carregar, INTERVALO_MS);
+</script>
+</body>
+</html>
