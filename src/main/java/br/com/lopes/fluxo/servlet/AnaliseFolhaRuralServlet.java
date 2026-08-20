@@ -17,6 +17,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -130,94 +131,93 @@ public class AnaliseFolhaRuralServlet extends HttpServlet {
 
             List<Map<String, Object>> linhas = dao.buscar(dataIniOracle, dataFimOracle);
 
-            Map<String, Acc> propriaAtiv = new HashMap<>();
-            Map<String, Acc> terceiroAtiv = new HashMap<>();
-            Acc propriaFeriado = new Acc(), terceiroFeriado = new Acc();
-
-            // Detalhamento por Tipo de Serviço dentro de cada Atividade Principal
-            // (bucket -> serviço -> Acc), usado para "explodir" a linha ao clicar.
-            Map<String, Map<String, Acc>> propriaServicos = new HashMap<>();
-            Map<String, Map<String, Acc>> terceiroServicos = new HashMap<>();
-            Map<String, Acc> propriaFeriadoServicos = new HashMap<>();
-            Map<String, Acc> terceiroFeriadoServicos = new HashMap<>();
+            // Três blocos, e não dois. O tipo de fundo agrícola 9 (área
+            // urbana) saía junto de terceiros só porque não era 1 — e área
+            // urbana é da própria usina, não de terceiro. Somados, os dois
+            // números ficavam certos no total e errados nos dois lados.
+            Map<String, Map<String, Acc>> ativ = new LinkedHashMap<>();
+            Map<String, Acc> feriado = new LinkedHashMap<>();
+            Map<String, Map<String, Map<String, Acc>>> serv = new LinkedHashMap<>();
+            Map<String, Map<String, Acc>> feriadoServ = new LinkedHashMap<>();
+            for (String b : BLOCOS) {
+                ativ.put(b, new HashMap<>());
+                feriado.put(b, new Acc());
+                serv.put(b, new HashMap<>());
+                feriadoServ.put(b, new HashMap<>());
+            }
 
             for (Map<String, Object> l : linhas) {
-                boolean ehPropria = "1".equals(strOf(l.get("tipo_fundo_agricola")));
+                String bloco = blocoDe(strOf(l.get("tipo_fundo_agricola")));
                 double valor = num(l.get("valortotal"));
                 String chaveDia = chaveDiaTrabalhado(l);
                 String servico = strOf(l.get("descricaotiposervico"));
                 if (servico.isBlank()) servico = "Não informado";
 
+                // Própria e urbana são operação da casa: têm subprocesso
+                // preenchido no apontamento. Terceiro não tem, e por isso
+                // depende do de-para por tipo de serviço.
                 String labelBruto;
-                if (ehPropria) {
-                    labelBruto = strOf(l.get("descricaosubprocesso"));
-                    if (labelBruto.isBlank()) labelBruto = "Não Classificado";
-                } else {
+                if (TERCEIRO.equals(bloco)) {
                     String codServico = strOf(l.get("cod_tiposervico"));
                     DeParaTipoServicoCache.Registro reg = DeParaTipoServicoCache.buscar(codServico);
                     labelBruto = (reg != null && reg.subprocesso != null && !reg.subprocesso.isBlank())
                             ? reg.subprocesso.trim() : "Não Classificado (de-para)";
+                } else {
+                    labelBruto = strOf(l.get("descricaosubprocesso"));
+                    if (labelBruto.isBlank()) labelBruto = "Não Classificado";
                 }
 
-                boolean feriado = contemFeriado(labelBruto) || contemFeriado(strOf(l.get("descricaotiposervico")));
+                boolean ehFeriado = contemFeriado(labelBruto)
+                                 || contemFeriado(strOf(l.get("descricaotiposervico")));
 
-                if (feriado) {
-                    (ehPropria ? propriaFeriado : terceiroFeriado).add(chaveDia, valor);
-                    Map<String, Acc> mapaFeriadoServ = ehPropria ? propriaFeriadoServicos : terceiroFeriadoServicos;
-                    mapaFeriadoServ.computeIfAbsent(servico, k -> new Acc()).add(chaveDia, valor);
+                if (ehFeriado) {
+                    feriado.get(bloco).add(chaveDia, valor);
+                    feriadoServ.get(bloco).computeIfAbsent(servico, k -> new Acc()).add(chaveDia, valor);
                 } else {
-                    String bucket = normalizarAtividade(labelBruto);
-                    Map<String, Acc> mapaAlvo = ehPropria ? propriaAtiv : terceiroAtiv;
-                    mapaAlvo.computeIfAbsent(bucket, k -> new Acc()).add(chaveDia, valor);
-
-                    Map<String, Map<String, Acc>> mapaServicosAlvo = ehPropria ? propriaServicos : terceiroServicos;
-                    mapaServicosAlvo.computeIfAbsent(bucket, k -> new HashMap<>())
-                                    .computeIfAbsent(servico, k -> new Acc())
-                                    .add(chaveDia, valor);
+                    String atividade = normalizarAtividade(labelBruto);
+                    ativ.get(bloco).computeIfAbsent(atividade, k -> new Acc()).add(chaveDia, valor);
+                    serv.get(bloco).computeIfAbsent(atividade, k -> new HashMap<>())
+                                   .computeIfAbsent(servico, k -> new Acc())
+                                   .add(chaveDia, valor);
                 }
             }
 
             List<JsonObject> atividades = new ArrayList<>();
             Set<String> usadas = new HashSet<>();
             for (String canon : ATIVIDADES_CANONICAS) {
-                List<JsonObject> servicos = listaServicos(propriaServicos.get(canon), terceiroServicos.get(canon));
-                atividades.add(linhaAtividadeComServicos(canon, propriaAtiv.get(canon), terceiroAtiv.get(canon), servicos));
+                atividades.add(linhaAtividadeComServicos(canon, ativ, serv));
                 usadas.add(canon);
             }
 
             Set<String> chavesExtras = new TreeSet<>();
-            chavesExtras.addAll(propriaAtiv.keySet());
-            chavesExtras.addAll(terceiroAtiv.keySet());
+            for (String b : BLOCOS) chavesExtras.addAll(ativ.get(b).keySet());
             chavesExtras.removeAll(usadas);
 
-            Map<String, Acc> propriaAtivFinal = propriaAtiv;
-            Map<String, Acc> terceiroAtivFinal = terceiroAtiv;
             List<String> extrasOrdenadas = chavesExtras.stream()
-                    .sorted((a, b) -> Double.compare(valorCombinado(b, propriaAtivFinal, terceiroAtivFinal),
-                                                      valorCombinado(a, propriaAtivFinal, terceiroAtivFinal)))
+                    .sorted((a, b) -> Double.compare(valorDe(b, ativ), valorDe(a, ativ)))
                     .collect(Collectors.toList());
             for (String extra : extrasOrdenadas) {
-                List<JsonObject> servicos = listaServicos(propriaServicos.get(extra), terceiroServicos.get(extra));
-                atividades.add(linhaAtividadeComServicos(extra, propriaAtiv.get(extra), terceiroAtiv.get(extra), servicos));
+                atividades.add(linhaAtividadeComServicos(extra, ativ, serv));
             }
 
-            Totais subTotalPropria = somaTodas(propriaAtiv);
-            Totais subTotalTerceiro = somaTodas(terceiroAtiv);
-
-            Totais totalPropria = new Totais(subTotalPropria.diarias() + propriaFeriado.diarias(),
-                                              subTotalPropria.valor() + propriaFeriado.valor);
-            Totais totalTerceiro = new Totais(subTotalTerceiro.diarias() + terceiroFeriado.diarias(),
-                                               subTotalTerceiro.valor() + terceiroFeriado.valor);
+            Map<String, Totais> subTotal = new LinkedHashMap<>();
+            Map<String, Totais> totalGeral = new LinkedHashMap<>();
+            for (String b : BLOCOS) {
+                Totais st = somaTodas(ativ.get(b));
+                subTotal.put(b, st);
+                totalGeral.put(b, new Totais(st.diarias() + feriado.get(b).diarias(),
+                                             st.valor()   + feriado.get(b).valor));
+            }
 
             JsonObject resultado = new JsonObject();
             resultado.addProperty("ok", true);
             resultado.addProperty("totalLinhas", linhas.size());
             resultado.add("atividades", gson.toJsonTree(atividades));
-            resultado.add("subTotal", blocoTotais(subTotalPropria, subTotalTerceiro));
-            JsonObject feriadoJson = blocoAcc(propriaFeriado, terceiroFeriado);
-            feriadoJson.add("servicos", gson.toJsonTree(listaServicos(propriaFeriadoServicos, terceiroFeriadoServicos)));
+            resultado.add("subTotal", blocoTotais(subTotal));
+            JsonObject feriadoJson = blocoAcc(feriado);
+            feriadoJson.add("servicos", gson.toJsonTree(listaServicos(feriadoServ)));
             resultado.add("feriado", feriadoJson);
-            resultado.add("totalGeral", blocoTotais(totalPropria, totalTerceiro));
+            resultado.add("totalGeral", blocoTotais(totalGeral));
 
             out.print(gson.toJson(resultado));
 
@@ -233,52 +233,82 @@ public class AnaliseFolhaRuralServlet extends HttpServlet {
         }
     }
 
-    private JsonObject linhaAtividade(String nome, Acc propria, Acc terceiro) {
+    /** Os três blocos do quadro, na ordem em que a tela os mostra. */
+    static final String PROPRIA = "propria", URBANO = "urbano", TERCEIRO = "terceiro";
+    static final String[] BLOCOS = { PROPRIA, URBANO, TERCEIRO };
+
+    /**
+     * Em que bloco o apontamento entra, pelo tipo de fundo agrícola.
+     *
+     * 1 é fazenda própria e 9 é área urbana — as duas da usina. Antes só o 1
+     * era "própria" e todo o resto caía em terceiro, o que jogava a área
+     * urbana no bloco errado: o total fechava, mas os dois lados que se
+     * comparam ficavam ambos errados.
+     */
+    static String blocoDe(String tipoFundoAgricola) {
+        if ("1".equals(tipoFundoAgricola)) return PROPRIA;
+        if ("9".equals(tipoFundoAgricola)) return URBANO;
+        return TERCEIRO;
+    }
+
+    private JsonObject linhaAtividade(String nome, Map<String, Map<String, Acc>> ativ) {
         JsonObject o = new JsonObject();
         o.addProperty("nome", nome);
-        o.add("propria", accJson(propria));
-        o.add("terceiro", accJson(terceiro));
+        for (String b : BLOCOS) o.add(b, accJson(ativ.get(b).get(nome)));
         return o;
     }
 
     /** Linha de atividade com o detalhamento por Tipo de Serviço embutido, para o front-end "explodir" ao clicar. */
-    private JsonObject linhaAtividadeComServicos(String nome, Acc propria, Acc terceiro, List<JsonObject> servicos) {
-        JsonObject o = linhaAtividade(nome, propria, terceiro);
-        o.add("servicos", gson.toJsonTree(servicos));
+    private JsonObject linhaAtividadeComServicos(String nome, Map<String, Map<String, Acc>> ativ,
+                                                 Map<String, Map<String, Map<String, Acc>>> serv) {
+        JsonObject o = linhaAtividade(nome, ativ);
+        Map<String, Map<String, Acc>> porBloco = new LinkedHashMap<>();
+        for (String b : BLOCOS) {
+            Map<String, Acc> m = serv.get(b).get(nome);
+            porBloco.put(b, m == null ? Map.of() : m);
+        }
+        o.add("servicos", gson.toJsonTree(listaServicos(porBloco)));
         return o;
     }
 
-    /** Lista de linhas {nome, propria, terceiro} por Tipo de Serviço, maior valor combinado primeiro. */
-    private List<JsonObject> listaServicos(Map<String, Acc> servicosPropria, Map<String, Acc> servicosTerceiro) {
-        Map<String, Acc> sp = servicosPropria != null ? servicosPropria : Map.of();
-        Map<String, Acc> st = servicosTerceiro != null ? servicosTerceiro : Map.of();
-
+    /** Lista de linhas por Tipo de Serviço, maior valor combinado primeiro. */
+    private List<JsonObject> listaServicos(Map<String, Map<String, Acc>> porBloco) {
         Set<String> chaves = new TreeSet<>();
-        chaves.addAll(sp.keySet());
-        chaves.addAll(st.keySet());
+        for (String b : BLOCOS) chaves.addAll(porBloco.getOrDefault(b, Map.of()).keySet());
 
         List<String> ordenadas = chaves.stream()
-                .sorted((a, b) -> Double.compare(valorCombinado(b, sp, st), valorCombinado(a, sp, st)))
+                .sorted((a, b) -> Double.compare(valorDe(b, porBloco), valorDe(a, porBloco)))
                 .collect(Collectors.toList());
 
         List<JsonObject> lista = new ArrayList<>();
         for (String s : ordenadas) {
-            lista.add(linhaAtividade(s, sp.get(s), st.get(s)));
+            JsonObject o = new JsonObject();
+            o.addProperty("nome", s);
+            for (String b : BLOCOS) o.add(b, accJson(porBloco.getOrDefault(b, Map.of()).get(s)));
+            lista.add(o);
         }
         return lista;
     }
 
-    private JsonObject blocoAcc(Acc propria, Acc terceiro) {
+    /** Soma da chave nos três blocos — é por ela que a ordenação decide. */
+    private static double valorDe(String chave, Map<String, Map<String, Acc>> porBloco) {
+        double total = 0;
+        for (String b : BLOCOS) {
+            Acc a = porBloco.getOrDefault(b, Map.of()).get(chave);
+            if (a != null) total += a.valor;
+        }
+        return total;
+    }
+
+    private JsonObject blocoAcc(Map<String, Acc> porBloco) {
         JsonObject o = new JsonObject();
-        o.add("propria", accJson(propria));
-        o.add("terceiro", accJson(terceiro));
+        for (String b : BLOCOS) o.add(b, accJson(porBloco.get(b)));
         return o;
     }
 
-    private JsonObject blocoTotais(Totais propria, Totais terceiro) {
+    private JsonObject blocoTotais(Map<String, Totais> porBloco) {
         JsonObject o = new JsonObject();
-        o.add("propria", totaisJson(propria));
-        o.add("terceiro", totaisJson(terceiro));
+        for (String b : BLOCOS) o.add(b, totaisJson(porBloco.get(b)));
         return o;
     }
 
@@ -297,14 +327,6 @@ public class AnaliseFolhaRuralServlet extends HttpServlet {
         return o;
     }
 
-    private static double valorCombinado(String chave, Map<String, Acc> propria, Map<String, Acc> terceiro) {
-        double v = 0;
-        Acc p = propria.get(chave);
-        Acc t = terceiro.get(chave);
-        if (p != null) v += p.valor;
-        if (t != null) v += t.valor;
-        return v;
-    }
 
     /** Soma os buckets de um mapa (própria ou terceiro) num total simples — cada bucket já contou sua própria diária uma vez por matrícula/dia. */
     private static Totais somaTodas(Map<String, Acc> mapa) {

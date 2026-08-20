@@ -349,11 +349,21 @@ public class ServicosFornecedorServlet extends HttpServlet {
                              || (cod.isEmpty() && nomes.contains(normalizar(nome)));
                 if (!nosso) continue;
 
+                // O desconto é uma GRANDEZA a abater, e o sinal com que o
+                // ERP a devolve não pode inverter esse significado: um
+                // valor negativo vindo de lá faria "total − combustível"
+                // virar soma, e o relatório mandaria pagar a mais sem nada
+                // denunciar. O valor cru vai junto, para conferência.
+                java.math.BigDecimal bruto = numero(c.get("valor_total"));
+                java.math.BigDecimal litros = numero(c.get("total_litros"));
+
                 JsonObject o = new JsonObject();
                 o.addProperty("codFornecedor", cod);
                 o.addProperty("nomeFornecedor", nome);
-                o.addProperty("litros", numero(c.get("total_litros")));
-                o.addProperty("valor", numero(c.get("valor_total")));
+                o.addProperty("litros", litros.abs());
+                o.addProperty("valor", bruto.abs());
+                o.addProperty("valorBruto", bruto);
+                o.addProperty("litrosBruto", litros);
                 o.addProperty("abastecimentos", numero(c.get("qtde_abastecimentos")));
                 fora.add(o);
             }

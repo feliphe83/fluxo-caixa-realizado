@@ -88,6 +88,9 @@
     white-space: nowrap; border: 1px solid rgba(255,255,255,0.15);
   }
   thead th.grupo-propria { background: #1a3a7c; }
+  /* Um tom entre a própria e o terceiro: área urbana é da casa, como a
+     própria, mas é um bloco à parte — a cor precisa dizer as duas coisas. */
+  thead th.grupo-urbano { background: #21458c; }
   thead th.grupo-terceiro { background: #2a4f9c; }
   thead th.grupo-total { background: #0f2460; }
   thead tr.linha-rotulos th:first-child { text-align: left; }
@@ -106,7 +109,7 @@
   tbody tr.feriado td { background: #fafbfd; font-style: italic; color: #64748b; }
   tbody tr.total-geral td { background: #0f2460; color: white; font-weight: 800; }
 
-  /* separadores visuais entre os 3 blocos de colunas */
+  /* separadores visuais entre os blocos de colunas */
   td:nth-child(6), td:nth-child(11), th:nth-child(6), th:nth-child(11) { border-right: 2px solid #d8dfee; }
 
   .rodape-salario {
@@ -124,7 +127,8 @@
   .detalhe-inner { padding: 10px 16px 14px 30px; }
   .detalhe-inner table { min-width: unset; font-size: 11px; }
   .detalhe-inner thead th { background: #c7d4ef; color: #0f2460; font-size: 9.5px; padding: 6px 8px; }
-  .detalhe-inner thead th.grupo-propria, .detalhe-inner thead th.grupo-terceiro, .detalhe-inner thead th.grupo-total { background: #c7d4ef; }
+  .detalhe-inner thead th.grupo-propria, .detalhe-inner thead th.grupo-urbano,
+  .detalhe-inner thead th.grupo-terceiro, .detalhe-inner thead th.grupo-total { background: #c7d4ef; }
   .detalhe-inner tbody td { padding: 5px 8px; background: transparent; }
   .detalhe-inner tbody tr:hover { background: #e8eef8; }
 
@@ -152,11 +156,20 @@
     thead th { padding: 5px 4px; font-size: 8px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     tbody td { padding: 4px 4px; }
     /* Coluna do nome da atividade: fica com o espaço que sobra e pode quebrar;
-       as 15 colunas de número dividem o resto em partes iguais. */
-    /* Com table-layout:fixed quem dita a largura das colunas é a PRIMEIRA
-       linha do cabeçalho (a dos três grupos), não a dos rótulos — por isso a
-       largura vai nas duas. */
-    thead th:first-child { white-space: normal; width: 19%; }
+       as 20 colunas de número dividem o resto em partes iguais.
+       Com table-layout:fixed quem dita a largura das colunas é a PRIMEIRA
+       linha do cabeçalho (a dos grupos), não a dos rótulos — por isso a
+       largura vai nas duas.
+       Caiu de 19% para 15% quando entrou o quarto bloco: são cinco colunas
+       de dinheiro a mais na mesma folha, e o espaço tem de sair de algum
+       lugar. Sai do nome da atividade, que pode quebrar em duas linhas; o
+       número não pode. */
+    thead th:first-child { white-space: normal; width: 15%; }
+    /* Quatro blocos de cinco colunas numa A4 deitada: a fonte precisa
+       encolher junto, senão a última faixa sai cortada na direita. */
+    table { font-size: 8px !important; }
+    thead th { font-size: 7px !important; padding: 4px 2px !important; }
+    tbody td { padding: 3px 2px !important; }
     tbody td.rotulo { white-space: normal; }
     tbody tr.subtotal td, tbody tr.total-geral td { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     @page { margin: 10mm; size: landscape; }
@@ -170,7 +183,7 @@
     <div class="header-logo"><img src="img/logo.png" alt="USC"></div>
     <div>
       <div class="header-title">Análise Folha de Pagamento Rural</div>
-      <div class="header-sub">Apontamento Geral · Fazendas Próprias, Terceiros e Geral</div>
+      <div class="header-sub">Apontamento Geral · Próprias, Área Urbana, Terceiros e Geral</div>
     </div>
   </div>
   <button class="btn-voltar" onclick="window.location.href='hub.html'">
@@ -228,11 +241,13 @@
             <tr>
               <th></th>
               <th class="grupo-propria" colspan="5">Fazendas Próprias</th>
+              <th class="grupo-urbano" colspan="5">Área Urbana</th>
               <th class="grupo-terceiro" colspan="5">Fazendas Terceiros</th>
               <th class="grupo-total" colspan="5">Total Geral</th>
             </tr>
             <tr class="linha-rotulos">
               <th>Atividades Principais</th>
+              <th>Diárias</th><th>R$/Dia</th><th>% Diária x Salário</th><th>Valor R$</th><th>%</th>
               <th>Diárias</th><th>R$/Dia</th><th>% Diária x Salário</th><th>Valor R$</th><th>%</th>
               <th>Diárias</th><th>R$/Dia</th><th>% Diária x Salário</th><th>Valor R$</th><th>%</th>
               <th>Diárias</th><th>R$/Dia</th><th>% Diária x Salário</th><th>Valor R$</th><th>%</th>
@@ -333,16 +348,34 @@ function celulasBloco(bloco, subtotalValor, salarioDia, mostrarPct) {
     <td>${pct != null ? fmtDec.format(pct) : '-'}</td>`;
 }
 
-function linhaHtml(nome, propria, terceiro, opts) {
-  opts = opts || {};
-  const p = propria || { diarias: 0, valor: 0 };
-  const t = terceiro || { diarias: 0, valor: 0 };
-  const total = { diarias: p.diarias + t.diarias, valor: p.valor + t.valor };
+/* Os três blocos do quadro mais o total. A área urbana (tipo de fundo
+   agrícola 9) é da própria usina e saía somada em terceiros só porque não
+   era o tipo 1 — o total fechava e os dois lados que se comparam ficavam
+   ambos errados. */
+const BLOCOS = ['propria', 'urbano', 'terceiro'];
+const ZERO_BLOCO = { diarias: 0, valor: 0 };
+
+function somaBlocos(item) {
+  return BLOCOS.reduce((a, b) => {
+    const v = item[b] || ZERO_BLOCO;
+    return { diarias: a.diarias + v.diarias, valor: a.valor + v.valor };
+  }, { diarias: 0, valor: 0 });
+}
+function subtotalDe(b) { return (DADOS.subTotal[b] || ZERO_BLOCO).valor; }
+function subtotalGeral() { return BLOCOS.reduce((a, b) => a + subtotalDe(b), 0); }
+
+/** As quatro faixas de células de uma linha: os três blocos e o total. */
+function celulasLinha(item, mostrarPct) {
   const salarioDia = salarioDiaAtual();
-  const cels = celulasBloco(p, DADOS.subTotal.propria.valor, salarioDia, opts.mostrarPct)
-             + celulasBloco(t, DADOS.subTotal.terceiro.valor, salarioDia, opts.mostrarPct)
-             + celulasBloco(total, DADOS.subTotal.propria.valor + DADOS.subTotal.terceiro.valor, salarioDia, opts.mostrarPct);
-  return `<tr class="${opts.classe || ''}"><td class="rotulo">${escapeHtml(nome)}</td>${cels}</tr>`;
+  const total = somaBlocos(item);
+  return BLOCOS.map(b => celulasBloco(item[b] || ZERO_BLOCO, subtotalDe(b), salarioDia, mostrarPct)).join('')
+       + celulasBloco(total, subtotalGeral(), salarioDia, mostrarPct);
+}
+
+function linhaHtml(nome, item, opts) {
+  opts = opts || {};
+  return `<tr class="${opts.classe || ''}"><td class="rotulo">${escapeHtml(nome)}</td>`
+       + celulasLinha(item, opts.mostrarPct) + `</tr>`;
 }
 
 // Linhas por Atividade Principal (e Feriado) podem "explodir" e mostrar o
@@ -357,13 +390,7 @@ function registrarLinhaExpansivel(item, opts) {
 
   const temServicos = item.servicos && item.servicos.length > 0;
   opts = opts || {};
-  const p = item.propria || { diarias: 0, valor: 0 };
-  const t = item.terceiro || { diarias: 0, valor: 0 };
-  const total = { diarias: p.diarias + t.diarias, valor: p.valor + t.valor };
-  const salarioDia = salarioDiaAtual();
-  const cels = celulasBloco(p, DADOS.subTotal.propria.valor, salarioDia, opts.mostrarPct)
-             + celulasBloco(t, DADOS.subTotal.terceiro.valor, salarioDia, opts.mostrarPct)
-             + celulasBloco(total, DADOS.subTotal.propria.valor + DADOS.subTotal.terceiro.valor, salarioDia, opts.mostrarPct);
+  const cels = celulasLinha(item, opts.mostrarPct);
 
   const classes = [opts.classe || '', temServicos ? 'item-row' : ''].filter(Boolean).join(' ');
   const seta = temServicos ? '<span class="seta">▶</span>' : '';
@@ -371,25 +398,27 @@ function registrarLinhaExpansivel(item, opts) {
   const linhaPrincipal = `<tr class="${classes}"${onclick}><td class="rotulo">${seta}${escapeHtml(item.nome)}</td>${cels}</tr>`;
 
   const linhaDetalhe = temServicos
-    ? `<tr class="detalhe-row" id="detalhe-${idx}" style="display:none"><td colspan="16"><div class="detalhe-inner">${tabelaServicos(item.servicos)}</div></td></tr>`
+    ? `<tr class="detalhe-row" id="detalhe-${idx}" style="display:none"><td colspan="21"><div class="detalhe-inner">${tabelaServicos(item.servicos)}</div></td></tr>`
     : '';
 
   return linhaPrincipal + linhaDetalhe;
 }
 
 function tabelaServicos(servicos) {
-  const linhas = servicos.map(s => linhaHtml(s.nome, s.propria, s.terceiro, { mostrarPct: false })).join('');
+  const linhas = servicos.map(s => linhaHtml(s.nome, s, { mostrarPct: false })).join('');
   return `
     <table>
       <thead>
         <tr>
           <th></th>
           <th class="grupo-propria" colspan="5">Fazendas Próprias</th>
+          <th class="grupo-urbano" colspan="5">Área Urbana</th>
           <th class="grupo-terceiro" colspan="5">Fazendas Terceiros</th>
           <th class="grupo-total" colspan="5">Total Geral</th>
         </tr>
         <tr>
           <th>Tipo de Serviço</th>
+          <th>Diárias</th><th>R$/Dia</th><th>% Diária x Salário</th><th>Valor R$</th><th>%</th>
           <th>Diárias</th><th>R$/Dia</th><th>% Diária x Salário</th><th>Valor R$</th><th>%</th>
           <th>Diárias</th><th>R$/Dia</th><th>% Diária x Salário</th><th>Valor R$</th><th>%</th>
           <th>Diárias</th><th>R$/Dia</th><th>% Diária x Salário</th><th>Valor R$</th><th>%</th>
@@ -411,20 +440,21 @@ function renderizar() {
   if (!DADOS) return;
   LINHAS_EXPANSIVEIS = [];
 
-  const atividadesComValor = DADOS.atividades.filter(a =>
-    ((a.propria && a.propria.valor) || 0) + ((a.terceiro && a.terceiro.valor) || 0) > 0);
+  // Uma atividade sem valor em nenhum dos três blocos é ruído do cadastro.
+  const atividadesComValor = DADOS.atividades.filter(a => somaBlocos(a).valor > 0);
   const linhasAtividades = atividadesComValor
     .map(a => registrarLinhaExpansivel(a, { mostrarPct: true }))
     .join('');
 
-  const linhaSubTotal = linhaHtml('Sub-Total Apontamento', DADOS.subTotal.propria, DADOS.subTotal.terceiro, { mostrarPct: true, classe: 'subtotal' });
+  const linhaSubTotal = linhaHtml('Sub-Total Apontamento', DADOS.subTotal,
+                                  { mostrarPct: true, classe: 'subtotal' });
 
   const linhaFeriado = registrarLinhaExpansivel(
-    { nome: 'Feriado', propria: DADOS.feriado.propria, terceiro: DADOS.feriado.terceiro, servicos: DADOS.feriado.servicos || [] },
+    Object.assign({ nome: 'Feriado', servicos: DADOS.feriado.servicos || [] }, DADOS.feriado),
     { classe: 'feriado' }
   );
 
-  const linhaTotalGeral = linhaHtml('Total Geral -:', DADOS.totalGeral.propria, DADOS.totalGeral.terceiro, { classe: 'total-geral' });
+  const linhaTotalGeral = linhaHtml('Total Geral -:', DADOS.totalGeral, { classe: 'total-geral' });
 
   document.getElementById('corpoTabela').innerHTML =
     linhasAtividades + linhaSubTotal + linhaFeriado + linhaTotalGeral;
@@ -442,7 +472,7 @@ function atualizarCabecalhoImpressao() {
   const mesRef = MESES[new Date(dataFim + 'T12:00:00').getMonth()];
   const anoRef = dataFim.substring(0, 4);
 
-  document.getElementById('tituloAcompanhamento').textContent = 'Fazendas Próprias, Terceiros e Geral';
+  document.getElementById('tituloAcompanhamento').textContent = 'Próprias, Área Urbana, Terceiros e Geral';
   document.getElementById('tituloComparativo').textContent =
     'Comparativo : ' + mesRef + '/' + anoRef + ' - Período : ' + dataBr(dataIni) + ' à ' + dataBr(dataFim);
 }
@@ -456,32 +486,33 @@ function exportarExcel() {
   const salarioDia = salarioDiaAtual();
   const salarioMes = parseFloat(document.getElementById('salarioMes').value) || 0;
 
-  const linha = (nome, propria, terceiro, mostrarPct) => {
-    const p = propria || { diarias: 0, valor: 0 };
-    const t = terceiro || { diarias: 0, valor: 0 };
-    const total = { diarias: p.diarias + t.diarias, valor: p.valor + t.valor };
+  // A planilha acompanha a tela: os três blocos e o total, na mesma ordem.
+  // Exportar um recorte diferente do que está na tela é como uma reunião
+  // acaba discutindo dois números do mesmo relatório.
+  const linha = (nome, item, mostrarPct) => {
     const bloco = (b, subtotal) => {
+      b = b || { diarias: 0, valor: 0 };
       const rsDia = b.diarias > 0 ? b.valor / b.diarias : 0;
       const pctSal = (rsDia > 0 && salarioDia > 0) ? (rsDia / salarioDia * 100) : 0;
       const pct = (mostrarPct && b.valor > 0 && subtotal > 0) ? (b.valor / subtotal * 100) : null;
       return [b.diarias, rsDia, pctSal, b.valor, pct];
     };
-    const subP = DADOS.subTotal.propria.valor, subT = DADOS.subTotal.terceiro.valor;
-    return [nome, ...bloco(p, subP), ...bloco(t, subT), ...bloco(total, subP + subT)];
+    const celulas = BLOCOS.flatMap(nb => bloco(item[nb], subtotalDe(nb)));
+    return [nome, ...celulas, ...bloco(somaBlocos(item), subtotalGeral())];
   };
 
-  const atividadesComValor = DADOS.atividades.filter(a =>
-    ((a.propria && a.propria.valor) || 0) + ((a.terceiro && a.terceiro.valor) || 0) > 0);
+  const atividadesComValor = DADOS.atividades.filter(a => somaBlocos(a).valor > 0);
+  const cincoVazios = ['','','','',''];
+  const cincoRotulos = ['Diárias','R$/Dia','% Diária x Salário','Valor R$','%'];
 
   const linhas = [
-    ['', 'Fazendas Próprias','','','','', 'Fazendas Terceiros','','','','', 'Total Geral','','','',''],
-    ['Atividades Principais', 'Diárias','R$/Dia','% Diária x Salário','Valor R$','%',
-                              'Diárias','R$/Dia','% Diária x Salário','Valor R$','%',
-                              'Diárias','R$/Dia','% Diária x Salário','Valor R$','%'],
-    ...atividadesComValor.map(a => linha(a.nome, a.propria, a.terceiro, true)),
-    linha('Sub-Total Apontamento', DADOS.subTotal.propria, DADOS.subTotal.terceiro, true),
-    linha('Feriado', DADOS.feriado.propria, DADOS.feriado.terceiro, false),
-    linha('Total Geral', DADOS.totalGeral.propria, DADOS.totalGeral.terceiro, false),
+    ['', 'Fazendas Próprias', ...cincoVazios.slice(1), 'Área Urbana', ...cincoVazios.slice(1),
+         'Fazendas Terceiros', ...cincoVazios.slice(1), 'Total Geral', ...cincoVazios.slice(1)],
+    ['Atividades Principais', ...cincoRotulos, ...cincoRotulos, ...cincoRotulos, ...cincoRotulos],
+    ...atividadesComValor.map(a => linha(a.nome, a, true)),
+    linha('Sub-Total Apontamento', DADOS.subTotal, true),
+    linha('Feriado', DADOS.feriado, false),
+    linha('Total Geral', DADOS.totalGeral, false),
     [],
     ['Salário Mínimo Rural R$/Mês', salarioMes],
     ['Salário Mínimo Rural R$/Dia', salarioDia],
