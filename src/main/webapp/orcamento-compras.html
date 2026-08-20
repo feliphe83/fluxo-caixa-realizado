@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Orçamento de Compras · USC</title>
+<style>
+  :root {
+    /* Orçado é a régua, realizado é o assunto: cinza contra azul, o mesmo
+       par já validado no painel de diesel (separação normal ΔE 15,2, CVD e
+       3:1 de contraste). Não são duas categorias de igual peso. */
+    --orcado:    #5b6675;
+    --realizado: #2a78d6;
+    --sobra:     #0ca30c;
+    --estouro:   #d03b3b;
+
+    --ink: #0f2460; --ink-2: #52514e; --ink-3: #898781; --rotulo: #64748b;
+    --grade: #e9edf6; --borda: #e3e8f5; --papel: #fff; --papel-2: #f8faff; --fundo: #f4f6fb;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+         background: var(--fundo); color: #1a1a2e; min-height: 100vh;
+         font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }
+
+  .header { background: var(--ink); color: white; padding: 0 32px; height: 62px;
+            display: flex; align-items: center; justify-content: space-between; }
+  .header-left { display: flex; align-items: center; gap: 13px; }
+  .header-logo { width: 36px; height: 36px; border-radius: 8px; background: white;
+                 display: flex; align-items: center; justify-content: center;
+                 overflow: hidden; padding: 4px; flex-shrink: 0; }
+  .header-logo img { width: 100%; height: 100%; object-fit: contain; }
+  .header-title { font-size: 15px; font-weight: 650; }
+  .header-sub { font-size: 11px; color: rgba(255,255,255,.55); margin-top: 1px;
+                text-transform: uppercase; letter-spacing: .9px; font-weight: 600; }
+  .btn-voltar { display: flex; align-items: center; gap: 7px; padding: 8px 14px;
+                border-radius: 8px; border: 1px solid rgba(255,255,255,.16);
+                background: transparent; color: rgba(255,255,255,.85); font-size: 13px;
+                font-weight: 600; cursor: pointer; font-family: inherit; text-decoration: none; }
+  .btn-voltar:hover { background: rgba(255,255,255,.10); color: #fff; }
+
+  .conteudo { max-width: 1400px; margin: 0 auto; padding: 24px 24px 60px; }
+
+  .filtros { background: var(--papel); border: 1px solid var(--borda); border-radius: 14px;
+             padding: 16px 22px; margin-bottom: 18px; display: flex; gap: 16px;
+             align-items: flex-end; flex-wrap: wrap; }
+  .campo label { display: block; font-size: 10.5px; font-weight: 700; color: var(--rotulo);
+                 text-transform: uppercase; letter-spacing: .5px; margin-bottom: 5px; }
+  .campo select { padding: 9px 14px; border: 1px solid #cfd7e6; border-radius: 8px;
+                  font-size: 14px; font-weight: 600; font-family: inherit; color: var(--ink);
+                  background: var(--papel); outline: none; cursor: pointer; min-width: 210px; }
+  .campo select:disabled { opacity: .6; cursor: progress; }
+  .campo select:focus { border-color: var(--realizado); box-shadow: 0 0 0 3px rgba(42,120,214,.12); }
+  .atualizado { margin-left: auto; font-size: 12px; color: var(--ink-3); padding-bottom: 8px; }
+
+  .capa { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
+  .capa .cartao { background: var(--papel); border: 1px solid var(--borda); border-radius: 14px;
+                  padding: 18px 20px; position: relative; overflow: hidden; }
+  .capa .cartao::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+                          width: 3px; background: var(--cor, var(--ink)); }
+  .capa .rot { font-size: 10.5px; font-weight: 700; color: var(--rotulo);
+               text-transform: uppercase; letter-spacing: .6px; }
+  .capa .cifra { font-size: 27px; font-weight: 800; color: var(--ink); line-height: 1.15;
+                 margin-top: 8px; letter-spacing: -.7px; white-space: nowrap; }
+  .capa .cifra.mal { color: var(--estouro); }
+  .capa .cifra.bem { color: var(--sobra); }
+  .capa .base { font-size: 11.5px; color: var(--ink-3); margin-top: 7px; }
+
+  .secao { background: var(--papel); border: 1px solid var(--borda); border-radius: 14px;
+           padding: 20px 24px; margin-bottom: 18px; }
+  .secao-header { display: flex; align-items: baseline; gap: 10px; }
+  .secao-num { width: 22px; height: 22px; border-radius: 6px; background: var(--ink);
+               color: white; font-size: 11px; font-weight: 800; display: flex;
+               align-items: center; justify-content: center; flex-shrink: 0; }
+  .secao-titulo { font-size: 16px; font-weight: 800; color: var(--ink); }
+  .secao-sub { font-size: 12px; color: var(--ink-3); margin: 3px 0 14px 32px; }
+  .legenda { display: flex; gap: 18px; margin: 0 0 8px 32px; }
+  .legenda span { display: inline-flex; align-items: center; gap: 7px; font-size: 12px;
+                  font-weight: 700; color: var(--ink-2); }
+  .legenda i { width: 11px; height: 11px; border-radius: 3px; flex: none; }
+  .grafico-caixa { position: relative; margin-top: 4px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th { text-align: right; font-size: 10.5px; font-weight: 700; color: var(--rotulo);
+             text-transform: uppercase; letter-spacing: .5px; padding: 9px 10px;
+             border-bottom: 1.5px solid var(--borda); white-space: nowrap; }
+  thead th:first-child { text-align: left; }
+  tbody td { padding: 10px; border-bottom: 1px solid #f0f3f9; text-align: right;
+             white-space: nowrap; }
+  tbody td:first-child { text-align: left; white-space: normal; }
+
+  /* A linha do grupo é um botão: clicar abre os empenhos por dentro. */
+  tr.grupo { cursor: pointer; }
+  tr.grupo:hover td { background: var(--papel-2); }
+  tr.grupo td { font-weight: 700; color: var(--ink); }
+  tr.grupo .seta { display: inline-block; width: 14px; color: var(--ink-3);
+                   transition: transform .15s; }
+  tr.grupo.aberto .seta { transform: rotate(90deg); }
+  tr.empenho td { background: var(--papel-2); color: var(--ink-2); font-size: 12.5px; }
+  tr.empenho td:first-child { padding-left: 34px; }
+  tr.empenho .cod { color: var(--ink-3); font-weight: 700; margin-right: 8px; }
+  tfoot td { padding: 11px 10px; font-weight: 800; color: var(--ink);
+             border-top: 1.5px solid var(--borda); text-align: right; }
+  tfoot td:first-child { text-align: left; }
+
+  .val-orcado { color: var(--orcado); }
+  .bem { color: var(--sobra); font-weight: 700; }
+  .mal { color: var(--estouro); font-weight: 700; }
+
+  /* Barrinha de execução: a leitura mais rápida da tabela é "passou ou não
+     passou do orçado", e um número de percentual sozinho não dá isso. */
+  .barra { display: inline-block; width: 78px; height: 7px; border-radius: 4px;
+           background: #e6ebf5; overflow: hidden; vertical-align: middle;
+           margin-right: 8px; }
+  .barra i { display: block; height: 100%; background: var(--realizado); }
+  .barra i.passou { background: var(--estouro); }
+
+  .estado { text-align: center; padding: 50px 20px; color: var(--ink-3); font-size: 14px; }
+  .spinner { width: 26px; height: 26px; border: 2.5px solid var(--borda);
+             border-top-color: var(--realizado); border-radius: 50%; margin: 0 auto 12px;
+             animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .erro { color: var(--estouro); }
+
+  @media (max-width: 1000px) {
+    .capa { grid-template-columns: repeat(2, 1fr); }
+    .header { padding: 0 16px; } .conteudo { padding: 16px 14px 40px; }
+  }
+</style>
+<link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+<meta name="theme-color" content="#0f2460">
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="header-logo"><img src="img/logo.png" alt="USC"></div>
+    <div>
+      <div class="header-title">Orçamento de Compras</div>
+      <div class="header-sub">Planejado × realizado</div>
+    </div>
+  </div>
+  <a class="btn-voltar" href="hub.html">
+    <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+    Voltar ao Hub
+  </a>
+</div>
+
+<div class="conteudo">
+  <div class="filtros">
+    <div class="campo">
+      <label for="selSafra">Safra</label>
+      <select id="selSafra" onchange="carregar()"></select>
+    </div>
+    <div class="campo" id="campoNegocio" style="display:none">
+      <label for="selNegocio">Negócio</label>
+      <select id="selNegocio" onchange="desenhar()"></select>
+    </div>
+    <div class="atualizado" id="atualizado"></div>
+  </div>
+  <div id="corpo"><div class="estado"><div class="spinner"></div>Consultando o orçamento…</div></div>
+</div>
+
+<script src="js/chart.umd.min.js"></script>
+<script>
+const COR_ORCADO = '#5b6675', COR_REALIZADO = '#2a78d6';
+let DADOS = null, ABERTOS = {};
+const graficos = {};
+
+const fmtNum = (v, c) => (Number(v)||0).toLocaleString('pt-BR',
+  {minimumFractionDigits: c==null?1:c, maximumFractionDigits: c==null?1:c});
+const fmtReal = v => 'R$ ' + (Number(v)||0).toLocaleString('pt-BR',
+  {minimumFractionDigits:2, maximumFractionDigits:2});
+const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+function curto(v) {
+  const n = Number(v) || 0, s = n < 0 ? '-' : '', a = Math.abs(n);
+  if (a >= 1e6) return s + 'R$ ' + fmtNum(a/1e6, 1) + ' mi';
+  if (a >= 1e3) return s + 'R$ ' + fmtNum(a/1e3, 0) + ' mil';
+  return s + fmtReal(a);
+}
+
+/* ── Safra: 01/09 a 31/08, o mesmo recorte do faturamento ──
+   O período que veio com a consulta (202509 a 202608) é exatamente uma
+   safra. Ter dois recortes de "ano" no mesmo sistema é como duas telas
+   passam a discordar sem ninguém achar o motivo. */
+function safraDe(ano) {
+  return { ano, rotulo: ano + '/' + (ano + 1), ini: ano * 100 + 9, fim: (ano + 1) * 100 + 8 };
+}
+function safraAtual() {
+  const h = new Date();
+  return safraDe(h.getMonth() >= 8 ? h.getFullYear() : h.getFullYear() - 1);
+}
+let SAFRAS = [];
+function montarSafras() {
+  const atual = safraAtual().ano;
+  SAFRAS = [];
+  for (let a = atual; a >= atual - 5; a--) SAFRAS.push(safraDe(a));
+  document.getElementById('selSafra').innerHTML = SAFRAS.map((s, i) =>
+    `<option value="${i}">Safra ${s.rotulo}${i === 0 ? ' (atual)' : ''}</option>`).join('');
+}
+function safraEscolhida() { return SAFRAS[Number(document.getElementById('selSafra').value) || 0]; }
+
+async function carregar() {
+  const s = safraEscolhida();
+  const sel = document.getElementById('selSafra');
+  sel.disabled = true;
+  ABERTOS = {};
+  document.getElementById('corpo').innerHTML =
+    '<div class="estado"><div class="spinner"></div>Consultando o orçamento…</div>';
+  try {
+    const r = await fetch(`api/orcamento-compras?ini=${s.ini}&fim=${s.fim}`,
+                          {headers:{'Accept':'application/json'}});
+    const j = await r.json();
+    if (j.redirect) { location.href = 'login.html'; return; }
+    if (!j.ok) { falhar(j.erro || 'Erro ao consultar'); return; }
+    DADOS = j;
+    document.getElementById('atualizado').textContent =
+      j.periodo + ' · atualizado em ' + j.atualizadoEm;
+    montarNegocios(j);
+    desenhar();
+  } catch (e) {
+    falhar(e.message || String(e));
+  } finally {
+    sel.disabled = false;
+  }
+}
+
+function falhar(msg) {
+  document.getElementById('corpo').innerHTML =
+    `<div class="estado erro"><b>Não foi possível carregar o orçamento de compras.</b>
+     <div style="margin-top:10px;font-size:12.5px;color:var(--ink-2)">${esc(msg)}</div>
+     <div style="margin-top:12px;font-size:12.5px">
+       <a href="api/orcamento-compras/diagnostico" target="_blank"
+          style="color:var(--realizado);font-weight:700">Abrir o diagnóstico</a>
+       — mostra as colunas das tabelas de custo e de realizado.</div></div>`;
+}
+
+/** O seletor só existe quando há negócio; filtro que não filtra é pior que nenhum. */
+function montarNegocios(j) {
+  const campo = document.getElementById('campoNegocio');
+  if (!j.temNegocio || !(j.negocios || []).length) { campo.style.display = 'none'; return; }
+  const sel = document.getElementById('selNegocio');
+  const antes = sel.value;
+  sel.innerHTML = '<option value="">Todos os negócios</option>'
+    + j.negocios.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+  if (antes && j.negocios.includes(antes)) sel.value = antes;
+  campo.style.display = '';
+}
+
+function negocioEscolhido() {
+  const sel = document.getElementById('selNegocio');
+  return (document.getElementById('campoNegocio').style.display === 'none') ? '' : sel.value;
+}
+
+function desenhar() {
+  const neg = negocioEscolhido();
+  // O filtro é aplicado aqui: os dados vieram inteiros, e trocar de negócio
+  // não custa uma ida ao Oracle.
+  const grupos = (DADOS.grupos || []).map(g => {
+    if (!neg) return g;
+    const det = g.detalhe.filter(e => e.negocio === neg);
+    const o = det.reduce((a, e) => a + Number(e.orcado), 0);
+    const r = det.reduce((a, e) => a + Number(e.realizado), 0);
+    return { ...g, detalhe: det, empenhos: det.length, orcado: o, realizado: r,
+             diferenca: o - r, pct: o ? r * 100 / o : null };
+  }).filter(g => g.detalhe.length);
+
+  const orcado = grupos.reduce((a, g) => a + Number(g.orcado), 0);
+  const realizado = grupos.reduce((a, g) => a + Number(g.realizado), 0);
+
+  if (!grupos.length) {
+    document.getElementById('corpo').innerHTML =
+      '<div class="estado"><b style="color:var(--ink);font-size:16px">Nada no período.</b>' +
+      '<div style="margin-top:8px">A consulta rodou sem erro e não trouxe nenhum empenho.</div></div>';
+    return;
+  }
+
+  document.getElementById('corpo').innerHTML = `
+    ${capa(orcado, realizado, grupos)}
+    <div class="secao">
+      <div class="secao-header"><div class="secao-num">1</div>
+        <div class="secao-titulo">Por grupo de empenho</div></div>
+      <div class="secao-sub">Planejado e realizado lado a lado${neg ? ' · ' + esc(neg) : ''}</div>
+      <div class="legenda">
+        <span><i style="background:${COR_ORCADO}"></i>Orçado</span>
+        <span><i style="background:${COR_REALIZADO}"></i>Realizado</span>
+      </div>
+      <div class="grafico-caixa" style="height:${Math.max(240, grupos.length * 42 + 40)}px">
+        <canvas id="gGrupos"></canvas></div>
+    </div>
+    <div class="secao">
+      <div class="secao-header"><div class="secao-num">2</div>
+        <div class="secao-titulo">Detalhe</div></div>
+      <div class="secao-sub">Clique num grupo para abrir os empenhos</div>
+      ${tabela(grupos, orcado, realizado)}
+    </div>`;
+
+  graficoGrupos(grupos);
+}
+
+function capa(orcado, realizado, grupos) {
+  const dif = orcado - realizado;
+  const pct = orcado ? realizado * 100 / orcado : null;
+  const estourados = grupos.filter(g => Number(g.realizado) > Number(g.orcado)).length;
+  const cartoes = [
+    { rot:'Orçado', cor:'var(--orcado)', v: curto(orcado),
+      base: grupos.length + ' grupo(s) de empenho' },
+    { rot:'Realizado', cor:'var(--realizado)', v: curto(realizado),
+      base: pct === null ? 'sem orçamento' : fmtNum(pct,1) + '% do orçado' },
+    { rot: dif >= 0 ? 'Saldo a realizar' : 'Estouro', cor: dif >= 0 ? 'var(--sobra)' : 'var(--estouro)',
+      v: curto(Math.abs(dif)), classe: dif >= 0 ? 'bem' : 'mal',
+      base: dif >= 0 ? 'ainda dentro do orçado' : 'acima do orçado' },
+    { rot:'Grupos acima do orçado', cor:'var(--estouro)', v: String(estourados),
+      classe: estourados ? 'mal' : '', base: 'de ' + grupos.length + ' no período' }
+  ];
+  return `<div class="capa">${cartoes.map(c => `
+    <div class="cartao" style="--cor:${c.cor}">
+      <div class="rot">${esc(c.rot)}</div>
+      <div class="cifra ${c.classe || ''}">${c.v}</div>
+      <div class="base">${esc(c.base)}</div>
+    </div>`).join('')}</div>`;
+}
+
+function tabela(grupos, orcado, realizado) {
+  const linhas = grupos.map((g, i) => {
+    const aberto = ABERTOS[g.cod + '|' + g.nome];
+    return `
+      <tr class="grupo ${aberto ? 'aberto' : ''}" onclick="alternar('${esc(g.cod)}','${esc(g.nome).replace(/'/g,"\\'")}')">
+        <td><span class="seta">▶</span> ${esc(g.nome)}
+            <span style="color:var(--ink-3);font-weight:600">· ${g.empenhos} empenho(s)</span></td>
+        <td class="val-orcado">${fmtReal(g.orcado)}</td>
+        <td>${fmtReal(g.realizado)}</td>
+        <td class="${Number(g.diferenca) >= 0 ? 'bem' : 'mal'}">${fmtReal(g.diferenca)}</td>
+        <td>${execucao(g.pct)}</td>
+      </tr>
+      ${aberto ? g.detalhe.map(e => `
+        <tr class="empenho">
+          <td><span class="cod">${esc(e.cod)}</span>${esc(e.nome)}</td>
+          <td class="val-orcado">${fmtReal(e.orcado)}</td>
+          <td>${fmtReal(e.realizado)}</td>
+          <td class="${Number(e.diferenca) >= 0 ? 'bem' : 'mal'}">${fmtReal(e.diferenca)}</td>
+          <td>${execucao(e.pct)}</td>
+        </tr>`).join('') : ''}`;
+  }).join('');
+
+  const dif = orcado - realizado;
+  return `<table>
+    <thead><tr><th>Grupo de empenho</th><th>Orçado</th><th>Realizado</th>
+               <th>Diferença</th><th style="width:170px">Execução</th></tr></thead>
+    <tbody>${linhas}</tbody>
+    <tfoot><tr>
+      <td>Total</td>
+      <td class="val-orcado">${fmtReal(orcado)}</td>
+      <td>${fmtReal(realizado)}</td>
+      <td class="${dif >= 0 ? 'bem' : 'mal'}">${fmtReal(dif)}</td>
+      <td>${execucao(orcado ? realizado * 100 / orcado : null)}</td>
+    </tr></tfoot>
+  </table>`;
+}
+
+/** Sem orçamento não existe percentual de execução — e "100%" ali seria pior
+ *  que nada: gasto sem verba prevista viraria execução perfeita. */
+function execucao(pct) {
+  if (pct === null || pct === undefined) return '<span style="color:var(--ink-3)">sem orçamento</span>';
+  const p = Number(pct);
+  const passou = p > 100;
+  return `<span class="barra"><i class="${passou ? 'passou' : ''}"
+            style="width:${Math.min(100, Math.max(0, p))}%"></i></span>
+          <span class="${passou ? 'mal' : ''}">${fmtNum(p, 1)}%</span>`;
+}
+
+function alternar(cod, nome) {
+  const k = cod + '|' + nome;
+  ABERTOS[k] = !ABERTOS[k];
+  desenhar();
+}
+
+function graficoGrupos(grupos) {
+  const canvas = document.getElementById('gGrupos');
+  if (graficos.g) graficos.g.destroy();
+  graficos.g = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: grupos.map(g => g.nome),
+      datasets: [
+        { label:'Orçado', data: grupos.map(g => Number(g.orcado)),
+          backgroundColor: COR_ORCADO, borderRadius: 4, borderSkipped: false,
+          barPercentage: .9, categoryPercentage: .74 },
+        { label:'Realizado', data: grupos.map(g => Number(g.realizado)),
+          backgroundColor: COR_REALIZADO, borderRadius: 4, borderSkipped: false,
+          barPercentage: .9, categoryPercentage: .74 }
+      ]
+    },
+    options: {
+      // Barras deitadas: nome de grupo de empenho é comprido, e em pé eles
+      // viram rótulo na diagonal, que é o jeito mais fácil de deixar um
+      // gráfico ilegível.
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false, animation: false,
+      layout: { padding: { right: 70 } },
+      scales: {
+        x: { beginAtZero: true, grid: { color: '#e9edf6' }, border: { display: false },
+             ticks: { color: '#898781', font: { size: 11, weight: '600' },
+                      callback: v => v === 0 ? '0' : fmtNum(v/1e6, 1) + ' mi' } },
+        y: { grid: { display: false }, border: { color: '#e3e8f5' },
+             ticks: { color: '#52514e', font: { size: 12, weight: '700' } } }
+      },
+      plugins: { legend: { display: false }, tooltip: {
+        callbacks: { label: c => c.dataset.label + ': ' + fmtReal(c.parsed.x) } } }
+    },
+    plugins: [{
+      id: 'valor',
+      afterDatasetsDraw(chart) {
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.font = '800 10.5px system-ui, sans-serif';
+        ctx.fillStyle = '#0f2460';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        chart.data.datasets.forEach((ds, di) => {
+          chart.getDatasetMeta(di).data.forEach((p, i) => {
+            const v = ds.data[i];
+            if (!v) return;
+            ctx.fillText(fmtNum(v/1e6, 1) + ' mi', p.x + 6, p.y);
+          });
+        });
+        ctx.restore();
+      }
+    }]
+  });
+}
+
+montarSafras();
+carregar();
+</script>
+<script src="js/icones-modulos.js?v=20260819a"></script>
+<script src="js/sidebar-nav.js?v=20260819a" defer></script>
+<script src="js/agro-chat-widget.js" defer></script>
+</body>
+</html>
