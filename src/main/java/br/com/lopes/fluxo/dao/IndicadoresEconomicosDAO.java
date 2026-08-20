@@ -69,22 +69,13 @@ public class IndicadoresEconomicosDAO {
       + "?id_indicador%5B%5D=208&id_indicador%5B%5D=209";
 
     /**
-     * O açúcar NY nº 11.
+     * O açúcar NY nº 11 não está aqui.
      *
-     * O painel de modelo usava a financialmodelingprep, e as três chaves
-     * dele hoje respondem "Legacy Endpoint - no longer supported" — conferi
-     * as três. Sobrou o serviço que vocês mesmos mantêm; ele fica em
-     * variável de ambiente para trocar de endereço sem deploy.
+     * O painel de modelo usava a financialmodelingprep (chaves mortas hoje) e
+     * depois um serviço interno da usina que só responde de dentro da rede.
+     * Agora o açúcar vem do MySQL: um coletor busca os vencimentos na bolsa e
+     * grava (CotacaoAcucarColetor); ver acucar()/acucar15Dias() mais abaixo.
      */
-    private static final String URL_ACUCAR = env("ACUCAR_API_URL",
-        "http://179.97.38.58:5000/api/dados");
-    private static final String URL_ACUCAR_15D = env("ACUCAR_API_URL_15D",
-        "http://179.97.38.58:5000/api/dados_15d");
-
-    private static String env(String nome, String padrao) {
-        String v = System.getenv(nome);
-        return (v == null || v.isBlank()) ? padrao : v;
-    }
 
     // ── Cache ─────────────────────────────────────────────────────────────
 
@@ -326,15 +317,47 @@ public class IndicadoresEconomicosDAO {
     }
 
     // ── Açúcar NY nº 11 ───────────────────────────────────────────────────
+    //
+    // Vem do MySQL, não mais de uma fonte HTTP na hora. Um coletor busca os
+    // vencimentos na bolsa de tempos em tempos e grava o retrato no banco
+    // (ver CotacaoAcucarColetor / CotacaoAcucarScheduler); aqui só se lê. Por
+    // isso NÃO passa pelo cache de memória das fontes externas: a leitura já
+    // é barata e local, e a idade que importa é a da COLETA — quando a bolsa
+    // foi consultada —, não a de quando esta página bateu no banco. Essa
+    // idade vem gravada junto e é o que o envelope carrega.
+
+    private final CotacaoAcucarDAO cotacaoAcucar = new CotacaoAcucarDAO();
 
     public JsonObject acucar() {
-        return comCache("acucar", TTL_COTACAO, () ->
-                JsonParser.parseString(HttpUtil.get(URL_ACUCAR)));
+        try {
+            CotacaoAcucarDAO.Retrato r = cotacaoAcucar.lerVencimentos();
+            if (r == null) {
+                return envelope(null, 0,
+                        "a cotação do açúcar ainda não foi coletada");
+            }
+            return envelope(r.dado(), r.idadeMinutos() * 60000L, null);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "Não foi possível ler a cotação do açúcar", e);
+            return envelope(null, 0, mensagem(e));
+        }
     }
 
     public JsonObject acucar15Dias() {
-        return comCache("acucar15", TTL_COTACAO, () ->
-                JsonParser.parseString(HttpUtil.get(URL_ACUCAR_15D)));
+        try {
+            JsonArray hist = cotacaoAcucar.ler15Dias(15);
+            if (hist.size() == 0) {
+                return envelope(null, 0,
+                        "o histórico do açúcar ainda não tem pregões gravados");
+            }
+            return envelope(hist, 0, null);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "Não foi possível ler o histórico do açúcar", e);
+            return envelope(null, 0, mensagem(e));
+        }
+    }
+
+    private static String mensagem(Exception e) {
+        return e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
     }
 
     // ── Utilidades ────────────────────────────────────────────────────────
