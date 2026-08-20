@@ -126,6 +126,20 @@
   table.q tr.empenho td { background: var(--papel-2); color: var(--ink-2); font-size: 12px; }
   table.q tr.empenho td.rot { padding-left: 32px; }
   table.q tr.empenho .cod { color: var(--ink-3); font-weight: 700; margin-right: 7px; }
+  table.q tr.empenho.expansivel { cursor: pointer; }
+  table.q tr.empenho.expansivel:hover td { background: #eaeff9; }
+  table.q tr.empenho .seta { display: inline-block; width: 12px; color: var(--ink-3);
+                             transition: transform .15s; }
+  table.q tr.empenho.aberto .seta { transform: rotate(90deg); }
+  /* Espaço da seta mesmo sem seta: uma coluna de texto que dança conforme a
+     linha abre ou não é ruído. */
+  table.q tr.empenho .semseta { display: inline-block; width: 12px; }
+
+  /* Terceiro nível: objeto de custo. Mais recuado e mais claro que o
+     empenho, para a hierarquia se ler sem contar pixels. */
+  table.q tr.objeto td { background: #eef2fa; color: var(--ink-2); font-size: 11.5px; }
+  table.q tr.objeto td.rot { padding-left: 60px; }
+  table.q tr.objeto .cod { color: var(--ink-3); font-weight: 700; margin-right: 7px; }
   table.q tfoot td { padding: 9px 10px; font-weight: 800; color: var(--ink); text-align: right;
                      border-top: 2px solid var(--borda); background: #eef2fa; }
   table.q tfoot td.rot { text-align: left; }
@@ -375,20 +389,32 @@ function agregar() {
 
     const kg = l.codGrupo + '|' + l.grupo;
     let g = grupos.get(kg);
-    if (!g) { g = {cod:l.codGrupo, nome:l.grupo, mp:0, mr:0, ap:0, ar:0, emp:new Map()};
+    if (!g) { g = {chave:kg, cod:l.codGrupo, nome:l.grupo, mp:0, mr:0, ap:0, ar:0, emp:new Map()};
               grupos.set(kg, g); }
     let e = g.emp.get(l.codEmpenho);
-    if (!e) { e = {cod:l.codEmpenho, nome:l.empenho, mp:0, mr:0, ap:0, ar:0};
+    if (!e) { e = {chave:kg + '|' + l.codEmpenho, cod:l.codEmpenho, nome:l.empenho,
+                   mp:0, mr:0, ap:0, ar:0, obj:new Map()};
               g.emp.set(l.codEmpenho, e); }
+    // Terceiro nível: objeto de custo dentro do empenho. É onde o gasto
+    // finalmente tem endereço — grupo e empenho dizem "o quê", o objeto de
+    // custo diz "para onde foi".
+    const ko = l.codObjeto || l.objeto;
+    let o = e.obj.get(ko);
+    if (!o) { o = {cod:l.codObjeto, nome:l.objeto, mp:0, mr:0, ap:0, ar:0};
+              e.obj.set(ko, o); }
 
-    if (noMes)  { g.mp += +l.orcado; g.mr += +l.realizado; e.mp += +l.orcado; e.mr += +l.realizado; }
-    if (noAcum) { g.ap += +l.orcado; g.ar += +l.realizado; e.ap += +l.orcado; e.ar += +l.realizado; }
+    if (noMes)  { for (const x of [g,e,o]) { x.mp += +l.orcado; x.mr += +l.realizado; } }
+    if (noAcum) { for (const x of [g,e,o]) { x.ap += +l.orcado; x.ar += +l.realizado; } }
   }
-  const lista = [...grupos.values()].filter(g => g.mp||g.mr||g.ap||g.ar);
-  // Maior acumulado primeiro: é por onde se começa a olhar um orçamento.
-  lista.sort((a,b) => Math.max(b.ap,b.ar) - Math.max(a.ap,a.ar));
-  lista.forEach(g => { g.empenhos = [...g.emp.values()].filter(e => e.mp||e.mr||e.ap||e.ar)
-                                     .sort((a,b) => Math.max(b.ap,b.ar) - Math.max(a.ap,a.ar)); });
+  const vivo = x => x.mp||x.mr||x.ap||x.ar;
+  const maior = (a,b) => Math.max(b.ap,b.ar) - Math.max(a.ap,a.ar);
+  // Maior acumulado primeiro, em todos os níveis: é por onde se começa a
+  // olhar um orçamento.
+  const lista = [...grupos.values()].filter(vivo).sort(maior);
+  lista.forEach(g => {
+    g.empenhos = [...g.emp.values()].filter(vivo).sort(maior);
+    g.empenhos.forEach(e => { e.objetos = [...e.obj.values()].filter(vivo).sort(maior); });
+  });
   return lista;
 }
 
@@ -504,19 +530,38 @@ function quadro(grupos, mensal, acum, nomeMes, tp, tr, tap, tar) {
   };
 
   const corpo = grupos.map(g => {
-    const k = g.cod + '|' + g.nome, aberto = ABERTOS[k];
-    return `
-      <tr class="grupo ${aberto?'aberto':''}" onclick="alternar('${esc(k).replace(/'/g,"\\'")}')">
+    const aberto = ABERTOS[g.chave];
+    let html = `
+      <tr class="grupo ${aberto?'aberto':''}" onclick="alternar('${esc(g.chave).replace(/'/g,"\\'")}')">
         <td class="rot"><span class="seta">▶</span> ${esc(g.nome)}</td>
         ${mensal ? bloco(g.mp, g.mr, true) : ''}
         ${acum   ? bloco(g.ap, g.ar, true) : ''}
-      </tr>
-      ${aberto ? g.empenhos.map(e => `
-        <tr class="empenho">
-          <td class="rot"><span class="cod">${esc(e.cod)}</span>${esc(e.nome)}</td>
+      </tr>`;
+    if (!aberto) return html;
+
+    g.empenhos.forEach(e => {
+      const abertoE = ABERTOS[e.chave];
+      // Empenho com um objeto de custo só não abre: a linha de dentro
+      // repetiria a de fora, e uma seta que não revela nada ensina a
+      // desconfiar das outras.
+      const vale = e.objetos.length > 1;
+      html += `
+        <tr class="empenho ${vale?'expansivel':''} ${abertoE?'aberto':''}"
+            ${vale ? `onclick="alternar('${esc(e.chave).replace(/'/g,"\\'")}')"` : ''}>
+          <td class="rot">${vale ? '<span class="seta">▶</span>' : '<span class="semseta"></span>'}<span class="cod">${esc(e.cod)}</span>${esc(e.nome)}</td>
           ${mensal ? bloco(e.mp, e.mr, true) : ''}
           ${acum   ? bloco(e.ap, e.ar, true) : ''}
-        </tr>`).join('') : ''}`;
+        </tr>`;
+      if (vale && abertoE) {
+        html += e.objetos.map(o => `
+          <tr class="objeto">
+            <td class="rot">${o.cod ? `<span class="cod">${esc(o.cod)}</span>` : ''}${esc(o.nome)}</td>
+            ${mensal ? bloco(o.mp, o.mr, true) : ''}
+            ${acum   ? bloco(o.ap, o.ar, true) : ''}
+          </tr>`).join('');
+      }
+    });
+    return html;
   }).join('');
 
   return `<table class="q">

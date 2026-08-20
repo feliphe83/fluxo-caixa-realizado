@@ -35,7 +35,8 @@ import java.util.logging.Logger;
  *   ENTRESSAFRA março a agosto       (a parada e a manutenção)
  * São seis meses cada, e é o recorte do painel que serviu de modelo.
  *
- * DEVOLVE A LINHA CRUA, por mês × grupo × empenho, e não um resumo. A tela
+ * DEVOLVE A LINHA CRUA, por mês × grupo × empenho × objeto de custo, e não
+ * um resumo. A tela
  * troca de mês, liga o acumulado, filtra negócio e abre grupo sem voltar ao
  * servidor — e, o que importa mais, todos esses recortes saem da MESMA
  * consulta. Se cada interação fosse uma ida ao Oracle, uma delas acabaria
@@ -165,6 +166,8 @@ public class OrcamentoComprasServlet extends HttpServlet {
             e.addProperty("grupo", vazioVira(texto(l.get("grupo")), "Sem grupo"));
             e.addProperty("codEmpenho", texto(l.get("cod_empenho")));
             e.addProperty("empenho", vazioVira(texto(l.get("empenho")), "Sem descrição"));
+            e.addProperty("codObjeto", texto(l.get("cod_objeto")));
+            e.addProperty("objeto", vazioVira(texto(l.get("objeto")), "Sem objeto de custo"));
             e.addProperty("orcado", o);
             e.addProperty("realizado", rr);
             arr.add(e);

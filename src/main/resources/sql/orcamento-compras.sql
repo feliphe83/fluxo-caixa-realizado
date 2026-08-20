@@ -9,7 +9,7 @@
 --     mês a mês, o acumulado e abrir o grupo por dentro. A soma total continua
 --     a mesma: somar por partes e somar tudo dá no mesmo;
 --  2. entraram as colunas de descrição do grupo e do empenho, e o negócio;
---  3. o anomes e o filtro de negócio viraram marcadores.
+--  3. o anomes, o objeto de custo e o filtro de negócio viraram marcadores.
 --
 -- As quatro pernas são as do original e continuam do jeito que estavam:
 -- orçamento em custo.lancamento_custo (para as filiais que ainda não têm
@@ -22,6 +22,8 @@ select tmp.anomes
      , tmp.grupo
      , tmp.cod_empenho
      , tmp.empenho
+     , tmp.cod_objeto
+     , tmp.objeto
      , sum(tmp.vlr_orcado)                        orcado
      , sum(tmp.vlr_realizado)                     realizado
      , sum(tmp.vlr_orcado - tmp.vlr_realizado)    diferenca
@@ -32,6 +34,8 @@ from ( select lc.anomes
             , grupoempenho.descricao              grupo
             , empenho.cod_empenho
             , empenho.descricao                   empenho
+            , %OBJ_COD%                           cod_objeto
+            , %OBJ_DESC%                          objeto
             , nvl(lc.valor,0)                     vlr_orcado
             , 0                                   vlr_realizado
        from   custo.lancamento_custo lc
@@ -64,6 +68,8 @@ from ( select lc.anomes
             , grupoempenho.descricao              grupo
             , empenho.cod_empenho
             , empenho.descricao                   empenho
+            , %OBJ_COD%                           cod_objeto
+            , %OBJ_DESC%                          objeto
             , nvl(lc.valor,0)                     vlr_orcado
             , 0                                   vlr_realizado
        from   geral.atualizacaoinicioproducao
@@ -96,6 +102,8 @@ from ( select lc.anomes
             , grupoempenho.descricao              grupo
             , empenho.cod_empenho
             , empenho.descricao                   empenho
+            , %OBJ_COD%                           cod_objeto
+            , %OBJ_DESC%                          objeto
             , nvl(lc.valor,0)                     vlr_orcado
             , 0                                   vlr_realizado
        from   material.realizado lc
@@ -122,6 +130,8 @@ from ( select lc.anomes
             , grupoempenho.descricao              grupo
             , empenho.cod_empenho
             , empenho.descricao                   empenho
+            , %OBJ_COD%                           cod_objeto
+            , %OBJ_DESC%                          objeto
             , 0                                   vlr_orcado
             , nvl(lc.valor,0)                     vlr_realizado
        from   material.realizado lc
@@ -141,5 +151,5 @@ from ( select lc.anomes
 where 1 = 1
 %FILTRO_NEGOCIO%
 group by tmp.anomes, tmp.cod_negocio, tmp.negocio, tmp.cod_grupoempenho, tmp.grupo
-       , tmp.cod_empenho, tmp.empenho
-order by tmp.grupo, tmp.empenho, tmp.anomes
+       , tmp.cod_empenho, tmp.empenho, tmp.cod_objeto, tmp.objeto
+order by tmp.grupo, tmp.empenho, tmp.objeto, tmp.anomes

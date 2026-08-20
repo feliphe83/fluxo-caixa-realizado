@@ -101,6 +101,19 @@
                                 font-weight: 600; font-size: .92em; }
   table.q tbody tr.empenho td.rot { padding-left: 2.2em; }
   table.q tbody tr.empenho .cod { color: var(--ink-3); font-weight: 800; margin-right: .5em; }
+  table.q tbody tr.empenho.expansivel { cursor: pointer; }
+  table.q tbody tr.empenho .seta { display: inline-block; width: .8em; color: var(--ink-3);
+                                   transition: transform .15s; }
+  table.q tbody tr.empenho.aberto .seta { transform: rotate(90deg); }
+  /* Espaço da seta mesmo sem seta: coluna de texto que dança conforme a
+     linha abre ou não é ruído. */
+  table.q tbody tr.empenho .semseta { display: inline-block; width: .8em; }
+
+  /* Terceiro nível: objeto de custo, mais recuado e mais claro. */
+  table.q tbody tr.objeto td { background: #eef2fa; color: var(--ink-2);
+                               font-weight: 600; font-size: .88em; }
+  table.q tbody tr.objeto td.rot { padding-left: 3.6em; }
+  table.q tbody tr.objeto .cod { color: var(--ink-3); font-weight: 800; margin-right: .5em; }
 
   /* Avisa que o painel está fora do automático e quando volta.
      Fica no topo, junto do período: flutuando no rodapé ele cobria o rótulo
@@ -391,17 +404,25 @@ function agregar() {
     if (!g) { g = {chave:k, nome:l.grupo, mp:0, mr:0, ap:0, ar:0, emp:new Map()};
               grupos.set(k, g); }
     let e = g.emp.get(l.codEmpenho);
-    if (!e) { e = {cod:l.codEmpenho, nome:l.empenho, mp:0, mr:0, ap:0, ar:0};
+    if (!e) { e = {chave:k + '|' + l.codEmpenho, cod:l.codEmpenho, nome:l.empenho,
+                   mp:0, mr:0, ap:0, ar:0, obj:new Map()};
               g.emp.set(l.codEmpenho, e); }
-    if (noMes)  { g.mp += +l.orcado; g.mr += +l.realizado;
-                  e.mp += +l.orcado; e.mr += +l.realizado; }
-    if (noAcum) { g.ap += +l.orcado; g.ar += +l.realizado;
-                  e.ap += +l.orcado; e.ar += +l.realizado; }
+    // Terceiro nível: objeto de custo. Grupo e empenho dizem "o quê"; o
+    // objeto de custo diz "para onde foi".
+    const ko = l.codObjeto || l.objeto;
+    let o = e.obj.get(ko);
+    if (!o) { o = {cod:l.codObjeto, nome:l.objeto, mp:0, mr:0, ap:0, ar:0};
+              e.obj.set(ko, o); }
+    if (noMes)  { for (const x of [g,e,o]) { x.mp += +l.orcado; x.mr += +l.realizado; } }
+    if (noAcum) { for (const x of [g,e,o]) { x.ap += +l.orcado; x.ar += +l.realizado; } }
   }
-  const lista = [...grupos.values()].filter(g => g.mp||g.mr||g.ap||g.ar)
-                                    .sort((a,b) => Math.max(b.ap,b.ar) - Math.max(a.ap,a.ar));
-  lista.forEach(g => { g.empenhos = [...g.emp.values()].filter(e => e.mp||e.mr||e.ap||e.ar)
-                                     .sort((a,b) => Math.max(b.ap,b.ar) - Math.max(a.ap,a.ar)); });
+  const vivo = x => x.mp||x.mr||x.ap||x.ar;
+  const maior = (a,b) => Math.max(b.ap,b.ar) - Math.max(a.ap,a.ar);
+  const lista = [...grupos.values()].filter(vivo).sort(maior);
+  lista.forEach(g => {
+    g.empenhos = [...g.emp.values()].filter(vivo).sort(maior);
+    g.empenhos.forEach(e => { e.objetos = [...e.obj.values()].filter(vivo).sort(maior); });
+  });
   return lista;
 }
 
@@ -490,10 +511,21 @@ function desenhar() {
                     onclick="alternarGrupo('${esc(g.chave).replace(/'/g,"\\'")}')">
           <td class="rot"><span class="seta">▶</span> ${esc(g.nome)}</td>
           ${bloco(g.mp,g.mr)}${bloco(g.ap,g.ar)}
-        </tr>` + (aberto ? g.empenhos.map(e => `<tr class="empenho">
-          <td class="rot"><span class="cod">${esc(e.cod)}</span>${esc(e.nome)}</td>
-          ${bloco(e.mp,e.mr)}${bloco(e.ap,e.ar)}
-        </tr>`).join('') : '');
+        </tr>` + (aberto ? g.empenhos.map(e => {
+          const abertoE = ABERTOS[e.chave];
+          // Empenho com um objeto só não abre: a linha de dentro repetiria a
+          // de fora, e uma seta que não revela nada ensina a desconfiar das
+          // outras.
+          const vale = e.objetos.length > 1;
+          return `<tr class="empenho ${vale?'expansivel':''} ${abertoE?'aberto':''}"
+                      ${vale ? `onclick="alternarGrupo('${esc(e.chave).replace(/'/g,"\\'")}')"` : ''}>
+            <td class="rot">${vale ? '<span class="seta">▶</span>' : '<span class="semseta"></span>'}<span class="cod">${esc(e.cod)}</span>${esc(e.nome)}</td>
+            ${bloco(e.mp,e.mr)}${bloco(e.ap,e.ar)}
+          </tr>` + ((vale && abertoE) ? e.objetos.map(o => `<tr class="objeto">
+            <td class="rot">${o.cod ? `<span class="cod">${esc(o.cod)}</span>` : ''}${esc(o.nome)}</td>
+            ${bloco(o.mp,o.mr)}${bloco(o.ap,o.ar)}
+          </tr>`).join('') : '');
+        }).join('') : '');
       }).join('')}</tbody>
       <tfoot><tr><td class="rot">Total</td>${bloco(tp,tr)}${bloco(tap,tar)}</tr></tfoot>
     </table>`;

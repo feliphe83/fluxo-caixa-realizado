@@ -70,6 +70,13 @@ public class OrcamentoComprasDAO {
                     .replace("%NEG_DESC%", temNegocio
                             ? "nvl(posto.fn_busca_arvore_objetocusto(lc." + coluna + ",'D','NG'),'Sem negócio')"
                             : "'Não disponível'")
+                    // O objeto de custo sai da MESMA coluna que o negócio: o
+                    // negócio é um nível da árvore dele. Onde não há coluna,
+                    // não há nem um nem outro.
+                    .replace("%OBJ_COD%",  temNegocio ? "lc." + coluna : "null")
+                    .replace("%OBJ_DESC%", temNegocio
+                            ? "nvl(custo.fn_busca_descricao_oc(lc." + coluna + "),'Sem objeto de custo')"
+                            : "'Não disponível'")
                     .replace("%FILTRO_NEGOCIO%",
                             (temNegocio && negocio != null && !negocio.isBlank())
                                     ? "and tmp.negocio = ?" : "");
@@ -164,6 +171,8 @@ public class OrcamentoComprasDAO {
                 .replace("%ANOMES_FIM%", String.valueOf(anomesFim))
                 .replace("%NEG_COD%",  tem ? "posto.fn_busca_arvore_objetocusto(lc." + coluna + ",'C','NG')" : "null")
                 .replace("%NEG_DESC%", tem ? "nvl(posto.fn_busca_arvore_objetocusto(lc." + coluna + ",'D','NG'),'Sem negócio')" : "'Não disponível'")
+                .replace("%OBJ_COD%",  tem ? "lc." + coluna : "null")
+                .replace("%OBJ_DESC%", tem ? "nvl(custo.fn_busca_descricao_oc(lc." + coluna + "),'Sem objeto de custo')" : "'Não disponível'")
                 .replace("%FILTRO_NEGOCIO%", "");
     }
 
