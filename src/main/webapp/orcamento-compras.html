@@ -140,11 +140,13 @@
   table.q tr.objeto td { background: #eef2fa; color: var(--ink-2); font-size: 11.5px; }
   table.q tr.objeto td.rot { padding-left: 60px; }
   table.q tr.objeto .cod { color: var(--ink-3); font-weight: 700; margin-right: 7px; }
-  table.q tr.objeto.expansivel { cursor: pointer; }
-  table.q tr.objeto.expansivel:hover td { background: #e5ebf7; }
-  table.q tr.objeto .seta { display: inline-block; width: 12px; color: var(--ink-3);
-                            transition: transform .15s; }
-  table.q tr.objeto.aberto .seta { transform: rotate(90deg); }
+  /* O VALOR REALIZADO do objeto (e do empenho de objeto único) é o botão que
+     explode nos itens. Sublinhado pontilhado e cursor de link avisam que ali
+     se clica; aberto, a célula fica destacada. */
+  table.q td.real-drill { cursor: pointer; color: #1e3a8a; font-weight: 700;
+                          text-decoration: underline dotted; text-underline-offset: 3px; }
+  table.q td.real-drill:hover { background: #dbe5f7; }
+  table.q td.real-drill.aberto { background: #cfe0fb; }
 
   /* Quarto nível: o item — material + fornecedor (compra) ou o contrato.
      Mais recuado e mais claro; o texto pode quebrar, porque nome de material
@@ -539,10 +541,17 @@ function quadro(grupos, mensal, acum, nomeMes, tp, tr, tap, tar) {
       ${acum   ? '<th class="divide">Plan (R$)</th><th>Real (R$)</th><th>Dif.</th><th>%</th>' : ''}
     </tr>`;
 
-  const bloco = (p, r, primeiro) => {
+  // acaoReal: quando presente e há realizado, o VALOR REALIZADO vira o botão
+  // que explode os itens (4º nível). É onde o clique faz sentido — o
+  // realizado é a soma dos itens que estão embaixo dele.
+  const bloco = (p, r, primeiro, acaoReal, aberto) => {
     const d = p - r;
+    const drill = (acaoReal && r)
+      ? ` class="real-drill${aberto ? ' aberto' : ''}" onclick="event.stopPropagation();${acaoReal}"`
+        + ` title="Ver os itens deste realizado"`
+      : '';
     return `<td class="plan ${primeiro?'divide':''}">${p?fmt0(p):''}</td>
-            <td>${r?fmt0(r):''}</td>
+            <td${drill}>${r?fmt0(r):''}</td>
             <td class="dif ${d>=0?'bem':'mal'}">${(p||r)?fmtDif(d):''}</td>
             ${celulaPct(pct(r,p))}`;
   };
@@ -560,41 +569,47 @@ function quadro(grupos, mensal, acum, nomeMes, tp, tr, tap, tar) {
     const colItem = Math.max(1, colsMes + colsAcum);
     g.empenhos.forEach(e => {
       const abertoE = ABERTOS[e.chave];
-      // Empenho com um objeto de custo só não abre em objetos: a linha de
-      // dentro repetiria a de fora. Mas ele mesmo abre nos ITENS do seu
-      // único objeto, para o detalhe de material/fornecedor ficar a um
-      // clique também nesse caso.
       const vale = e.objetos.length > 1;
-      const objUnico = vale ? null : (e.objetos[0] || {cod:'', nome:''});
-      const chaveItE = e.chave + '|itens';
-      const abertoItE = !vale && ABERTOS[chaveItE];
-      const acaoE = vale
-        ? `alternar('${arg(e.chave)}')`
-        : `alternarItens('${arg(chaveItE)}', '${arg(e.cod)}', '${arg(objUnico.cod || '')}')`;
-      html += `
-        <tr class="empenho expansivel ${abertoE||abertoItE?'aberto':''}"
-            onclick="${acaoE}">
+
+      if (vale) {
+        // Vários objetos: a LINHA abre nos objetos (níveis 1-3, hierarquia).
+        html += `
+        <tr class="empenho expansivel ${abertoE?'aberto':''}" onclick="alternar('${arg(e.chave)}')">
           <td class="rot"><span class="seta">▶</span><span class="cod">${esc(e.cod)}</span>${esc(e.nome)}</td>
           ${mensal ? bloco(e.mp, e.mr, true) : ''}
           ${acum   ? bloco(e.ap, e.ar, true) : ''}
         </tr>`;
-      if (!vale && abertoItE) {
-        html += linhasItens(chaveItens(e.cod, objUnico.cod), colItem);
-      }
-      if (vale && abertoE) {
-        html += e.objetos.map(o => {
-          const ko = e.chave + '|obj|' + (o.cod || o.nome);
-          const abertoO = ABERTOS[ko];
-          let h = `
-          <tr class="objeto expansivel ${abertoO?'aberto':''}"
-              onclick="alternarItens('${arg(ko)}', '${arg(e.cod)}', '${arg(o.cod || '')}')">
-            <td class="rot"><span class="seta">▶</span>${o.cod ? `<span class="cod">${esc(o.cod)}</span>` : ''}${esc(o.nome)}</td>
-            ${mensal ? bloco(o.mp, o.mr, true) : ''}
-            ${acum   ? bloco(o.ap, o.ar, true) : ''}
-          </tr>`;
-          if (abertoO) h += linhasItens(chaveItens(e.cod, o.cod), colItem);
-          return h;
-        }).join('');
+        if (abertoE) {
+          html += e.objetos.map(o => {
+            const ko = e.chave + '|obj|' + (o.cod || o.nome);
+            const abertoO = ABERTOS[ko];
+            // No objeto (folha da hierarquia) o clique é no REALIZADO: é ele
+            // que explode nos itens (4º nível).
+            const acao = `alternarItens('${arg(ko)}','${arg(e.cod)}','${arg(o.cod || '')}')`;
+            let h = `
+            <tr class="objeto ${abertoO?'aberto':''}">
+              <td class="rot">${o.cod ? `<span class="cod">${esc(o.cod)}</span>` : ''}${esc(o.nome)}</td>
+              ${mensal ? bloco(o.mp, o.mr, true, acao, abertoO) : ''}
+              ${acum   ? bloco(o.ap, o.ar, true, acao, abertoO) : ''}
+            </tr>`;
+            if (abertoO) h += linhasItens(chaveItens(e.cod, o.cod), colItem);
+            return h;
+          }).join('');
+        }
+      } else {
+        // Um objeto só: o empenho JÁ É o objeto. O realizado dele explode nos
+        // itens direto, sem um nível intermediário que repetiria a linha.
+        const o0 = e.objetos[0] || {cod:'', nome:''};
+        const chaveItE = e.chave + '|itens';
+        const abertoItE = ABERTOS[chaveItE];
+        const acao = `alternarItens('${arg(chaveItE)}','${arg(e.cod)}','${arg(o0.cod || '')}')`;
+        html += `
+        <tr class="empenho ${abertoItE?'aberto':''}">
+          <td class="rot"><span class="semseta"></span><span class="cod">${esc(e.cod)}</span>${esc(e.nome)}</td>
+          ${mensal ? bloco(e.mp, e.mr, true, acao, abertoItE) : ''}
+          ${acum   ? bloco(e.ap, e.ar, true, acao, abertoItE) : ''}
+        </tr>`;
+        if (abertoItE) html += linhasItens(chaveItens(e.cod, o0.cod), colItem);
       }
     });
     return html;
