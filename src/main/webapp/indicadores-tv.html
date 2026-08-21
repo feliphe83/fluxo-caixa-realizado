@@ -248,20 +248,32 @@ function desenhar() {
       <div class="fonte">Sindaçúcar/AL · R$ por kg de ATR</div></div></div>
     ${tabelaCana(d.precoCana)}`;
 
-  const noticiasEtanol = ((d.noticias && d.noticias.dado) || {}).etanol || [];
+  const nt = (d.noticias && d.noticias.dado) || {};
+  // Dólar no quadrado dos produtos: poucas manchetes, para caber no espaço
+  // que sobra sob a tabela sem empurrar o resto para baixo.
   document.getElementById('bProdutos').innerHTML = `
     <div class="cab"><div><h2>Preço dos produtos</h2>
       <div class="fonte">CEPEA/ESALQ e bolsa, já convertidos</div></div>${idade(d.cepea)}</div>
     ${tabelaProdutos(d.produtos)}
     <div class="prod-noticias">
-      <h3><span class="pt" style="--cor:var(--serie-3)"></span>Notícias do etanol</h3>
-      ${listaNoticias(noticiasEtanol)}
+      <h3><span class="pt" style="--cor:var(--serie-1)"></span>Notícias do dólar</h3>
+      ${listaNoticias((nt.dolar || []).slice(0, 4))}
     </div>`;
 
+  // Rodapé largo: açúcar e etanol lado a lado.
   document.getElementById('bNoticias').innerHTML = `
     <div class="cab"><div><h2>Notícias</h2>
-      <div class="fonte">Açúcar e dólar · Google Notícias</div></div>${idade(d.noticias)}</div>
-    ${blocoNoticias(d.noticias)}`;
+      <div class="fonte">Açúcar e etanol · Google Notícias</div></div>${idade(d.noticias)}</div>
+    <div class="noticias-cols">
+      <div class="nt-col">
+        <h3><span class="pt" style="--cor:var(--serie-2)"></span>Açúcar</h3>
+        ${listaNoticias(nt.acucar)}
+      </div>
+      <div class="nt-col">
+        <h3><span class="pt" style="--cor:var(--serie-3)"></span>Etanol</h3>
+        ${listaNoticias(nt.etanol)}
+      </div>
+    </div>`;
 
   const dolarDia = ((d.dolarDiario && d.dolarDiario.dado) || [])
     .map(p => ({ rotulo: rotuloDia(p.data), valor: p.valor })).slice(-7);
