@@ -201,10 +201,23 @@ function blocoNoticias(env) {
 function listaNoticias(arr) {
   arr = arr || [];
   if (!arr.length) return `<div class="vazio">Sem manchetes agora.</div>`;
-  return arr.map(n => `<a class="nt" href="${esc(n.link)}" target="_blank" rel="noopener">
+  return arr.map(n => `<a class="nt" href="${esc(linkNoticia(n))}" target="_blank" rel="noopener">
       <div class="nt-tit">${esc(n.titulo)}</div>
       <div class="nt-meta">${esc(n.veiculo)}${n.idadeMinutos != null ? ' · há ' + minutos(n.idadeMinutos) : ''}</div>
     </a>`).join('');
+}
+
+/**
+ * Para onde o clique leva.
+ *
+ * O link que o Google Notícias dá no feed é um redirecionador que só o
+ * JavaScript deles decodifica — aberto direto, não carrega. Em vez de
+ * depender dele, o clique abre uma BUSCA do Google pela manchete e o
+ * veículo: o próprio artigo é o primeiro resultado, e isso nunca quebra.
+ */
+function linkNoticia(n) {
+  return 'https://www.google.com/search?q=' +
+    encodeURIComponent((n.titulo || '') + ' ' + (n.veiculo || ''));
 }
 
 function tabelaProdutos(arr) {

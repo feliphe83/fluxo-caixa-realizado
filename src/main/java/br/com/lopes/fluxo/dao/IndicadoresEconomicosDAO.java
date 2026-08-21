@@ -424,7 +424,6 @@ public class IndicadoresEconomicosDAO {
 
     private static final Pattern ITEM_RSS = Pattern.compile("<item>(.*?)</item>", Pattern.DOTALL);
     private static final Pattern TITULO_RSS = Pattern.compile("<title>(.*?)</title>", Pattern.DOTALL);
-    private static final Pattern LINK_RSS = Pattern.compile("<link>(.*?)</link>", Pattern.DOTALL);
     private static final Pattern DATA_RSS = Pattern.compile("<pubDate>(.*?)</pubDate>", Pattern.DOTALL);
     private static final Pattern FONTE_RSS = Pattern.compile("<source[^>]*>(.*?)</source>", Pattern.DOTALL);
 
@@ -469,10 +468,13 @@ public class IndicadoresEconomicosDAO {
                 if (titulo.endsWith(sufixo)) titulo = titulo.substring(0, titulo.length() - sufixo.length());
             }
 
+            // O link do feed não vai: é um redirecionador que só o JS do
+            // Google decodifica. O painel abre uma busca pela manchete (ver
+            // linkNoticia no indicadores-comum.js), então basta título,
+            // veículo e idade.
             JsonObject n = new JsonObject();
             n.addProperty("titulo", limparTexto(titulo));
             n.addProperty("veiculo", limparTexto(veiculo));
-            n.addProperty("link", grupo(LINK_RSS, item).trim());
             n.addProperty("idadeMinutos", idadeDe(grupo(DATA_RSS, item)));
             itens.add(n);
         }
