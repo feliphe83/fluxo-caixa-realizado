@@ -77,10 +77,9 @@ public class IndicadoresEconomicosServlet extends HttpServlet {
             r.addProperty("atualizadoEm",
                     LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
             r.add("dolar", dolar);
-            // Dois recortes: os últimos pregões (10 dias corridos dão ~7
-            // úteis) e um ponto por mês nos últimos três meses.
+            // O dólar tem um gráfico só: os últimos pregões (10 dias
+            // corridos dão ~7 úteis).
             r.add("dolarDiario", dao.dolarHistorico(10));
-            r.add("dolarMensal", dao.dolarMensal(3));
             r.add("indicadores", dao.indicadores());
             r.add("cepea", cepea);
             r.add("acucar", acucar);

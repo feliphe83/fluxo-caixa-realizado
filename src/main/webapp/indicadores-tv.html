@@ -218,8 +218,6 @@ function desenhar() {
     <div class="graficos">
       <div class="mini"><div class="mtit">Últimos 7 dias</div>
         <div class="tela"><canvas id="gDolarD"></canvas></div></div>
-      <div class="mini"><div class="mtit">Últimos 3 meses</div>
-        <div class="tela"><canvas id="gDolarM"></canvas></div></div>
     </div>`;
 
   document.getElementById('bAcucar').innerHTML = `
@@ -254,9 +252,9 @@ function desenhar() {
     ${blocoNoticias(d.noticias)}`;
 
   const dolarDia = ((d.dolarDiario && d.dolarDiario.dado) || [])
-    .map(p => ({ rotulo: rotuloDia(p.data), valor: p.valor }));
-  plotarTv('gDolarD', dolarDia, 'R$ ', '#2a78d6', 2, 'Sem histórico recente.');
-  plotarTv('gDolarM', serieMensal(d.dolarMensal), 'R$ ', '#2a78d6', 2, 'Sem histórico mensal.');
+    .map(p => ({ rotulo: rotuloDia(p.data), valor: p.valor })).slice(-7);
+  // O dólar tem um gráfico só (7 dias), com o valor em cada ponto.
+  plotarTv('gDolarD', dolarDia, 'R$ ', '#2a78d6', 2, 'Sem histórico recente.', true);
   plotarTv('gAcucarD', serieAcucar(d.acucarDiario), '', '#eb6834', 2,
            'Juntando o histórico diário — depende de mais pregões coletados.');
   plotarTv('gAcucarM', serieMensal(d.acucarMensal), '', '#eb6834', 2,
@@ -264,7 +262,7 @@ function desenhar() {
 }
 
 /** Desenha uma série de pares {rotulo, valor}; se vier vazia, avisa no lugar. */
-function plotarTv(id, pares, prefixo, cor, casas, vazioMsg) {
+function plotarTv(id, pares, prefixo, cor, casas, vazioMsg, rotularTodos) {
   const canvas = document.getElementById(id);
   if (!canvas) return;
   if (!pares.length) {
@@ -272,10 +270,10 @@ function plotarTv(id, pares, prefixo, cor, casas, vazioMsg) {
     if (box) box.innerHTML = `<div class="vazio">${esc(vazioMsg)}</div>`;
     return;
   }
-  grafico(id, pares, p => p.rotulo, p => p.valor, prefixo, cor, casas);
+  grafico(id, pares, p => p.rotulo, p => p.valor, prefixo, cor, casas, rotularTodos);
 }
 
-function grafico(id, serie, rotulo, valor, prefixo, cor, casas) {
+function grafico(id, serie, rotulo, valor, prefixo, cor, casas, rotularTodos) {
   const canvas = document.getElementById(id);
   if (!canvas || !serie.length) return;
   if (graficos[id]) graficos[id].destroy();
@@ -313,11 +311,18 @@ function grafico(id, serie, rotulo, valor, prefixo, cor, casas) {
         ctx.font = '800 14px system-ui, sans-serif';
         ctx.fillStyle = '#0f2460';
         ctx.textBaseline = 'bottom';
-        // Com um ponto só, primeiro e último caem no mesmo lugar — dois
-        // rótulos sobrepostos viram borrão. Aí, um só.
-        const marcas = pts.length < 2
-          ? [[0, 'left', 6]]
-          : [[0, 'left', 6], [pts.length-1, 'right', -6]];
+        // rotularTodos: o valor em cada ponto (dólar, 7 dias). Senão, só as
+        // pontas — e com um ponto só, um rótulo apenas, sem borrão.
+        let marcas;
+        if (rotularTodos) {
+          marcas = pts.map((_, i) => [i,
+            i === 0 ? 'left' : (i === pts.length-1 ? 'right' : 'center'),
+            i === 0 ? 4 : (i === pts.length-1 ? -4 : 0)]);
+        } else {
+          marcas = pts.length < 2
+            ? [[0, 'left', 6]]
+            : [[0, 'left', 6], [pts.length-1, 'right', -6]];
+        }
         marcas.forEach(([i, al, dx]) => {
           if (!pts[i]) return;
           ctx.textAlign = al;
