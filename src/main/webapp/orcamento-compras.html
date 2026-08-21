@@ -148,18 +148,33 @@
   table.q td.real-drill:hover { background: #dbe5f7; }
   table.q td.real-drill.aberto { background: #cfe0fb; }
 
-  /* Quarto nível: o item — material + fornecedor (compra) ou o contrato.
-     Mais recuado e mais claro; o texto pode quebrar, porque nome de material
-     com fornecedor é longo e cortar esconde justamente o endereço do gasto. */
-  table.q tr.item td { background: #f6f9fe; color: var(--ink-2); font-size: 11px;
-                       border-bottom: 1px solid #f0f3fa; }
-  table.q tr.item td.rot { padding-left: 84px; white-space: normal; }
-  table.q tr.item td.itemval { font-weight: 700; color: var(--ink); vertical-align: top; }
-  table.q tr.item .forn { color: var(--ink-3); font-weight: 700; }
-  table.q tr.item .refs { color: #2a78d6; font-weight: 700; margin-left: 5px; }
-  table.q tr.item .semdet { color: var(--ink-3); font-style: italic; }
-  table.q tr.item-msg td { background: #f6f9fe; }
-  table.q tr.item-msg td.rot { padding-left: 84px; color: var(--ink-3); font-size: 11px; }
+  /* Quarto nível: o item — material + fornecedor (compra) ou o contrato —
+     SALTA num modal, não abre embaixo da linha. */
+  .modal-itens { position: fixed; inset: 0; z-index: 2000; display: none;
+                 align-items: center; justify-content: center; padding: 24px;
+                 background: rgba(15,36,96,.45); }
+  .modal-itens.on { display: flex; }
+  .mi-caixa { background: #fff; border-radius: 16px; width: min(760px, 94vw); max-height: 86vh;
+              display: flex; flex-direction: column; overflow: hidden;
+              box-shadow: 0 24px 70px rgba(15,36,96,.42); }
+  .mi-topo { display: flex; align-items: flex-start; gap: 12px; padding: 16px 20px;
+             border-bottom: 1px solid #eef1f8; }
+  .mi-titulo { font-size: 16px; font-weight: 800; color: var(--ink); }
+  .mi-sub { font-size: 12px; font-weight: 700; color: var(--ink-3); margin-top: 2px; }
+  .mi-fechar { margin-left: auto; border: none; background: none; font-size: 26px; line-height: 1;
+               color: #94a0b8; cursor: pointer; padding: 0 2px; }
+  .mi-fechar:hover { color: var(--ink); }
+  .mi-corpo { overflow: auto; }
+  .mi-item { display: flex; gap: 14px; align-items: baseline; padding: 11px 20px;
+             border-bottom: 1px solid #f2f5fb; }
+  .mi-desc { flex: 1; min-width: 0; font-size: 13px; color: var(--ink); line-height: 1.35; }
+  .mi-desc .forn { color: var(--ink-3); font-weight: 700; }
+  .mi-desc .refs { color: #2a78d6; font-weight: 700; }
+  .mi-desc .semdet { color: var(--ink-3); font-style: italic; }
+  .mi-val { font-weight: 800; color: var(--ink); white-space: nowrap; }
+  .mi-vazio { padding: 26px 20px; color: var(--ink-3); font-size: 13px; }
+  .mi-rodape { display: flex; justify-content: space-between; padding: 12px 20px;
+               border-top: 1px solid #eef1f8; font-size: 12.5px; color: var(--ink-2); }
   table.q tfoot td { padding: 9px 10px; font-weight: 800; color: var(--ink); text-align: right;
                      border-top: 2px solid var(--borda); background: #eef2fa; }
   table.q tfoot td.rot { text-align: left; }
@@ -544,10 +559,10 @@ function quadro(grupos, mensal, acum, nomeMes, tp, tr, tap, tar) {
   // acaoReal: quando presente e há realizado, o VALOR REALIZADO vira o botão
   // que explode os itens (4º nível). É onde o clique faz sentido — o
   // realizado é a soma dos itens que estão embaixo dele.
-  const bloco = (p, r, primeiro, acaoReal, aberto) => {
+  const bloco = (p, r, primeiro, acaoReal) => {
     const d = p - r;
     const drill = (acaoReal && r)
-      ? ` class="real-drill${aberto ? ' aberto' : ''}" onclick="event.stopPropagation();${acaoReal}"`
+      ? ` class="real-drill" onclick="event.stopPropagation();${acaoReal}"`
         + ` title="Ver os itens deste realizado"`
       : '';
     return `<td class="plan ${primeiro?'divide':''}">${p?fmt0(p):''}</td>
@@ -566,7 +581,6 @@ function quadro(grupos, mensal, acum, nomeMes, tp, tr, tap, tar) {
       </tr>`;
     if (!aberto) return html;
 
-    const colItem = Math.max(1, colsMes + colsAcum);
     g.empenhos.forEach(e => {
       const abertoE = ABERTOS[e.chave];
       const vale = e.objetos.length > 1;
@@ -581,35 +595,26 @@ function quadro(grupos, mensal, acum, nomeMes, tp, tr, tap, tar) {
         </tr>`;
         if (abertoE) {
           html += e.objetos.map(o => {
-            const ko = e.chave + '|obj|' + (o.cod || o.nome);
-            const abertoO = ABERTOS[ko];
-            // No objeto (folha da hierarquia) o clique é no REALIZADO: é ele
-            // que explode nos itens (4º nível).
-            const acao = `alternarItens('${arg(ko)}','${arg(e.cod)}','${arg(o.cod || '')}')`;
-            let h = `
-            <tr class="objeto ${abertoO?'aberto':''}">
+            // No objeto o clique é no REALIZADO: ele SALTA os itens num modal.
+            const acao = acaoItens(e.cod, o.cod, o.nome, 'Empenho ' + e.cod + ' · ' + e.nome);
+            return `
+            <tr class="objeto">
               <td class="rot">${o.cod ? `<span class="cod">${esc(o.cod)}</span>` : ''}${esc(o.nome)}</td>
-              ${mensal ? bloco(o.mp, o.mr, true, acao, abertoO) : ''}
-              ${acum   ? bloco(o.ap, o.ar, true, acao, abertoO) : ''}
+              ${mensal ? bloco(o.mp, o.mr, true, acao) : ''}
+              ${acum   ? bloco(o.ap, o.ar, true, acao) : ''}
             </tr>`;
-            if (abertoO) h += linhasItens(chaveItens(e.cod, o.cod), colItem);
-            return h;
           }).join('');
         }
       } else {
-        // Um objeto só: o empenho JÁ É o objeto. O realizado dele explode nos
-        // itens direto, sem um nível intermediário que repetiria a linha.
+        // Um objeto só: o empenho JÁ É o objeto. O realizado dele salta os itens.
         const o0 = e.objetos[0] || {cod:'', nome:''};
-        const chaveItE = e.chave + '|itens';
-        const abertoItE = ABERTOS[chaveItE];
-        const acao = `alternarItens('${arg(chaveItE)}','${arg(e.cod)}','${arg(o0.cod || '')}')`;
+        const acao = acaoItens(e.cod, o0.cod, e.nome, 'Empenho ' + e.cod);
         html += `
-        <tr class="empenho ${abertoItE?'aberto':''}">
+        <tr class="empenho">
           <td class="rot"><span class="semseta"></span><span class="cod">${esc(e.cod)}</span>${esc(e.nome)}</td>
-          ${mensal ? bloco(e.mp, e.mr, true, acao, abertoItE) : ''}
-          ${acum   ? bloco(e.ap, e.ar, true, acao, abertoItE) : ''}
+          ${mensal ? bloco(e.mp, e.mr, true, acao) : ''}
+          ${acum   ? bloco(e.ap, e.ar, true, acao) : ''}
         </tr>`;
-        if (abertoItE) html += linhasItens(chaveItens(e.cod, o0.cod), colItem);
       }
     });
     return html;
@@ -638,53 +643,66 @@ function alternar(k) { ABERTOS[k] = !ABERTOS[k]; desenhar(); }
 /** Escapa uma string para dentro de um onclick com aspas simples. */
 function arg(s) { return esc(String(s == null ? '' : s)).replace(/'/g, "\\'"); }
 
-// ── Quarto nível: itens (material + fornecedor / contrato) ────────────────
+// ── Quarto nível: itens (material + fornecedor / contrato), num MODAL ──────
 //
-// O detalhe vem sob demanda, um objeto de custo por vez, e é guardado por
-// (empenho, objeto, meses escolhidos) — trocar de mês invalida a cópia. O
-// total dos itens PODE não fechar com o realizado do objeto; o número que
-// vale continua o do nível de cima. Aqui é só o endereço do gasto.
+// O detalhe SALTA na tela num modal — não abre embaixo da linha. Vem sob
+// demanda e é guardado por (empenho, objeto, meses escolhidos); trocar de mês
+// invalida a cópia. O total dos itens PODE não fechar com o realizado do
+// objeto; o número que vale continua o do nível de cima. Aqui é só o endereço
+// do gasto.
 const ITENS = {};
+
+/** Monta o onclick que abre o modal para (empenho, objeto). */
+function acaoItens(empenho, objeto, titulo, sub) {
+  return `abrirItens('${arg(empenho)}','${arg(objeto || '')}','${arg(titulo)}','${arg(sub)}')`;
+}
 
 function chaveItens(empenho, objeto) {
   return empenho + '|' + (objeto || '') + '|' + [...SEL].sort((a, b) => a - b).join(',');
 }
 
-async function alternarItens(chaveAberto, empenho, objeto) {
-  ABERTOS[chaveAberto] = !ABERTOS[chaveAberto];
-  if (ABERTOS[chaveAberto]) {
-    const ck = chaveItens(empenho, objeto);
-    if (!ITENS[ck]) {
-      ITENS[ck] = { carregando: true };
-      desenhar();
-      try {
-        const meses = [...SEL].join(',');
-        const url = 'api/orcamento-compras/itens?meses=' + encodeURIComponent(meses)
-                  + '&empenho=' + encodeURIComponent(empenho)
-                  + '&objeto=' + encodeURIComponent(objeto || '');
-        const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
-        const j = await r.json();
-        if (!j.ok) throw new Error(j.erro || 'Falha ao detalhar');
-        ITENS[ck] = { lista: j.itens || [], soma: j.soma || 0 };
-      } catch (e) {
-        ITENS[ck] = { erro: e.message || String(e) };
-      }
+async function abrirItens(empenho, objeto, titulo, sub) {
+  const modal = document.getElementById('modalItens');
+  document.getElementById('miTitulo').textContent = titulo || 'Itens do realizado';
+  document.getElementById('miSub').textContent = (sub ? sub + ' · ' : '') + rotuloSelecao();
+  modal.classList.add('on');
+
+  const ck = chaveItens(empenho, objeto);
+  if (!ITENS[ck]) {
+    ITENS[ck] = { carregando: true };
+    pintarItens(ck);
+    try {
+      const meses = [...SEL].join(',');
+      const url = 'api/orcamento-compras/itens?meses=' + encodeURIComponent(meses)
+                + '&empenho=' + encodeURIComponent(empenho)
+                + '&objeto=' + encodeURIComponent(objeto || '');
+      const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.erro || 'Falha ao detalhar');
+      ITENS[ck] = { lista: j.itens || [], soma: j.soma || 0 };
+    } catch (e) {
+      ITENS[ck] = { erro: e.message || String(e) };
     }
   }
-  desenhar();
+  pintarItens(ck);
 }
 
-/** As linhas de item de um objeto já aberto (ou o aviso de carregando/erro/vazio). */
-function linhasItens(ck, colspan) {
+function pintarItens(ck) {
   const it = ITENS[ck];
-  const msg = (t, cor) => `<tr class="item-msg"><td class="rot">${cor ? `<span style="color:${cor}">${esc(t)}</span>` : esc(t)}</td><td colspan="${colspan}"></td></tr>`;
-  if (!it || it.carregando) return msg('Carregando itens…');
-  if (it.erro)             return msg(it.erro, 'var(--desce)');
-  if (!it.lista.length)    return msg('Sem itens detalhados no período.');
-  return it.lista.map(x =>
-    `<tr class="item"><td class="rot">${rotuloItem(x)}</td>` +
-    `<td class="itemval" colspan="${colspan}">${x.valor ? fmt0(x.valor) : ''}</td></tr>`).join('');
+  const corpo = document.getElementById('miCorpo');
+  const rodape = document.getElementById('miRodape');
+  if (!it || it.carregando) { corpo.innerHTML = '<div class="mi-vazio">Carregando itens…</div>'; rodape.innerHTML = ''; return; }
+  if (it.erro)             { corpo.innerHTML = `<div class="mi-vazio" style="color:var(--desce)">${esc(it.erro)}</div>`; rodape.innerHTML = ''; return; }
+  if (!it.lista.length)    { corpo.innerHTML = '<div class="mi-vazio">Sem itens detalhados no período.</div>'; rodape.innerHTML = ''; return; }
+  corpo.innerHTML = it.lista.map(x =>
+    `<div class="mi-item"><div class="mi-desc">${rotuloItem(x)}</div>` +
+    `<div class="mi-val">${x.valor ? fmt0(x.valor) : ''}</div></div>`).join('');
+  rodape.innerHTML = `<span>${it.lista.length} item(ns)</span>`
+    + `<span>Soma dos itens: <b>${fmt0(it.soma || 0)}</b></span>`;
 }
+
+function fecharItens() { document.getElementById('modalItens').classList.remove('on'); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharItens(); });
 
 /** O rótulo do item: material + fornecedor (compra), o contrato, ou "sem detalhe". */
 function rotuloItem(x) {
@@ -795,6 +813,20 @@ function graficoAcumulado() {
 montarPeriodos();
 carregar();
 </script>
+<div class="modal-itens" id="modalItens" onclick="if(event.target===this)fecharItens()">
+  <div class="mi-caixa">
+    <div class="mi-topo">
+      <div>
+        <div class="mi-titulo" id="miTitulo">Itens do realizado</div>
+        <div class="mi-sub" id="miSub"></div>
+      </div>
+      <button class="mi-fechar" onclick="fecharItens()" title="Fechar (Esc)">×</button>
+    </div>
+    <div class="mi-corpo" id="miCorpo"></div>
+    <div class="mi-rodape" id="miRodape"></div>
+  </div>
+</div>
+
 <script src="js/icones-modulos.js?v=20260819a"></script>
 <script src="js/sidebar-nav.js?v=20260819a" defer></script>
 <script src="js/agro-chat-widget.js" defer></script>

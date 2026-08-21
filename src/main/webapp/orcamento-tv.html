@@ -166,6 +166,38 @@
            font-size: 17px; font-weight: 800; text-align: center; padding: 7px;
            display: none; z-index: 40; }
   .tarja.on { display: block; }
+
+  /* O valor realizado do objeto é clicável: salta os itens num modal. */
+  table.q td.real-drill { cursor: pointer; color: #1e3a8a; font-weight: 800;
+                          text-decoration: underline dotted; text-underline-offset: 3px; }
+
+  /* Modal dos itens — FORA do palco escalado, em pixels reais, legível de
+     qualquer distância. */
+  .modal-itens { position: fixed; inset: 0; z-index: 2000; display: none;
+                 align-items: center; justify-content: center; padding: 40px;
+                 background: rgba(15,36,96,.5); }
+  .modal-itens.on { display: flex; }
+  .mi-caixa { background: #fff; border-radius: 18px; width: min(900px, 90vw); max-height: 82vh;
+              display: flex; flex-direction: column; overflow: hidden;
+              box-shadow: 0 30px 90px rgba(15,36,96,.5);
+              font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+  .mi-topo { display: flex; align-items: flex-start; gap: 14px; padding: 20px 26px;
+             border-bottom: 1px solid #eef1f8; }
+  .mi-titulo { font-size: 22px; font-weight: 800; color: #0f2460; }
+  .mi-sub { font-size: 14px; font-weight: 700; color: #898781; margin-top: 3px; }
+  .mi-fechar { margin-left: auto; border: none; background: none; font-size: 34px; line-height: 1;
+               color: #94a0b8; cursor: pointer; }
+  .mi-corpo { overflow: auto; }
+  .mi-item { display: flex; gap: 18px; align-items: baseline; padding: 14px 26px;
+             border-bottom: 1px solid #f2f5fb; }
+  .mi-desc { flex: 1; min-width: 0; font-size: 17px; color: #0f2460; line-height: 1.35; }
+  .mi-desc .forn { color: #898781; font-weight: 700; }
+  .mi-desc .refs { color: #2a78d6; font-weight: 700; }
+  .mi-desc .semdet { color: #898781; font-style: italic; }
+  .mi-val { font-size: 18px; font-weight: 800; color: #0f2460; white-space: nowrap; }
+  .mi-vazio { padding: 32px 26px; color: #898781; font-size: 16px; }
+  .mi-rodape { display: flex; justify-content: space-between; padding: 16px 26px;
+               border-top: 1px solid #eef1f8; font-size: 15px; color: #52514e; }
 </style>
 </head>
 <body>
@@ -228,6 +260,20 @@
   </div>
 
 </div></div>
+
+<div class="modal-itens" id="modalItens" onclick="if(event.target===this)fecharItens()">
+  <div class="mi-caixa">
+    <div class="mi-topo">
+      <div>
+        <div class="mi-titulo" id="miTitulo">Itens do realizado</div>
+        <div class="mi-sub" id="miSub"></div>
+      </div>
+      <button class="mi-fechar" onclick="fecharItens()" title="Fechar (Esc)">×</button>
+    </div>
+    <div class="mi-corpo" id="miCorpo"></div>
+    <div class="mi-rodape" id="miRodape"></div>
+  </div>
+</div>
 
 <script src="js/chart.umd.min.js"></script>
 <script>
@@ -487,10 +533,14 @@ function desenhar() {
   document.getElementById('cExecBase').textContent =
     'acumulado ' + (exA === null ? '—' : fmt2(exA) + '%');
 
-  const bloco = (p, r) => {
+  // acaoReal: quando presente e há realizado, o VALOR REALIZADO vira o botão
+  // que SALTA os itens (material + fornecedor / contrato) num modal.
+  const bloco = (p, r, acaoReal) => {
     const d = p - r;
+    const drill = (acaoReal && r)
+      ? ` class="real-drill" onclick="event.stopPropagation();${acaoReal}"` : '';
     return `<td class="plan divide">${p?fmt0(p):''}</td>
-            <td>${r?fmt0(r):''}</td>
+            <td${drill}>${r?fmt0(r):''}</td>
             <td class="dif ${d>=0?'bem':'mal'}">${(p||r)?fmtDif(d):''}</td>
             <td class="pct ${classePct(pct(r,p))}">${pct(r,p)===null?'—':fmt2(pct(r,p))}</td>`;
   };
@@ -517,14 +567,20 @@ function desenhar() {
           // de fora, e uma seta que não revela nada ensina a desconfiar das
           // outras.
           const vale = e.objetos.length > 1;
+          // Objeto único: o realizado do empenho salta os itens. Vários
+          // objetos: a linha abre nos objetos, e o realizado de cada um salta.
+          const o0 = e.objetos[0] || {cod:'', nome:''};
+          const acaoE = vale ? null : acaoItens(e.cod, o0.cod, e.nome, 'Empenho ' + e.cod);
           return `<tr class="empenho ${vale?'expansivel':''} ${abertoE?'aberto':''}"
                       ${vale ? `onclick="alternarGrupo('${esc(e.chave).replace(/'/g,"\\'")}')"` : ''}>
             <td class="rot">${vale ? '<span class="seta">▶</span>' : '<span class="semseta"></span>'}<span class="cod">${esc(e.cod)}</span>${esc(e.nome)}</td>
-            ${bloco(e.mp,e.mr)}${bloco(e.ap,e.ar)}
-          </tr>` + ((vale && abertoE) ? e.objetos.map(o => `<tr class="objeto">
+            ${bloco(e.mp,e.mr,acaoE)}${bloco(e.ap,e.ar,acaoE)}
+          </tr>` + ((vale && abertoE) ? e.objetos.map(o => {
+            const acaoO = acaoItens(e.cod, o.cod, o.nome, 'Empenho ' + e.cod + ' · ' + e.nome);
+            return `<tr class="objeto">
             <td class="rot">${o.cod ? `<span class="cod">${esc(o.cod)}</span>` : ''}${esc(o.nome)}</td>
-            ${bloco(o.mp,o.mr)}${bloco(o.ap,o.ar)}
-          </tr>`).join('') : '');
+            ${bloco(o.mp,o.mr,acaoO)}${bloco(o.ap,o.ar,acaoO)}
+          </tr>`;}).join('') : '');
         }).join('') : '');
       }).join('')}</tbody>
       <tfoot><tr><td class="rot">Total</td>${bloco(tp,tr)}${bloco(tap,tar)}</tr></tfoot>
@@ -533,6 +589,80 @@ function desenhar() {
   encaixar();
   graficoMensal();
   graficoAcumulado();
+}
+
+// ── Itens (material + fornecedor / contrato), num MODAL que salta na tela ──
+//
+// Clicar no valor REALIZADO de um objeto abre um modal FORA do palco escalado
+// (por isso legível em qualquer distância). Vem sob demanda, guardado por
+// (empenho, objeto, meses). O total pode não fechar com o realizado — o número
+// que vale é o do quadro; aqui é só o endereço do gasto.
+const ITENS = {};
+
+function acaoItens(empenho, objeto, titulo, sub) {
+  const a = s => esc(String(s == null ? '' : s)).replace(/'/g, "\\'");
+  return `abrirItens('${a(empenho)}','${a(objeto || '')}','${a(titulo)}','${a(sub)}')`;
+}
+
+function chaveItens(empenho, objeto) {
+  return empenho + '|' + (objeto || '') + '|' + [...SEL].sort((a, b) => a - b).join(',');
+}
+
+async function abrirItens(empenho, objeto, titulo, sub) {
+  document.getElementById('miTitulo').textContent = titulo || 'Itens do realizado';
+  document.getElementById('miSub').textContent = (sub ? sub + ' · ' : '') + rotuloSelecao();
+  document.getElementById('modalItens').classList.add('on');
+
+  const ck = chaveItens(empenho, objeto);
+  if (!ITENS[ck]) {
+    ITENS[ck] = { carregando: true };
+    pintarItens(ck);
+    try {
+      const meses = [...SEL].join(',');
+      const url = 'api/orcamento-compras/itens?meses=' + encodeURIComponent(meses)
+                + '&empenho=' + encodeURIComponent(empenho)
+                + '&objeto=' + encodeURIComponent(objeto || '');
+      const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.erro || 'Falha ao detalhar');
+      ITENS[ck] = { lista: j.itens || [], soma: j.soma || 0 };
+    } catch (e) {
+      ITENS[ck] = { erro: e.message || String(e) };
+    }
+  }
+  pintarItens(ck);
+}
+
+function pintarItens(ck) {
+  const it = ITENS[ck];
+  const corpo = document.getElementById('miCorpo');
+  const rodape = document.getElementById('miRodape');
+  if (!it || it.carregando) { corpo.innerHTML = '<div class="mi-vazio">Carregando itens…</div>'; rodape.innerHTML = ''; return; }
+  if (it.erro)             { corpo.innerHTML = `<div class="mi-vazio" style="color:#d03b3b">${esc(it.erro)}</div>`; rodape.innerHTML = ''; return; }
+  if (!it.lista.length)    { corpo.innerHTML = '<div class="mi-vazio">Sem itens detalhados no período.</div>'; rodape.innerHTML = ''; return; }
+  corpo.innerHTML = it.lista.map(x =>
+    `<div class="mi-item"><div class="mi-desc">${rotuloItem(x)}</div>` +
+    `<div class="mi-val">${x.valor ? fmt0(x.valor) : ''}</div></div>`).join('');
+  rodape.innerHTML = `<span>${it.lista.length} item(ns)</span>`
+    + `<span>Soma dos itens: <b>${fmt0(it.soma || 0)}</b></span>`;
+}
+
+function fecharItens() { document.getElementById('modalItens').classList.remove('on'); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharItens(); });
+
+function rotuloItem(x) {
+  if (x.origem === 'contrato' && x.contrato) return `📄 Contrato ${esc(x.contrato)}`;
+  if (x.material || x.fornecedor) {
+    let s = esc(x.material || '(material sem descrição)');
+    if (x.fornecedor) s += ` · <span class="forn">${esc(x.fornecedor)}</span>`;
+    const refs = [];
+    if (x.cotacao)     refs.push('Cot ' + esc(x.cotacao));
+    if (x.nroc)        refs.push('OC ' + esc(x.nroc));
+    if (x.solicitacao) refs.push('Sol ' + esc(x.solicitacao));
+    if (refs.length) s += ` <span class="refs">${refs.join(' · ')}</span>`;
+    return s;
+  }
+  return '<span class="semdet">sem detalhe de compra</span>';
 }
 
 /**
