@@ -148,6 +148,18 @@
              border-radius: 50%; animation: spin .8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
+  /* Selo discreto: a situação da safra do ERP carrega em segundo plano, com o
+     mapa já à disposição. Não cobre nada nem intercepta o toque. */
+  .badge-carregando {
+    position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+    z-index: 900; display: none; align-items: center; gap: 8px;
+    background: rgba(255,255,255,.96); border: 1px solid #e3e8f5; border-radius: 999px;
+    box-shadow: 0 4px 14px rgba(15,36,96,.14); padding: 7px 14px 7px 11px;
+    font-size: 12.5px; font-weight: 600; color: #475569; pointer-events: none; white-space: nowrap;
+  }
+  .badge-carregando.on { display: flex; }
+  .badge-carregando .spinner { width: 15px; height: 15px; border-width: 2px; }
+
   /* ── Onde estou: cartão fixo do talhão sob o GPS ── */
   .cartao-gps {
     position: absolute; left: 12px; right: 12px; bottom: 12px; z-index: 900;
@@ -314,6 +326,7 @@
 <div class="corpo">
   <div id="mapa" style="position:relative">
     <div class="carregando" id="carregando"><div class="spinner"></div><span id="carregandoTxt">Carregando mapa…</span></div>
+    <div class="badge-carregando" id="badgeCarregando"><div class="spinner"></div><span id="badgeCarregandoTxt">Atualizando situação…</span></div>
     <div class="tarja" id="tarjaErro" style="background:#fef2f2;border-color:#d03b3b;color:#991b1b;
          max-width:min(560px,92%);white-space:normal;text-align:center;line-height:1.45"></div>
     <div class="grav" id="painelGrav">
@@ -1707,7 +1720,10 @@ async function carregarSafras() {
 async function carregarDados() {
   const safra = document.getElementById('selSafra').value;
   if (!safra) return;
-  mostrarCarregando('Consultando talhões da safra…');
+  // Selo discreto, não o véu que cobre o mapa: o desenho dos talhões já está
+  // na tela e a pessoa pode navegar; a situação do ERP chega em segundo plano
+  // e recolore os talhões quando vier.
+  mostrarBadge('Atualizando situação dos talhões…');
   try {
     const r = await fetch('api/mapa-talhoes?safra=' + encodeURIComponent(safra));
     const j = await r.json();
@@ -1743,7 +1759,7 @@ async function carregarDados() {
     montarLegenda();
     aplicarFiltros();
   } finally {
-    esconderCarregando();
+    esconderBadge();
   }
 }
 
@@ -1752,6 +1768,12 @@ function mostrarCarregando(txt) {
   document.getElementById('carregando').style.display = 'flex';
 }
 function esconderCarregando() { document.getElementById('carregando').style.display = 'none'; }
+
+function mostrarBadge(txt) {
+  document.getElementById('badgeCarregandoTxt').textContent = txt;
+  document.getElementById('badgeCarregando').classList.add('on');
+}
+function esconderBadge() { document.getElementById('badgeCarregando').classList.remove('on'); }
 
 // ── Versão nova publicada no servidor ────────────────────────────────────
 //
@@ -1943,6 +1965,11 @@ async function aoVoltar(forcar) {
     }
   }).addTo(MAPA);
   enquadrarPrincipal();
+
+  // O desenho já está na tela: solta o mapa. A situação da safra (o ERP, que
+  // é a parte lenta) carrega em segundo plano com o selo, sem prender quem já
+  // quer navegar, medir uma trilha ou ver onde está.
+  esconderCarregando();
 
   // 2. Safras + dados do ERP. Os parâmetros vêm antes porque decidem quais
   // safras entram na lista e com qual delas a tela abre.
