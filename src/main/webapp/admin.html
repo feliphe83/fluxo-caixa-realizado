@@ -207,6 +207,10 @@
       <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><line x1="9" y1="7" x2="16" y2="7"/><line x1="9" y1="11" x2="16" y2="11"/></svg>
       Índice Contábil
     </div>
+    <div class="sb-item" id="nav-precocana" onclick="setSec('precocana')">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><path d="M12 22c4-4 6-8 6-12a6 6 0 00-12 0c0 4 2 8 6 12z"/><path d="M12 10v8"/></svg>
+      Preço da Cana
+    </div>
     <div class="sb-item" id="nav-parametros" onclick="setSec('parametros')">
       <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9c.14.36.46.63.85.74H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
       Parâmetros gerais
@@ -263,6 +267,7 @@
       <button class="tab"    id="tab-externo"     onclick="setSec('externo')">🚛 Empresas Externas</button>
       <button class="tab"    id="tab-paradas"     onclick="setSec('paradas')">🛑 Paradas da Moagem</button>
       <button class="tab"    id="tab-indicecontabil" onclick="setSec('indicecontabil')">📒 Índice Contábil</button>
+      <button class="tab"    id="tab-precocana"   onclick="setSec('precocana')">🌱 Preço da Cana</button>
       <button class="tab"    id="tab-parametros"  onclick="setSec('parametros')">⚙️ Parâmetros gerais</button>
     </div>
 
@@ -738,6 +743,37 @@
                      <th>Arquivo</th><th style="width:90px">Contas</th><th style="width:130px">Quem</th></tr></thead>
           <tbody id="icHistorico">
             <tr><td colspan="5" style="text-align:center;padding:26px;color:var(--text3)">Carregando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="sec" id="sec-precocana">
+      <div class="panel" style="margin-bottom:20px">
+        <div class="ph"><div class="ph-title">Preço da cana — CONSECANA-AL/SE</div></div>
+        <div style="padding:14px 20px 6px;font-size:12.5px;color:var(--text2);line-height:1.65">
+          O painel de <b>Indicadores</b> mostra os últimos meses do preço do kg de ATR. A
+          publicação é mensal e vem em <b>PDF</b> do sindicato — importe aqui e o painel
+          se atualiza sozinho, sem depender de deploy. Cada PDF é de um mês; reimportar o
+          mesmo mês só regrava aquela linha.
+        </div>
+        <div style="padding:6px 20px 18px">
+          <input type="file" id="pcArquivo" accept="application/pdf,.pdf"
+                 style="font-size:13px;color:var(--text2);width:100%">
+          <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+            <button class="btn-primary" onclick="pcImportar()">Importar o PDF</button>
+          </div>
+          <div id="pcSaida" style="margin-top:14px"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="ph"><div class="ph-title">Meses gravados</div></div>
+        <table>
+          <thead><tr><th>Mês</th><th style="width:180px">Bruto (R$/kg ATR)</th>
+                     <th style="width:180px">Líquido (R$/kg ATR)</th></tr></thead>
+          <tbody id="pcTabela">
+            <tr><td colspan="3" style="text-align:center;padding:26px;color:var(--text3)">Carregando…</td></tr>
           </tbody>
         </table>
       </div>
@@ -1257,6 +1293,11 @@ function setSec(s) {
     document.getElementById('tsub').textContent='De-para entre conta contábil e linha do Demonstrativo e do Balanço';
     document.getElementById('btnAcao').style.display='none';
     icStatus();
+  } else if(s==='precocana'){
+    document.getElementById('ttitle').textContent='Preço da Cana';
+    document.getElementById('tsub').textContent='Importe o PDF do CONSECANA-AL e o painel de Indicadores se atualiza sozinho';
+    document.getElementById('btnAcao').style.display='none';
+    pcStatus();
   } else if(s==='servicoscorte'){
     document.getElementById('ttitle').textContent='Serviços de Corte';
     document.getElementById('tsub').textContent='Quais tipos de serviço contam como corte de cana (Controle de Serviços Agrícola)';
@@ -3077,6 +3118,52 @@ async function icLimpar(painel) {
                               j.ok ? '#4ade80' : '#ff8080');
     document.getElementById('icAplicar' + icCap(painel)).style.display = 'none';
     icStatus();
+  } catch (e) {
+    saida.innerHTML = icAviso(e.message || String(e), '#ff8080');
+  }
+}
+
+// ── Preço da cana (import do PDF do CONSECANA) ─────────────────────
+async function pcStatus() {
+  try {
+    const r = await fetch('api/admin/preco-cana/status', {headers:{'Accept':'application/json'}});
+    const j = await r.json();
+    pcRender(j.ok ? j.meses : []);
+  } catch (e) {
+    document.getElementById('pcTabela').innerHTML =
+      `<tr><td colspan="3" style="text-align:center;padding:22px;color:#ff8080">${icEsc(e.message||e)}</td></tr>`;
+  }
+}
+
+function pcRender(meses) {
+  const tb = document.getElementById('pcTabela');
+  if (!meses || !meses.length) {
+    tb.innerHTML = `<tr><td colspan="3" style="text-align:center;padding:26px;color:var(--text3)">Nada gravado ainda.</td></tr>`;
+    return;
+  }
+  const n = v => Number(v).toLocaleString('pt-BR', {minimumFractionDigits:4, maximumFractionDigits:4});
+  tb.innerHTML = meses.map(m => `<tr>
+      <td><b>${icEsc(m.mes)}</b></td><td>${n(m.bruto)}</td><td>${n(m.liquido)}</td>
+    </tr>`).join('');
+}
+
+async function pcImportar() {
+  const saida = document.getElementById('pcSaida');
+  const arq = document.getElementById('pcArquivo').files[0];
+  if (!arq) { saida.innerHTML = icAviso('Escolha o PDF do CONSECANA primeiro.', '#ff8080'); return; }
+  saida.innerHTML = icAviso('Lendo o PDF…', 'var(--text3)');
+  try {
+    const fd = new FormData();
+    fd.append('arquivo', arq);
+    const r = await fetch('api/admin/preco-cana/importar', {method:'POST', body: fd});
+    const j = await r.json();
+    if (!j.ok) { saida.innerHTML = icAviso(j.erro || 'Não consegui ler o PDF', '#ff8080'); return; }
+    const l = j.lido;
+    const n = v => Number(v).toLocaleString('pt-BR', {minimumFractionDigits:4, maximumFractionDigits:4});
+    saida.innerHTML = icAviso(`✓ ${icEsc(j.mensagem)} — bruto ${n(l.bruto)} · líquido ${n(l.liquido)} `
+      + `· acumulado ${n(l.acumBruto)}/${n(l.acumLiquido)}`, '#4ade80');
+    document.getElementById('pcArquivo').value = '';
+    pcRender(j.meses);
   } catch (e) {
     saida.innerHTML = icAviso(e.message || String(e), '#ff8080');
   }

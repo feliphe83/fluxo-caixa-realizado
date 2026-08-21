@@ -186,10 +186,38 @@ public class IndicadoresEconomicosServlet extends HttpServlet {
         return o;
     }
 
-    // ── Preço da cana (Sindaçúcar/AL) ─────────────────────────────────────
+    // ── Preço da cana (CONSECANA-AL) ──────────────────────────────────────
 
-    /** Tabela digitada, do recurso — o sindicato não publica por API. */
+    private static final br.com.lopes.fluxo.dao.PrecoCanaDAO PRECO_CANA =
+            new br.com.lopes.fluxo.dao.PrecoCanaDAO();
+
+    /**
+     * Últimos meses do preço do kg de ATR, do banco (alimentado pelo import do
+     * PDF do CONSECANA na administração). Se o banco não tiver nada, cai para
+     * o CSV embutido — assim o painel nunca fica sem a tabela.
+     */
     static JsonArray precoCana() {
+        try {
+            java.util.List<br.com.lopes.fluxo.dao.PrecoCanaDAO.Linha> linhas = PRECO_CANA.ultimos(4);
+            if (linhas != null && !linhas.isEmpty()) {
+                JsonArray arr = new JsonArray();
+                for (var l : linhas) {
+                    JsonObject o = new JsonObject();
+                    o.addProperty("mes", l.rotulo());
+                    o.addProperty("bruto", l.bruto());
+                    o.addProperty("liquido", l.liquido());
+                    arr.add(o);
+                }
+                return arr;
+            }
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "Preço da cana do banco indisponível; usando o CSV", e);
+        }
+        return precoCanaCsv();
+    }
+
+    /** Reserva: a tabela digitada no recurso, para quando o banco não responde. */
+    static JsonArray precoCanaCsv() {
         JsonArray arr = new JsonArray();
         try (InputStream in = IndicadoresEconomicosServlet.class
                 .getResourceAsStream("/preco-cana-sindacucar.csv")) {

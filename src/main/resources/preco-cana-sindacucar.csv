@@ -1,11 +1,13 @@
-# Preço da cana-de-açúcar — Sindaçúcar/AL.
+# Preço da cana-de-açúcar — CONSECANA-AL/SE (reserva).
 #
-# Publicação mensal, sem API: é digitada aqui. Formato:
-#   mes;valor bruto;valor liquido      (use ponto como separador decimal)
-# A linha "Acumulado" é a da própria publicação, e NÃO é calculada a partir
-# das outras — média de safra tem ponderação por tonelagem, e recalcular
-# aqui daria um número diferente do que o sindicato divulgou.
-Mar/2025;1.4875;1.4644
-Abr/2025;1.4867;1.4664
-Mai/2025;1.5320;1.5090
-Acumulado;1.4772;1.4501
+# Esta é a CÓPIA DE RESERVA: o painel lê do banco (fc_preco_cana), alimentado
+# pelo import do PDF na administração. Isto aqui só entra em cena se o banco
+# não responder, para o painel nunca ficar sem a tabela.
+#   mes;bruto;liquido      (ponto como separador decimal)
+# Bruto = participação da matéria-prima (60%); líquido = após deduções (1,5%).
+# A linha "Acumulado" é a da publicação mais recente semeada.
+Abr/2026;1.2237;1.2053
+Mai/2026;1.1696;1.1521
+Jun/2026;1.1896;1.1718
+Jul/2026;1.2925;1.2731
+Acumulado;1.1989;1.1809
