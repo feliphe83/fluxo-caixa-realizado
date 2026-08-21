@@ -83,6 +83,13 @@
   .nt-tit { font-size: 14.5px; font-weight: 700; color: var(--ink); line-height: 1.22;
             display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .nt-meta { font-size: 12px; font-weight: 700; color: var(--ink-3); margin-top: 2px; }
+
+  /* Notícias do etanol no espaço que sobra sob a tabela de produtos. */
+  .prod-noticias { margin-top: 12px; flex: 1; min-height: 0; overflow: hidden;
+                   border-top: 1px solid #eef1f8; padding-top: 10px; }
+  .prod-noticias h3 { font-size: 13px; font-weight: 800; color: var(--ink); margin-bottom: 4px;
+                      text-transform: uppercase; letter-spacing: .6px; display: flex; align-items: center; gap: 7px; }
+  .prod-noticias h3 .pt { width: 9px; height: 9px; border-radius: 50%; background: var(--cor, var(--ink)); }
   .bloco { background: var(--papel); border: 1px solid var(--borda); border-radius: 13px;
            padding: 12px 18px 14px; min-height: 0; overflow: hidden;
            display: flex; flex-direction: column; }
@@ -241,10 +248,15 @@ function desenhar() {
       <div class="fonte">Sindaçúcar/AL · R$ por kg de ATR</div></div></div>
     ${tabelaCana(d.precoCana)}`;
 
+  const noticiasEtanol = ((d.noticias && d.noticias.dado) || {}).etanol || [];
   document.getElementById('bProdutos').innerHTML = `
     <div class="cab"><div><h2>Preço dos produtos</h2>
       <div class="fonte">CEPEA/ESALQ e bolsa, já convertidos</div></div>${idade(d.cepea)}</div>
-    ${tabelaProdutos(d.produtos)}`;
+    ${tabelaProdutos(d.produtos)}
+    <div class="prod-noticias">
+      <h3><span class="pt" style="--cor:var(--serie-3)"></span>Notícias do etanol</h3>
+      ${listaNoticias(noticiasEtanol)}
+    </div>`;
 
   document.getElementById('bNoticias').innerHTML = `
     <div class="cab"><div><h2>Notícias</h2>

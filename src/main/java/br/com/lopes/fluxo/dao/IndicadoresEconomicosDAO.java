@@ -439,6 +439,9 @@ public class IndicadoresEconomicosDAO {
             // "dólar cotação", que trazia matéria de mercado estrangeiro) e
             // tem volume para render notícia de poucas horas atrás.
             o.add("dolar",  manchetes("dólar real", 6));
+            // "etanol" entre aspas força a palavra em toda manchete — sem as
+            // aspas, o "preço" sozinho trazia matéria de açúcar.
+            o.add("etanol", manchetes("\"etanol\" preço OR combustível OR hidratado", 5));
             return o;
         });
     }
