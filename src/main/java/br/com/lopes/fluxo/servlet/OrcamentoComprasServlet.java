@@ -77,6 +77,10 @@ public class OrcamentoComprasServlet extends HttpServlet {
                 escrever(resp, GSON.toJson(o));
                 return;
             }
+            if ("/itens".equals(rota)) {
+                escrever(resp, GSON.toJson(itens(req)));
+                return;
+            }
 
             escrever(resp, GSON.toJson(montar(periodo[0], periodo[1],
                     req.getParameter("negocio"), dao.buscar(periodo[0], periodo[1], null),
@@ -118,6 +122,59 @@ public class OrcamentoComprasServlet extends HttpServlet {
     private void escrever(HttpServletResponse resp, String corpo) throws IOException {
         resp.getWriter().print(corpo);
         resp.getWriter().flush();
+    }
+
+    // ── Itens (4º nível: material + fornecedor / contrato) ────────────────
+
+    private JsonObject itens(HttpServletRequest req) {
+        JsonObject r = new JsonObject();
+        int[] meses = mesesDe(req.getParameter("meses"));
+        int empenho = req.getParameter("empenho") != null
+                && req.getParameter("empenho").trim().matches("-?\\d+")
+                ? Integer.parseInt(req.getParameter("empenho").trim()) : Integer.MIN_VALUE;
+        String objeto = req.getParameter("objeto");
+        if (meses.length == 0 || empenho == Integer.MIN_VALUE) {
+            r.addProperty("ok", false);
+            r.addProperty("erro", "informe ao menos um mês e o empenho");
+            return r;
+        }
+        List<Map<String, Object>> linhas = dao.itens(meses, empenho, objeto);
+        JsonArray arr = new JsonArray();
+        double soma = 0;
+        for (Map<String, Object> l : linhas) {
+            double v = decimal(l.get("valor")).doubleValue();
+            soma += v;
+            JsonObject o = new JsonObject();
+            o.addProperty("anomes", decimal(l.get("anomes")).intValue());
+            o.addProperty("valor", v);
+            o.addProperty("origem", texto(l.get("origem")));
+            o.addProperty("codMaterial", texto(l.get("cod_material")));
+            o.addProperty("material", texto(l.get("descricao_material")));
+            o.addProperty("codFornecedor", texto(l.get("cod_fornecedor")));
+            o.addProperty("fornecedor", texto(l.get("nome_fornecedor")));
+            o.addProperty("nroc", texto(l.get("nroc")));
+            o.addProperty("cotacao", texto(l.get("nr_cotacao")));
+            o.addProperty("solicitacao", texto(l.get("nr_solicitacao")));
+            o.addProperty("contrato", texto(l.get("numerocontrato")));
+            arr.add(o);
+        }
+        r.addProperty("ok", true);
+        r.add("itens", arr);
+        r.addProperty("soma", soma);
+        return r;
+    }
+
+    /** "202509,202510" -> {202509,202510}; ignora o que não for AAAAMM válido. */
+    static int[] mesesDe(String v) {
+        if (v == null || v.isBlank()) return new int[0];
+        java.util.List<Integer> ms = new java.util.ArrayList<>();
+        for (String p : v.split(",")) {
+            Integer a = anomes(p);
+            if (a != null && !ms.contains(a)) ms.add(a);
+        }
+        int[] out = new int[ms.size()];
+        for (int i = 0; i < out.length; i++) out[i] = ms.get(i);
+        return out;
     }
 
     // ── Montagem ──────────────────────────────────────────────────────────

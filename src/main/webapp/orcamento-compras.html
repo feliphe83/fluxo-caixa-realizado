@@ -140,6 +140,24 @@
   table.q tr.objeto td { background: #eef2fa; color: var(--ink-2); font-size: 11.5px; }
   table.q tr.objeto td.rot { padding-left: 60px; }
   table.q tr.objeto .cod { color: var(--ink-3); font-weight: 700; margin-right: 7px; }
+  table.q tr.objeto.expansivel { cursor: pointer; }
+  table.q tr.objeto.expansivel:hover td { background: #e5ebf7; }
+  table.q tr.objeto .seta { display: inline-block; width: 12px; color: var(--ink-3);
+                            transition: transform .15s; }
+  table.q tr.objeto.aberto .seta { transform: rotate(90deg); }
+
+  /* Quarto nível: o item — material + fornecedor (compra) ou o contrato.
+     Mais recuado e mais claro; o texto pode quebrar, porque nome de material
+     com fornecedor é longo e cortar esconde justamente o endereço do gasto. */
+  table.q tr.item td { background: #f6f9fe; color: var(--ink-2); font-size: 11px;
+                       border-bottom: 1px solid #f0f3fa; }
+  table.q tr.item td.rot { padding-left: 84px; white-space: normal; }
+  table.q tr.item td.itemval { font-weight: 700; color: var(--ink); vertical-align: top; }
+  table.q tr.item .forn { color: var(--ink-3); font-weight: 700; }
+  table.q tr.item .refs { color: #2a78d6; font-weight: 700; margin-left: 5px; }
+  table.q tr.item .semdet { color: var(--ink-3); font-style: italic; }
+  table.q tr.item-msg td { background: #f6f9fe; }
+  table.q tr.item-msg td.rot { padding-left: 84px; color: var(--ink-3); font-size: 11px; }
   table.q tfoot td { padding: 9px 10px; font-weight: 800; color: var(--ink); text-align: right;
                      border-top: 2px solid var(--borda); background: #eef2fa; }
   table.q tfoot td.rot { text-align: left; }
@@ -539,26 +557,44 @@ function quadro(grupos, mensal, acum, nomeMes, tp, tr, tap, tar) {
       </tr>`;
     if (!aberto) return html;
 
+    const colItem = Math.max(1, colsMes + colsAcum);
     g.empenhos.forEach(e => {
       const abertoE = ABERTOS[e.chave];
-      // Empenho com um objeto de custo só não abre: a linha de dentro
-      // repetiria a de fora, e uma seta que não revela nada ensina a
-      // desconfiar das outras.
+      // Empenho com um objeto de custo só não abre em objetos: a linha de
+      // dentro repetiria a de fora. Mas ele mesmo abre nos ITENS do seu
+      // único objeto, para o detalhe de material/fornecedor ficar a um
+      // clique também nesse caso.
       const vale = e.objetos.length > 1;
+      const objUnico = vale ? null : (e.objetos[0] || {cod:'', nome:''});
+      const chaveItE = e.chave + '|itens';
+      const abertoItE = !vale && ABERTOS[chaveItE];
+      const acaoE = vale
+        ? `alternar('${arg(e.chave)}')`
+        : `alternarItens('${arg(chaveItE)}', '${arg(e.cod)}', '${arg(objUnico.cod || '')}')`;
       html += `
-        <tr class="empenho ${vale?'expansivel':''} ${abertoE?'aberto':''}"
-            ${vale ? `onclick="alternar('${esc(e.chave).replace(/'/g,"\\'")}')"` : ''}>
-          <td class="rot">${vale ? '<span class="seta">▶</span>' : '<span class="semseta"></span>'}<span class="cod">${esc(e.cod)}</span>${esc(e.nome)}</td>
+        <tr class="empenho expansivel ${abertoE||abertoItE?'aberto':''}"
+            onclick="${acaoE}">
+          <td class="rot"><span class="seta">▶</span><span class="cod">${esc(e.cod)}</span>${esc(e.nome)}</td>
           ${mensal ? bloco(e.mp, e.mr, true) : ''}
           ${acum   ? bloco(e.ap, e.ar, true) : ''}
         </tr>`;
+      if (!vale && abertoItE) {
+        html += linhasItens(chaveItens(e.cod, objUnico.cod), colItem);
+      }
       if (vale && abertoE) {
-        html += e.objetos.map(o => `
-          <tr class="objeto">
-            <td class="rot">${o.cod ? `<span class="cod">${esc(o.cod)}</span>` : ''}${esc(o.nome)}</td>
+        html += e.objetos.map(o => {
+          const ko = e.chave + '|obj|' + (o.cod || o.nome);
+          const abertoO = ABERTOS[ko];
+          let h = `
+          <tr class="objeto expansivel ${abertoO?'aberto':''}"
+              onclick="alternarItens('${arg(ko)}', '${arg(e.cod)}', '${arg(o.cod || '')}')">
+            <td class="rot"><span class="seta">▶</span>${o.cod ? `<span class="cod">${esc(o.cod)}</span>` : ''}${esc(o.nome)}</td>
             ${mensal ? bloco(o.mp, o.mr, true) : ''}
             ${acum   ? bloco(o.ap, o.ar, true) : ''}
-          </tr>`).join('');
+          </tr>`;
+          if (abertoO) h += linhasItens(chaveItens(e.cod, o.cod), colItem);
+          return h;
+        }).join('');
       }
     });
     return html;
@@ -583,6 +619,73 @@ function fmtDif(d) {
 }
 
 function alternar(k) { ABERTOS[k] = !ABERTOS[k]; desenhar(); }
+
+/** Escapa uma string para dentro de um onclick com aspas simples. */
+function arg(s) { return esc(String(s == null ? '' : s)).replace(/'/g, "\\'"); }
+
+// ── Quarto nível: itens (material + fornecedor / contrato) ────────────────
+//
+// O detalhe vem sob demanda, um objeto de custo por vez, e é guardado por
+// (empenho, objeto, meses escolhidos) — trocar de mês invalida a cópia. O
+// total dos itens PODE não fechar com o realizado do objeto; o número que
+// vale continua o do nível de cima. Aqui é só o endereço do gasto.
+const ITENS = {};
+
+function chaveItens(empenho, objeto) {
+  return empenho + '|' + (objeto || '') + '|' + [...SEL].sort((a, b) => a - b).join(',');
+}
+
+async function alternarItens(chaveAberto, empenho, objeto) {
+  ABERTOS[chaveAberto] = !ABERTOS[chaveAberto];
+  if (ABERTOS[chaveAberto]) {
+    const ck = chaveItens(empenho, objeto);
+    if (!ITENS[ck]) {
+      ITENS[ck] = { carregando: true };
+      desenhar();
+      try {
+        const meses = [...SEL].join(',');
+        const url = 'api/orcamento-compras/itens?meses=' + encodeURIComponent(meses)
+                  + '&empenho=' + encodeURIComponent(empenho)
+                  + '&objeto=' + encodeURIComponent(objeto || '');
+        const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
+        const j = await r.json();
+        if (!j.ok) throw new Error(j.erro || 'Falha ao detalhar');
+        ITENS[ck] = { lista: j.itens || [], soma: j.soma || 0 };
+      } catch (e) {
+        ITENS[ck] = { erro: e.message || String(e) };
+      }
+    }
+  }
+  desenhar();
+}
+
+/** As linhas de item de um objeto já aberto (ou o aviso de carregando/erro/vazio). */
+function linhasItens(ck, colspan) {
+  const it = ITENS[ck];
+  const msg = (t, cor) => `<tr class="item-msg"><td class="rot">${cor ? `<span style="color:${cor}">${esc(t)}</span>` : esc(t)}</td><td colspan="${colspan}"></td></tr>`;
+  if (!it || it.carregando) return msg('Carregando itens…');
+  if (it.erro)             return msg(it.erro, 'var(--desce)');
+  if (!it.lista.length)    return msg('Sem itens detalhados no período.');
+  return it.lista.map(x =>
+    `<tr class="item"><td class="rot">${rotuloItem(x)}</td>` +
+    `<td class="itemval" colspan="${colspan}">${x.valor ? fmt0(x.valor) : ''}</td></tr>`).join('');
+}
+
+/** O rótulo do item: material + fornecedor (compra), o contrato, ou "sem detalhe". */
+function rotuloItem(x) {
+  if (x.origem === 'contrato' && x.contrato) return `📄 Contrato ${esc(x.contrato)}`;
+  if (x.material || x.fornecedor) {
+    let s = esc(x.material || '(material sem descrição)');
+    if (x.fornecedor) s += ` · <span class="forn">${esc(x.fornecedor)}</span>`;
+    const refs = [];
+    if (x.cotacao)     refs.push('Cot ' + esc(x.cotacao));
+    if (x.nroc)        refs.push('OC ' + esc(x.nroc));
+    if (x.solicitacao) refs.push('Sol ' + esc(x.solicitacao));
+    if (refs.length) s += ` <span class="refs">${refs.join(' · ')}</span>`;
+    return s;
+  }
+  return '<span class="semdet">sem detalhe de compra</span>';
+}
 
 // ── Gráficos ────────────────────────────────────────────────────────────
 /**

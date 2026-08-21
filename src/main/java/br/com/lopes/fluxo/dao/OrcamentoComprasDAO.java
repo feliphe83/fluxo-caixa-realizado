@@ -189,6 +189,72 @@ public class OrcamentoComprasDAO {
         }
     }
 
+    // ── Detalhe do item (4º nível) ────────────────────────────────────────
+
+    private static final String RECURSO_SQL_ITENS = "/sql/orcamento-compras-itens.sql";
+    private static volatile String sqlItens;
+
+    /**
+     * Os itens de um objeto de custo dentro de um empenho, no(s) mês(es)
+     * escolhido(s): o realizado aberto até material + fornecedor (compra) ou
+     * número do contrato (parcela de contrato).
+     *
+     * O total dos itens PODE não fechar com o realizado do objeto — o valor
+     * que manda continua o do nível de cima, calculado pelo dashboard. Aqui é
+     * só o detalhe de onde o dinheiro foi.
+     *
+     * @param meses   os anomes selecionados (ex.: {202509, 202510})
+     * @param empenho o código do empenho aberto
+     * @param objeto  o código do objeto de custo clicado; vazio = "sem objeto"
+     */
+    public List<Map<String, Object>> itens(int[] meses, int empenho, String objeto) {
+        try (Connection conn = OracleConnectionUtil.getConnection()) {
+            String coluna = descobrirColunaObjeto(conn);
+            if (coluna == null || coluna.isEmpty()) {
+                throw new IllegalStateException("Sem coluna de objeto de custo nesta base — "
+                        + "não dá para detalhar o item.");
+            }
+            boolean temObjeto = objeto != null && !objeto.isBlank();
+            String sql = baseItens()
+                    .replace("%FILTRO_ANOMES%", "and r.anomes in (" + inMeses(meses) + ")")
+                    .replace("%FILTRO_OBJETO%", temObjeto
+                            ? "and r." + coluna + " = ?"
+                            : "and r." + coluna + " is null");
+
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setInt(1, empenho);
+                if (temObjeto) ps.setString(2, objeto.trim());
+                try (ResultSet rs = ps.executeQuery()) {
+                    return RowMapperUtil.toList(rs);
+                }
+            }
+        } catch (SQLException e) {
+            LOG.log(Level.SEVERE, "Erro ao detalhar os itens do orçamento de compras", e);
+            throw new RuntimeException(mensagem(e), e);
+        }
+    }
+
+    /** Os meses como lista para o IN, já validados como inteiros. "-1" se vazio (não casa nada). */
+    private static String inMeses(int[] meses) {
+        if (meses == null || meses.length == 0) return "-1";
+        StringBuilder sb = new StringBuilder();
+        for (int m : meses) { if (sb.length() > 0) sb.append(','); sb.append(m); }
+        return sb.toString();
+    }
+
+    private static String baseItens() {
+        String cache = sqlItens;
+        if (cache != null) return cache;
+        try (InputStream in = OrcamentoComprasDAO.class.getResourceAsStream(RECURSO_SQL_ITENS)) {
+            if (in == null) throw new IllegalStateException("Recurso não encontrado: " + RECURSO_SQL_ITENS);
+            cache = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            sqlItens = cache;
+            return cache;
+        } catch (IOException e) {
+            throw new IllegalStateException("Não foi possível ler " + RECURSO_SQL_ITENS, e);
+        }
+    }
+
     private static String mensagem(SQLException e) {
         String m = e.getMessage() == null ? e.getClass().getName() : e.getMessage().trim();
         int q = m.indexOf('\n');
