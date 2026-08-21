@@ -173,6 +173,38 @@ function tabelaCana(arr) {
     </tr>`).join('')}</tbody></table>`;
 }
 
+/**
+ * As notícias de açúcar e dólar, lado a lado.
+ *
+ * Duas colunas, cada uma com as manchetes de um tema, o veículo e há quanto
+ * tempo saíram. No computador o título abre a matéria; na TV ninguém clica,
+ * mas o link não atrapalha.
+ */
+function blocoNoticias(env) {
+  const d = env && env.dado;
+  if (!d) return semDado(env && env.erro
+    ? env.erro : 'As notícias não puderam ser carregadas.');
+  return `<div class="noticias-cols">
+    <div class="nt-col">
+      <h3><span class="pt" style="--cor:var(--serie-2)"></span>Açúcar</h3>
+      ${listaNoticias(d.acucar)}
+    </div>
+    <div class="nt-col">
+      <h3><span class="pt" style="--cor:var(--serie-1)"></span>Dólar</h3>
+      ${listaNoticias(d.dolar)}
+    </div>
+  </div>`;
+}
+
+function listaNoticias(arr) {
+  arr = arr || [];
+  if (!arr.length) return `<div class="vazio">Sem manchetes agora.</div>`;
+  return arr.map(n => `<a class="nt" href="${esc(n.link)}" target="_blank" rel="noopener">
+      <div class="nt-tit">${esc(n.titulo)}</div>
+      <div class="nt-meta">${esc(n.veiculo)}${n.idadeMinutos != null ? ' · há ' + minutos(n.idadeMinutos) : ''}</div>
+    </a>`).join('');
+}
+
 function tabelaProdutos(arr) {
   arr = arr || [];
   if (!arr.length) return semDado('Nenhum preço pôde ser convertido — falta a cotação ou a fonte.');

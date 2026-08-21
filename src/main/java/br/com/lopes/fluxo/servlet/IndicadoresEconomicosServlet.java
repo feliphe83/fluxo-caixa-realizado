@@ -88,6 +88,7 @@ public class IndicadoresEconomicosServlet extends HttpServlet {
             r.add("acucarMensal", dao.acucarMensal(3));
             r.add("precoCana", precoCana());
             r.add("produtos", produtos(dolar, cepea, acucar));
+            r.add("noticias", dao.noticias());
 
             escrever(resp, GSON.toJson(r));
 
@@ -115,11 +116,16 @@ public class IndicadoresEconomicosServlet extends HttpServlet {
         // Açúcar VHP ME, a partir da bolsa de Nova York.
         JsonElement acDado = acucar == null ? null : acucar.get("dado");
         if (cotacao > 0 && acDado != null && !acDado.isJsonNull()) {
+            // Só os cinco primeiros vencimentos: a curva da bolsa vai longe,
+            // mas repetir "Açúcar VHP ME" doze vezes não informa mais nada.
+            int n = 0;
             for (String[] p : mesesDoAcucar(acDado)) {
+                if (n >= 5) break;
                 double centavos = numero(p[1]);
                 if (centavos <= 0) continue;
                 out.add(linha(p[0], "Açúcar VHP ME", "t",
                         centavos * LIBRAS_POR_TONELADA * PREMIO_VHP * cotacao));
+                n++;
             }
         }
 

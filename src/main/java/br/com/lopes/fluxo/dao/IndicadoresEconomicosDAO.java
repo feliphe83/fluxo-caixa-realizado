@@ -49,6 +49,12 @@ public class IndicadoresEconomicosDAO {
     /** Cotação muda o dia inteiro; índice do BCB e CEPEA, uma vez por dia. */
     private static final long TTL_COTACAO = 10 * 60 * 1000L;
     private static final long TTL_DIARIO  = 3 * 60 * 60 * 1000L;
+    /** Notícia não muda de minuto a minuto; meia hora chega e poupa a fonte. */
+    private static final long TTL_NOTICIAS = 30 * 60 * 1000L;
+
+    /** Manchetes recentes do Google Notícias em português (%s = a busca). */
+    private static final String URL_NOTICIAS =
+        "https://news.google.com/rss/search?q=%s&hl=pt-BR&gl=BR&ceid=BR:pt-419";
 
     private static final String URL_DOLAR =
         "https://economia.awesomeapi.com.br/json/last/USD-BRL";
@@ -406,6 +412,84 @@ public class IndicadoresEconomicosDAO {
 
     private static String mensagem(Exception e) {
         return e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
+    }
+
+    // ── Notícias (Google Notícias RSS) ────────────────────────────────────
+    //
+    // Duas buscas, açúcar e dólar, cada uma virando uma lista de manchetes
+    // recentes com veículo, link e há quanto tempo saíram. É de graça e sem
+    // chave; o cache de meia hora serve a TV e todos os computadores de uma
+    // batida só. Se o Google não responder, o painel mostra o resto — uma
+    // parede sem a coluna de notícias ainda informa preço.
+
+    private static final Pattern ITEM_RSS = Pattern.compile("<item>(.*?)</item>", Pattern.DOTALL);
+    private static final Pattern TITULO_RSS = Pattern.compile("<title>(.*?)</title>", Pattern.DOTALL);
+    private static final Pattern LINK_RSS = Pattern.compile("<link>(.*?)</link>", Pattern.DOTALL);
+    private static final Pattern DATA_RSS = Pattern.compile("<pubDate>(.*?)</pubDate>", Pattern.DOTALL);
+    private static final Pattern FONTE_RSS = Pattern.compile("<source[^>]*>(.*?)</source>", Pattern.DOTALL);
+
+    public JsonObject noticias() {
+        return comCache("noticias", TTL_NOTICIAS, () -> {
+            JsonObject o = new JsonObject();
+            o.add("acucar", manchetes("açúcar preço OR safra OR usina", 6));
+            o.add("dolar",  manchetes("dólar real câmbio", 6));
+            return o;
+        });
+    }
+
+    private JsonArray manchetes(String busca, int limite) throws Exception {
+        String url = String.format(URL_NOTICIAS,
+                java.net.URLEncoder.encode(busca, java.nio.charset.StandardCharsets.UTF_8));
+        String xml = HttpUtil.get(url);
+        JsonArray arr = new JsonArray();
+        Matcher mItem = ITEM_RSS.matcher(xml);
+        while (mItem.find() && arr.size() < limite) {
+            String item = mItem.group(1);
+            String titulo = grupo(TITULO_RSS, item);
+            if (titulo.isEmpty()) continue;
+
+            // O título vem "Manchete - Veículo"; o veículo também está na tag
+            // <source>. Prefiro a tag; na falta, corto pelo último " - ".
+            String veiculo = grupo(FONTE_RSS, item);
+            if (veiculo.isEmpty()) {
+                int corte = titulo.lastIndexOf(" - ");
+                if (corte > 0) { veiculo = titulo.substring(corte + 3); titulo = titulo.substring(0, corte); }
+            } else {
+                String sufixo = " - " + veiculo;
+                if (titulo.endsWith(sufixo)) titulo = titulo.substring(0, titulo.length() - sufixo.length());
+            }
+
+            JsonObject n = new JsonObject();
+            n.addProperty("titulo", limparTexto(titulo));
+            n.addProperty("veiculo", limparTexto(veiculo));
+            n.addProperty("link", grupo(LINK_RSS, item).trim());
+            n.addProperty("idadeMinutos", idadeDe(grupo(DATA_RSS, item)));
+            arr.add(n);
+        }
+        return arr;
+    }
+
+    private static String grupo(Pattern p, String texto) {
+        Matcher m = p.matcher(texto);
+        return m.find() ? m.group(1) : "";
+    }
+
+    /** "Wed, 19 Aug 2026 08:00:09 GMT" -> minutos desde então (0 se não parsear). */
+    private static long idadeDe(String pubDate) {
+        try {
+            java.time.ZonedDateTime dt = java.time.ZonedDateTime.parse(pubDate.trim(),
+                    java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME);
+            long min = java.time.Duration.between(dt, java.time.ZonedDateTime.now()).toMinutes();
+            return Math.max(0, min);
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    private static String limparTexto(String s) {
+        return s.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
+                .replace("&#39;", "'").replace("&quot;", "\"").replace("&nbsp;", " ")
+                .replaceAll("\\s+", " ").trim();
     }
 
     // ── Utilidades ────────────────────────────────────────────────────────
