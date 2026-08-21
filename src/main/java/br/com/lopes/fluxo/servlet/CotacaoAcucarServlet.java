@@ -32,6 +32,16 @@ public class CotacaoAcucarServlet extends HttpServlet {
         resp.setContentType("application/json; charset=UTF-8");
         JsonObject r = new JsonObject();
         try {
+            // ?historico=1 força o preenchimento do passado pelo Yahoo, para
+            // quando a carga automática da subida não tiver pego.
+            if (req.getParameter("historico") != null) {
+                int dias = coletor.backfill("6mo");
+                r.addProperty("ok", true);
+                r.addProperty("historicoDiasNovos", dias);
+                resp.getWriter().print(r.toString());
+                resp.getWriter().flush();
+                return;
+            }
             int n = coletor.coletar();
             r.addProperty("ok", true);
             r.addProperty("vencimentos", n);

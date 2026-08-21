@@ -42,6 +42,18 @@ public class CotacaoAcucarColetor {
         "https://scanner.tradingview.com/symbol?symbol=%s"
       + "&fields=close,open,high,low,change,change_abs,expiration,description,update_mode";
 
+    /**
+     * A SÉRIE HISTÓRICA do açúcar, para preencher o passado de uma vez.
+     *
+     * O TradingView entrega só o retrato do momento — bom para o preço de
+     * agora, mas não conta a história. O Yahoo devolve a série diária do
+     * contínuo de primeiro vencimento (SB=F) num JSON limpo. É o passado que
+     * os gráficos precisam; o presente continua vindo da coleta de tempo em
+     * tempo. %s = a janela (ex.: 6mo, 1y).
+     */
+    private static final String URL_HISTORICO =
+        "https://query1.finance.yahoo.com/v8/finance/chart/SB=F?range=%s&interval=1d";
+
     /** Códigos de mês dos futuros em que o açúcar nº 11 vence. */
     private static final char[] MESES_CONTRATO = { 'H', 'K', 'N', 'V' };
 
@@ -87,6 +99,62 @@ public class CotacaoAcucarColetor {
         int n = dao.gravar(ativos, LocalDate.now());
         LOG.info("Cotação do açúcar coletada: " + n + " vencimento(s).");
         return n;
+    }
+
+    /**
+     * Preenche o passado do histórico diário a partir do Yahoo, sem mexer no
+     * que já foi coletado (INSERT IGNORE lá no DAO). Roda uma vez, quando o
+     * histórico ainda está curto — depois é a coleta corrente que mantém o
+     * gráfico em dia.
+     *
+     * Falha em silêncio de propósito: se o Yahoo estiver fora ou barrar o
+     * servidor, os gráficos apenas voltam a se formar com o tempo, como já
+     * faziam. Preencher o passado é uma melhoria, não um pré-requisito.
+     *
+     * @param janela a janela do Yahoo, ex.: "6mo", "1y"
+     * @return quantos dias novos entraram
+     */
+    public int backfill(String janela) {
+        try {
+            String corpo = HttpUtil.get(String.format(URL_HISTORICO, janela));
+            java.util.Map<LocalDate, Double> serie = parseHistorico(corpo);
+            int novos = dao.gravarHistorico(serie);
+            LOG.info("Histórico do açúcar preenchido: " + novos + " dia(s) novos de "
+                    + serie.size() + " lidos do Yahoo.");
+            return novos;
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "Não foi possível preencher o passado do açúcar (Yahoo)", e);
+            return 0;
+        }
+    }
+
+    /**
+     * Extrai {dia -> fechamento} do JSON do Yahoo (chart/result/timestamp +
+     * indicators/quote/close). Ignora pregões sem fechamento (o Yahoo manda
+     * null nos feriados dentro da janela). Separado para poder ser testado
+     * sem bater na rede.
+     */
+    static java.util.Map<LocalDate, Double> parseHistorico(String corpo) {
+        JsonObject res = JsonParser.parseString(corpo).getAsJsonObject()
+                .getAsJsonObject("chart")
+                .getAsJsonArray("result").get(0).getAsJsonObject();
+        var ts = res.getAsJsonArray("timestamp");
+        var closes = res.getAsJsonObject("indicators")
+                .getAsJsonArray("quote").get(0).getAsJsonObject()
+                .getAsJsonArray("close");
+
+        java.util.Map<LocalDate, Double> serie = new java.util.LinkedHashMap<>();
+        for (int i = 0; i < ts.size(); i++) {
+            if (closes.get(i).isJsonNull()) continue;   // pregão sem fechamento
+            double c = closes.get(i).getAsDouble();
+            if (c <= 0) continue;
+            // O timestamp é o instante do pregão em UTC; a data do dia em
+            // Nova York é o que interessa para o eixo.
+            LocalDate dia = java.time.Instant.ofEpochSecond(ts.get(i).getAsLong())
+                    .atZone(java.time.ZoneId.of("America/New_York")).toLocalDate();
+            serie.put(dia, c);
+        }
+        return serie;
     }
 
     /** Um vencimento, ou null se já venceu / não respondeu. */

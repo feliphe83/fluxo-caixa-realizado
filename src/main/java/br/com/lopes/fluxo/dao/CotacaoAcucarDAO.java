@@ -13,6 +13,7 @@ import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -155,6 +156,39 @@ public class CotacaoAcucarDAO {
             }
         }
         return vencimentos.size();
+    }
+
+    /** Quantos dias de histórico já existem — para decidir se vale preencher o passado. */
+    public int contarHistorico() throws SQLException {
+        try (Connection c = conn();
+             Statement st = c.createStatement();
+             ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM fc_cotacao_acucar_hist")) {
+            return rs.next() ? rs.getInt(1) : 0;
+        }
+    }
+
+    /**
+     * Preenche o histórico com uma leva de dias de uma vez (o passado, vindo
+     * de uma fonte que entrega série). Não sobrescreve o que já existe: os
+     * dias coletados aqui dentro valem mais do que os importados, então usa
+     * INSERT IGNORE — o dia que já está fica.
+     *
+     * @return quantos dias novos entraram
+     */
+    public int gravarHistorico(Map<LocalDate, Double> fechamentos) throws SQLException {
+        if (fechamentos == null || fechamentos.isEmpty()) return 0;
+        int novos = 0;
+        try (Connection c = conn();
+             PreparedStatement ps = c.prepareStatement(
+                 "INSERT IGNORE INTO fc_cotacao_acucar_hist (dia, fechamento) VALUES (?, ?)")) {
+            for (Map.Entry<LocalDate, Double> e : fechamentos.entrySet()) {
+                if (e.getValue() == null || e.getValue() <= 0) continue;
+                ps.setDate(1, java.sql.Date.valueOf(e.getKey()));
+                ps.setDouble(2, e.getValue());
+                novos += ps.executeUpdate();
+            }
+        }
+        return novos;
     }
 
     /** O retrato atual, no formato que o painel espera, ou null se nunca coletou. */

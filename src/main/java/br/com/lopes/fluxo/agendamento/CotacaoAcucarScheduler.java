@@ -30,10 +30,17 @@ public class CotacaoAcucarScheduler implements ServletContextListener {
     private final CotacaoAcucarColetor coletor = new CotacaoAcucarColetor();
     private ScheduledExecutorService executor;
 
+    /** Abaixo disso, vale a pena buscar o passado no Yahoo em vez de esperar formar. */
+    private static final int HISTORICO_MINIMO = 40;
+    /** Quanto passado trazer de uma vez — cobre com folga o gráfico de 3 meses. */
+    private static final String JANELA_BACKFILL = "6mo";
+
+    private final CotacaoAcucarDAO dao = new CotacaoAcucarDAO();
+
     @Override
     public void contextInitialized(ServletContextEvent sce) {
         try {
-            new CotacaoAcucarDAO().garantirEstrutura();
+            dao.garantirEstrutura();
         } catch (Exception e) {
             LOG.log(Level.SEVERE, "Não foi possível preparar as tabelas da cotação do açúcar", e);
         }
@@ -42,10 +49,23 @@ public class CotacaoAcucarScheduler implements ServletContextListener {
             t.setDaemon(true);
             return t;
         });
+        // Preenche o passado uma vez, se o histórico ainda estiver curto —
+        // assim os gráficos já sobem com meses de linha, sem esperar formar.
+        executor.schedule(this::preencherPassado, 20, TimeUnit.SECONDS);
         // Primeira coleta logo após subir (não em 0 para não brigar com o
         // resto da inicialização), depois de tempo em tempo.
         executor.scheduleAtFixedRate(this::coletar, 1, INTERVALO_MINUTOS, TimeUnit.MINUTES);
         LOG.info("CotacaoAcucarScheduler iniciado — coleta a cada " + INTERVALO_MINUTOS + " minutos.");
+    }
+
+    private void preencherPassado() {
+        try {
+            if (dao.contarHistorico() < HISTORICO_MINIMO) {
+                coletor.backfill(JANELA_BACKFILL);
+            }
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "Não foi possível preencher o passado da cotação do açúcar", e);
+        }
     }
 
     @Override
