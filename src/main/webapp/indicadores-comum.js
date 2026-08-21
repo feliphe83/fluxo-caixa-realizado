@@ -248,6 +248,12 @@ function tabelaProdutos(arr) {
  * uma grade dentro da outra — os quatro cartões espremidos na primeira
  * coluna da grade de fora, com o texto cortado.
  */
+/** A variação do dia do açúcar em %, a partir da variação em ¢/lb sobre o fechamento anterior. */
+function variacaoPctAcucar(a) {
+  const anterior = (Number(a.valor) || 0) - (Number(a.variacao) || 0);
+  return anterior ? (Number(a.variacao) / anterior) * 100 : 0;
+}
+
 function cartoesCapa(d) {
   const dolar = d.dolar && d.dolar.dado;
   const vhp = (d.produtos || []).find(p => /VHP/.test(p.produto));
@@ -263,7 +269,12 @@ function cartoesCapa(d) {
     { rot: 'Açúcar NY nº 11', cor: 'var(--serie-2)',
       valor: acucar ? fmt(acucar.valor, 2) : '—',
       un: acucar ? '¢/lb' : '',
-      base: acucar ? esc(acucar.rotulo) : 'serviço fora do ar' },
+      // Variação do dia igual ao dólar: seta colorida + percentual + "no dia",
+      // e depois o vencimento. A variação vem em ¢/lb (absoluta), então o
+      // percentual sai dela sobre o fechamento anterior.
+      base: acucar
+        ? `<span class="${acucar.variacao >= 0 ? 'sobe' : 'desce'}">${acucar.variacao >= 0 ? '↑' : '↓'} ${fmt(Math.abs(variacaoPctAcucar(acucar)), 2)}%</span> no dia · ${esc(acucar.rotulo)}`
+        : 'serviço fora do ar' },
     { rot: 'Açúcar VHP · mercado externo', cor: 'var(--serie-6)',
       valor: vhp ? 'R$ ' + fmt(vhp.valor, 2) : '—',
       un: vhp ? '/t' : '',
