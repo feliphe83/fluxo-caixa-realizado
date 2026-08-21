@@ -228,9 +228,9 @@ function desenhar() {
   // O dólar tem um gráfico só (7 dias), com o valor em cada ponto.
   plotar('gDolarD', dolarDia, 'R$ ', '#2a78d6', 2, 'Sem histórico recente.', true);
   plotar('gAcucarD', serieAcucar(d.acucarDiario), '', '#eb6834', 2,
-         'Juntando o histórico diário — depende de mais pregões coletados.');
+         'Juntando o histórico diário — depende de mais pregões coletados.', true);
   plotar('gAcucarM', serieMensal(d.acucarMensal), '', '#eb6834', 2,
-         'Juntando o histórico mensal.');
+         'Juntando o histórico mensal.', true);
 }
 
 /** Desenha uma série de pares {rotulo, valor}; se vier vazia, avisa no lugar. */
@@ -300,7 +300,13 @@ function linha(id, rotulos, valores, prefixo, cor, casas, rotularTodos) {
         marcas.forEach(([i, al, dx]) => {
           if (!pts[i]) return;
           ctx.textAlign = al;
-          ctx.fillText(prefixo + fmt(v[i], casas), pts[i].x + dx, pts[i].y - 8);
+          // Rotulando todos, escalona: um ponto acima, o vizinho abaixo. Sem
+          // isso, dois pontos próximos com valores parecidos (17,47 e 17,50)
+          // encavalam os rótulos.
+          const abaixo = rotularTodos && i % 2 === 1;
+          ctx.textBaseline = abaixo ? 'top' : 'bottom';
+          ctx.fillText(prefixo + fmt(v[i], casas),
+                       pts[i].x + dx, pts[i].y + (abaixo ? 9 : -8));
         });
         ctx.restore();
       }
