@@ -1116,6 +1116,7 @@
         <option value="contrato_limite">Alerta de Contrato no Limite</option>
         <option value="contrato_vencendo">Alerta de Contrato de Arrendamento a Vencer</option>
         <option value="oc_aprovada_alto_valor">Alerta de Ordem de Compra Aprovada de Alto Valor</option>
+          <option value="orcamento_estourado">Alerta de Orçamento Estourado</option>
           <option value="contrato_aprovacao">Alerta de Contrato Aguardando Aprovação</option>
           <option value="parcela_contrato_aprovacao">Alerta de Parcela de Contrato Aguardando Aprovação</option>
       </select>
@@ -2656,7 +2657,8 @@ const TIPOS_RELATORIO_WPP = {combustivel:'Combustível (PDF)', oc_pendente:'Aler
                              variacao_preco:'Alerta de Variação de Preço', divergencia_nf:'Alerta de Divergência de NF',
                              contrato_limite:'Alerta de Contrato no Limite',
                              contrato_vencendo:'Contrato de Arrendamento a Vencer',
-                             oc_aprovada_alto_valor:'Ordem de Compra Aprovada de Alto Valor'};
+                             oc_aprovada_alto_valor:'Ordem de Compra Aprovada de Alto Valor',
+                             orcamento_estourado:'Orçamento Estourado'};
 /** Data e hora da execução — o horário importa nos agendamentos que rodam de minuto em minuto.
  *  O backend manda "yyyy-MM-dd HH:mm:ss[.S]" (Timestamp.toString), que o Safari não aceita em
  *  new Date(); por isso o formato é montado na mão, sem depender do parser do navegador. */
@@ -2669,7 +2671,7 @@ function fmtDataHoraWpp(s) {
 /** Tipos que rodam por intervalo (a cada N minutos) em vez de dia da semana + hora. */
 const TIPOS_RECORRENTES_WPP = ['oc_pendente', 'variacao_preco', 'divergencia_nf', 'contrato_limite',
                                'contrato_vencendo', 'oc_aprovada_alto_valor', 'contrato_aprovacao',
-                               'parcela_contrato_aprovacao'];
+                               'parcela_contrato_aprovacao', 'orcamento_estourado'];
 /** Tipos que dependem do código de logon do ERP no cadastro do destinatário.
  *  Divergência de NF e contrato no limite ficam de fora de propósito: essas
  *  consultas não têm alçada, todo destinatário recebe a mesma lista. */
@@ -2679,7 +2681,7 @@ const TIPOS_COM_LOGON_ERP_WPP = ['oc_pendente', 'variacao_preco', 'contrato_apro
 // minuto pro outro, uma verificação por dia basta.
 const INTERVALO_PADRAO_WPP = {oc_pendente: 10, variacao_preco: 30, divergencia_nf: 30,
                               contrato_limite: 30, contrato_vencendo: 1440, oc_aprovada_alto_valor: 30,
-                              contrato_aprovacao: 30, parcela_contrato_aprovacao: 30};
+                              contrato_aprovacao: 30, parcela_contrato_aprovacao: 30, orcamento_estourado: 30};
 let RELATORIOS_WPP = [];
 let USUARIOS_WPP = [];
 
