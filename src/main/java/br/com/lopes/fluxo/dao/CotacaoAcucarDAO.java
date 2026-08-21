@@ -184,7 +184,7 @@ public class CotacaoAcucarDAO {
     }
 
     /** O fechamento diário do primeiro vencimento, últimos {@code dias} pregões. */
-    public JsonArray ler15Dias(int dias) throws SQLException {
+    public JsonArray lerDiario(int dias) throws SQLException {
         List<JsonObject> pilha = new ArrayList<>();
         try (Connection c = conn();
              PreparedStatement ps = c.prepareStatement("""
@@ -207,6 +207,39 @@ public class CotacaoAcucarDAO {
             }
         }
         // Veio do mais novo para o mais velho; o gráfico quer cronológico.
+        JsonArray arr = new JsonArray();
+        for (int i = pilha.size() - 1; i >= 0; i--) arr.add(pilha.get(i));
+        return arr;
+    }
+
+    /**
+     * O fechamento mensal do primeiro vencimento, últimos {@code meses} meses
+     * — um ponto por mês, o fechamento do último pregão gravado de cada um.
+     */
+    public JsonArray lerMensal(int meses) throws SQLException {
+        List<JsonObject> pilha = new ArrayList<>();
+        try (Connection c = conn();
+             // O fechamento do último dia de cada mês: junta o histórico com
+             // o maior dia de cada mês. Assim o mês corrente entra com o
+             // pregão mais recente que houver dele.
+             PreparedStatement ps = c.prepareStatement("""
+                 SELECT h.dia, h.fechamento
+                 FROM fc_cotacao_acucar_hist h
+                 JOIN (SELECT MAX(dia) md FROM fc_cotacao_acucar_hist
+                       GROUP BY YEAR(dia), MONTH(dia)) u ON h.dia = u.md
+                 ORDER BY h.dia DESC LIMIT ?
+                 """)) {
+            ps.setInt(1, Math.max(1, meses));
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    LocalDate dia = rs.getDate("dia").toLocalDate();
+                    JsonObject o = new JsonObject();
+                    o.addProperty("anoMes", dia.getYear() * 100 + dia.getMonthValue());
+                    o.addProperty("ultimo", rs.getDouble("fechamento"));
+                    pilha.add(o);
+                }
+            }
+        }
         JsonArray arr = new JsonArray();
         for (int i = pilha.size() - 1; i >= 0; i--) arr.add(pilha.get(i));
         return arr;

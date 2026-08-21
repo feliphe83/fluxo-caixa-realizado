@@ -83,6 +83,12 @@
   tr.destaque td { background: var(--papel-2); font-weight: 800; }
 
   .tela { position: relative; flex: 1; min-height: 120px; margin-top: 8px; }
+  /* Os dois recortes lado a lado: perto (7 dias) e longe (3 meses). */
+  .graficos { display: flex; gap: 16px; flex: 1; min-height: 0; margin-top: 8px; }
+  .mini { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .mtit { font-size: 12px; font-weight: 800; color: var(--ink-3);
+          text-transform: uppercase; letter-spacing: .5px; }
+  .mini .tela { flex: 1; margin-top: 2px; min-height: 0; }
   .vazio { padding: 14px 2px; font-size: 14px; font-weight: 700; color: var(--ink-3); }
   .vazio b { color: var(--desce); }
 
@@ -188,13 +194,23 @@ function desenhar() {
     <div class="cab"><div><h2>Cotação do dólar</h2>
       <div class="fonte">USD/BRL comercial</div></div>${idade(d.dolar)}</div>
     ${tabelaDolar(d.dolar)}
-    <div class="tela"><canvas id="gDolar"></canvas></div>`;
+    <div class="graficos">
+      <div class="mini"><div class="mtit">Últimos 7 dias</div>
+        <div class="tela"><canvas id="gDolarD"></canvas></div></div>
+      <div class="mini"><div class="mtit">Últimos 3 meses</div>
+        <div class="tela"><canvas id="gDolarM"></canvas></div></div>
+    </div>`;
 
   document.getElementById('bAcucar').innerHTML = `
     <div class="cab"><div><h2>Açúcar NY nº 11</h2>
       <div class="fonte">Centavos de dólar por libra-peso</div></div>${idade(d.acucar)}</div>
     ${tabelaAcucar(d.acucar)}
-    <div class="tela"><canvas id="gAcucar"></canvas></div>`;
+    <div class="graficos">
+      <div class="mini"><div class="mtit">Últimos 7 dias</div>
+        <div class="tela"><canvas id="gAcucarD"></canvas></div></div>
+      <div class="mini"><div class="mtit">Últimos 3 meses</div>
+        <div class="tela"><canvas id="gAcucarM"></canvas></div></div>
+    </div>`;
 
   document.getElementById('bIndicadores').innerHTML = `
     <div class="cab"><div><h2>Indicadores econômicos</h2>
@@ -211,10 +227,26 @@ function desenhar() {
       <div class="fonte">CEPEA/ESALQ e bolsa, já convertidos</div></div>${idade(d.cepea)}</div>
     ${tabelaProdutos(d.produtos)}`;
 
-  grafico('gDolar', (d.dolarHistorico && d.dolarHistorico.dado) || [],
-          p => rotuloDia(p.data), p => p.valor, 'R$ ', '#2a78d6', 4);
-  const ac = serieAcucar(d.acucar15);
-  grafico('gAcucar', ac, p => p.rotulo, p => p.valor, '', '#eb6834', 2);
+  const dolarDia = ((d.dolarDiario && d.dolarDiario.dado) || [])
+    .map(p => ({ rotulo: rotuloDia(p.data), valor: p.valor }));
+  plotarTv('gDolarD', dolarDia, 'R$ ', '#2a78d6', 2, 'Sem histórico recente.');
+  plotarTv('gDolarM', serieMensal(d.dolarMensal), 'R$ ', '#2a78d6', 2, 'Sem histórico mensal.');
+  plotarTv('gAcucarD', serieAcucar(d.acucarDiario), '', '#eb6834', 2,
+           'Juntando o histórico diário — depende de mais pregões coletados.');
+  plotarTv('gAcucarM', serieMensal(d.acucarMensal), '', '#eb6834', 2,
+           'Juntando o histórico mensal.');
+}
+
+/** Desenha uma série de pares {rotulo, valor}; se vier vazia, avisa no lugar. */
+function plotarTv(id, pares, prefixo, cor, casas, vazioMsg) {
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  if (!pares.length) {
+    const box = canvas.closest('.tela');
+    if (box) box.innerHTML = `<div class="vazio">${esc(vazioMsg)}</div>`;
+    return;
+  }
+  grafico(id, pares, p => p.rotulo, p => p.valor, prefixo, cor, casas);
 }
 
 function grafico(id, serie, rotulo, valor, prefixo, cor, casas) {
@@ -255,7 +287,12 @@ function grafico(id, serie, rotulo, valor, prefixo, cor, casas) {
         ctx.font = '800 14px system-ui, sans-serif';
         ctx.fillStyle = '#0f2460';
         ctx.textBaseline = 'bottom';
-        [[0,'left',6], [pts.length-1,'right',-6]].forEach(([i, al, dx]) => {
+        // Com um ponto só, primeiro e último caem no mesmo lugar — dois
+        // rótulos sobrepostos viram borrão. Aí, um só.
+        const marcas = pts.length < 2
+          ? [[0, 'left', 6]]
+          : [[0, 'left', 6], [pts.length-1, 'right', -6]];
+        marcas.forEach(([i, al, dx]) => {
           if (!pts[i]) return;
           ctx.textAlign = al;
           ctx.fillText(prefixo + fmt(v[i], casas), pts[i].x + dx, pts[i].y - 9);

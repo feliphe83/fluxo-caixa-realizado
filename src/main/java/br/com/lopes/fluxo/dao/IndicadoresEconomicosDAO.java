@@ -74,7 +74,7 @@ public class IndicadoresEconomicosDAO {
      * O painel de modelo usava a financialmodelingprep (chaves mortas hoje) e
      * depois um serviço interno da usina que só responde de dentro da rede.
      * Agora o açúcar vem do MySQL: um coletor busca os vencimentos na bolsa e
-     * grava (CotacaoAcucarColetor); ver acucar()/acucar15Dias() mais abaixo.
+     * grava (CotacaoAcucarColetor); ver acucar()/acucarDiario()/acucarMensal() mais abaixo.
      */
 
     // ── Cache ─────────────────────────────────────────────────────────────
@@ -155,6 +155,38 @@ public class IndicadoresEconomicosDAO {
                 JsonObject p = new JsonObject();
                 p.addProperty("data", dia);
                 p.addProperty("valor", rates.getAsJsonObject(dia).get("BRL").getAsDouble());
+                arr.add(p);
+            }
+            return arr;
+        });
+    }
+
+    /**
+     * O dólar por mês, últimos {@code meses} meses — um ponto por mês, o
+     * fechamento do último pregão de cada um. O mês corrente entra com a
+     * cotação mais recente que houver dele.
+     */
+    public JsonObject dolarMensal(int meses) {
+        return comCache("dolarMensal" + meses, TTL_COTACAO, () -> {
+            java.time.LocalDate fim = java.time.LocalDate.now();
+            java.time.LocalDate ini = fim.minusMonths(meses - 1L).withDayOfMonth(1);
+            String url = String.format(URL_DOLAR_HIST, ini, fim);
+            JsonObject rates = JsonParser.parseString(HttpUtil.get(url))
+                    .getAsJsonObject().getAsJsonObject("rates");
+
+            // Última cotação de cada mês: percorrendo as datas em ordem, o
+            // valor de cada mês vai sendo sobrescrito até sobrar o do fim.
+            java.util.TreeMap<Integer, Double> porMes = new java.util.TreeMap<>();
+            for (String dia : new java.util.TreeSet<>(rates.keySet())) {
+                java.time.LocalDate d = java.time.LocalDate.parse(dia);
+                int anoMes = d.getYear() * 100 + d.getMonthValue();
+                porMes.put(anoMes, rates.getAsJsonObject(dia).get("BRL").getAsDouble());
+            }
+            JsonArray arr = new JsonArray();
+            for (Map.Entry<Integer, Double> e : porMes.entrySet()) {
+                JsonObject p = new JsonObject();
+                p.addProperty("anoMes", e.getKey());
+                p.addProperty("valor", e.getValue());
                 arr.add(p);
             }
             return arr;
@@ -342,16 +374,32 @@ public class IndicadoresEconomicosDAO {
         }
     }
 
-    public JsonObject acucar15Dias() {
+    /** Fechamento diário do primeiro vencimento, últimos {@code dias} pregões. */
+    public JsonObject acucarDiario(int dias) {
         try {
-            JsonArray hist = cotacaoAcucar.ler15Dias(15);
+            JsonArray hist = cotacaoAcucar.lerDiario(dias);
             if (hist.size() == 0) {
                 return envelope(null, 0,
-                        "o histórico do açúcar ainda não tem pregões gravados");
+                        "o histórico diário do açúcar ainda está sendo formado");
             }
             return envelope(hist, 0, null);
         } catch (Exception e) {
-            LOG.log(Level.WARNING, "Não foi possível ler o histórico do açúcar", e);
+            LOG.log(Level.WARNING, "Não foi possível ler o histórico diário do açúcar", e);
+            return envelope(null, 0, mensagem(e));
+        }
+    }
+
+    /** Fechamento mensal do primeiro vencimento, últimos {@code meses} meses. */
+    public JsonObject acucarMensal(int meses) {
+        try {
+            JsonArray hist = cotacaoAcucar.lerMensal(meses);
+            if (hist.size() == 0) {
+                return envelope(null, 0,
+                        "o histórico mensal do açúcar ainda está sendo formado");
+            }
+            return envelope(hist, 0, null);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "Não foi possível ler o histórico mensal do açúcar", e);
             return envelope(null, 0, mensagem(e));
         }
     }

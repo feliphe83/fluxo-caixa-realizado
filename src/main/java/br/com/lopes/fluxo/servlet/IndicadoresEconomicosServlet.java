@@ -77,11 +77,15 @@ public class IndicadoresEconomicosServlet extends HttpServlet {
             r.addProperty("atualizadoEm",
                     LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
             r.add("dolar", dolar);
-            r.add("dolarHistorico", dao.dolarHistorico(20));
+            // Dois recortes: os últimos pregões (10 dias corridos dão ~7
+            // úteis) e um ponto por mês nos últimos três meses.
+            r.add("dolarDiario", dao.dolarHistorico(10));
+            r.add("dolarMensal", dao.dolarMensal(3));
             r.add("indicadores", dao.indicadores());
             r.add("cepea", cepea);
             r.add("acucar", acucar);
-            r.add("acucar15", dao.acucar15Dias());
+            r.add("acucarDiario", dao.acucarDiario(7));
+            r.add("acucarMensal", dao.acucarMensal(3));
             r.add("precoCana", precoCana());
             r.add("produtos", produtos(dolar, cepea, acucar));
 

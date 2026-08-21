@@ -73,6 +73,13 @@
   tr.destaque td { font-weight: 800; color: var(--ink); background: var(--papel-2); }
 
   .tela { position: relative; height: 170px; margin-top: 12px; }
+  /* Os dois recortes lado a lado: o de perto (7 dias) e o de longe (3
+     meses). Cada um ocupa metade da largura do bloco. */
+  .graficos { display: flex; gap: 16px; margin-top: 12px; }
+  .mini { flex: 1; min-width: 0; }
+  .mtit { font-size: 10.5px; font-weight: 800; color: var(--ink-3);
+          text-transform: uppercase; letter-spacing: .5px; margin-bottom: 2px; }
+  .mini .tela { height: 150px; margin-top: 2px; }
   .vazio { padding: 18px 4px; font-size: 12.5px; color: var(--ink-3); }
   .vazio b { color: var(--desce); }
 
@@ -161,13 +168,23 @@ function desenhar() {
           <div class="cab"><div><h2>Cotação do dólar</h2>
             <div class="fonte">USD/BRL comercial</div></div>${idade(d.dolar)}</div>
           ${tabelaDolar(d.dolar)}
-          <div class="tela"><canvas id="gDolar"></canvas></div>
+          <div class="graficos">
+            <div class="mini"><div class="mtit">Últimos 7 dias</div>
+              <div class="tela"><canvas id="gDolarD"></canvas></div></div>
+            <div class="mini"><div class="mtit">Últimos 3 meses</div>
+              <div class="tela"><canvas id="gDolarM"></canvas></div></div>
+          </div>
         </div>
         <div class="bloco">
           <div class="cab"><div><h2>Açúcar NY nº 11</h2>
             <div class="fonte">Bolsa de Nova York · centavos de dólar por libra-peso</div></div>${idade(d.acucar)}</div>
           ${tabelaAcucar(d.acucar)}
-          <div class="tela"><canvas id="gAcucar"></canvas></div>
+          <div class="graficos">
+            <div class="mini"><div class="mtit">Últimos 7 dias</div>
+              <div class="tela"><canvas id="gAcucarD"></canvas></div></div>
+            <div class="mini"><div class="mtit">Últimos 3 meses</div>
+              <div class="tela"><canvas id="gAcucarM"></canvas></div></div>
+          </div>
         </div>
       </div>
       <div>
@@ -192,20 +209,26 @@ function desenhar() {
       Atualizado em ${esc(d.atualizadoEm)} · a página se atualiza sozinha a cada 10 minutos
     </div>`;
 
-  graficoDolar(d.dolarHistorico);
-  graficoAcucar(d.acucar15);
+  const dolarDia = ((d.dolarDiario && d.dolarDiario.dado) || [])
+    .map(p => ({ rotulo: rotuloDia(p.data), valor: p.valor }));
+  plotar('gDolarD', dolarDia, 'R$ ', '#2a78d6', 2, 'Sem histórico recente.');
+  plotar('gDolarM', serieMensal(d.dolarMensal), 'R$ ', '#2a78d6', 2, 'Sem histórico mensal.');
+  plotar('gAcucarD', serieAcucar(d.acucarDiario), '', '#eb6834', 2,
+         'Juntando o histórico diário — depende de mais pregões coletados.');
+  plotar('gAcucarM', serieMensal(d.acucarMensal), '', '#eb6834', 2,
+         'Juntando o histórico mensal.');
 }
 
-function graficoDolar(env) {
-  const s = (env && env.dado) || [];
-  if (!s.length) return;
-  linha('gDolar', s.map(p => rotuloDia(p.data)), s.map(p => p.valor),
-        'R$ ', '#2a78d6', 4);
-}
-function graficoAcucar(env) {
-  const s = serieAcucar(env);
-  if (!s.length) return;
-  linha('gAcucar', s.map(p => p.rotulo), s.map(p => p.valor), '', '#eb6834', 2);
+/** Desenha uma série de pares {rotulo, valor}; se vier vazia, avisa no lugar. */
+function plotar(id, pares, prefixo, cor, casas, vazioMsg) {
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  if (!pares.length) {
+    const box = canvas.closest('.tela');
+    if (box) box.innerHTML = `<div class="vazio">${esc(vazioMsg)}</div>`;
+    return;
+  }
+  linha(id, pares.map(p => p.rotulo), pares.map(p => p.valor), prefixo, cor, casas);
 }
 
 function linha(id, rotulos, valores, prefixo, cor, casas) {
@@ -248,7 +271,12 @@ function linha(id, rotulos, valores, prefixo, cor, casas) {
         ctx.font = '800 11px system-ui, sans-serif';
         ctx.fillStyle = '#0f2460';
         ctx.textBaseline = 'bottom';
-        [[0,'left',5], [pts.length-1,'right',-5]].forEach(([i, al, dx]) => {
+        // Com um ponto só, primeiro e último são o mesmo — dois rótulos no
+        // mesmo lugar viram um borrão ("17,50 17,50"). Aí, um só.
+        const marcas = pts.length < 2
+          ? [[0, 'left', 5]]
+          : [[0, 'left', 5], [pts.length-1, 'right', -5]];
+        marcas.forEach(([i, al, dx]) => {
           if (!pts[i]) return;
           ctx.textAlign = al;
           ctx.fillText(prefixo + fmt(v[i], casas), pts[i].x + dx, pts[i].y - 8);

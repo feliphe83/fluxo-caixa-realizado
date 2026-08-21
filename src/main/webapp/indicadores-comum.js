@@ -115,11 +115,26 @@ function numeroBR(v) {
   return isNaN(n) ? 0 : n;
 }
 
+/**
+ * A série mensal (dólar ou açúcar): [{anoMes, valor|ultimo}] -> rótulo curto.
+ * Um ponto por mês, ex.: "jun/26".
+ */
+function serieMensal(env) {
+  const arr = (env && env.dado) || [];
+  if (!Array.isArray(arr)) return [];
+  return arr.map(x => ({
+    rotulo: rotuloAnoMes(x.anoMes),
+    valor: Number(x.valor != null ? x.valor : x.ultimo) || 0
+  })).filter(x => x.valor > 0);
+}
+
 function tabelaAcucar(env) {
-  const linhas = serieAcucar(env);
+  // Só os próximos cinco vencimentos: a lista da bolsa vai longe, mas o que
+  // interessa para decidir é a boca da curva.
+  const linhas = serieAcucar(env).slice(0, 5);
   if (!linhas.length) return semDado(env && env.erro
-    ? env.erro + ' — o serviço do açúcar só responde de dentro da rede da usina.'
-    : 'O serviço do açúcar não respondeu.');
+    ? env.erro
+    : 'A cotação do açúcar ainda não foi coletada.');
   return `<table>
     <thead><tr><th>Vencimento</th><th>Último</th><th>Abertura</th><th>Alta</th><th>Baixa</th><th>Variação</th></tr></thead>
     <tbody>${linhas.map(l => {
