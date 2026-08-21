@@ -165,11 +165,13 @@ function tabelaIndicadores(env) {
 
 function tabelaCana(arr) {
   arr = arr || [];
-  if (!arr.length) return semDado('A tabela do Sindaçúcar não foi preenchida.');
+  if (!arr.length) return semDado('A tabela do CONSECANA não foi preenchida.');
+  // Só o líquido (preço do kg de ATR após as deduções legais) — é o que o
+  // produtor de fato recebe; o bruto antes das deduções fica de fora.
   return `<table>
-    <thead><tr><th>Mês</th><th>Bruto (R$)</th><th>Líquido (R$)</th></tr></thead>
+    <thead><tr><th>Mês</th><th>Líquido (R$/kg ATR)</th></tr></thead>
     <tbody>${arr.map(c => `<tr class="${/acumulado/i.test(c.mes) ? 'destaque' : ''}">
-      <td>${esc(c.mes)}</td><td>${fmt(c.bruto, 4)}</td><td>${fmt(c.liquido, 4)}</td>
+      <td>${esc(c.mes)}</td><td>${fmt(c.liquido, 4)}</td>
     </tr>`).join('')}</tbody></table>`;
 }
 

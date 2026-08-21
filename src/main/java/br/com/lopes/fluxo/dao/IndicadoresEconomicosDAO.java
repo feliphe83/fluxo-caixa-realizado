@@ -431,8 +431,15 @@ public class IndicadoresEconomicosDAO {
     public JsonObject noticias() {
         return comCache("noticias", TTL_NOTICIAS, () -> {
             JsonObject o = new JsonObject();
-            o.add("acucar", manchetes("açúcar preço OR safra OR usina", 6));
-            o.add("dolar",  manchetes("dólar real câmbio", 6));
+            // Buscas AMPLAS de propósito: cotação de câmbio rende matéria toda
+            // hora, e o feed estreito ("dólar real câmbio") trazia notícia de
+            // ontem. Com o termo aberto e ordenando pela mais nova, o painel
+            // mostra o que saiu hoje.
+            o.add("acucar", manchetes("açúcar cotação OR preço OR safra", 6));
+            // "dólar real": o par de moedas mantém no câmbio do Brasil (sem
+            // "dólar cotação", que trazia matéria de mercado estrangeiro) e
+            // tem volume para render notícia de poucas horas atrás.
+            o.add("dolar",  manchetes("dólar real", 6));
             return o;
         });
     }
@@ -441,9 +448,12 @@ public class IndicadoresEconomicosDAO {
         String url = String.format(URL_NOTICIAS,
                 java.net.URLEncoder.encode(busca, java.nio.charset.StandardCharsets.UTF_8));
         String xml = HttpUtil.get(url);
-        JsonArray arr = new JsonArray();
+
+        // Lê TODAS as manchetes e ordena pela mais recente — o feed não vem
+        // em ordem de tempo, então pegar as primeiras trazia notícia velha.
+        List<JsonObject> itens = new ArrayList<>();
         Matcher mItem = ITEM_RSS.matcher(xml);
-        while (mItem.find() && arr.size() < limite) {
+        while (mItem.find()) {
             String item = mItem.group(1);
             String titulo = grupo(TITULO_RSS, item);
             if (titulo.isEmpty()) continue;
@@ -464,7 +474,18 @@ public class IndicadoresEconomicosDAO {
             n.addProperty("veiculo", limparTexto(veiculo));
             n.addProperty("link", grupo(LINK_RSS, item).trim());
             n.addProperty("idadeMinutos", idadeDe(grupo(DATA_RSS, item)));
-            arr.add(n);
+            itens.add(n);
+        }
+        itens.sort(java.util.Comparator.comparingLong(x -> x.get("idadeMinutos").getAsLong()));
+
+        // Uma mesma matéria sai em vários veículos com o título idêntico —
+        // depois de ordenar pela mais nova, fica só a primeira de cada título.
+        JsonArray arr = new JsonArray();
+        java.util.Set<String> vistos = new java.util.HashSet<>();
+        for (JsonObject n : itens) {
+            if (arr.size() >= limite) break;
+            String chave = n.get("titulo").getAsString().toLowerCase();
+            if (vistos.add(chave)) arr.add(n);
         }
         return arr;
     }
