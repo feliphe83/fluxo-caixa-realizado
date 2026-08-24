@@ -23,6 +23,13 @@
   const ARQUIVO_ATUAL = (location.pathname.split('/').pop() || 'hub.html').toLowerCase();
   /** Abaixo disso, faixa fixa de 232px come metade da tela — vira overlay. */
   const LARGURA_MINIMA_FIXO = 900;
+  /**
+   * Só o Hub nasce com o menu pregado na esquerda: é a casa dos módulos, ali
+   * a coluna É o conteúdo. Dentro de um dashboard o menu recolhe e sobra só o
+   * botão — quem está lendo um painel não quer 232px de menu comendo a tela;
+   * clicou no botão, ele salta por cima e fecha ao escolher.
+   */
+  const PODE_FIXAR = ARQUIVO_ATUAL === 'hub.html';
 
   // Ícones: js/icones-modulos.js, o mesmo arquivo do hub. Aqui existiam
   // quatro, e todo módulo fora dessa lista virava a mesma caixa — o menu
@@ -224,7 +231,7 @@
    * girar um tablet já basta.
    */
   function ajustarModo() {
-    const fixar = window.innerWidth >= LARGURA_MINIMA_FIXO;
+    const fixar = PODE_FIXAR && window.innerWidth >= LARGURA_MINIMA_FIXO;
     sidebar.classList.toggle('fixo', fixar);
     document.documentElement.classList.toggle('snav-fixo', fixar);
     toggle.classList.toggle('escondido', fixar);
