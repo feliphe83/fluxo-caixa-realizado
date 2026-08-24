@@ -258,12 +258,24 @@ public class AuthFilter implements Filter {
         return ip.startsWith("127.") || "::1".equals(ip) || "0:0:0:0:0:0:0:1".equals(ip);
     }
 
-    /** Faixas privadas: 10/8, 172.16-31/12, 192.168/16, loopback, e o equivalente IPv6. */
+    /**
+     * A rede interna da usina.
+     *
+     * A LAN da usina usa o bloco 123.0.0.x (endereço público usado por dentro,
+     * não uma faixa RFC1918) — é essa a fronteira que libera a TV. Se a sub-rede
+     * mudar, é aqui que se troca "123.0.0.".
+     *
+     * As faixas privadas de sempre (10/8, 172.16-31/12, 192.168/16, loopback e
+     * o equivalente IPv6) ficam também porque nunca fazem mal: um IP dessas
+     * faixas não trafega pela internet, então jamais aparece como o cliente
+     * real vindo de fora.
+     */
     private static boolean ehRedeInterna(String ip) {
         if (ip == null || ip.isBlank()) return false;
         ip = ip.trim();
         if (ip.startsWith("::ffff:")) ip = ip.substring(7);   // IPv4 embutido em IPv6
         if (ehLoopback(ip)) return true;
+        if (ip.startsWith("123.0.0.")) return true;           // a rede interna da usina
         if (ip.startsWith("10.") || ip.startsWith("192.168.")) return true;
         if (ip.startsWith("172.")) {
             try {
