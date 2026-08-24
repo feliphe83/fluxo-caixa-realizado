@@ -118,7 +118,11 @@ public class FaturamentoVendasServlet extends HttpServlet {
                              BigDecimal toneladasDeCana) {
         Map<String, Acum> porProduto  = new HashMap<>();
         Map<String, Acum> porCliente  = new HashMap<>();
-        Map<String, Acum> porEstado   = new HashMap<>();
+        // Os maiores clientes, separados por produto (açúcar e álcool): quem é
+        // grande no açúcar não é o mesmo que é grande no álcool, e é isso que
+        // interessa ver — no lugar do corte por estado.
+        Map<String, Acum> porClienteAcucar = new HashMap<>();
+        Map<String, Acum> porClienteEtanol = new HashMap<>();
         Map<String, Acum> porDestino  = new HashMap<>();
         Map<String, Acum> porRotina   = new HashMap<>();
         // TreeMap: a chave é AAAA-MM, então os meses já saem em ordem.
@@ -152,8 +156,10 @@ public class FaturamentoVendasServlet extends HttpServlet {
                 porFamilia.computeIfAbsent(familia, k -> new Acum())
                           .somar(qtd, vItem, txt(l.get("descricaounidade"), ""));
             }
-            porCliente.computeIfAbsent(txt(l.get("nome"), "Sem cliente"), k -> new Acum()).somar(qtd, vItem, "");
-            porEstado .computeIfAbsent(txt(l.get("estado"), "—"),         k -> new Acum()).somar(qtd, vItem, "");
+            String cliente = txt(l.get("nome"), "Sem cliente");
+            porCliente.computeIfAbsent(cliente, k -> new Acum()).somar(qtd, vItem, "");
+            if ("acucar".equals(familia))      porClienteAcucar.computeIfAbsent(cliente, k -> new Acum()).somar(qtd, vItem, "");
+            else if ("etanol".equals(familia)) porClienteEtanol.computeIfAbsent(cliente, k -> new Acum()).somar(qtd, vItem, "");
             porDestino.computeIfAbsent(txt(l.get("destino"), "—"),        k -> new Acum()).somar(qtd, vItem, "");
             porRotina .computeIfAbsent(txt(l.get("rotina"), "—"),         k -> new Acum()).somar(qtd, vItem, "");
 
@@ -208,7 +214,12 @@ public class FaturamentoVendasServlet extends HttpServlet {
         List<String> ordemProdutos = ordenados(porProduto);
         r.add("porProduto", lista(porProduto, ordemProdutos, valorItens, Integer.MAX_VALUE, true));
         r.add("porCliente", lista(porCliente, ordenados(porCliente), valorItens, MAX_LISTA, false));
-        r.add("porEstado",  lista(porEstado,  ordenados(porEstado),  valorItens, MAX_LISTA, false));
+        // % dentro do próprio produto (a fatia do cliente no açúcar / no álcool).
+        Acum famAc = porFamilia.get("acucar"), famEt = porFamilia.get("etanol");
+        r.add("clientesAcucar", lista(porClienteAcucar, ordenados(porClienteAcucar),
+                famAc != null ? famAc.valor : BigDecimal.ZERO, MAX_LISTA, false));
+        r.add("clientesEtanol", lista(porClienteEtanol, ordenados(porClienteEtanol),
+                famEt != null ? famEt.valor : BigDecimal.ZERO, MAX_LISTA, false));
         r.add("porDestino", lista(porDestino, ordenados(porDestino), valorItens, MAX_LISTA, false));
         r.add("porRotina",  lista(porRotina,  ordenados(porRotina),  valorItens, MAX_LISTA, false));
 

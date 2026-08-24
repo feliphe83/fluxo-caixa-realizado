@@ -373,8 +373,8 @@ function render(d) {
     ${secaoPreco(d)}
 
     <div class="grid-2">
-      ${tabelaCorte('4', 'Por cliente', d.porCliente, 'Cliente')}
-      ${tabelaCorte('5', 'Por estado', d.porEstado, 'UF')}
+      ${tabelaCorte('4', 'Maiores clientes · açúcar', d.clientesAcucar, 'Cliente')}
+      ${tabelaCorte('5', 'Maiores clientes · álcool', d.clientesEtanol, 'Cliente')}
     </div>
     <div class="grid-2">
       ${tabelaCorte('6', 'Por destino do item', d.porDestino, 'Destino')}

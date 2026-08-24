@@ -212,7 +212,7 @@
       <div class="minis" id="minis"></div>
     </div>
     <div class="bloco">
-      <div class="cab"><h2>Cliente e estado</h2><span class="dica">maiores</span></div>
+      <div class="cab"><h2>Maiores clientes por produto</h2><span class="dica">açúcar e álcool</span></div>
       <div class="cortes" id="cortes"></div>
     </div>
   </div>
@@ -428,12 +428,12 @@ function montarCortes(d) {
               <td class="num" style="color:var(--ink-3);width:52px">${fmtNum(l.pct, 1)}%</td></tr>`).join('')}
       </tbody></table>
     </div>`;
-  // Ficaram cliente e estado. Rotina fiscal e destino do item saíram: são
-  // classificação da nota, não da venda — repetem em outras palavras o que a
-  // tabela por produto já diz, e ocupavam espaço que o gráfico precisava.
+  // Os maiores clientes, separados por produto: quem mais compra açúcar e
+  // quem mais compra álcool. O corte por estado saiu — quem decide olha o
+  // cliente por produto, não a UF.
   document.getElementById('cortes').innerHTML =
-      bloco('Cliente', d.porCliente)
-    + bloco('Estado', d.porEstado);
+      bloco('Açúcar', d.clientesAcucar)
+    + bloco('Álcool', d.clientesEtanol);
 }
 
 // ── Gráficos ──────────────────────────────────────────────────────────────
