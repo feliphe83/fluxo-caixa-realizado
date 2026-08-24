@@ -105,14 +105,29 @@
   .erro-box { background: #fdecec; border: 1.5px solid #f5c2c2; color: #b23b3b; border-radius: 10px; padding: 14px 18px; font-size: 13px; }
 
   @media print {
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     .filtros-card, .barra-acoes, .btn-voltar, .snav-sidebar, .snav-toggle, .snav-backdrop, .legenda { display: none !important; }
     body { background: #fff; }
     .conteudo { max-width: none; padding: 0; }
-    .tabela-wrap { border: none; }
-    table.fech { font-size: 9px; }
-    table.fech input { border: none; background: transparent; width: auto; padding: 0; }
-    table.fech thead th, table.fech td.prest, table.fech th.prest { position: static; }
-    @page { size: landscape; margin: 8mm; }
+
+    /* Cabeçalho impresso: texto escuro sobre branco (o degradê verde não sai na
+       impressão e deixava o texto branco invisível). */
+    .header { background: #fff !important; color: #16342a !important; padding: 0 0 8px; border-bottom: 2px solid #16342a; margin-bottom: 10px; }
+    .header-logo { background: #16342a !important; }
+    .header-title, .header-sub, .header-periodo, .header-emitido, .header-emitido b { color: #16342a !important; opacity: 1 !important; }
+
+    /* Tabela: compacta e sem colunas fixas/inputs, para caber na folha. */
+    .tabela-wrap { border: none; overflow: visible; }
+    table.fech { font-size: 7.5px; width: 100%; }
+    table.fech thead th { position: static; background: #e8eef7 !important; color: #16342a !important; border: 1px solid #cdd7ea; padding: 3px 3px; }
+    table.fech thead th.grp { background: #d6deee !important; }
+    table.fech th.prest, table.fech td.prest { position: static; min-width: 0; white-space: normal; background: #f2f5fb !important; color: #16342a !important; font-weight: 700; border: 1px solid #cdd7ea; }
+    table.fech td { padding: 2px 3px; border: 1px solid #e3e8f5; color: #1a1a2e; }
+    table.fech td.auto, table.fech td.deriv { background: #fff !important; }
+    table.fech td.liq { background: #dff2e8 !important; color: #0f4d31 !important; }
+    table.fech tfoot td { background: #e8eef7 !important; color: #16342a !important; border: 1px solid #cdd7ea; }
+    table.fech tfoot td.liq { background: #cdeede !important; }
+    @page { size: landscape; margin: 7mm; }
   }
 </style>
 </head>
@@ -142,6 +157,7 @@
     <div class="filtros-grid">
       <div class="campo"><label>Data Início</label><input type="date" id="dataIni"></div>
       <div class="campo"><label>Data Fim</label><input type="date" id="dataFim"></div>
+      <div class="campo"><label>Nº do contrato (opcional)</label><input type="text" id="contrato" placeholder="todos" style="padding:8px 10px;border:1.5px solid #d6ddec;border-radius:8px;font-size:14px;color:var(--ink);width:150px" onkeydown="if(event.key==='Enter')carregar()"></div>
       <button class="btn-gerar" id="btnGerar" onclick="carregar()">
         <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
         Carregar do sistema
@@ -202,6 +218,7 @@ function montarPresets() {
 async function carregar() {
   const ini = document.getElementById("dataIni").value;
   const fim = document.getElementById("dataFim").value;
+  const contrato = document.getElementById("contrato").value.trim();
   if (!ini || !fim) { alert("Informe data início e fim."); return; }
   if (ini > fim) { alert("A data início não pode ser depois da data fim."); return; }
 
@@ -209,11 +226,14 @@ async function carregar() {
   painel.innerHTML = '<div class="tabela-wrap"><div class="estado"><div class="spinner"></div>Consultando fretes de transporte de pessoal…</div></div>';
 
   try {
-    const r = await fetch("api/fechamento-frete?dataIni=" + ini + "&dataFim=" + fim);
+    let url = "api/fechamento-frete?dataIni=" + ini + "&dataFim=" + fim;
+    if (contrato) url += "&contrato=" + encodeURIComponent(contrato);
+    const r = await fetch(url);
     const j = await r.json();
     if (!j.ok) { painel.innerHTML = '<div class="tabela-wrap"><div class="estado"><div class="erro-box">' + (j.erro || "Falha ao consultar.") + '</div></div></div>'; return; }
 
     LINHAS = (j.prestadores || []).map(p => ({
+      contrato: p.contrato || "—",
       prestador: p.prestador || "",
       nEquip: +p.nEquip || 0,
       diarias: +p.diarias || 0,
@@ -251,6 +271,7 @@ function derivar(l) {
 
 // ── Render ───────────────────────────────────────────────────────────────────
 const COLS = [
+  { g: "", h: "Contrato", cls: "left", txt: true, f: l => l.contrato || "—" },
   { g: "", h: "EQP.", cls: "auto", f: l => l.nEquip, d: 0 },
   { g: "", h: "Diárias", cls: "auto", f: l => l.diarias, d: 0 },
   { g: "", h: "Kms Rodados", cls: "auto", f: l => l.kms, d: 0 },
@@ -272,7 +293,7 @@ const COLS = [
 function render() {
   const painel = document.getElementById("painel");
   if (!LINHAS.length) {
-    painel.innerHTML = '<div class="tabela-wrap"><div class="estado">Nenhum apontamento de transporte de pessoal no período.<br><br><button class="btn-acao" onclick="adicionar()">+ Adicionar prestador manualmente</button></div></div>';
+    painel.innerHTML = '<div class="tabela-wrap"><div class="estado">Nenhum apontamento de transporte de pessoal no período' + (document.getElementById("contrato").value.trim() ? " para esse contrato." : ".") + '</div></div>';
     return;
   }
 
@@ -292,11 +313,9 @@ function render() {
   let corpo = "";
   LINHAS.forEach((l, idx) => {
     corpo += '<tr data-i="' + idx + '">';
-    corpo += '<td class="prest"><input class="prest-in" value="' + escapar(l.prestador) + '" oninput="setCampo(' + idx + ',\'prestador\',this.value)">'
-           + '<button class="btn-rm" title="Remover" onclick="remover(' + idx + ')">✕</button></td>';
+    corpo += '<td class="prest">' + escapar(l.prestador) + '</td>';
     COLS.forEach(c => {
-      if (c.inp) corpo += '<td class="' + (c.auto ? "auto" : "") + '"><input class="' + (c.auto ? "in-auto" : "") + '" type="number" step="any" value="' + (l[c.inp] || 0) + '" oninput="setCampo(' + idx + ',\'' + c.inp + '\',this.value)"></td>';
-      else corpo += '<td class="' + (c.cls || "") + '" data-cel="' + c.h + '"></td>';
+      corpo += '<td class="' + (c.cls || "") + '" data-cel="' + c.h + '"></td>';
     });
     corpo += '</tr>';
   });
@@ -305,7 +324,6 @@ function render() {
 
   painel.innerHTML =
     '<div class="barra-acoes">' +
-    '  <button class="btn-acao" onclick="adicionar()">+ Adicionar prestador</button>' +
     '  <span class="esp"></span>' +
     '  <button class="btn-acao" onclick="window.print()">🖨️ Imprimir / PDF</button>' +
     '  <button class="btn-acao destaque" onclick="exportarExcel()">⬇️ Exportar Excel</button>' +
@@ -322,28 +340,15 @@ function render() {
 
 function escapar(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
 
-function setCampo(i, campo, val) {
-  if (campo === "prestador") LINHAS[i].prestador = val;
-  else LINHAS[i][campo] = num(val);
-  recalc();
-}
-
-function adicionar() {
-  LINHAS.push({ prestador: "", nEquip: 0, diarias: 0, kms: 0, colab: 0, valorBruto: 0, litros: 0, valorCombustivel: 0 });
-  render();
-}
-function remover(i) { LINHAS.splice(i, 1); render(); }
-
-// Recalcula derivados e totais sem redesenhar os inputs (mantém o foco).
+// Preenche derivados e totais. Tabela é só leitura (tudo vem do Oracle).
 function recalc() {
   const tot = { nEquip: 0, diarias: 0, kms: 0, colab: 0, valorBruto: 0, litros: 0, valorCombustivel: 0 };
   document.querySelectorAll("tbody tr").forEach(tr => {
     const i = +tr.dataset.i, l = LINHAS[i]; if (!l) return;
     const x = derivar(l);
     COLS.forEach(c => {
-      if (c.inp) return;
       const cel = tr.querySelector('td[data-cel="' + cssq(c.h) + '"]');
-      if (cel) cel.textContent = nf(c.f(l, x), c.d);
+      if (cel) cel.textContent = c.txt ? c.f(l) : nf(c.f(l, x), c.d);
     });
     tot.nEquip += l.nEquip; tot.diarias += l.diarias; tot.kms += l.kms; tot.colab += l.colab;
     tot.valorBruto += l.valorBruto; tot.litros += l.litros; tot.valorCombustivel += l.valorCombustivel;
@@ -358,7 +363,7 @@ function recalc() {
   };
   COLS.forEach(c => {
     const cel = document.querySelector('tfoot td[data-tot="' + cssq(c.h) + '"]');
-    if (cel) cel.textContent = nf(totVal[c.h], c.d);
+    if (cel) cel.textContent = c.txt ? "" : nf(totVal[c.h], c.d);
   });
 }
 function cssq(s) { return s.replace(/"/g, '\\"'); }
@@ -370,7 +375,7 @@ function exportarExcel() {
   const cab2 = ["", ...COLS.map(c => c.h)];
   const linhas = LINHAS.map(l => {
     const x = derivar(l);
-    return [l.prestador, ...COLS.map(c => c.inp ? l[c.inp] : c.f(l, x))];
+    return [l.prestador, ...COLS.map(c => c.txt ? c.f(l) : c.f(l, x))];
   });
   // Total
   const tot = LINHAS.reduce((a, l) => { a.nEquip += l.nEquip; a.diarias += l.diarias; a.kms += l.kms; a.colab += l.colab; a.valorBruto += l.valorBruto; a.litros += l.litros; a.valorCombustivel += l.valorCombustivel; return a; },

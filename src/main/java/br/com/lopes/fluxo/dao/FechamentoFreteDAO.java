@@ -51,15 +51,18 @@ public class FechamentoFreteDAO {
     /**
      * @param dataIni yyyy-MM-dd (obrigatório)
      * @param dataFim yyyy-MM-dd (obrigatório)
+     * @param contrato opcional; quando informado, filtra os apontamentos por
+     *                 numerocontrato (a coluna Contrato passa a listar só ele).
      * @return uma linha por prestador com os campos vindos do Oracle já casados
      *         com o combustível; ordenado por valor bruto desc.
      */
-    public List<Map<String, Object>> resumoPorPrestador(String dataIni, String dataFim) {
+    public List<Map<String, Object>> resumoPorPrestador(String dataIni, String dataFim, String contrato) {
         validarData(dataIni);
         validarData(dataFim);
+        String filtroContrato = sanitizarContrato(contrato);
 
         // 1) Frete de transporte de pessoal por prestador.
-        List<Map<String, Object>> frete = executar(sqlTransporte(dataIni, dataFim));
+        List<Map<String, Object>> frete = executar(sqlTransporte(dataIni, dataFim, filtroContrato));
 
         // 2) Combustível (diesel) por fornecedor, indexado por cod_fornecedor.
         Map<Long, Map<String, Object>> combPorForn = new LinkedHashMap<>();
@@ -75,6 +78,7 @@ public class FechamentoFreteDAO {
 
             Map<String, Object> linha = new LinkedHashMap<>();
             linha.put("codFornecedor", cod);
+            linha.put("contrato", texto(f.get("contratos"), "—"));
             linha.put("prestador", texto(f.get("prestador"), "Fornecedor " + (cod == null ? "?" : cod)));
             linha.put("nEquip", inteiro(f.get("n_equip")));
             linha.put("diarias", numero(f.get("diarias")));
@@ -96,14 +100,27 @@ public class FechamentoFreteDAO {
     /**
      * Datas inline como 'DD/MM/YYYY' (validadas antes) — é como o ERP compara
      * a.dt_apontamento no bloco de transporte de pessoal já em produção.
+     *
+     * @param contrato já sanitizado (só letras/dígitos/-/./); "" = sem filtro.
+     *        A coluna "contratos" lista os contratos distintos do prestador no
+     *        período (respeitando o mesmo filtro), sem LISTAGG DISTINCT para
+     *        rodar em qualquer versão do Oracle.
      */
-    private static String sqlTransporte(String dataIni, String dataFim) {
+    private static String sqlTransporte(String dataIni, String dataFim, String contrato) {
         String dIni = "'" + isoParaDDMMYYYY(dataIni) + "'";
         String dFim = "'" + isoParaDDMMYYYY(dataFim) + "'";
+        String fA  = contrato.isEmpty() ? "" : " and upper(to_char(a.numerocontrato))  = upper('" + contrato + "')";
+        String fA2 = contrato.isEmpty() ? "" : " and upper(to_char(a2.numerocontrato)) = upper('" + contrato + "')";
         return
             "select a.cod_fornecedor, " +
             "       (select max(p.nome) from material.fornecedor f, rh.pessoa p " +
             "          where f.cod_fornecedor = a.cod_fornecedor and p.cod_pessoa = f.cod_pessoa) prestador, " +
+            "       (select listagg(c.nc, ', ') within group (order by c.nc) from ( " +
+            "          select distinct a2.numerocontrato nc from automotivo.apontamentoterceiro a2 " +
+            "           where a2.cod_grupoempresa = 1 and a2.cod_empresa = 1 and a2.cod_filial = 1 " +
+            "             and a2.cod_fornecedor = a.cod_fornecedor " +
+            "             and a2.dt_apontamento between " + dIni + " and " + dFim + fA2 +
+            "             and a2.numerocontrato is not null) c) contratos, " +
             "       count(distinct it.cod_equipamento) n_equip, " +
             "       sum(it.quantidade)  diarias, " +
             "       sum(nvl(it.kmhs_final, 0) - nvl(it.kmhs_inicial, 0)) kms, " +
@@ -113,9 +130,15 @@ public class FechamentoFreteDAO {
             " where a.cod_grupoempresa = 1 and a.cod_empresa = 1 and a.cod_filial = 1 " +
             "   and a.ano_apontamento    = it.ano_apontamento " +
             "   and a.numero_apontamento = it.numero_apontamento " +
-            "   and a.dt_apontamento between " + dIni + " and " + dFim + " " +
+            "   and a.dt_apontamento between " + dIni + " and " + dFim + " " + fA +
             " group by a.cod_fornecedor " +
             " order by valor_bruto desc";
+    }
+
+    /** Mantém só o que é seguro num número de contrato; evita injeção no inline. */
+    private static String sanitizarContrato(String contrato) {
+        if (contrato == null) return "";
+        return contrato.trim().replaceAll("[^A-Za-z0-9/.\\-]", "");
     }
 
     // ── Execução / conversões ─────────────────────────────────────────────────

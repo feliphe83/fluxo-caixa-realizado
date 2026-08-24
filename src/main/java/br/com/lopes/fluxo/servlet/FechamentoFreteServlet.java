@@ -20,7 +20,7 @@ import java.util.logging.Logger;
  * API da tela de Fechamento de Fretes de Transporte de Pessoal
  * (fechamento-frete.html).
  *
- * GET /api/fechamento-frete?dataIni=yyyy-MM-dd&dataFim=yyyy-MM-dd
+ * GET /api/fechamento-frete?dataIni=yyyy-MM-dd&dataFim=yyyy-MM-dd[&contrato=NNN]
  *
  * Devolve uma linha por prestador (fornecedor do apontamento de terceiro) com
  * os campos que vêm do Oracle — nº de equipamentos, diárias, kms rodados,
@@ -48,12 +48,14 @@ public class FechamentoFreteServlet extends HttpServlet {
                 return;
             }
 
-            List<Map<String, Object>> prestadores = dao.resumoPorPrestador(dataIni, dataFim);
+            String contrato = req.getParameter("contrato");
+            List<Map<String, Object>> prestadores = dao.resumoPorPrestador(dataIni, dataFim, contrato);
 
             JsonObject r = new JsonObject();
             r.addProperty("ok", true);
             r.addProperty("dataIni", dataIni);
             r.addProperty("dataFim", dataFim);
+            if (contrato != null && !contrato.isBlank()) r.addProperty("contrato", contrato.trim());
             r.add("prestadores", gson.toJsonTree(prestadores));
             out.print(gson.toJson(r));
 
