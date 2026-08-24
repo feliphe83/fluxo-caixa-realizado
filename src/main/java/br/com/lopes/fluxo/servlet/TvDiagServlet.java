@@ -27,6 +27,8 @@ public class TvDiagServlet extends HttpServlet {
         JsonObject o = new JsonObject();
         o.addProperty("ok", true);
         o.addProperty("remoteAddr", req.getRemoteAddr());
+        o.addProperty("cfConnectingIp", req.getHeader("CF-Connecting-IP"));
+        o.addProperty("trueClientIp", req.getHeader("True-Client-IP"));
         o.addProperty("xRealIp", req.getHeader("X-Real-IP"));
         o.addProperty("xForwardedFor", req.getHeader("X-Forwarded-For"));
         o.addProperty("ipEncaminhado", encaminhado);

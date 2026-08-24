@@ -258,10 +258,20 @@ public class AuthFilter implements Filter {
         return ehRedeInterna(peer);
     }
 
-    /** O IP real do cliente informado pelo proxy: X-Real-IP, ou o ÚLTIMO da X-Forwarded-For. */
+    /**
+     * O IP real do cliente informado pelo proxy.
+     *
+     * O site fica atrás do Cloudflare, então o IP VERDADEIRO do visitante vem
+     * no CF-Connecting-IP (a Cloudflare o define e sobrescreve — não dá para
+     * forjar por cabeçalho); True-Client-IP é o mesmo no plano Enterprise. O
+     * X-Real-IP aqui é o IP do próprio Cloudflare, não serve. Na falta dos de
+     * cima, cai no último da X-Forwarded-For.
+     */
     static String ipEncaminhado(HttpServletRequest req) {
-        String real = req.getHeader("X-Real-IP");
-        if (real != null && !real.isBlank()) return real.trim();
+        for (String h : new String[]{ "CF-Connecting-IP", "True-Client-IP", "X-Real-IP" }) {
+            String v = req.getHeader(h);
+            if (v != null && !v.isBlank()) return v.trim();
+        }
         String xff = req.getHeader("X-Forwarded-For");
         if (xff != null && !xff.isBlank()) {
             String[] p = xff.split(",");
@@ -292,7 +302,11 @@ public class AuthFilter implements Filter {
         ip = ip.trim();
         if (ip.startsWith("::ffff:")) ip = ip.substring(7);   // IPv4 embutido em IPv6
         if (ehLoopback(ip)) return true;
-        if (ip.startsWith("123.0.0.")) return true;           // a rede interna da usina
+        // Como o site passa pelo Cloudflare, quem está na usina chega com o IP
+        // PÚBLICO de saída da rede (o NAT esconde o 123.0.0.x). Esse IP de
+        // saída é a fronteira real da "rede interna" vista de fora.
+        if (ip.equals("131.161.27.96")) return true;          // saída pública da usina
+        if (ip.startsWith("123.0.0.")) return true;           // a LAN da usina (acesso direto, sem Cloudflare)
         if (ip.startsWith("10.") || ip.startsWith("192.168.")) return true;
         if (ip.startsWith("172.")) {
             try {
