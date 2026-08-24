@@ -25,6 +25,8 @@ import java.util.logging.Logger;
  *                      (automotivo.apontamentoterceiro), a mesma base que o
  *                      Controle de Serviços usa no bloco "TRANSPORTE DE PESSOAL".
  *  - Diárias         = soma da quantidade apontada (it.quantidade).
+ *  - Kms rodados     = soma de (km_final - km_inicial) dos itens.
+ *  - Colaboradores   = soma de qtd_pessoas (pessoas transportadas) dos itens.
  *  - Nº Equipamentos = equipamentos distintos do prestador no período.
  *  - Litros / Valor Combustível = do abastecimento, por fornecedor, reaproveitando
  *                      {@link AgroCombustivelDAO#buscarPorFornecedor} (diesel).
@@ -33,10 +35,9 @@ import java.util.logging.Logger;
  * não o proprietário da fazenda. O nome sai de material.fornecedor -> rh.pessoa,
  * e é por cod_fornecedor que o combustível é casado com o frete.
  *
- * Kms rodados, colaboradores, oficina/carro apoio e complemento não estão no
- * ERP: ficam editáveis na tela (como as células amarelas da planilha). Os
- * derivados (R$/km, R$/diária, kms/litro, %, valor líquido) são calculados no
- * navegador, sobre os campos do Oracle somados aos digitados.
+ * Os derivados (R$/km, R$/diária, kms/litro, %, valor líquido = bruto - combustível)
+ * são calculados no navegador, sobre estes campos. Kms e colaboradores chegam
+ * preenchidos, mas seguem editáveis na tela para ajuste do fechamento.
  *
  * Empresa fixada em 1/1/1, como nas demais consultas da intranet (usuário de
  * serviço próprio, sem a geral.fn_autorizacao_empresa do ERP).
@@ -77,6 +78,8 @@ public class FechamentoFreteDAO {
             linha.put("prestador", texto(f.get("prestador"), "Fornecedor " + (cod == null ? "?" : cod)));
             linha.put("nEquip", inteiro(f.get("n_equip")));
             linha.put("diarias", numero(f.get("diarias")));
+            linha.put("kms", numero(f.get("kms")));
+            linha.put("colab", numero(f.get("colab")));
             linha.put("valorBruto", numero(f.get("valor_bruto")));
 
             Map<String, Object> c = cod == null ? null : combPorForn.get(cod);
@@ -103,6 +106,8 @@ public class FechamentoFreteDAO {
             "          where f.cod_fornecedor = a.cod_fornecedor and p.cod_pessoa = f.cod_pessoa) prestador, " +
             "       count(distinct it.cod_equipamento) n_equip, " +
             "       sum(it.quantidade)  diarias, " +
+            "       sum(nvl(it.km_final, 0) - nvl(it.km_inicial, 0)) kms, " +
+            "       sum(nvl(it.qtd_pessoas, 0)) colab, " +
             "       sum(it.valor_total) valor_bruto " +
             "  from automotivo.apontamentoterceiro a, automotivo.itens_apontamentoterceiro it " +
             " where a.cod_grupoempresa = 1 and a.cod_empresa = 1 and a.cod_filial = 1 " +

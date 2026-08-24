@@ -89,6 +89,7 @@
   table.fech td.deriv { background: var(--deriv); color: var(--ink-3); }
   table.fech td.liq { background: var(--liq); color: #14603f; font-weight: 800; }
   table.fech input { width: 92px; padding: 4px 6px; border: 1.5px solid var(--manual-bd); border-radius: 6px; background: var(--manual); font-size: 12px; text-align: right; color: var(--ink); font-weight: 600; }
+  table.fech input.in-auto { background: var(--auto); border-color: var(--auto-bd); }
   table.fech input.prest-in { width: 200px; text-align: left; border-color: #d6ddec; background: #fff; font-weight: 600; }
   table.fech input:focus { outline: 2px solid #234f3b; outline-offset: -1px; }
   table.fech tbody tr:hover td { background: #eef7f1; }
@@ -159,10 +160,10 @@
 <script>
 "use strict";
 
-// Modelo em memória. Campos do Oracle: nEquip, diarias, valorBruto, litros, valorCombustivel.
-// Campos digitados (amarelos): kms, colab, oficina, complemento. Os derivados são calculados.
+// Modelo em memória. Todos os campos vêm do Oracle: nEquip, diarias, kms, colab,
+// valorBruto, litros, valorCombustivel. Kms e colab chegam preenchidos mas seguem
+// editáveis (ajuste do fechamento). Os derivados e o líquido são calculados.
 let LINHAS = [];
-const CAMPOS_MANUAIS = ["kms", "colab", "complemento", "oficina"];
 
 const nf = (n, d = 2) => (isFinite(n) ? n : 0).toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
 const num = v => { const n = parseFloat(String(v).replace(",", ".")); return isFinite(n) ? n : 0; };
@@ -216,10 +217,11 @@ async function carregar() {
       prestador: p.prestador || "",
       nEquip: +p.nEquip || 0,
       diarias: +p.diarias || 0,
+      kms: +p.kms || 0,
+      colab: +p.colab || 0,
       valorBruto: +p.valorBruto || 0,
       litros: +p.litros || 0,
-      valorCombustivel: +p.valorCombustivel || 0,
-      kms: 0, colab: 0, complemento: 0, oficina: 0
+      valorCombustivel: +p.valorCombustivel || 0
     }));
 
     const fmtBR = s => { const [a, b, c] = s.split("-"); return c + "/" + b + "/" + a; };
@@ -243,7 +245,7 @@ function derivar(l) {
     kmsLt:   div(l.kms, l.litros),
     rsLitro: div(comb, l.litros),
     pct:     div(comb, bruto) * 100,
-    liquido: bruto - comb - l.oficina + l.complemento
+    liquido: bruto - comb
   };
 }
 
@@ -251,21 +253,19 @@ function derivar(l) {
 const COLS = [
   { g: "", h: "EQP.", cls: "auto", f: l => l.nEquip, d: 0 },
   { g: "", h: "Diárias", cls: "auto", f: l => l.diarias, d: 0 },
-  { g: "", h: "Kms Rodados", inp: "kms", d: 0 },
+  { g: "", h: "Kms Rodados", inp: "kms", auto: true, d: 0 },
   { g: "", h: "Kms/Dia", cls: "deriv", f: (l, x) => x.kmsDia, d: 1 },
   { g: "", h: "R$/Km", cls: "deriv", f: (l, x) => x.rsKm, d: 2 },
-  { g: "", h: "Colab.", inp: "colab", d: 0 },
+  { g: "", h: "Colab.", inp: "colab", auto: true, d: 0 },
   { g: "", h: "Colab/dia", cls: "deriv", f: (l, x) => x.colabDia, d: 1 },
   { g: "", h: "R$/Diária", cls: "deriv", f: (l, x) => x.rsDiaria, d: 2 },
   { g: "", h: "R$/Colab.", cls: "deriv", f: (l, x) => x.rsColab, d: 2 },
   { g: "", h: "Kms/Lt.", cls: "deriv", f: (l, x) => x.kmsLt, d: 2 },
-  { g: "Faturamento Bruto", h: "Valor Bruto R$", cls: "auto", f: l => l.valorBruto, d: 2 },
-  { g: "Faturamento Bruto", h: "Complemento R$", inp: "complemento", d: 2 },
+  { g: "", h: "Valor Bruto R$", cls: "auto", f: l => l.valorBruto, d: 2 },
   { g: "Combustíveis", h: "Litros", cls: "auto", f: l => l.litros, d: 2 },
   { g: "Combustíveis", h: "R$/Litro", cls: "deriv", f: (l, x) => x.rsLitro, d: 2 },
   { g: "Combustíveis", h: "Valor R$", cls: "auto", f: l => l.valorCombustivel, d: 2 },
   { g: "Combustíveis", h: "%", cls: "deriv", f: (l, x) => x.pct, d: 1 },
-  { g: "", h: "Oficina/Apoio R$", inp: "oficina", d: 2 },
   { g: "", h: "Valor Líquido R$", cls: "liq", f: (l, x) => x.liquido, d: 2 }
 ];
 
@@ -295,7 +295,7 @@ function render() {
     corpo += '<td class="prest"><input class="prest-in" value="' + escapar(l.prestador) + '" oninput="setCampo(' + idx + ',\'prestador\',this.value)">'
            + '<button class="btn-rm" title="Remover" onclick="remover(' + idx + ')">✕</button></td>';
     COLS.forEach(c => {
-      if (c.inp) corpo += '<td><input type="number" step="any" value="' + (l[c.inp] || 0) + '" oninput="setCampo(' + idx + ',\'' + c.inp + '\',this.value)"></td>';
+      if (c.inp) corpo += '<td class="' + (c.auto ? "auto" : "") + '"><input class="' + (c.auto ? "in-auto" : "") + '" type="number" step="any" value="' + (l[c.inp] || 0) + '" oninput="setCampo(' + idx + ',\'' + c.inp + '\',this.value)"></td>';
       else corpo += '<td class="' + (c.cls || "") + '" data-cel="' + c.h + '"></td>';
     });
     corpo += '</tr>';
@@ -311,10 +311,9 @@ function render() {
     '  <button class="btn-acao destaque" onclick="exportarExcel()">⬇️ Exportar Excel</button>' +
     '</div>' +
     '<div class="legenda">' +
-    '  <span><i class="amostra" style="background:var(--auto)"></i> Vem do sistema (editável)</span>' +
-    '  <span><i class="amostra" style="background:var(--manual)"></i> Preencher no fechamento</span>' +
+    '  <span><i class="amostra" style="background:var(--auto)"></i> Vem do sistema (Kms e Colab. editáveis)</span>' +
     '  <span><i class="amostra" style="background:var(--deriv)"></i> Calculado</span>' +
-    '  <span><i class="amostra" style="background:var(--liq)"></i> Valor líquido</span>' +
+    '  <span><i class="amostra" style="background:var(--liq)"></i> Valor líquido (bruto − combustível)</span>' +
     '</div>' +
     '<div class="tabela-wrap"><table class="fech"><thead>' + grpRow + subRow + '</thead><tbody>' + corpo + '</tbody><tfoot>' + rodape + '</tfoot></table></div>';
 
@@ -330,14 +329,14 @@ function setCampo(i, campo, val) {
 }
 
 function adicionar() {
-  LINHAS.push({ prestador: "", nEquip: 0, diarias: 0, valorBruto: 0, litros: 0, valorCombustivel: 0, kms: 0, colab: 0, complemento: 0, oficina: 0 });
+  LINHAS.push({ prestador: "", nEquip: 0, diarias: 0, kms: 0, colab: 0, valorBruto: 0, litros: 0, valorCombustivel: 0 });
   render();
 }
 function remover(i) { LINHAS.splice(i, 1); render(); }
 
 // Recalcula derivados e totais sem redesenhar os inputs (mantém o foco).
 function recalc() {
-  const tot = { nEquip: 0, diarias: 0, kms: 0, colab: 0, valorBruto: 0, complemento: 0, litros: 0, valorCombustivel: 0, oficina: 0 };
+  const tot = { nEquip: 0, diarias: 0, kms: 0, colab: 0, valorBruto: 0, litros: 0, valorCombustivel: 0 };
   document.querySelectorAll("tbody tr").forEach(tr => {
     const i = +tr.dataset.i, l = LINHAS[i]; if (!l) return;
     const x = derivar(l);
@@ -347,17 +346,15 @@ function recalc() {
       if (cel) cel.textContent = nf(c.f(l, x), c.d);
     });
     tot.nEquip += l.nEquip; tot.diarias += l.diarias; tot.kms += l.kms; tot.colab += l.colab;
-    tot.valorBruto += l.valorBruto; tot.complemento += l.complemento; tot.litros += l.litros;
-    tot.valorCombustivel += l.valorCombustivel; tot.oficina += l.oficina;
+    tot.valorBruto += l.valorBruto; tot.litros += l.litros; tot.valorCombustivel += l.valorCombustivel;
   });
   // Totais: somas nas colunas de valor/quantidade; derivados recompostos sobre o total.
-  const tl = { diarias: tot.diarias, kms: tot.kms, litros: tot.litros, colab: tot.colab, valorBruto: tot.valorBruto, valorCombustivel: tot.valorCombustivel, oficina: tot.oficina, complemento: tot.complemento };
-  const tx = derivar(tl);
+  const tx = derivar(tot);
   const totVal = {
     "EQP.": tot.nEquip, "Diárias": tot.diarias, "Kms Rodados": tot.kms, "Kms/Dia": tx.kmsDia, "R$/Km": tx.rsKm,
     "Colab.": tot.colab, "Colab/dia": tx.colabDia, "R$/Diária": tx.rsDiaria, "R$/Colab.": tx.rsColab, "Kms/Lt.": tx.kmsLt,
-    "Valor Bruto R$": tot.valorBruto, "Complemento R$": tot.complemento, "Litros": tot.litros, "R$/Litro": tx.rsLitro,
-    "Valor R$": tot.valorCombustivel, "%": tx.pct, "Oficina/Apoio R$": tot.oficina, "Valor Líquido R$": tx.liquido
+    "Valor Bruto R$": tot.valorBruto, "Litros": tot.litros, "R$/Litro": tx.rsLitro,
+    "Valor R$": tot.valorCombustivel, "%": tx.pct, "Valor Líquido R$": tx.liquido
   };
   COLS.forEach(c => {
     const cel = document.querySelector('tfoot td[data-tot="' + cssq(c.h) + '"]');
@@ -376,11 +373,11 @@ function exportarExcel() {
     return [l.prestador, ...COLS.map(c => c.inp ? l[c.inp] : c.f(l, x))];
   });
   // Total
-  const tot = LINHAS.reduce((a, l) => { CAMPOS_MANUAIS.forEach(k => a[k] += l[k]); a.nEquip += l.nEquip; a.diarias += l.diarias; a.valorBruto += l.valorBruto; a.litros += l.litros; a.valorCombustivel += l.valorCombustivel; return a; },
-    { nEquip: 0, diarias: 0, kms: 0, colab: 0, complemento: 0, oficina: 0, valorBruto: 0, litros: 0, valorCombustivel: 0 });
+  const tot = LINHAS.reduce((a, l) => { a.nEquip += l.nEquip; a.diarias += l.diarias; a.kms += l.kms; a.colab += l.colab; a.valorBruto += l.valorBruto; a.litros += l.litros; a.valorCombustivel += l.valorCombustivel; return a; },
+    { nEquip: 0, diarias: 0, kms: 0, colab: 0, valorBruto: 0, litros: 0, valorCombustivel: 0 });
   const tx = derivar(tot);
   const linhaTot = ["TOTAL GERAL", ...COLS.map(c => {
-    const mapa = { "EQP.": tot.nEquip, "Diárias": tot.diarias, "Kms Rodados": tot.kms, "Kms/Dia": tx.kmsDia, "R$/Km": tx.rsKm, "Colab.": tot.colab, "Colab/dia": tx.colabDia, "R$/Diária": tx.rsDiaria, "R$/Colab.": tx.rsColab, "Kms/Lt.": tx.kmsLt, "Valor Bruto R$": tot.valorBruto, "Complemento R$": tot.complemento, "Litros": tot.litros, "R$/Litro": tx.rsLitro, "Valor R$": tot.valorCombustivel, "%": tx.pct, "Oficina/Apoio R$": tot.oficina, "Valor Líquido R$": tx.liquido };
+    const mapa = { "EQP.": tot.nEquip, "Diárias": tot.diarias, "Kms Rodados": tot.kms, "Kms/Dia": tx.kmsDia, "R$/Km": tx.rsKm, "Colab.": tot.colab, "Colab/dia": tx.colabDia, "R$/Diária": tx.rsDiaria, "R$/Colab.": tx.rsColab, "Kms/Lt.": tx.kmsLt, "Valor Bruto R$": tot.valorBruto, "Litros": tot.litros, "R$/Litro": tx.rsLitro, "Valor R$": tot.valorCombustivel, "%": tx.pct, "Valor Líquido R$": tx.liquido };
     return mapa[c.h];
   })];
 

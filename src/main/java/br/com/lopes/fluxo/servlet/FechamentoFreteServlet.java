@@ -23,9 +23,9 @@ import java.util.logging.Logger;
  * GET /api/fechamento-frete?dataIni=yyyy-MM-dd&dataFim=yyyy-MM-dd
  *
  * Devolve uma linha por prestador (fornecedor do apontamento de terceiro) com
- * os campos que vêm do Oracle — nº de equipamentos, diárias, valor bruto,
- * litros e valor de combustível. Kms, colaboradores, oficina e complemento são
- * digitados na tela; os derivados e o valor líquido, calculados no navegador.
+ * os campos que vêm do Oracle — nº de equipamentos, diárias, kms rodados,
+ * colaboradores, valor bruto, litros e valor de combustível. Os derivados e o
+ * valor líquido (bruto - combustível) são calculados no navegador.
  */
 @WebServlet("/api/fechamento-frete")
 public class FechamentoFreteServlet extends HttpServlet {
