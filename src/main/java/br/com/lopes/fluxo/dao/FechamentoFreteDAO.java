@@ -26,7 +26,7 @@ import java.util.logging.Logger;
  *                      Controle de Serviços usa no bloco "TRANSPORTE DE PESSOAL".
  *  - Diárias         = soma da quantidade apontada (it.quantidade).
  *  - Kms rodados     = soma de (km_final - km_inicial) dos itens.
- *  - Colaboradores   = soma de qtd_pessoas (pessoas transportadas) dos itens.
+ *  - Colaboradores   = soma de nr_pessoas (pessoas transportadas) dos itens.
  *  - Nº Equipamentos = equipamentos distintos do prestador no período.
  *  - Litros / Valor Combustível = do abastecimento, por fornecedor, reaproveitando
  *                      {@link AgroCombustivelDAO#buscarPorFornecedor} (diesel).
@@ -107,7 +107,7 @@ public class FechamentoFreteDAO {
             "       count(distinct it.cod_equipamento) n_equip, " +
             "       sum(it.quantidade)  diarias, " +
             "       sum(nvl(it.km_final, 0) - nvl(it.km_inicial, 0)) kms, " +
-            "       sum(nvl(it.qtd_pessoas, 0)) colab, " +
+            "       sum(nvl(it.nr_pessoas, 0)) colab, " +
             "       sum(it.valor_total) valor_bruto " +
             "  from automotivo.apontamentoterceiro a, automotivo.itens_apontamentoterceiro it " +
             " where a.cod_grupoempresa = 1 and a.cod_empresa = 1 and a.cod_filial = 1 " +
