@@ -234,6 +234,8 @@ function desenhar() {
     <div class="graficos">
       <div class="mini"><div class="mtit">Últimos 7 dias</div>
         <div class="tela"><canvas id="gAcucarD"></canvas></div></div>
+      <div class="mini"><div class="mtit">Últimos 3 meses</div>
+        <div class="tela"><canvas id="gAcucarM"></canvas></div></div>
     </div>`;
 
   document.getElementById('bIndicadores').innerHTML = `
@@ -279,6 +281,8 @@ function desenhar() {
   plotarTv('gDolarD', dolarDia, 'R$ ', '#2a78d6', 2, 'Sem histórico recente.', true);
   plotarTv('gAcucarD', serieAcucar(d.acucarDiario), '', '#eb6834', 2,
            'Juntando o histórico diário — depende de mais pregões coletados.', true);
+  plotarTv('gAcucarM', serieMensal(d.acucarMensal), '', '#eb6834', 2,
+           'Juntando o histórico mensal.', true);
 }
 
 /** Desenha uma série de pares {rotulo, valor}; se vier vazia, avisa no lugar. */
