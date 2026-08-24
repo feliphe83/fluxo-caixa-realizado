@@ -70,7 +70,10 @@ public class IndicadoresEconomicosServlet extends HttpServlet {
         try {
             JsonObject dolar = dao.dolar();
             JsonObject cepea = dao.cepea();
-            JsonObject acucar = dao.acucar();
+            // O açúcar nº 11 vence em mar/mai/jul/out; a usina acompanha só os
+            // contratos de MARÇO e OUTUBRO, então maio e julho saem — some da
+            // tabela, do cartão do topo e do preço dos produtos de uma vez.
+            JsonObject acucar = semMaioEJulho(dao.acucar());
 
             JsonObject r = new JsonObject();
             r.addProperty("ok", true);
@@ -103,6 +106,23 @@ public class IndicadoresEconomicosServlet extends HttpServlet {
     private void escrever(HttpServletResponse resp, String corpo) throws IOException {
         resp.getWriter().print(corpo);
         resp.getWriter().flush();
+    }
+
+    /** Tira os vencimentos de maio (Mai) e julho (Jul) do açúcar. */
+    private static JsonObject semMaioEJulho(JsonObject acucar) {
+        if (acucar == null) return null;
+        JsonElement dado = acucar.get("dado");
+        if (dado == null || !dado.isJsonArray()) return acucar;
+        JsonArray filtrado = new JsonArray();
+        for (JsonElement e : dado.getAsJsonArray()) {
+            String mes = e.isJsonObject() && e.getAsJsonObject().has("mes")
+                    && !e.getAsJsonObject().get("mes").isJsonNull()
+                    ? e.getAsJsonObject().get("mes").getAsString().trim() : "";
+            if (mes.startsWith("Mai") || mes.startsWith("Jul")) continue;
+            filtrado.add(e);
+        }
+        acucar.add("dado", filtrado);
+        return acucar;
     }
 
     // ── Preços derivados ──────────────────────────────────────────────────
