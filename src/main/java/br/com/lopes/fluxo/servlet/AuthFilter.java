@@ -91,6 +91,10 @@ public class AuthFilter implements Filter {
             uri.startsWith(ctx + "/css/")                 ||
             uri.startsWith(ctx + "/js/")                  ||
             uri.startsWith(ctx + "/img/")                 ||
+            // Diagnóstico do acesso das telas de TV: só ecoa o IP e os
+            // cabeçalhos da própria requisição, para achar por que uma TV
+            // pede (ou não) login. Nada sensível.
+            uri.equals(ctx + "/api/tv-diag")              ||
             // Rotas com token opaco próprio na URL (ex.: link de PDF clicado
             // a partir do chat, sem sessão de navegador nem X-Agro-Api-Key) —
             // cada servlet valida o token sozinho, por isso ficam liberadas aqui.
@@ -238,19 +242,32 @@ public class AuthFilter implements Filter {
      * liberar sem saber de onde vem. No acesso direto ao Tomcat (sem proxy) o
      * próprio IP de origem decide.
      */
-    private static boolean clienteNaRedeInterna(HttpServletRequest req) {
-        String peer = req.getRemoteAddr();
-        if (peer != null && !ehLoopback(peer)) return ehRedeInterna(peer);
+    static boolean clienteNaRedeInterna(HttpServletRequest req) {
+        // Se HÁ cabeçalho de proxy, é ele que diz o IP real do cliente —
+        // independentemente de qual IP o Tomcat vê na conexão com o nginx.
+        // Era esse o furo: quando o nginx conecta ao Tomcat por um IP que não
+        // é loopback, olhar só o getRemoteAddr negava todo mundo.
+        String real = ipEncaminhado(req);
+        if (real != null) return ehRedeInterna(real);
 
+        // Sem cabeçalho de proxy: ou é acesso direto (o peer é o cliente), ou
+        // é um proxy que não informou nada — e aí, se o peer é loopback, não
+        // dá para saber de onde vem: NEGA (melhor pedir login).
+        String peer = req.getRemoteAddr();
+        if (ehLoopback(peer)) return false;
+        return ehRedeInterna(peer);
+    }
+
+    /** O IP real do cliente informado pelo proxy: X-Real-IP, ou o ÚLTIMO da X-Forwarded-For. */
+    static String ipEncaminhado(HttpServletRequest req) {
         String real = req.getHeader("X-Real-IP");
-        if (real == null || real.isBlank()) {
-            String xff = req.getHeader("X-Forwarded-For");
-            if (xff != null && !xff.isBlank()) {
-                String[] p = xff.split(",");
-                real = p[p.length - 1];
-            }
+        if (real != null && !real.isBlank()) return real.trim();
+        String xff = req.getHeader("X-Forwarded-For");
+        if (xff != null && !xff.isBlank()) {
+            String[] p = xff.split(",");
+            return p[p.length - 1].trim();
         }
-        return real != null && ehRedeInterna(real.trim());
+        return null;
     }
 
     private static boolean ehLoopback(String ip) {
@@ -270,7 +287,7 @@ public class AuthFilter implements Filter {
      * faixas não trafega pela internet, então jamais aparece como o cliente
      * real vindo de fora.
      */
-    private static boolean ehRedeInterna(String ip) {
+    static boolean ehRedeInterna(String ip) {
         if (ip == null || ip.isBlank()) return false;
         ip = ip.trim();
         if (ip.startsWith("::ffff:")) ip = ip.substring(7);   // IPv4 embutido em IPv6
