@@ -253,10 +253,10 @@ function derivar(l) {
 const COLS = [
   { g: "", h: "EQP.", cls: "auto", f: l => l.nEquip, d: 0 },
   { g: "", h: "Diárias", cls: "auto", f: l => l.diarias, d: 0 },
-  { g: "", h: "Kms Rodados", inp: "kms", auto: true, d: 0 },
+  { g: "", h: "Kms Rodados", cls: "auto", f: l => l.kms, d: 0 },
   { g: "", h: "Kms/Dia", cls: "deriv", f: (l, x) => x.kmsDia, d: 1 },
   { g: "", h: "R$/Km", cls: "deriv", f: (l, x) => x.rsKm, d: 2 },
-  { g: "", h: "Colab.", inp: "colab", auto: true, d: 0 },
+  { g: "", h: "Colab.", cls: "auto", f: l => l.colab, d: 0 },
   { g: "", h: "Colab/dia", cls: "deriv", f: (l, x) => x.colabDia, d: 1 },
   { g: "", h: "R$/Diária", cls: "deriv", f: (l, x) => x.rsDiaria, d: 2 },
   { g: "", h: "R$/Colab.", cls: "deriv", f: (l, x) => x.rsColab, d: 2 },
@@ -311,7 +311,7 @@ function render() {
     '  <button class="btn-acao destaque" onclick="exportarExcel()">⬇️ Exportar Excel</button>' +
     '</div>' +
     '<div class="legenda">' +
-    '  <span><i class="amostra" style="background:var(--auto)"></i> Vem do sistema (Kms e Colab. editáveis)</span>' +
+    '  <span><i class="amostra" style="background:var(--auto)"></i> Vem do sistema</span>' +
     '  <span><i class="amostra" style="background:var(--deriv)"></i> Calculado</span>' +
     '  <span><i class="amostra" style="background:var(--liq)"></i> Valor líquido (bruto − combustível)</span>' +
     '</div>' +
