@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fechamento de Fretes · Transporte de Pessoal</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --ink: #0f2460;
+    --ink-2: #52514e;
+    --ink-3: #898781;
+    --grade: #e9edf6;
+    --auto: #eaf2fd;      /* azul claro — veio do sistema */
+    --auto-bd: #bcd6f5;
+    --manual: #fff6d6;    /* amarelo — preencher no fechamento */
+    --manual-bd: #ecd98a;
+    --deriv: #f4f6fb;     /* cinza — calculado */
+    --liq: #e7f7ef;       /* verde — valor líquido */
+    --liq-bd: #a8dcc1;
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f4f6fb; color: #1a1a2e; }
+
+  /* ── Header ── */
+  .header {
+    background: linear-gradient(135deg, #16342a 0%, #234f3b 100%);
+    color: white; padding: 16px 28px;
+    display: flex; align-items: center; justify-content: space-between; gap: 20px;
+  }
+  .header-left { display: flex; align-items: center; gap: 14px; min-width: 0; }
+  .header-logo { width: 44px; height: 44px; border-radius: 8px; background: white; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 5px; flex-shrink: 0; }
+  .header-logo img { width: 100%; height: 100%; object-fit: contain; }
+  .header-title { font-size: 19px; font-weight: 800; }
+  .header-sub { font-size: 12.5px; opacity: .9; margin-top: 3px; font-weight: 600; }
+  .header-periodo { font-size: 11.5px; opacity: .72; margin-top: 3px; }
+  .header-right { display: flex; align-items: center; gap: 18px; flex-shrink: 0; }
+  .header-emitido { font-size: 10.5px; opacity: .85; text-align: right; line-height: 1.5; white-space: nowrap; }
+  .header-emitido b { font-size: 13px; display: block; }
+  .btn-voltar {
+    display: flex; align-items: center; gap: 7px; padding: 8px 16px; border-radius: 8px;
+    border: 1.5px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.9); font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;
+  }
+  .btn-voltar:hover { background: rgba(255,255,255,0.18); }
+
+  .conteudo { max-width: 1600px; margin: 0 auto; padding: 22px; }
+
+  /* ── Filtros ── */
+  .filtros-card { background: white; border: 1.5px solid #e3e8f5; border-radius: 14px; padding: 16px 20px; margin-bottom: 18px; }
+  .filtros-grid { display: flex; flex-wrap: wrap; align-items: end; gap: 14px; }
+  .campo { display: flex; flex-direction: column; gap: 5px; }
+  .campo label { font-size: 11px; font-weight: 700; color: var(--ink-3); text-transform: uppercase; letter-spacing: .4px; }
+  .campo input[type=date] { padding: 8px 10px; border: 1.5px solid #d6ddec; border-radius: 8px; font-size: 14px; color: var(--ink); }
+  .btn-gerar {
+    display: flex; align-items: center; gap: 8px; padding: 9px 18px; border-radius: 8px; border: none;
+    background: #234f3b; color: white; font-size: 14px; font-weight: 700; cursor: pointer;
+  }
+  .btn-gerar:hover { background: #1a3d2d; }
+  .presets { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .preset { padding: 6px 12px; border-radius: 20px; border: 1.5px solid #d6ddec; background: #f7f9fd; color: var(--ink-2); font-size: 12px; font-weight: 600; cursor: pointer; }
+  .preset:hover { border-color: #234f3b; color: #234f3b; }
+
+  .barra-acoes { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+  .barra-acoes .esp { flex: 1; }
+  .btn-acao { display: flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 8px; border: 1.5px solid #d6ddec; background: white; color: var(--ink-2); font-size: 13px; font-weight: 600; cursor: pointer; }
+  .btn-acao:hover { border-color: #234f3b; color: #234f3b; }
+  .btn-acao.destaque { background: #1baf7a; border-color: #1baf7a; color: white; }
+  .btn-acao.destaque:hover { background: #159066; }
+
+  .legenda { display: flex; flex-wrap: wrap; gap: 14px; font-size: 11.5px; color: var(--ink-2); margin-bottom: 10px; }
+  .legenda span { display: inline-flex; align-items: center; gap: 6px; }
+  .amostra { width: 13px; height: 13px; border-radius: 3px; border: 1px solid rgba(0,0,0,.12); }
+
+  /* ── Tabela ── */
+  .tabela-wrap { background: white; border: 1.5px solid #e3e8f5; border-radius: 14px; overflow: auto; }
+  table.fech { border-collapse: collapse; width: 100%; font-size: 12px; white-space: nowrap; }
+  table.fech thead th {
+    background: #16342a; color: #fff; font-weight: 700; font-size: 11px; padding: 8px 8px;
+    position: sticky; top: 0; z-index: 2; text-align: right;
+  }
+  table.fech thead th.grp { background: #234f3b; text-align: center; font-size: 11px; letter-spacing: .3px; }
+  table.fech thead th.left, table.fech td.left { text-align: left; }
+  table.fech th.prest, table.fech td.prest {
+    position: sticky; left: 0; z-index: 1; background: #16342a; text-align: left; min-width: 210px;
+  }
+  table.fech tbody td.prest { background: #f7f9fd; font-weight: 600; color: var(--ink); border-right: 2px solid #e3e8f5; }
+  table.fech td { padding: 4px 8px; border-bottom: 1px solid var(--grade); text-align: right; color: var(--ink-2); }
+  table.fech td.auto { background: var(--auto); color: var(--ink); font-weight: 600; }
+  table.fech td.deriv { background: var(--deriv); color: var(--ink-3); }
+  table.fech td.liq { background: var(--liq); color: #14603f; font-weight: 800; }
+  table.fech input { width: 92px; padding: 4px 6px; border: 1.5px solid var(--manual-bd); border-radius: 6px; background: var(--manual); font-size: 12px; text-align: right; color: var(--ink); font-weight: 600; }
+  table.fech input.prest-in { width: 200px; text-align: left; border-color: #d6ddec; background: #fff; font-weight: 600; }
+  table.fech input:focus { outline: 2px solid #234f3b; outline-offset: -1px; }
+  table.fech tbody tr:hover td { background: #eef7f1; }
+  table.fech tbody tr:hover td.prest { background: #e6f3ec; }
+  table.fech tfoot td { padding: 8px; border-top: 2px solid #234f3b; background: #eef1f7; font-weight: 800; color: var(--ink); text-align: right; }
+  table.fech tfoot td.prest { background: #234f3b; color: #fff; text-align: left; }
+  table.fech tfoot td.liq { background: #cdeede; color: #0f4d31; }
+  .btn-rm { border: none; background: transparent; color: #c0392b; cursor: pointer; font-size: 14px; font-weight: 700; margin-left: 6px; }
+
+  .estado { padding: 60px 20px; text-align: center; color: var(--ink-3); }
+  .spinner { width: 34px; height: 34px; border: 3px solid #e3e8f5; border-top-color: #234f3b; border-radius: 50%; animation: girar .8s linear infinite; margin: 0 auto 14px; }
+  @keyframes girar { to { transform: rotate(360deg); } }
+  .erro-box { background: #fdecec; border: 1.5px solid #f5c2c2; color: #b23b3b; border-radius: 10px; padding: 14px 18px; font-size: 13px; }
+
+  @media print {
+    .filtros-card, .barra-acoes, .btn-voltar, .snav-sidebar, .snav-toggle, .snav-backdrop, .legenda { display: none !important; }
+    body { background: #fff; }
+    .conteudo { max-width: none; padding: 0; }
+    .tabela-wrap { border: none; }
+    table.fech { font-size: 9px; }
+    table.fech input { border: none; background: transparent; width: auto; padding: 0; }
+    table.fech thead th, table.fech td.prest, table.fech th.prest { position: static; }
+    @page { size: landscape; margin: 8mm; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="header-logo"><img src="img/logo.png" alt="USC"></div>
+    <div>
+      <div class="header-title">Usina Santa Clotilde S/A</div>
+      <div class="header-sub">Fechamento de Fretes — Transporte de Pessoal</div>
+      <div class="header-periodo" id="headerPeriodo">&nbsp;</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="header-emitido">Emitido em<b id="headerEmitido">—</b></div>
+    <button class="btn-voltar" onclick="window.location.href='hub.html'">
+      <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Voltar
+    </button>
+  </div>
+</div>
+
+<div class="conteudo">
+
+  <div class="filtros-card">
+    <div class="filtros-grid">
+      <div class="campo"><label>Data Início</label><input type="date" id="dataIni"></div>
+      <div class="campo"><label>Data Fim</label><input type="date" id="dataFim"></div>
+      <button class="btn-gerar" id="btnGerar" onclick="carregar()">
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+        Carregar do sistema
+      </button>
+    </div>
+    <div class="presets" id="presets"></div>
+  </div>
+
+  <div id="painel">
+    <div class="tabela-wrap"><div class="estado">Escolha o período (quinzena) e clique em <b>Carregar do sistema</b>.</div></div>
+  </div>
+
+</div>
+
+<script src="js/xlsx.full.min.js"></script>
+<script>
+"use strict";
+
+// Modelo em memória. Campos do Oracle: nEquip, diarias, valorBruto, litros, valorCombustivel.
+// Campos digitados (amarelos): kms, colab, oficina, complemento. Os derivados são calculados.
+let LINHAS = [];
+const CAMPOS_MANUAIS = ["kms", "colab", "complemento", "oficina"];
+
+const nf = (n, d = 2) => (isFinite(n) ? n : 0).toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
+const num = v => { const n = parseFloat(String(v).replace(",", ".")); return isFinite(n) ? n : 0; };
+const div = (a, b) => (b ? a / b : 0);
+
+// ── Datas / presets ─────────────────────────────────────────────────────────
+function iso(d) { return d.toISOString().slice(0, 10); }
+function ultimoDiaMes(ano, mesIdx) { return new Date(ano, mesIdx + 1, 0).getDate(); }
+
+function montarPresets() {
+  const hoje = new Date();
+  const y = hoje.getFullYear(), m = hoje.getMonth();
+  const mesNome = d => d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "");
+  const quinzenas = [];
+  // Mês atual e os dois anteriores, 1ª e 2ª quinzena.
+  for (let k = 0; k < 3; k++) {
+    const d = new Date(y, m - k, 1);
+    const ay = d.getFullYear(), am = d.getMonth();
+    quinzenas.push({ rot: "1ª quinz. " + mesNome(d) + "/" + String(ay).slice(2), ini: new Date(ay, am, 1), fim: new Date(ay, am, 15) });
+    quinzenas.push({ rot: "2ª quinz. " + mesNome(d) + "/" + String(ay).slice(2), ini: new Date(ay, am, 16), fim: new Date(ay, am, ultimoDiaMes(ay, am)) });
+  }
+  const cont = document.getElementById("presets");
+  cont.innerHTML = "";
+  quinzenas.forEach(q => {
+    const b = document.createElement("button");
+    b.className = "preset"; b.textContent = q.rot;
+    b.onclick = () => { document.getElementById("dataIni").value = iso(q.ini); document.getElementById("dataFim").value = iso(q.fim); carregar(); };
+    cont.appendChild(b);
+  });
+  // Padrão: 1ª quinzena do mês atual.
+  document.getElementById("dataIni").value = iso(new Date(y, m, 1));
+  document.getElementById("dataFim").value = iso(new Date(y, m, 15));
+}
+
+// ── Carregar do Oracle ───────────────────────────────────────────────────────
+async function carregar() {
+  const ini = document.getElementById("dataIni").value;
+  const fim = document.getElementById("dataFim").value;
+  if (!ini || !fim) { alert("Informe data início e fim."); return; }
+  if (ini > fim) { alert("A data início não pode ser depois da data fim."); return; }
+
+  const painel = document.getElementById("painel");
+  painel.innerHTML = '<div class="tabela-wrap"><div class="estado"><div class="spinner"></div>Consultando fretes de transporte de pessoal…</div></div>';
+
+  try {
+    const r = await fetch("api/fechamento-frete?dataIni=" + ini + "&dataFim=" + fim);
+    const j = await r.json();
+    if (!j.ok) { painel.innerHTML = '<div class="tabela-wrap"><div class="estado"><div class="erro-box">' + (j.erro || "Falha ao consultar.") + '</div></div></div>'; return; }
+
+    LINHAS = (j.prestadores || []).map(p => ({
+      prestador: p.prestador || "",
+      nEquip: +p.nEquip || 0,
+      diarias: +p.diarias || 0,
+      valorBruto: +p.valorBruto || 0,
+      litros: +p.litros || 0,
+      valorCombustivel: +p.valorCombustivel || 0,
+      kms: 0, colab: 0, complemento: 0, oficina: 0
+    }));
+
+    const fmtBR = s => { const [a, b, c] = s.split("-"); return c + "/" + b + "/" + a; };
+    document.getElementById("headerPeriodo").textContent = "Período: " + fmtBR(ini) + " a " + fmtBR(fim);
+    document.getElementById("headerEmitido").textContent = new Date().toLocaleDateString("pt-BR");
+    render();
+  } catch (e) {
+    painel.innerHTML = '<div class="tabela-wrap"><div class="estado"><div class="erro-box">Erro de conexão: ' + e.message + '</div></div></div>';
+  }
+}
+
+// ── Cálculo de uma linha ─────────────────────────────────────────────────────
+function derivar(l) {
+  const bruto = l.valorBruto, comb = l.valorCombustivel;
+  return {
+    kmsDia:  div(l.kms, l.diarias),
+    rsKm:    div(bruto, l.kms),
+    colabDia:div(l.colab, l.diarias),
+    rsDiaria:div(bruto, l.diarias),
+    rsColab: div(bruto, l.colab),
+    kmsLt:   div(l.kms, l.litros),
+    rsLitro: div(comb, l.litros),
+    pct:     div(comb, bruto) * 100,
+    liquido: bruto - comb - l.oficina + l.complemento
+  };
+}
+
+// ── Render ───────────────────────────────────────────────────────────────────
+const COLS = [
+  { g: "", h: "EQP.", cls: "auto", f: l => l.nEquip, d: 0 },
+  { g: "", h: "Diárias", cls: "auto", f: l => l.diarias, d: 0 },
+  { g: "", h: "Kms Rodados", inp: "kms", d: 0 },
+  { g: "", h: "Kms/Dia", cls: "deriv", f: (l, x) => x.kmsDia, d: 1 },
+  { g: "", h: "R$/Km", cls: "deriv", f: (l, x) => x.rsKm, d: 2 },
+  { g: "", h: "Colab.", inp: "colab", d: 0 },
+  { g: "", h: "Colab/dia", cls: "deriv", f: (l, x) => x.colabDia, d: 1 },
+  { g: "", h: "R$/Diária", cls: "deriv", f: (l, x) => x.rsDiaria, d: 2 },
+  { g: "", h: "R$/Colab.", cls: "deriv", f: (l, x) => x.rsColab, d: 2 },
+  { g: "", h: "Kms/Lt.", cls: "deriv", f: (l, x) => x.kmsLt, d: 2 },
+  { g: "Faturamento Bruto", h: "Valor Bruto R$", cls: "auto", f: l => l.valorBruto, d: 2 },
+  { g: "Faturamento Bruto", h: "Complemento R$", inp: "complemento", d: 2 },
+  { g: "Combustíveis", h: "Litros", cls: "auto", f: l => l.litros, d: 2 },
+  { g: "Combustíveis", h: "R$/Litro", cls: "deriv", f: (l, x) => x.rsLitro, d: 2 },
+  { g: "Combustíveis", h: "Valor R$", cls: "auto", f: l => l.valorCombustivel, d: 2 },
+  { g: "Combustíveis", h: "%", cls: "deriv", f: (l, x) => x.pct, d: 1 },
+  { g: "", h: "Oficina/Apoio R$", inp: "oficina", d: 2 },
+  { g: "", h: "Valor Líquido R$", cls: "liq", f: (l, x) => x.liquido, d: 2 }
+];
+
+function render() {
+  const painel = document.getElementById("painel");
+  if (!LINHAS.length) {
+    painel.innerHTML = '<div class="tabela-wrap"><div class="estado">Nenhum apontamento de transporte de pessoal no período.<br><br><button class="btn-acao" onclick="adicionar()">+ Adicionar prestador manualmente</button></div></div>';
+    return;
+  }
+
+  // Cabeçalho de grupos.
+  let grpRow = '<tr><th class="prest grp" rowspan="2">Prestador de Serviço</th>';
+  let subRow = '<tr>';
+  for (let i = 0; i < COLS.length;) {
+    const g = COLS[i].g;
+    if (g) { let span = 0; while (i + span < COLS.length && COLS[i + span].g === g) span++;
+      grpRow += '<th class="grp" colspan="' + span + '">' + g + '</th>';
+      for (let k = 0; k < span; k++) subRow += '<th>' + COLS[i + k].h + '</th>';
+      i += span;
+    } else { grpRow += '<th rowspan="2">' + COLS[i].h + '</th>'; i++; }
+  }
+  grpRow += '</tr>'; subRow += '</tr>';
+
+  let corpo = "";
+  LINHAS.forEach((l, idx) => {
+    corpo += '<tr data-i="' + idx + '">';
+    corpo += '<td class="prest"><input class="prest-in" value="' + escapar(l.prestador) + '" oninput="setCampo(' + idx + ',\'prestador\',this.value)">'
+           + '<button class="btn-rm" title="Remover" onclick="remover(' + idx + ')">✕</button></td>';
+    COLS.forEach(c => {
+      if (c.inp) corpo += '<td><input type="number" step="any" value="' + (l[c.inp] || 0) + '" oninput="setCampo(' + idx + ',\'' + c.inp + '\',this.value)"></td>';
+      else corpo += '<td class="' + (c.cls || "") + '" data-cel="' + c.h + '"></td>';
+    });
+    corpo += '</tr>';
+  });
+
+  const rodape = '<tr><td class="prest">TOTAL GERAL</td>' + COLS.map(c => '<td class="' + (c.cls || "") + '" data-tot="' + c.h + '"></td>').join("") + '</tr>';
+
+  painel.innerHTML =
+    '<div class="barra-acoes">' +
+    '  <button class="btn-acao" onclick="adicionar()">+ Adicionar prestador</button>' +
+    '  <span class="esp"></span>' +
+    '  <button class="btn-acao" onclick="window.print()">🖨️ Imprimir / PDF</button>' +
+    '  <button class="btn-acao destaque" onclick="exportarExcel()">⬇️ Exportar Excel</button>' +
+    '</div>' +
+    '<div class="legenda">' +
+    '  <span><i class="amostra" style="background:var(--auto)"></i> Vem do sistema (editável)</span>' +
+    '  <span><i class="amostra" style="background:var(--manual)"></i> Preencher no fechamento</span>' +
+    '  <span><i class="amostra" style="background:var(--deriv)"></i> Calculado</span>' +
+    '  <span><i class="amostra" style="background:var(--liq)"></i> Valor líquido</span>' +
+    '</div>' +
+    '<div class="tabela-wrap"><table class="fech"><thead>' + grpRow + subRow + '</thead><tbody>' + corpo + '</tbody><tfoot>' + rodape + '</tfoot></table></div>';
+
+  recalc();
+}
+
+function escapar(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+
+function setCampo(i, campo, val) {
+  if (campo === "prestador") LINHAS[i].prestador = val;
+  else LINHAS[i][campo] = num(val);
+  recalc();
+}
+
+function adicionar() {
+  LINHAS.push({ prestador: "", nEquip: 0, diarias: 0, valorBruto: 0, litros: 0, valorCombustivel: 0, kms: 0, colab: 0, complemento: 0, oficina: 0 });
+  render();
+}
+function remover(i) { LINHAS.splice(i, 1); render(); }
+
+// Recalcula derivados e totais sem redesenhar os inputs (mantém o foco).
+function recalc() {
+  const tot = { nEquip: 0, diarias: 0, kms: 0, colab: 0, valorBruto: 0, complemento: 0, litros: 0, valorCombustivel: 0, oficina: 0 };
+  document.querySelectorAll("tbody tr").forEach(tr => {
+    const i = +tr.dataset.i, l = LINHAS[i]; if (!l) return;
+    const x = derivar(l);
+    COLS.forEach(c => {
+      if (c.inp) return;
+      const cel = tr.querySelector('td[data-cel="' + cssq(c.h) + '"]');
+      if (cel) cel.textContent = nf(c.f(l, x), c.d);
+    });
+    tot.nEquip += l.nEquip; tot.diarias += l.diarias; tot.kms += l.kms; tot.colab += l.colab;
+    tot.valorBruto += l.valorBruto; tot.complemento += l.complemento; tot.litros += l.litros;
+    tot.valorCombustivel += l.valorCombustivel; tot.oficina += l.oficina;
+  });
+  // Totais: somas nas colunas de valor/quantidade; derivados recompostos sobre o total.
+  const tl = { diarias: tot.diarias, kms: tot.kms, litros: tot.litros, colab: tot.colab, valorBruto: tot.valorBruto, valorCombustivel: tot.valorCombustivel, oficina: tot.oficina, complemento: tot.complemento };
+  const tx = derivar(tl);
+  const totVal = {
+    "EQP.": tot.nEquip, "Diárias": tot.diarias, "Kms Rodados": tot.kms, "Kms/Dia": tx.kmsDia, "R$/Km": tx.rsKm,
+    "Colab.": tot.colab, "Colab/dia": tx.colabDia, "R$/Diária": tx.rsDiaria, "R$/Colab.": tx.rsColab, "Kms/Lt.": tx.kmsLt,
+    "Valor Bruto R$": tot.valorBruto, "Complemento R$": tot.complemento, "Litros": tot.litros, "R$/Litro": tx.rsLitro,
+    "Valor R$": tot.valorCombustivel, "%": tx.pct, "Oficina/Apoio R$": tot.oficina, "Valor Líquido R$": tx.liquido
+  };
+  COLS.forEach(c => {
+    const cel = document.querySelector('tfoot td[data-tot="' + cssq(c.h) + '"]');
+    if (cel) cel.textContent = nf(totVal[c.h], c.d);
+  });
+}
+function cssq(s) { return s.replace(/"/g, '\\"'); }
+
+// ── Exportar Excel ────────────────────────────────────────────────────────────
+function exportarExcel() {
+  const ini = document.getElementById("dataIni").value, fim = document.getElementById("dataFim").value;
+  const cab1 = ["Prestador de Serviço", ...COLS.map(c => c.g || "")];
+  const cab2 = ["", ...COLS.map(c => c.h)];
+  const linhas = LINHAS.map(l => {
+    const x = derivar(l);
+    return [l.prestador, ...COLS.map(c => c.inp ? l[c.inp] : c.f(l, x))];
+  });
+  // Total
+  const tot = LINHAS.reduce((a, l) => { CAMPOS_MANUAIS.forEach(k => a[k] += l[k]); a.nEquip += l.nEquip; a.diarias += l.diarias; a.valorBruto += l.valorBruto; a.litros += l.litros; a.valorCombustivel += l.valorCombustivel; return a; },
+    { nEquip: 0, diarias: 0, kms: 0, colab: 0, complemento: 0, oficina: 0, valorBruto: 0, litros: 0, valorCombustivel: 0 });
+  const tx = derivar(tot);
+  const linhaTot = ["TOTAL GERAL", ...COLS.map(c => {
+    const mapa = { "EQP.": tot.nEquip, "Diárias": tot.diarias, "Kms Rodados": tot.kms, "Kms/Dia": tx.kmsDia, "R$/Km": tx.rsKm, "Colab.": tot.colab, "Colab/dia": tx.colabDia, "R$/Diária": tx.rsDiaria, "R$/Colab.": tx.rsColab, "Kms/Lt.": tx.kmsLt, "Valor Bruto R$": tot.valorBruto, "Complemento R$": tot.complemento, "Litros": tot.litros, "R$/Litro": tx.rsLitro, "Valor R$": tot.valorCombustivel, "%": tx.pct, "Oficina/Apoio R$": tot.oficina, "Valor Líquido R$": tx.liquido };
+    return mapa[c.h];
+  })];
+
+  const aoa = [
+    ["Usina Santa Clotilde S/A"],
+    ["Fechamento de Fretes — Transporte de Pessoal"],
+    ["Período: " + ini + " a " + fim],
+    [],
+    cab1, cab2, ...linhas, linhaTot
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Fechamento");
+  XLSX.writeFile(wb, "Fechamento-Fretes_" + ini + "_a_" + fim + ".xlsx");
+}
+
+montarPresets();
+</script>
+
+<script src="js/icones-modulos.js?v=20260824a"></script>
+<script src="js/sidebar-nav.js?v=20260824a" defer></script>
+</body>
+</html>
