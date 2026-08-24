@@ -25,7 +25,7 @@ import java.util.logging.Logger;
  *                      (automotivo.apontamentoterceiro), a mesma base que o
  *                      Controle de Serviços usa no bloco "TRANSPORTE DE PESSOAL".
  *  - Diárias         = soma da quantidade apontada (it.quantidade).
- *  - Kms rodados     = soma de (km_final - km_inicial) dos itens.
+ *  - Kms rodados     = soma de (kmhs_final - kmhs_inicial) dos itens.
  *  - Colaboradores   = soma de nr_pessoas (pessoas transportadas) dos itens.
  *  - Nº Equipamentos = equipamentos distintos do prestador no período.
  *  - Litros / Valor Combustível = do abastecimento, por fornecedor, reaproveitando
@@ -106,7 +106,7 @@ public class FechamentoFreteDAO {
             "          where f.cod_fornecedor = a.cod_fornecedor and p.cod_pessoa = f.cod_pessoa) prestador, " +
             "       count(distinct it.cod_equipamento) n_equip, " +
             "       sum(it.quantidade)  diarias, " +
-            "       sum(nvl(it.km_final, 0) - nvl(it.km_inicial, 0)) kms, " +
+            "       sum(nvl(it.kmhs_final, 0) - nvl(it.kmhs_inicial, 0)) kms, " +
             "       sum(nvl(it.nr_pessoas, 0)) colab, " +
             "       sum(it.valor_total) valor_bruto " +
             "  from automotivo.apontamentoterceiro a, automotivo.itens_apontamentoterceiro it " +
