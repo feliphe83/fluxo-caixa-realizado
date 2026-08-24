@@ -211,6 +211,10 @@
       <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><path d="M12 22c4-4 6-8 6-12a6 6 0 00-12 0c0 4 2 8 6 12z"/><path d="M12 10v8"/></svg>
       Preço da Cana
     </div>
+    <div class="sb-item" id="nav-telastv" onclick="setSec('telastv')">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      Telas de TV
+    </div>
     <div class="sb-item" id="nav-parametros" onclick="setSec('parametros')">
       <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9c.14.36.46.63.85.74H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
       Parâmetros gerais
@@ -268,6 +272,7 @@
       <button class="tab"    id="tab-paradas"     onclick="setSec('paradas')">🛑 Paradas da Moagem</button>
       <button class="tab"    id="tab-indicecontabil" onclick="setSec('indicecontabil')">📒 Índice Contábil</button>
       <button class="tab"    id="tab-precocana"   onclick="setSec('precocana')">🌱 Preço da Cana</button>
+      <button class="tab"    id="tab-telastv"     onclick="setSec('telastv')">📺 Telas de TV</button>
       <button class="tab"    id="tab-parametros"  onclick="setSec('parametros')">⚙️ Parâmetros gerais</button>
     </div>
 
@@ -703,7 +708,7 @@
               <button id="icAplicarDre" onclick="icAplicar('dre')" style="display:none"
                       class="btn-primary">Aplicar</button>
               <button onclick="icLimpar('dre')"
-                      style="background:none;border:1px solid var(--bd);color:var(--text3);
+                      style="background:none;border:1px solid var(--border);color:var(--text3);
                              border-radius:7px;padding:8px 14px;font-size:13px;cursor:pointer;
                              font-family:inherit">Voltar ao do sistema</button>
             </div>
@@ -727,7 +732,7 @@
               <button id="icAplicarBalanco" onclick="icAplicar('balanco')" style="display:none"
                       class="btn-primary">Aplicar</button>
               <button onclick="icLimpar('balanco')"
-                      style="background:none;border:1px solid var(--bd);color:var(--text3);
+                      style="background:none;border:1px solid var(--border);color:var(--text3);
                              border-radius:7px;padding:8px 14px;font-size:13px;cursor:pointer;
                              font-family:inherit">Voltar ao do sistema</button>
             </div>
@@ -776,6 +781,19 @@
             <tr><td colspan="3" style="text-align:center;padding:26px;color:var(--text3)">Carregando…</td></tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <div class="sec" id="sec-telastv">
+      <div class="panel" style="margin-bottom:20px">
+        <div class="ph"><div class="ph-title">Telas de TV — endereços para a parede</div></div>
+        <div style="padding:14px 20px 6px;font-size:12.5px;color:var(--text2);line-height:1.65">
+          Cada painel tem uma versão para televisão. Aberto <b>na rede interna da usina</b>, o
+          endereço mostra a tela <b>sem pedir usuário e senha</b> — é o que uma parede de TV
+          precisa, já que não há quem faça login. De fora da rede, o mesmo endereço continua
+          exigindo login. Copie o link e cole no navegador da TV (ou no app de digital signage).
+        </div>
+        <div style="padding:6px 20px 20px" id="tvLista"></div>
       </div>
     </div>
 
@@ -1299,6 +1317,11 @@ function setSec(s) {
     document.getElementById('tsub').textContent='Importe o PDF do CONSECANA-AL e o painel de Indicadores se atualiza sozinho';
     document.getElementById('btnAcao').style.display='none';
     pcStatus();
+  } else if(s==='telastv'){
+    document.getElementById('ttitle').textContent='Telas de TV';
+    document.getElementById('tsub').textContent='Endereços das telas para parede — abrem sem login na rede interna';
+    document.getElementById('btnAcao').style.display='none';
+    tvRender();
   } else if(s==='servicoscorte'){
     document.getElementById('ttitle').textContent='Serviços de Corte';
     document.getElementById('tsub').textContent='Quais tipos de serviço contam como corte de cana (Controle de Serviços Agrícola)';
@@ -3169,6 +3192,50 @@ async function pcImportar() {
   } catch (e) {
     saida.innerHTML = icAviso(e.message || String(e), '#ff8080');
   }
+}
+
+// ── Telas de TV: os endereços da parede ────────────────────────────────
+const TELAS_TV = [
+  { arq: 'indicadores-tv.html',   nome: 'Indicadores Econômicos' },
+  { arq: 'orcamento-tv.html',     nome: 'Orçamento de Compras' },
+  { arq: 'demonstrativo-tv.html', nome: 'Demonstrativo Financeiro (DRE)' },
+  { arq: 'balanco-tv.html',       nome: 'Balanço Patrimonial' },
+  { arq: 'faturamento-tv.html',   nome: 'Faturamento de Vendas' },
+  { arq: 'diesel-tv.html',        nome: 'Recebimento de Diesel' },
+  { arq: 'cana-tv.html',          nome: 'Entrada de Cana' },
+];
+
+function tvRender() {
+  // O endereço é montado a partir do próprio da administração, então já sai
+  // com o host e a pasta certos, seja localhost em teste ou o da usina.
+  const base = location.origin + location.pathname.replace(/[^/]*$/, '');
+  document.getElementById('tvLista').innerHTML = TELAS_TV.map(t => {
+    const url = base + t.arq;
+    return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;color:var(--text);font-size:13.5px">${icEsc(t.nome)}</div>
+        <a href="${icEsc(url)}" target="_blank"
+           style="font-size:12px;color:var(--blue3);word-break:break-all;text-decoration:none">${icEsc(url)}</a>
+      </div>
+      <button onclick="tvCopiar('${icEsc(url)}', this)"
+              style="flex:none;background:none;border:1px solid var(--border);color:var(--text2);
+                     border-radius:7px;padding:7px 13px;font-size:12.5px;cursor:pointer;font-family:inherit">Copiar</button>
+      <a href="${icEsc(url)}" target="_blank"
+         style="flex:none;background:var(--blue3);color:#fff;border-radius:7px;padding:7px 13px;
+                font-size:12.5px;text-decoration:none">Abrir</a>
+    </div>`;
+  }).join('');
+}
+
+function tvCopiar(url, btn) {
+  const feito = () => { const t = btn.textContent; btn.textContent = 'Copiado!'; setTimeout(() => btn.textContent = t, 1500); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(feito).catch(() => tvCopiarFallback(url, feito));
+  } else { tvCopiarFallback(url, feito); }
+}
+function tvCopiarFallback(url, feito) {
+  const ta = document.createElement('textarea'); ta.value = url; document.body.appendChild(ta);
+  ta.select(); try { document.execCommand('copy'); feito(); } catch(e) {} document.body.removeChild(ta);
 }
 
 </script>

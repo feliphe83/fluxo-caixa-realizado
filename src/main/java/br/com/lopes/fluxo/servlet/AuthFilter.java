@@ -106,6 +106,18 @@ public class AuthFilter implements Filter {
             return;
         }
 
+        // ── Telas de TV na rede interna ──────────────────────────────────
+        // Parede de TV não tem quem digite login. As telas de TV (e as APIs
+        // que elas consultam) abrem SEM sessão, mas SÓ para quem vem de um IP
+        // da rede interna da usina — de fora continua exigindo usuário e
+        // senha. Mostram dado sensível (DRE, balanço, faturamento), então a
+        // rede é a fronteira. No domínio externo isto nem é alcançado: lá
+        // tudo que não é o portal já virou 404 lá em cima.
+        if (rotaTvInterna(uri, ctx) && clienteNaRedeInterna(hreq)) {
+            chain.doFilter(req, res);
+            return;
+        }
+
         HttpSession session = hreq.getSession(false);
 
         // ── Sessão de empresa de fora ────────────────────────────────────
@@ -189,5 +201,77 @@ public class AuthFilter implements Filter {
             return;
         }
         hresp.sendRedirect(ctx + "/manobra.html");
+    }
+
+    /** As telas de TV, as APIs que elas consultam e os scripts de raiz que carregam. */
+    private static boolean rotaTvInterna(String uri, String ctx) {
+        return uri.equals(ctx + "/balanco-tv.html")
+            || uri.equals(ctx + "/cana-tv.html")
+            || uri.equals(ctx + "/demonstrativo-tv.html")
+            || uri.equals(ctx + "/diesel-tv.html")
+            || uri.equals(ctx + "/faturamento-tv.html")
+            || uri.equals(ctx + "/indicadores-tv.html")
+            || uri.equals(ctx + "/orcamento-tv.html")
+            // scripts de raiz que essas telas carregam (não estão em /js/)
+            || uri.equals(ctx + "/indicadores-comum.js")
+            || uri.equals(ctx + "/balanco-historico.js")
+            || uri.equals(ctx + "/balanco-quadro.js")
+            || uri.equals(ctx + "/dre-historico.js")
+            // as APIs consultadas por cada tela
+            || uri.startsWith(ctx + "/api/balanco-patrimonial")
+            || uri.startsWith(ctx + "/api/cana-entrada")
+            || uri.startsWith(ctx + "/api/demonstrativo-financeiro")
+            || uri.startsWith(ctx + "/api/diesel-recebimento")
+            || uri.startsWith(ctx + "/api/faturamento-vendas")
+            || uri.startsWith(ctx + "/api/indicadores")
+            || uri.startsWith(ctx + "/api/orcamento-compras");
+    }
+
+    /**
+     * O cliente vem de um IP da rede interna da usina?
+     *
+     * O Tomcat fica atrás do nginx por loopback, então quando o pedido chega
+     * de 127.x/::1 o IP real do cliente está no cabeçalho que o nginx põe:
+     * X-Real-IP, ou o ÚLTIMO da X-Forwarded-For — o que o nginx acrescenta, e
+     * que o cliente não consegue forjar (ele só prepende os anteriores). Sem
+     * esse cabeçalho atrás do proxy, NEGA: melhor a TV pedir login do que
+     * liberar sem saber de onde vem. No acesso direto ao Tomcat (sem proxy) o
+     * próprio IP de origem decide.
+     */
+    private static boolean clienteNaRedeInterna(HttpServletRequest req) {
+        String peer = req.getRemoteAddr();
+        if (peer != null && !ehLoopback(peer)) return ehRedeInterna(peer);
+
+        String real = req.getHeader("X-Real-IP");
+        if (real == null || real.isBlank()) {
+            String xff = req.getHeader("X-Forwarded-For");
+            if (xff != null && !xff.isBlank()) {
+                String[] p = xff.split(",");
+                real = p[p.length - 1];
+            }
+        }
+        return real != null && ehRedeInterna(real.trim());
+    }
+
+    private static boolean ehLoopback(String ip) {
+        if (ip == null) return false;
+        return ip.startsWith("127.") || "::1".equals(ip) || "0:0:0:0:0:0:0:1".equals(ip);
+    }
+
+    /** Faixas privadas: 10/8, 172.16-31/12, 192.168/16, loopback, e o equivalente IPv6. */
+    private static boolean ehRedeInterna(String ip) {
+        if (ip == null || ip.isBlank()) return false;
+        ip = ip.trim();
+        if (ip.startsWith("::ffff:")) ip = ip.substring(7);   // IPv4 embutido em IPv6
+        if (ehLoopback(ip)) return true;
+        if (ip.startsWith("10.") || ip.startsWith("192.168.")) return true;
+        if (ip.startsWith("172.")) {
+            try {
+                int seg = Integer.parseInt(ip.split("\\.")[1]);
+                return seg >= 16 && seg <= 31;
+            } catch (NumberFormatException e) { return false; }
+        }
+        String low = ip.toLowerCase();
+        return low.startsWith("fc") || low.startsWith("fd") || low.startsWith("fe80");  // IPv6 privado/link-local
     }
 }
