@@ -129,9 +129,9 @@ function serieMensal(env) {
 }
 
 function tabelaAcucar(env) {
-  // Só os próximos cinco vencimentos: a lista da bolsa vai longe, mas o que
-  // interessa para decidir é a boca da curva.
-  const linhas = serieAcucar(env).slice(0, 5);
+  // Só os próximos três vencimentos (Out/Mar/Out, já sem maio e julho): a
+  // lista da bolsa vai longe, mas o que interessa é a boca da curva.
+  const linhas = serieAcucar(env).slice(0, 3);
   if (!linhas.length) return semDado(env && env.erro
     ? env.erro
     : 'A cotação do açúcar ainda não foi coletada.');
