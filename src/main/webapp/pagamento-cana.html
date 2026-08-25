@@ -50,6 +50,7 @@
   table.pg thead th.grp { background: #234f3b; text-align: center; }
   table.pg th.nome, table.pg td.nome { position: sticky; left: 0; z-index: 1; background: #16342a; text-align: left; min-width: 220px; }
   table.pg tbody td.nome { background: #f7f9fd; font-weight: 600; color: var(--ink); border-right: 2px solid #e3e8f5; }
+  table.pg td.nome .cod { color: #8a94a6; font-weight: 700; margin-right: 6px; }
   table.pg td { padding: 5px 8px; border-bottom: 1px solid var(--grade); text-align: right; color: var(--ink-2); }
   table.pg td.left { text-align: left; }
   table.pg td.cana { background: var(--cana); }
@@ -144,7 +145,6 @@ const nf = (n, d = 2) => (isFinite(+n) ? +n : 0).toLocaleString("pt-BR", { minim
 // e o bloco Financeiro (Cana Entregue, Pagamento Realizado, Diferença).
 function montarColunas() {
   COLS = [
-    { g: "", h: "Cód.", k: "cod_fornecedor", d: 0, cls: "left" },
     { g: "", h: "ATR", k: "atr", d: 2, cls: "cana" }
   ];
   const grupoNat = n => n === "P" ? "Proventos" : n === "D" ? "Descontos" : "Outros";
@@ -206,7 +206,7 @@ function render() {
   }
 
   // Cabeçalho com grupos.
-  let grpRow = '<tr><th class="nome grp" rowspan="2">Fornecedor</th>';
+  let grpRow = '<tr><th class="nome grp" rowspan="2">Cód. · Fornecedor</th>';
   let subRow = '<tr>';
   for (let i = 0; i < COLS.length;) {
     const g = COLS[i].g;
@@ -220,7 +220,7 @@ function render() {
 
   let corpo = "";
   LINHAS.forEach(l => {
-    corpo += '<tr><td class="nome">' + escapar(l.nome || l.cod_fornecedor) + '</td>';
+    corpo += '<tr><td class="nome"><span class="cod">' + escapar(l.cod_fornecedor) + '</span> ' + escapar(l.nome || "") + '</td>';
     COLS.forEach(c => {
       const v = l[c.k];
       const txt = c.cls === "left" ? escapar(v == null ? "" : v) : nf(v, c.d);
@@ -251,12 +251,12 @@ function render() {
 function escapar(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
 
 function exportarExcel() {
-  const cab1 = ["Fornecedor", ...COLS.map(c => c.g || "")];
-  const cab2 = ["", ...COLS.map(c => c.h)];
-  const linhas = LINHAS.map(l => [l.nome || l.cod_fornecedor, ...COLS.map(c => c.k === "cod_fornecedor" ? l[c.k] : (+l[c.k] || 0))]);
+  const cab1 = ["Cód.", "Fornecedor", ...COLS.map(c => c.g || "")];
+  const cab2 = ["", "", ...COLS.map(c => c.h)];
+  const linhas = LINHAS.map(l => [l.cod_fornecedor, l.nome || "", ...COLS.map(c => (+l[c.k] || 0))]);
   const tot = {}; SOMAR.forEach(k => tot[k] = 0);
   LINHAS.forEach(l => SOMAR.forEach(k => tot[k] += (+l[k] || 0)));
-  const linhaTot = ["TOTAL", ...COLS.map(c => SOMAR.has(c.k) ? tot[c.k] : "")];
+  const linhaTot = ["", "TOTAL", ...COLS.map(c => SOMAR.has(c.k) ? tot[c.k] : "")];
   const aoa = [
     ["Usina Santa Clotilde S/A"],
     ["Controle de Pagamento — Fornecedor de Cana"],
