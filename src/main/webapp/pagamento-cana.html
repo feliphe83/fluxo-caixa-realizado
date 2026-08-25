@@ -250,22 +250,74 @@ function render() {
 
 function escapar(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
 
+// Soma os valores dos eventos de uma linha que casam com o filtro (por natureza/descrição).
+function somaEventos(l, filtro) {
+  return EVENTOS.filter(filtro).reduce((s, ev) => s + (+l[ev.key] || 0), 0);
+}
+const ehCCT = ev => /CCT/i.test(ev.descricao);
+
+// Levantamento por fornecedor: tonelada, ATR, valores por tonelada e totais.
+function levantamentoDe(l) {
+  const t = +l.peso_t || 0;
+  const bruto = somaEventos(l, ev => ev.natureza === "P");
+  const cct = somaEventos(l, ev => ev.natureza === "D" && ehCCT(ev));
+  const outros = somaEventos(l, ev => ev.natureza === "D" && !ehCCT(ev));
+  const liquidoTotal = +l.cana_entregue || 0;
+  const porT = v => t > 0 ? v / t : 0;
+  return {
+    t, atr: +l.atr || 0,
+    brutoT: porT(bruto), cctT: porT(cct), outrosT: porT(outros), liquidoT: porT(liquidoTotal),
+    liquidoTotal, recebido: +l.pagamento_realizado || 0, saldo: +l.saldo || 0,
+    bruto, cct, outros
+  };
+}
+
 function exportarExcel() {
+  const wb = XLSX.utils.book_new();
+  const periodo = document.getElementById("headerPeriodo").textContent;
+
+  // ── Aba 1: Detalhado (por evento) ──
   const cab1 = ["Cód.", "Fornecedor", ...COLS.map(c => c.g || "")];
   const cab2 = ["", "", ...COLS.map(c => c.h)];
-  const linhas = LINHAS.map(l => [l.cod_fornecedor, l.nome || "", ...COLS.map(c => (+l[c.k] || 0))]);
-  const tot = {}; SOMAR.forEach(k => tot[k] = 0);
-  LINHAS.forEach(l => SOMAR.forEach(k => tot[k] += (+l[k] || 0)));
-  const linhaTot = ["", "TOTAL", ...COLS.map(c => SOMAR.has(c.k) ? tot[c.k] : "")];
-  const aoa = [
+  const linhasD = LINHAS.map(l => [l.cod_fornecedor, l.nome || "", ...COLS.map(c => (+l[c.k] || 0))]);
+  const totD = {}; SOMAR.forEach(k => totD[k] = 0);
+  LINHAS.forEach(l => SOMAR.forEach(k => totD[k] += (+l[k] || 0)));
+  const linhaTotD = ["", "TOTAL", ...COLS.map(c => SOMAR.has(c.k) ? totD[c.k] : "")];
+  const aoaD = [
     ["Usina Santa Clotilde S/A"],
     ["Controle de Pagamento — Fornecedor de Cana"],
-    [document.getElementById("headerPeriodo").textContent],
-    [], cab1, cab2, ...linhas, linhaTot
+    [periodo],
+    [], cab1, cab2, ...linhasD, linhaTotD
   ];
-  const ws = XLSX.utils.aoa_to_sheet(aoa);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Pagamento Cana");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoaD), "Detalhado");
+
+  // ── Aba 2: Levantamento ──
+  const cabLev = ["Cód.", "Fornecedor", "Qtde t de cana", "kg ATR médio/t",
+                  "Valor Bruto R$/t", "Desconto CCT R$/t", "Outros descontos R$/t", "Valor Líquido R$/t",
+                  "Valor Líquido total R$", "Valor líquido recebido R$", "Saldo restante R$"];
+  const linhasLev = LINHAS.map(l => {
+    const v = levantamentoDe(l);
+    return [l.cod_fornecedor, l.nome || "", v.t, v.atr, v.brutoT, v.cctT, v.outrosT, v.liquidoT,
+            v.liquidoTotal, v.recebido, v.saldo];
+  });
+  // Total: valores por tonelada recompostos sobre o total; ATR ponderado pela tonelada.
+  const T = LINHAS.reduce((s, l) => s + (+l.peso_t || 0), 0);
+  let sBruto = 0, sCct = 0, sOutros = 0, sLiq = 0, sReceb = 0, sSaldo = 0, sAtrPeso = 0;
+  LINHAS.forEach(l => {
+    const v = levantamentoDe(l);
+    sBruto += v.bruto; sCct += v.cct; sOutros += v.outros; sLiq += v.liquidoTotal;
+    sReceb += v.recebido; sSaldo += v.saldo; sAtrPeso += (v.atr * v.t);
+  });
+  const pT = x => T > 0 ? x / T : 0;
+  const linhaTotLev = ["", "TOTAL", T, pT(sAtrPeso), pT(sBruto), pT(sCct), pT(sOutros), pT(sLiq),
+                       sLiq, sReceb, sSaldo];
+  const aoaLev = [
+    ["Levantamento de F de Cana — Safra 2025/26"],
+    [periodo],
+    [], cabLev, ...linhasLev, linhaTotLev
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoaLev), "Levantamento");
+
   XLSX.writeFile(wb, "Pagamento-Cana_safra" + (document.getElementById("safra").value || "") + ".xlsx");
 }
 

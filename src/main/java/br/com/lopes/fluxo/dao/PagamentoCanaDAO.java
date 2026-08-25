@@ -60,9 +60,9 @@ public class PagamentoCanaDAO {
         // 2) Pagamento realizado por fornecedor (conta de cana).
         Map<Integer, BigDecimal> realizadoPorForn = realizadoCanaPorFornecedor(pagIni, pagFim);
 
-        // 2b) ATR médio ponderado pela cana analisada, por fornecedor (consulta
-        //     oficial de qualidade). Se essa consulta pesada falhar, segue sem ATR.
-        Map<Integer, BigDecimal> atrPorForn = atrPorFornecedor(safra, entIni, entFim);
+        // 2b) ATR médio ponderado e peso líquido (t), por fornecedor (consulta
+        //     oficial de qualidade). Se essa consulta pesada falhar, segue sem ATR/peso.
+        Map<Integer, BigDecimal[]> qualPorForn = qualidadePorFornecedor(safra, entIni, entFim);
 
         // 3) Pivô: fornecedor x evento.
         Map<Integer, String[]> eventoMeta = new LinkedHashMap<>();      // cod_evento -> [descricao, natureza]
@@ -101,7 +101,10 @@ public class PagamentoCanaDAO {
             Integer cod = inteiroObj(f.get("cod_fornecedor"));
             BigDecimal cana = canaNet.getOrDefault(cod, BigDecimal.ZERO);
             BigDecimal realizado = realizadoPorForn.getOrDefault(cod, BigDecimal.ZERO);
-            f.put("atr", atrPorForn.getOrDefault(cod, BigDecimal.ZERO));
+            BigDecimal[] q = qualPorForn.get(cod);
+            f.put("atr", q == null ? BigDecimal.ZERO : q[0]);
+            f.put("peso_t", q == null ? BigDecimal.ZERO
+                    : q[1].divide(BigDecimal.valueOf(1000), 3, java.math.RoundingMode.HALF_UP));
             f.put("cana_entregue", cana);
             f.put("pagamento_realizado", realizado);
             f.put("saldo", cana.subtract(realizado));
@@ -137,8 +140,10 @@ public class PagamentoCanaDAO {
      * removida (a intranet conecta com usuário de serviço, empresa 1/1/1).
      *
      * Consulta pesada; se falhar, devolve vazio para não derrubar a tela.
+     *
+     * @return cod_fornecedor -> [atr, pesoLiquidoKg]
      */
-    private Map<Integer, BigDecimal> atrPorFornecedor(int safra, String entIni, String entFim) {
+    private Map<Integer, BigDecimal[]> qualidadePorFornecedor(int safra, String entIni, String entFim) {
         String s = String.valueOf(safra);
         String dIni = td(entIni);
         String dFim = td(entFim);
@@ -161,7 +166,8 @@ public class PagamentoCanaDAO {
                and    regiao_agricola.cod_regiaoagricola = historico_fazenda.cod_regiaoagricola)
             SELECT historico_FAZENDA.COD_FORNECEDOR cod_fornecedor,
                    decode(sum(ANALISE_PCTS.PESOLIQUIDO),0,0,
-                          nvl(sum(ANALISE_PCTS.ATR * ANALISE_PCTS.PESOLIQUIDO) / sum(ANALISE_PCTS.PESOLIQUIDO),0)) atr
+                          nvl(sum(ANALISE_PCTS.ATR * ANALISE_PCTS.PESOLIQUIDO) / sum(ANALISE_PCTS.PESOLIQUIDO),0)) atr,
+                   nvl(sum(ITENSENTRADACANA.PESOLIQUIDO),0) peso
             FROM RH.TURNO
                  , RH.PESSOA PESS_AGENCIADOR
                  , MATERIAL.FORNECEDOR FORN_AGENCIADOR
@@ -276,17 +282,20 @@ public class PagamentoCanaDAO {
             """)
             .replace("{SAFRA}", s).replace("{DINI}", dIni).replace("{DFIM}", dFim);
 
-        Map<Integer, BigDecimal> mapa = new LinkedHashMap<>();
+        Map<Integer, BigDecimal[]> mapa = new LinkedHashMap<>();
         try (Connection conn = OracleConnectionUtil.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 int cod = rs.getInt("cod_fornecedor");
                 if (rs.wasNull()) continue;
-                mapa.put(cod, rs.getBigDecimal("atr") == null ? BigDecimal.ZERO : rs.getBigDecimal("atr"));
+                BigDecimal atr = rs.getBigDecimal("atr");
+                BigDecimal peso = rs.getBigDecimal("peso");
+                mapa.put(cod, new BigDecimal[]{atr == null ? BigDecimal.ZERO : atr,
+                                               peso == null ? BigDecimal.ZERO : peso});
             }
         } catch (SQLException e) {
-            LOG.log(Level.WARNING, "ATR por fornecedor indisponível (segue sem ATR): " + e.getMessage(), e);
+            LOG.log(Level.WARNING, "Qualidade (ATR/peso) por fornecedor indisponível (segue sem): " + e.getMessage(), e);
         }
         return mapa;
     }
