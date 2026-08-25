@@ -143,7 +143,10 @@ const nf = (n, d = 2) => (isFinite(+n) ? +n : 0).toLocaleString("pt-BR", { minim
 // Monta as colunas: Cód, um por evento (agrupado em Proventos/Descontos/Outros),
 // e o bloco Financeiro (Cana Entregue, Pagamento Realizado, Diferença).
 function montarColunas() {
-  COLS = [{ g: "", h: "Cód.", k: "cod_fornecedor", d: 0, cls: "left" }];
+  COLS = [
+    { g: "", h: "Cód.", k: "cod_fornecedor", d: 0, cls: "left" },
+    { g: "", h: "ATR", k: "atr", d: 2, cls: "cana" }
+  ];
   const grupoNat = n => n === "P" ? "Proventos" : n === "D" ? "Descontos" : "Outros";
   EVENTOS.forEach(ev => {
     COLS.push({ g: grupoNat(ev.natureza), h: ev.descricao, k: ev.key, d: 2, cls: "evt", money: true });
@@ -152,7 +155,8 @@ function montarColunas() {
   COLS.push({ g: "Financeiro", h: "Pagamento Realizado", k: "pagamento_realizado", d: 2, cls: "fin", money: true });
   COLS.push({ g: "Financeiro", h: "Diferença (Cana − Pago)", k: "saldo", d: 2, cls: "fin", money: true });
 
-  SOMAR = new Set(COLS.filter(c => c.k !== "cod_fornecedor").map(c => c.k));
+  // ATR é média ponderada — não soma no total.
+  SOMAR = new Set(COLS.filter(c => c.k !== "cod_fornecedor" && c.k !== "atr").map(c => c.k));
 }
 
 function fmtBR(s) { const [a, b, c] = s.split("-"); return c + "/" + b + "/" + a; }

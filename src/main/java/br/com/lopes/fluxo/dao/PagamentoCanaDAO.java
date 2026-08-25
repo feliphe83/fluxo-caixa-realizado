@@ -65,6 +65,10 @@ public class PagamentoCanaDAO {
         // 2) Pagamento realizado por fornecedor (conta de cana).
         Map<Integer, BigDecimal> realizadoPorForn = realizadoCanaPorFornecedor(pagIni, pagFim);
 
+        // 2b) ATR médio ponderado pela cana analisada, por fornecedor (consulta
+        //     oficial de qualidade). Se essa consulta pesada falhar, segue sem ATR.
+        Map<Integer, BigDecimal> atrPorForn = atrPorFornecedor(safra, entIni, entFim);
+
         // 3) Pivô: fornecedor x evento.
         Map<Integer, String[]> eventoMeta = new LinkedHashMap<>();      // cod_evento -> [descricao, natureza]
         Map<Integer, Map<String, Object>> forn = new LinkedHashMap<>(); // cod_fornecedor -> linha
@@ -102,6 +106,7 @@ public class PagamentoCanaDAO {
             Integer cod = inteiroObj(f.get("cod_fornecedor"));
             BigDecimal cana = canaNet.getOrDefault(cod, BigDecimal.ZERO);
             BigDecimal realizado = realizadoPorForn.getOrDefault(cod, BigDecimal.ZERO);
+            f.put("atr", atrPorForn.getOrDefault(cod, BigDecimal.ZERO));
             f.put("cana_entregue", cana);
             f.put("pagamento_realizado", realizado);
             f.put("saldo", cana.subtract(realizado));
@@ -127,6 +132,168 @@ public class PagamentoCanaDAO {
         out.put("eventos", eventos);
         out.put("fornecedores", fornecedores);
         return out;
+    }
+
+    /**
+     * ATR médio ponderado pela cana analisada (ANALISE_PCTS.PESOLIQUIDO), por
+     * fornecedor — a consulta oficial de qualidade da entrada de cana. O
+     * fornecedor vem da historico_fazenda vigente na data do movimento. Sem
+     * filtro de cod_tipofazenda (todos os tipos). fn_autorizacao_empresa foi
+     * removida (a intranet conecta com usuário de serviço, empresa 1/1/1).
+     *
+     * Consulta pesada; se falhar, devolve vazio para não derrubar a tela.
+     */
+    private Map<Integer, BigDecimal> atrPorFornecedor(int safra, String entIni, String entFim) {
+        String s = String.valueOf(safra);
+        String dIni = td(entIni);
+        String dFim = td(entFim);
+        String sql = ("""
+            with historicofazenda as (
+               select /*+MATERIALIZE*/
+                      historico_fazenda.cod_fazenda
+                     ,historico_fazenda.data_inicio
+                     ,geral.fn_datanvl(historico_fazenda.data_fim) data_fim
+                     ,historico_fazenda.cod_fornecedor
+                     ,historico_fazenda.cod_tipofazenda
+                     ,historico_fazenda.cod_regiaoagricola
+                     ,historico_fazenda.id_setoragricola
+               from   agricola.tipofazenda tipofazenda
+                     ,agricola.regiao_agricola regiao_agricola
+                     ,agricola.setor_agricola setor_agricola
+                     ,agricola.historico_fazenda historico_fazenda
+               where  tipofazenda.cod_tipofazenda = historico_fazenda.cod_tipofazenda
+               and    setor_agricola.id_setoragricola = historico_fazenda.id_setoragricola
+               and    regiao_agricola.cod_regiaoagricola = historico_fazenda.cod_regiaoagricola)
+            SELECT historico_FAZENDA.COD_FORNECEDOR cod_fornecedor,
+                   decode(sum(ANALISE_PCTS.PESOLIQUIDO),0,0,
+                          nvl(sum(ANALISE_PCTS.ATR * ANALISE_PCTS.PESOLIQUIDO) / sum(ANALISE_PCTS.PESOLIQUIDO),0)) atr
+            FROM RH.TURNO
+                 , RH.PESSOA PESS_AGENCIADOR
+                 , MATERIAL.FORNECEDOR FORN_AGENCIADOR
+                 , RH.AGENCIADOR
+                 , AGRICOLA.ANALISE_IMP_VEGETAL
+                 , AGRICOLA.ANALISE_IMP_MINERAL
+                 , AGRICOLA.ANALISE_PCTS
+                 , AGRICOLA.TIPO_CORTE
+                 , AGRICOLA.TIPOCANA
+                 , AGRICOLA.IDADE_CANA
+                 , AGRICOLA.VARIEDADE
+                 , AGRICOLA.TIPOVARIEDADE
+                 , historicofazenda HISTORICO_FAZENDA
+                 , AGRICOLA.FAZENDA
+                 , AGRICOLA.SAFRA
+                 , AGRICOLA.TALHAO
+                 , AGRICOLA.VW_DESTINOTALHAO DESTINO
+                 , AGRICOLA.AMBIENTE_PRODUCAO AMBIENTE
+                 , AGRICOLA.FRENTE
+                 , agricola.liberacao_corte
+                 , AGRICOLA.ORDEM_CORTE_UNICA
+                 , agricola.motivonaoanalise
+                 , agricola.itenscolheita
+                 , AGRICOLA.ITENSENTRADACANA
+                 , AGRICOLA.ENTRADACANA
+                 , agricola.destinocana
+                 , agricola.IRRIGACAOTIPO
+             WHERE TURNO.COD_TURNO                 (+)= ANALISE_PCTS.COD_TURNO
+               AND PESS_AGENCIADOR.COD_PESSOA      (+)= FORN_AGENCIADOR.COD_PESSOA
+               AND FORN_AGENCIADOR.COD_FORNECEDOR  (+)= AGENCIADOR.COD_FORNECEDOR
+               AND AGENCIADOR.COD_AGENCIADOR       (+)= ITENSENTRADACANA.COD_AGENCIADOR
+               AND AGENCIADOR.COD_GRUPOEMPRESA     (+)= ITENSENTRADACANA.COD_GRUPOEMPRESA
+               AND motivonaoanalise.cod_motivo     (+)= itenscolheita.cod_motivonaoanalise
+               and itenscolheita.cod_grupoempresa     = itensentradacana.cod_grupoempresa
+               and itenscolheita.cod_empresa          = itensentradacana.cod_empresa
+               and itenscolheita.cod_filial           = itensentradacana.cod_filial
+               and itenscolheita.cod_safra            = itensentradacana.cod_safra
+               and itenscolheita.cod_entradacana      = itensentradacana.cod_entradacana
+               and itenscolheita.seq_itensentradacana = itensentradacana.seq_itenscolheita
+               AND ANALISE_IMP_VEGETAL.COD_GRUPOEMPRESA    (+) = ITENSENTRADACANA.COD_GRUPOEMPRESA
+               AND ANALISE_IMP_VEGETAL.COD_EMPRESA         (+) = ITENSENTRADACANA.COD_EMPRESA
+               AND ANALISE_IMP_VEGETAL.COD_FILIAL          (+) = ITENSENTRADACANA.COD_FILIAL
+               AND ANALISE_IMP_VEGETAL.COD_SAFRA           (+) = ITENSENTRADACANA.COD_SAFRA
+               AND ANALISE_IMP_VEGETAL.COD_ENTRADACANA     (+) = ITENSENTRADACANA.COD_ENTRADACANA
+               AND ANALISE_IMP_VEGETAL.SEQ_ITENSENTRADACANA(+) = ITENSENTRADACANA.SEQ_ITENSENTRADACANA
+               AND ANALISE_IMP_MINERAL.COD_GRUPOEMPRESA    (+) = ITENSENTRADACANA.COD_GRUPOEMPRESA
+               AND ANALISE_IMP_MINERAL.COD_EMPRESA         (+) = ITENSENTRADACANA.COD_EMPRESA
+               AND ANALISE_IMP_MINERAL.COD_FILIAL          (+) = ITENSENTRADACANA.COD_FILIAL
+               AND ANALISE_IMP_MINERAL.COD_SAFRA           (+) = ITENSENTRADACANA.COD_SAFRA
+               AND ANALISE_IMP_MINERAL.COD_ENTRADACANA     (+) = ITENSENTRADACANA.COD_ENTRADACANA
+               AND ANALISE_IMP_MINERAL.SEQ_ITENSENTRADACANA(+) = ITENSENTRADACANA.SEQ_ITENSENTRADACANA
+               AND ANALISE_PCTS.COD_GRUPOEMPRESA       (+) = ITENSENTRADACANA.COD_GRUPOEMPRESA
+               AND ANALISE_PCTS.COD_EMPRESA            (+) = ITENSENTRADACANA.COD_EMPRESA
+               AND ANALISE_PCTS.COD_FILIAL             (+) = ITENSENTRADACANA.COD_FILIAL
+               AND ANALISE_PCTS.COD_SAFRA              (+) = ITENSENTRADACANA.COD_SAFRA
+               AND ANALISE_PCTS.COD_ENTRADACANA        (+) = ITENSENTRADACANA.COD_ENTRADACANA
+               AND ANALISE_PCTS.SEQ_ITENSENTRADACANA   (+) = ITENSENTRADACANA.SEQ_ITENSENTRADACANA
+               and tipo_corte.cod_tipocorte           = ORDEM_CORTE_UNICA.cod_tipocorte
+               AND TIPOCANA.COD_TIPOCANA              = ORDEM_CORTE_UNICA.COD_TIPOCANA
+               AND IDADE_CANA.COD_IDADE_CANA          = TALHAO.NUMEROCORTE
+               AND VARIEDADE.COD_VARIEDADE            = TALHAO.COD_VARIEDADE
+               AND TIPOVARIEDADE.COD_TIPOVARIEDADE(+) = VARIEDADE.COD_TIPOVARIEDADE
+               AND TALHAO.DESTINO_TALHAO              = DESTINO.DESTINO (+)
+               AND TALHAO.COD_AMBIENTEPROD            = AMBIENTE.ID_AMBPRODUC (+)
+               AND ENTRADACANA.DATAMOVIMENTO BETWEEN HISTORICO_FAZENDA.DATA_INICIO AND HISTORICO_FAZENDA.DATA_FIM
+               AND HISTORICO_FAZENDA.COD_FAZENDA      = FAZENDA.COD_FAZENDA
+               AND FAZENDA.COD_FAZENDA                = ITENSENTRADACANA.COD_FAZENDA
+               and talhao.cod_safra = {SAFRA}
+               AND SAFRA.COD_GRUPOEMPRESA             = ENTRADACANA.COD_GRUPOEMPRESA
+               AND SAFRA.COD_EMPRESA                  = ENTRADACANA.COD_EMPRESA
+               AND SAFRA.COD_FILIAL                   = ENTRADACANA.COD_FILIAL
+               AND SAFRA.COD_SAFRA                    = ENTRADACANA.COD_SAFRA
+               AND TALHAO.COD_FAZENDA                 = ITENSENTRADACANA.COD_FAZENDA
+               AND TALHAO.COD_TALHAO                  = ITENSENTRADACANA.COD_TALHAO
+               AND TALHAO.COD_SAFRADETALHE            = ITENSENTRADACANA.COD_SAFRADETALHE
+               AND TALHAO.COD_SAFRA                   = ITENSENTRADACANA.COD_SAFRA
+               AND TALHAO.ZONA                        = ITENSENTRADACANA.ZONA
+               AND (nvl(TALHAO.MATURADOR,'N')         = 'T' OR 'T' = 'T')
+               AND TALHAO.ENCERRADO                   = DECODE('T','T',TALHAO.ENCERRADO,'T')
+               AND IRRIGACAOTIPO.COD_TIPOIRRIGACAO (+) = TALHAO.COD_TIPOIRRIGACAO
+               AND FRENTE.COD_FRENTE                  = ORDEM_CORTE_UNICA.COD_FRENTE
+               AND LIBERACAO_CORTE.COD_GRUPOEMPRESA   = ORDEM_CORTE_UNICA.COD_GRUPOEMPRESA
+               AND LIBERACAO_CORTE.COD_EMPRESA        = ORDEM_CORTE_UNICA.COD_EMPRESA
+               AND LIBERACAO_CORTE.COD_FILIAL         = ORDEM_CORTE_UNICA.COD_FILIAL
+               AND LIBERACAO_CORTE.COD_SAFRADETALHE   = ORDEM_CORTE_UNICA.COD_SAFRADETALHE
+               AND LIBERACAO_CORTE.COD_SAFRA          = ORDEM_CORTE_UNICA.COD_SAFRA
+               AND LIBERACAO_CORTE.COD_FRENTE         = ORDEM_CORTE_UNICA.COD_FRENTE
+               AND LIBERACAO_CORTE.COD_FAZENDA        = ORDEM_CORTE_UNICA.COD_FAZENDA
+               AND LIBERACAO_CORTE.ZONA               = ORDEM_CORTE_UNICA.ZONA
+               AND LIBERACAO_CORTE.COD_TALHAO         = ORDEM_CORTE_UNICA.COD_TALHAO
+               AND LIBERACAO_CORTE.DATA_LIBERACAO     = ORDEM_CORTE_UNICA.DATA_LIBERACAO
+               AND LIBERACAO_CORTE.NUMERO_LIBERACAO   = ORDEM_CORTE_UNICA.NUMERO_LIBERACAO
+               AND ORDEM_CORTE_UNICA.COD_GRUPOEMPRESA = ITENSENTRADACANA.COD_GRUPOEMPRESA
+               AND ORDEM_CORTE_UNICA.COD_EMPRESA      = ITENSENTRADACANA.COD_EMPRESA
+               AND ORDEM_CORTE_UNICA.COD_FILIAL       = ITENSENTRADACANA.COD_FILIAL
+               AND ORDEM_CORTE_UNICA.COD_SAFRA        = ITENSENTRADACANA.COD_SAFRA
+               AND ORDEM_CORTE_UNICA.NUMERO_ORDEM     = ITENSENTRADACANA.NUMEROORDEMCORTE
+               AND ITENSENTRADACANA.COD_GRUPOEMPRESA = ENTRADACANA.COD_GRUPOEMPRESA
+               AND ITENSENTRADACANA.COD_EMPRESA      = ENTRADACANA.COD_EMPRESA
+               AND ITENSENTRADACANA.COD_FILIAL       = ENTRADACANA.COD_FILIAL
+               AND ITENSENTRADACANA.COD_SAFRA        = ENTRADACANA.COD_SAFRA
+               AND ITENSENTRADACANA.COD_ENTRADACANA  = ENTRADACANA.COD_ENTRADACANA
+               and itensentradacana.bituca           = DECODE('T','T',itensentradacana.bituca,'T')
+               AND ITENSENTRADACANA.PESOLIQUIDO      > 0
+               and entradacana.cod_filial = 1
+               and entradacana.cod_empresa = 1
+               and entradacana.cod_grupoempresa = 1
+               and 1 = 1
+               and agricola.entradacana.datamovimento between {DINI} and {DFIM}
+               and entradacana.cod_destinocana  = destinocana.cod_destinocana (+)
+             group by historico_FAZENDA.COD_FORNECEDOR
+            """)
+            .replace("{SAFRA}", s).replace("{DINI}", dIni).replace("{DFIM}", dFim);
+
+        Map<Integer, BigDecimal> mapa = new LinkedHashMap<>();
+        try (Connection conn = OracleConnectionUtil.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                int cod = rs.getInt("cod_fornecedor");
+                if (rs.wasNull()) continue;
+                mapa.put(cod, rs.getBigDecimal("atr") == null ? BigDecimal.ZERO : rs.getBigDecimal("atr"));
+            }
+        } catch (SQLException e) {
+            LOG.log(Level.WARNING, "ATR por fornecedor indisponível (segue sem ATR): " + e.getMessage(), e);
+        }
+        return mapa;
     }
 
     /** Soma o REALIZADO do Fluxo de Caixa Realizado, conta contendo "CANA", por fornecedor. */
