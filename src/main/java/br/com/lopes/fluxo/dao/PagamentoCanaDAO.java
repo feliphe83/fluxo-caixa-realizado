@@ -42,8 +42,6 @@ import java.util.logging.Logger;
 public class PagamentoCanaDAO {
 
     private static final Logger LOG = Logger.getLogger(PagamentoCanaDAO.class.getName());
-    /** peso está em kg e o ATR em kg/ton — divide por mil para chegar em ton × ATR × R$. */
-    private static final BigDecimal MIL = BigDecimal.valueOf(1000);
 
     private final FluxoRealizadoDAO fluxoDAO = new FluxoRealizadoDAO();
 
@@ -70,35 +68,18 @@ public class PagamentoCanaDAO {
         //    Fluxo de Caixa Realizado.
         Map<Integer, BigDecimal> realizadoPorForn = realizadoCanaPorFornecedor(pagIni, pagFim);
 
-        // 3) Junta e calcula o líquido pela conta do fechamento de cana:
-        //    Líquido = Cana Entregue − CCT + Frete − Diversos − Serviço − Melaço.
-        //    O lancamento_cana traz só os EVENTOS (descontos negativos, ajuda de
-        //    frete positiva); o valor da cana entregue não está lá, é
-        //    peso × ATR × preço Consecana ÷ 1000 (peso em kg, ATR em kg/ton).
-        //    Por isso somar l.valor dava o líquido sem a cana.
+        // 3) Junta. A Cana Entregue R$ já vem do SQL (líquido dos lançamentos pela
+        //    natureza do evento). Esse valor é o líquido a pagar; a Diferença é
+        //    Líquido − Pagamento Realizado. O preço Consecana, se informado, só
+        //    preenche a coluna ATR/R$ (informativa).
         for (Map<String, Object> l : linhas) {
             Integer cod = inteiroObj(l.get("cod_fornecedor"));
-
-            // ATR/R$: usa o preço informado (se houver); senão o buscado no ERP.
-            BigDecimal atrRs = (precoConsecana != null) ? precoConsecana : numero(l.get("atr_rs"));
             if (precoConsecana != null) l.put("atr_rs", precoConsecana);
 
-            BigDecimal canaEntregue = numero(l.get("cana_periodo"))
-                    .multiply(numero(l.get("atr")))
-                    .multiply(atrRs)
-                    .divide(MIL, 2, java.math.RoundingMode.HALF_UP);
-
-            BigDecimal eventos = numero(l.get("desc_cct"))
-                    .add(numero(l.get("ajuda_frete")))
-                    .add(numero(l.get("desc_diversos")))
-                    .add(numero(l.get("desc_servico")))
-                    .add(numero(l.get("desc_melaco")));
-
-            BigDecimal liquido = canaEntregue.add(eventos);
+            BigDecimal liquido = numero(l.get("cana_entregue"));
             BigDecimal realizado = cod == null ? null : realizadoPorForn.get(cod);
             if (realizado == null) realizado = BigDecimal.ZERO;
 
-            l.put("cana_entregue", canaEntregue);
             l.put("liquido", liquido);
             l.put("pagamento_realizado", realizado);
             l.put("saldo", liquido.subtract(realizado));
@@ -163,6 +144,9 @@ public class PagamentoCanaDAO {
         "          FROM agricola.parametros_cana a " +
         "         WHERE a.cod_grupoempresa=1 AND a.cod_empresa=1 AND a.cod_filial=1 " +
         "           AND " + dCon + " BETWEEN a.data_inicio AND a.data_termino AND ROWNUM=1) atr_rs, " +
+        // Cana Entregue R$ = líquido dos lançamentos pela natureza do evento
+        // (P soma, D subtrai) — a consulta oficial de fechamento.
+        "       SUM(CASE WHEN e.natureza='P' THEN l.valor WHEN e.natureza='D' THEN -l.valor ELSE 0 END) cana_entregue, " +
         "       SUM(CASE WHEN UPPER(e.descricao) LIKE '%CCT%'      THEN l.valor ELSE 0 END) desc_cct, " +
         "       SUM(CASE WHEN UPPER(e.descricao) LIKE '%FRETE%'    THEN l.valor ELSE 0 END) ajuda_frete, " +
         "       SUM(CASE WHEN UPPER(e.descricao) LIKE '%DIVERSOS%' THEN l.valor ELSE 0 END) desc_diversos, " +
@@ -175,6 +159,10 @@ public class PagamentoCanaDAO {
         "  INNER JOIN material.vw_fornecedor fornic ON fornic.cod_fornecedor = l.cod_fornecedor " +
         "  INNER JOIN rh.vw_pessoa p ON p.cod_pessoa = fornic.cod_pessoa " +
         "  INNER JOIN rh.evento e ON e.cod_evento = l.cod_evento AND e.imprimefolha = 'T' " +
+        "  INNER JOIN agricola.fazenda fz ON fz.cod_fazenda = l.cod_fazenda " +
+        "  INNER JOIN agricola.historico_fazenda hf ON hf.cod_fazenda = fz.cod_fazenda " +
+        "        AND hf.data_inicio = (SELECT MAX(h2.data_inicio) FROM agricola.historico_fazenda h2 " +
+        "                               WHERE h2.cod_fazenda = fz.cod_fazenda AND h2.data_inicio <= l.data_lancamento) " +
         " WHERE l.cod_grupoempresa=1 AND l.cod_empresa=1 AND l.cod_filial=1 AND l.cod_safra=" + s +
         "   AND l.cod_tipoprocessamento=2 " +
         "   AND l.data_lancamento BETWEEN " + eIni + " AND " + eFim + " " +
