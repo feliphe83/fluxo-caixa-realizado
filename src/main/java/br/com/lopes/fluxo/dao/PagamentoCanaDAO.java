@@ -112,21 +112,23 @@ public class PagamentoCanaDAO {
         "                 WHERE lx.cod_grupoempresa=1 AND lx.cod_empresa=1 AND lx.cod_filial=1 AND lx.cod_safra=" + s +
         "                   AND lx.cod_tipoprocessamento=2 AND lx.cod_fornecedor=l.cod_fornecedor) " +
         "           AND ec.datamovimento >= " + eIni + " AND ec.datamovimento < " + eFim + ") cana_periodo, " +
-        "       (SELECT ROUND(DECODE(SUM(ecp.pesoliquido),0,0, NVL(SUM(pcts.atr*ecp.pesoliquido)/SUM(ecp.pesoliquido),0)),4) " +
-        "          FROM agricola.entradacanaparceria ecp " +
-        "          JOIN agricola.entradacana ec2 ON ecp.cod_entradacana=ec2.cod_entradacana " +
-        "               AND ecp.cod_grupoempresa=ec2.cod_grupoempresa AND ecp.cod_empresa=ec2.cod_empresa AND ecp.cod_filial=ec2.cod_filial " +
-        "          JOIN (SELECT ap.cod_grupoempresa, ap.cod_empresa, ap.cod_filial, ap.cod_entradacana, AVG(ap.atr) atr " +
-        "                  FROM agricola.analise_pcts ap " +
-        "                 WHERE ap.cod_grupoempresa=1 AND ap.cod_empresa=1 AND ap.cod_filial=1 AND ap.cod_safra=" + s +
-        "                 GROUP BY ap.cod_grupoempresa, ap.cod_empresa, ap.cod_filial, ap.cod_entradacana) pcts " +
-        "               ON pcts.cod_entradacana=ec2.cod_entradacana AND pcts.cod_grupoempresa=ec2.cod_grupoempresa " +
-        "               AND pcts.cod_empresa=ec2.cod_empresa AND pcts.cod_filial=ec2.cod_filial " +
-        "         WHERE ecp.cod_grupoempresa=1 AND ecp.cod_empresa=1 AND ecp.cod_filial=1 AND ecp.cod_safra=" + s +
-        "           AND ecp.cod_fazenda IN (SELECT lx.cod_fazenda FROM agricola.lancamento_cana lx " +
-        "                 WHERE lx.cod_grupoempresa=1 AND lx.cod_empresa=1 AND lx.cod_filial=1 AND lx.cod_safra=" + s +
-        "                   AND lx.cod_tipoprocessamento=2 AND lx.cod_fornecedor=l.cod_fornecedor) " +
-        "           AND ec2.datamovimento >= " + eIni + " AND ec2.datamovimento < " + eFim + ") atr, " +
+        // ATR médio PONDERADO PELA CANA ANALISADA (analise_pcts.pesoliquido) —
+        // a mesma fórmula do cálculo oficial de produtividade (AgroProdutividadeDAO),
+        // e não a média simples/ponderada pelo peso da parceria. O EXISTS prende as
+        // análises às entradas das fazendas do fornecedor sem duplicar a análise
+        // quando a entrada tem mais de uma parceria.
+        "       (SELECT ROUND(NVL(SUM(ap.atr * ap.pesoliquido) / NULLIF(SUM(ap.pesoliquido), 0), 0), 4) " +
+        "          FROM agricola.analise_pcts ap " +
+        "          JOIN agricola.entradacana ec2 ON ap.cod_entradacana=ec2.cod_entradacana " +
+        "               AND ap.cod_grupoempresa=ec2.cod_grupoempresa AND ap.cod_empresa=ec2.cod_empresa AND ap.cod_filial=ec2.cod_filial " +
+        "         WHERE ap.cod_grupoempresa=1 AND ap.cod_empresa=1 AND ap.cod_filial=1 AND ap.cod_safra=" + s +
+        "           AND ec2.datamovimento >= " + eIni + " AND ec2.datamovimento < " + eFim +
+        "           AND EXISTS (SELECT 1 FROM agricola.entradacanaparceria ecp " +
+        "                        WHERE ecp.cod_entradacana=ap.cod_entradacana AND ecp.cod_grupoempresa=ap.cod_grupoempresa " +
+        "                          AND ecp.cod_empresa=ap.cod_empresa AND ecp.cod_filial=ap.cod_filial AND ecp.cod_safra=ap.cod_safra " +
+        "                          AND ecp.cod_fazenda IN (SELECT lx.cod_fazenda FROM agricola.lancamento_cana lx " +
+        "                                WHERE lx.cod_grupoempresa=1 AND lx.cod_empresa=1 AND lx.cod_filial=1 AND lx.cod_safra=" + s +
+        "                                  AND lx.cod_tipoprocessamento=2 AND lx.cod_fornecedor=l.cod_fornecedor))) atr, " +
         "       (SELECT financeiro.busca_indicefinanceiro(a.cod_indice_consecana, " + dCon + ") " +
         "          FROM agricola.parametros_cana a " +
         "         WHERE a.cod_grupoempresa=1 AND a.cod_empresa=1 AND a.cod_filial=1 " +
