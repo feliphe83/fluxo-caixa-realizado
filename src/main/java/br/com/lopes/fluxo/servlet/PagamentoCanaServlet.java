@@ -40,7 +40,7 @@ public class PagamentoCanaServlet extends HttpServlet {
         try {
             int safra = parseInt(req.getParameter("safra"), 74);
             String entIni    = ou(DataParamUtil.normalizar(req.getParameter("entIni")),    "2025-09-01");
-            String entFim    = ou(DataParamUtil.normalizar(req.getParameter("entFim")),    "2026-03-01");
+            String entFim    = ou(DataParamUtil.normalizar(req.getParameter("entFim")),    "2026-03-31");
             String consecana = ou(DataParamUtil.normalizar(req.getParameter("consecana")), "2026-02-28");
             String pagIni    = ou(DataParamUtil.normalizar(req.getParameter("pagIni")),    entIni);
             String pagFim    = ou(DataParamUtil.normalizar(req.getParameter("pagFim")),    hoje());

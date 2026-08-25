@@ -141,7 +141,7 @@ public class PagamentoCanaDAO {
         "           AND ecp.cod_fazenda IN (SELECT lx.cod_fazenda FROM agricola.lancamento_cana lx " +
         "                 WHERE lx.cod_grupoempresa=1 AND lx.cod_empresa=1 AND lx.cod_filial=1 AND lx.cod_safra=" + s +
         "                   AND lx.cod_tipoprocessamento=2 AND lx.cod_fornecedor=l.cod_fornecedor) " +
-        "           AND ec.datamovimento >= " + eIni + " AND ec.datamovimento < " + eFim + ") cana_periodo, " +
+        "           AND ec.datamovimento BETWEEN " + eIni + " AND " + eFim + ") cana_periodo, " +
         // ATR médio PONDERADO PELA CANA ANALISADA (analise_pcts.pesoliquido) —
         // a mesma fórmula do cálculo oficial de produtividade (AgroProdutividadeDAO),
         // e não a média simples/ponderada pelo peso da parceria. O EXISTS prende as
@@ -152,7 +152,7 @@ public class PagamentoCanaDAO {
         "          JOIN agricola.entradacana ec2 ON ap.cod_entradacana=ec2.cod_entradacana " +
         "               AND ap.cod_grupoempresa=ec2.cod_grupoempresa AND ap.cod_empresa=ec2.cod_empresa AND ap.cod_filial=ec2.cod_filial " +
         "         WHERE ap.cod_grupoempresa=1 AND ap.cod_empresa=1 AND ap.cod_filial=1 AND ap.cod_safra=" + s +
-        "           AND ec2.datamovimento >= " + eIni + " AND ec2.datamovimento < " + eFim +
+        "           AND ec2.datamovimento BETWEEN " + eIni + " AND " + eFim + " " +
         "           AND EXISTS (SELECT 1 FROM agricola.entradacanaparceria ecp " +
         "                        WHERE ecp.cod_entradacana=ap.cod_entradacana AND ecp.cod_grupoempresa=ap.cod_grupoempresa " +
         "                          AND ecp.cod_empresa=ap.cod_empresa AND ecp.cod_filial=ap.cod_filial AND ecp.cod_safra=ap.cod_safra " +
@@ -167,19 +167,19 @@ public class PagamentoCanaDAO {
         "       SUM(CASE WHEN UPPER(e.descricao) LIKE '%FRETE%'    THEN l.valor ELSE 0 END) ajuda_frete, " +
         "       SUM(CASE WHEN UPPER(e.descricao) LIKE '%DIVERSOS%' THEN l.valor ELSE 0 END) desc_diversos, " +
         "       SUM(CASE WHEN UPPER(e.descricao) LIKE '%SERVICO%' OR UPPER(e.descricao) LIKE '%SERVIÇO%' THEN l.valor ELSE 0 END) desc_servico, " +
-        "       SUM(CASE WHEN UPPER(e.descricao) LIKE '%MELACO%'  OR UPPER(e.descricao) LIKE '%MELAÇO%'  THEN l.valor ELSE 0 END) desc_melaco, " +
-        "       SUM(CASE WHEN l.valor > 0 THEN l.valor ELSE 0 END) total_proventos, " +
-        "       SUM(CASE WHEN l.valor < 0 THEN l.valor ELSE 0 END) total_descontos, " +
-        "       SUM(l.valor) liquido " +
+        "       SUM(CASE WHEN UPPER(e.descricao) LIKE '%MELACO%'  OR UPPER(e.descricao) LIKE '%MELAÇO%'  THEN l.valor ELSE 0 END) desc_melaco " +
+        // Valores dos eventos vêm da consulta oficial de fechamento: só eventos que
+        // imprimem na folha (EVENTO.IMPRIMEFOLHA='T'), nome pela VW_FORNECEDOR/VW_PESSOA,
+        // no período de lançamento (BETWEEN).
         "  FROM agricola.lancamento_cana l " +
-        "  LEFT JOIN material.fornecedor fornic ON l.cod_fornecedor=fornic.cod_fornecedor " +
-        "  LEFT JOIN rh.pessoa p ON fornic.cod_pessoa=p.cod_pessoa " +
-        "  LEFT JOIN rh.evento e ON e.cod_evento=l.cod_evento " +
+        "  INNER JOIN material.vw_fornecedor fornic ON fornic.cod_fornecedor = l.cod_fornecedor " +
+        "  INNER JOIN rh.vw_pessoa p ON p.cod_pessoa = fornic.cod_pessoa " +
+        "  INNER JOIN rh.evento e ON e.cod_evento = l.cod_evento AND e.imprimefolha = 'T' " +
         " WHERE l.cod_grupoempresa=1 AND l.cod_empresa=1 AND l.cod_filial=1 AND l.cod_safra=" + s +
         "   AND l.cod_tipoprocessamento=2 " +
-        "   AND l.data_lancamento >= " + eIni + " AND l.data_lancamento < " + eFim + " AND l.valor <> 0 " +
+        "   AND l.data_lancamento BETWEEN " + eIni + " AND " + eFim + " " +
         " GROUP BY l.cod_fornecedor, p.nome " +
-        " ORDER BY NVL(p.nome, TO_CHAR(l.cod_fornecedor))";
+        " ORDER BY p.nome";
     }
 
     // ── Execução / conversões ─────────────────────────────────────────────────
