@@ -11,7 +11,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -41,23 +40,20 @@ public class PagamentoCanaServlet extends HttpServlet {
             int safra = parseInt(req.getParameter("safra"), 74);
             String entIni    = ou(DataParamUtil.normalizar(req.getParameter("entIni")),    "2025-09-01");
             String entFim    = ou(DataParamUtil.normalizar(req.getParameter("entFim")),    "2026-03-31");
-            String consecana = ou(DataParamUtil.normalizar(req.getParameter("consecana")), "2026-02-28");
             String pagIni    = ou(DataParamUtil.normalizar(req.getParameter("pagIni")),    entIni);
             String pagFim    = ou(DataParamUtil.normalizar(req.getParameter("pagFim")),    hoje());
-            java.math.BigDecimal precoConsecana = parseDecimal(req.getParameter("precoConsecana"));
 
-            List<Map<String, Object>> linhas = dao.resumo(safra, entIni, entFim, consecana, pagIni, pagFim, precoConsecana);
+            Map<String, Object> dados = dao.resumo(safra, entIni, entFim, pagIni, pagFim);
 
             JsonObject r = new JsonObject();
             r.addProperty("ok", true);
             r.addProperty("safra", safra);
             r.addProperty("entIni", entIni);
             r.addProperty("entFim", entFim);
-            r.addProperty("consecana", consecana);
             r.addProperty("pagIni", pagIni);
             r.addProperty("pagFim", pagFim);
-            if (precoConsecana != null) r.addProperty("precoConsecana", precoConsecana);
-            r.add("fornecedores", gson.toJsonTree(linhas));
+            r.add("eventos", gson.toJsonTree(dados.get("eventos")));
+            r.add("fornecedores", gson.toJsonTree(dados.get("fornecedores")));
             out.print(gson.toJson(r));
 
         } catch (IllegalArgumentException e) {
@@ -68,14 +64,6 @@ public class PagamentoCanaServlet extends HttpServlet {
             resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             out.print("{\"ok\":false,\"erro\":" + gson.toJson("Falha ao consultar: " + e.getMessage()) + "}");
         }
-    }
-
-    private static java.math.BigDecimal parseDecimal(String v) {
-        if (v == null || v.isBlank()) return null;
-        String s = v.trim();
-        // Com vírgula = formato pt-BR (1.234,56); sem vírgula, o ponto é decimal (1.0532).
-        if (s.contains(",")) s = s.replace(".", "").replace(",", ".");
-        try { return new java.math.BigDecimal(s); } catch (NumberFormatException e) { return null; }
     }
 
     private static String ou(String v, String padrao) { return (v == null || v.isBlank()) ? padrao : v; }

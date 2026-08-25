@@ -10,6 +10,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,25 +21,23 @@ import java.util.logging.Logger;
 /**
  * Controle de Pagamento a Fornecedor de Cana.
  *
- * Junta duas fontes do Oracle, por cod_fornecedor:
+ * Duas fontes do Oracle, por cod_fornecedor:
  *
- *  1) Agrícola — a consulta de fechamento por fornecedor (lancamento_cana +
- *     entradacanaparceria + analise_pcts + parametros_cana): cana do período
- *     (peso líquido), ATR médio ponderado, índice Consecana (ATR/R$), os
- *     eventos (CCT, frete, diversos, serviço, melaço) e proventos/descontos/
- *     líquido. Safra, janela de entrega e data do índice Consecana são
- *     parâmetros (padrão = os valores da consulta original: safra 74,
- *     01/09/2025–01/03/2026, Consecana 28/02/2026).
+ *  1) Agrícola — os EVENTOS do fechamento (agricola.lancamento_cana), pela
+ *     consulta oficial: só eventos que imprimem na folha (EVENTO.IMPRIMEFOLHA='T'),
+ *     nome por material.vw_fornecedor + rh.vw_pessoa, e o vínculo de fazenda pela
+ *     historico_fazenda (maior data_inicio até o lançamento). Os eventos são
+ *     dinâmicos — cada evento (EVENTO.DESCRICAO) vira uma coluna, agrupada por
+ *     natureza (P = proventos, D = descontos). A "Cana Entregue R$" é o líquido:
+ *     SUM(P: +valor, D: -valor).
  *
  *  2) Financeiro — o Pagamento Realizado vem da MESMA consulta do Fluxo de
  *     Caixa Realizado ({@link FluxoRealizadoDAO}), somando o REALIZADO das
- *     linhas cuja conta do fluxo contém "CANA" (a conta de fornecedores de
- *     cana), por fornecedor, na janela de pagamento informada.
+ *     linhas cuja conta do fluxo contém "CANA", por fornecedor, na janela de
+ *     pagamento informada.
  *
- * Empresa fixada em 1/1/1, como nas demais consultas da intranet.
- *
- * Não roda Oracle neste ambiente: a lógica é verificável, mas os números só se
- * confirmam no primeiro deploy real.
+ * Empresa fixada em 1/1/1. Não roda Oracle neste ambiente: a lógica é
+ * verificável, mas os números só se confirmam no primeiro deploy real.
  */
 public class PagamentoCanaDAO {
 
@@ -46,45 +46,84 @@ public class PagamentoCanaDAO {
     private final FluxoRealizadoDAO fluxoDAO = new FluxoRealizadoDAO();
 
     /**
-     * @param safra      cod_safra (ex.: 74)
-     * @param entIni     início da entrega, yyyy-MM-dd (data do movimento / lançamento)
-     * @param entFim     fim da entrega (exclusivo), yyyy-MM-dd
-     * @param consecana  data do índice Consecana (ATR/R$), yyyy-MM-dd
-     * @param pagIni     início da janela de pagamentos realizados, yyyy-MM-dd
-     * @param pagFim     fim da janela de pagamentos realizados, yyyy-MM-dd
-     * @param precoConsecana  opcional; se informado, sobrepõe o ATR/R$ buscado no
-     *                        ERP (útil quando a busca_indicefinanceiro não tem
-     *                        índice para a data e retorna 0).
+     * @param safra   cod_safra (ex.: 74)
+     * @param entIni  início do lançamento, yyyy-MM-dd
+     * @param entFim  fim do lançamento, yyyy-MM-dd
+     * @param pagIni  início da janela de pagamentos realizados, yyyy-MM-dd
+     * @param pagFim  fim da janela de pagamentos realizados, yyyy-MM-dd
+     * @return mapa com "eventos" (metadados das colunas dinâmicas: cod, key,
+     *         descricao, natureza) e "fornecedores" (uma linha por fornecedor,
+     *         com um campo ev_&lt;cod&gt; por evento, mais cana_entregue,
+     *         pagamento_realizado e saldo).
      */
-    public List<Map<String, Object>> resumo(int safra, String entIni, String entFim, String consecana,
-                                            String pagIni, String pagFim, BigDecimal precoConsecana) {
-        validarData(entIni); validarData(entFim); validarData(consecana);
-        validarData(pagIni); validarData(pagFim);
+    public Map<String, Object> resumo(int safra, String entIni, String entFim, String pagIni, String pagFim) {
+        validarData(entIni); validarData(entFim); validarData(pagIni); validarData(pagFim);
 
-        // 1) Agrícola por fornecedor.
-        List<Map<String, Object>> linhas = executar(sqlAgricola(safra, entIni, entFim, consecana));
+        // 1) Eventos por fornecedor (linha por fornecedor + evento).
+        List<Map<String, Object>> linhas = executar(sqlEventos(safra, entIni, entFim));
 
-        // 2) Pagamento realizado por fornecedor (conta de cana), reaproveitando o
-        //    Fluxo de Caixa Realizado.
+        // 2) Pagamento realizado por fornecedor (conta de cana).
         Map<Integer, BigDecimal> realizadoPorForn = realizadoCanaPorFornecedor(pagIni, pagFim);
 
-        // 3) Junta. A Cana Entregue R$ já vem do SQL (líquido dos lançamentos pela
-        //    natureza do evento). Esse valor é o líquido a pagar; a Diferença é
-        //    Líquido − Pagamento Realizado. O preço Consecana, se informado, só
-        //    preenche a coluna ATR/R$ (informativa).
-        for (Map<String, Object> l : linhas) {
-            Integer cod = inteiroObj(l.get("cod_fornecedor"));
-            if (precoConsecana != null) l.put("atr_rs", precoConsecana);
+        // 3) Pivô: fornecedor x evento.
+        Map<Integer, String[]> eventoMeta = new LinkedHashMap<>();      // cod_evento -> [descricao, natureza]
+        Map<Integer, Map<String, Object>> forn = new LinkedHashMap<>(); // cod_fornecedor -> linha
+        Map<Integer, BigDecimal> canaNet = new LinkedHashMap<>();       // cod_fornecedor -> líquido por natureza
 
-            BigDecimal liquido = numero(l.get("cana_entregue"));
-            BigDecimal realizado = cod == null ? null : realizadoPorForn.get(cod);
-            if (realizado == null) realizado = BigDecimal.ZERO;
+        for (Map<String, Object> row : linhas) {
+            Integer codForn = inteiroObj(row.get("cod_fornecedor"));
+            if (codForn == null) continue;
+            Integer codEv = inteiroObj(row.get("cod_evento"));
+            String descEv = texto(row.get("desc_evento"), "Evento " + codEv);
+            String nat = texto(row.get("natureza"), "O").toUpperCase();
+            BigDecimal valor = numero(row.get("valor"));
 
-            l.put("liquido", liquido);
-            l.put("pagamento_realizado", realizado);
-            l.put("saldo", liquido.subtract(realizado));
+            eventoMeta.putIfAbsent(codEv, new String[]{descEv, nat});
+
+            Map<String, Object> f = forn.computeIfAbsent(codForn, k -> {
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("cod_fornecedor", codForn);
+                m.put("nome", texto(row.get("nome"), "Fornecedor " + codForn));
+                return m;
+            });
+            String key = "ev_" + codEv;
+            f.put(key, numero(f.get(key)).add(valor));
+
+            BigDecimal assinado = "P".equals(nat) ? valor : "D".equals(nat) ? valor.negate() : BigDecimal.ZERO;
+            canaNet.merge(codForn, assinado, BigDecimal::add);
         }
-        return linhas;
+
+        // 4) Finaliza cada fornecedor: cana_entregue, realizado, saldo.
+        List<Map<String, Object>> fornecedores = new ArrayList<>(forn.values());
+        for (Map<String, Object> f : fornecedores) {
+            Integer cod = inteiroObj(f.get("cod_fornecedor"));
+            BigDecimal cana = canaNet.getOrDefault(cod, BigDecimal.ZERO);
+            BigDecimal realizado = realizadoPorForn.getOrDefault(cod, BigDecimal.ZERO);
+            f.put("cana_entregue", cana);
+            f.put("pagamento_realizado", realizado);
+            f.put("saldo", cana.subtract(realizado));
+        }
+        fornecedores.sort(Comparator.comparing(m -> texto(m.get("nome"), "")));
+
+        // 5) Metadados dos eventos, ordenados: proventos, descontos, outros; e por descrição.
+        List<Map<String, Object>> eventos = new ArrayList<>();
+        eventoMeta.entrySet().stream()
+                .sorted(Comparator
+                        .comparingInt((Map.Entry<Integer, String[]> en) -> ordemNat(en.getValue()[1]))
+                        .thenComparing(en -> en.getValue()[0]))
+                .forEach(en -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("cod", en.getKey());
+                    m.put("key", "ev_" + en.getKey());
+                    m.put("descricao", en.getValue()[0]);
+                    m.put("natureza", en.getValue()[1]);
+                    eventos.add(m);
+                });
+
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("eventos", eventos);
+        out.put("fornecedores", fornecedores);
+        return out;
     }
 
     /** Soma o REALIZADO do Fluxo de Caixa Realizado, conta contendo "CANA", por fornecedor. */
@@ -102,72 +141,29 @@ public class PagamentoCanaDAO {
         return mapa;
     }
 
-    // ── SQL do agrícola (a consulta fornecida, parametrizada e com aliases snake_case) ──
+    // ── SQL dos eventos (a consulta oficial de fechamento, agregada por fornecedor+evento) ──
 
-    private static String sqlAgricola(int safra, String entIni, String entFim, String consecana) {
-        String eIni = td(entIni);        // TO_DATE do início da entrega
-        String eFim = td(entFim);        // TO_DATE do fim (exclusivo)
-        String dCon = td(consecana);     // TO_DATE da data Consecana
+    private static String sqlEventos(int safra, String entIni, String entFim) {
+        String eIni = td(entIni);
+        String eFim = td(entFim);
         String s = String.valueOf(safra);
-
         return
-        "SELECT l.cod_fornecedor cod_fornecedor, " +
-        "       NVL(p.nome, '*** SEM CADASTRO ***') nome, " +
-        "       COUNT(DISTINCT l.cod_fazenda) qtd_fazendas, " +
-        "       (SELECT SUM(NVL(ecp.pesoliquido,0)) " +
-        "          FROM agricola.entradacanaparceria ecp " +
-        "          JOIN agricola.entradacana ec ON ecp.cod_entradacana=ec.cod_entradacana " +
-        "               AND ecp.cod_grupoempresa=ec.cod_grupoempresa AND ecp.cod_empresa=ec.cod_empresa AND ecp.cod_filial=ec.cod_filial " +
-        "         WHERE ecp.cod_grupoempresa=1 AND ecp.cod_empresa=1 AND ecp.cod_filial=1 AND ecp.cod_safra=" + s +
-        "           AND ecp.cod_fazenda IN (SELECT lx.cod_fazenda FROM agricola.lancamento_cana lx " +
-        "                 WHERE lx.cod_grupoempresa=1 AND lx.cod_empresa=1 AND lx.cod_filial=1 AND lx.cod_safra=" + s +
-        "                   AND lx.cod_tipoprocessamento=2 AND lx.cod_fornecedor=l.cod_fornecedor) " +
-        "           AND ec.datamovimento BETWEEN " + eIni + " AND " + eFim + ") cana_periodo, " +
-        // ATR médio PONDERADO PELA CANA ANALISADA (analise_pcts.pesoliquido) —
-        // a mesma fórmula do cálculo oficial de produtividade (AgroProdutividadeDAO),
-        // e não a média simples/ponderada pelo peso da parceria. O EXISTS prende as
-        // análises às entradas das fazendas do fornecedor sem duplicar a análise
-        // quando a entrada tem mais de uma parceria.
-        "       (SELECT ROUND(NVL(SUM(ap.atr * ap.pesoliquido) / NULLIF(SUM(ap.pesoliquido), 0), 0), 4) " +
-        "          FROM agricola.analise_pcts ap " +
-        "          JOIN agricola.entradacana ec2 ON ap.cod_entradacana=ec2.cod_entradacana " +
-        "               AND ap.cod_grupoempresa=ec2.cod_grupoempresa AND ap.cod_empresa=ec2.cod_empresa AND ap.cod_filial=ec2.cod_filial " +
-        "         WHERE ap.cod_grupoempresa=1 AND ap.cod_empresa=1 AND ap.cod_filial=1 AND ap.cod_safra=" + s +
-        "           AND ec2.datamovimento BETWEEN " + eIni + " AND " + eFim + " " +
-        "           AND EXISTS (SELECT 1 FROM agricola.entradacanaparceria ecp " +
-        "                        WHERE ecp.cod_entradacana=ap.cod_entradacana AND ecp.cod_grupoempresa=ap.cod_grupoempresa " +
-        "                          AND ecp.cod_empresa=ap.cod_empresa AND ecp.cod_filial=ap.cod_filial AND ecp.cod_safra=ap.cod_safra " +
-        "                          AND ecp.cod_fazenda IN (SELECT lx.cod_fazenda FROM agricola.lancamento_cana lx " +
-        "                                WHERE lx.cod_grupoempresa=1 AND lx.cod_empresa=1 AND lx.cod_filial=1 AND lx.cod_safra=" + s +
-        "                                  AND lx.cod_tipoprocessamento=2 AND lx.cod_fornecedor=l.cod_fornecedor))) atr, " +
-        "       (SELECT financeiro.busca_indicefinanceiro(a.cod_indice_consecana, " + dCon + ") " +
-        "          FROM agricola.parametros_cana a " +
-        "         WHERE a.cod_grupoempresa=1 AND a.cod_empresa=1 AND a.cod_filial=1 " +
-        "           AND " + dCon + " BETWEEN a.data_inicio AND a.data_termino AND ROWNUM=1) atr_rs, " +
-        // Cana Entregue R$ = líquido dos lançamentos pela natureza do evento
-        // (P soma, D subtrai) — a consulta oficial de fechamento.
-        "       SUM(CASE WHEN e.natureza='P' THEN l.valor WHEN e.natureza='D' THEN -l.valor ELSE 0 END) cana_entregue, " +
-        "       SUM(CASE WHEN UPPER(e.descricao) LIKE '%CCT%'      THEN l.valor ELSE 0 END) desc_cct, " +
-        "       SUM(CASE WHEN UPPER(e.descricao) LIKE '%FRETE%'    THEN l.valor ELSE 0 END) ajuda_frete, " +
-        "       SUM(CASE WHEN UPPER(e.descricao) LIKE '%DIVERSOS%' THEN l.valor ELSE 0 END) desc_diversos, " +
-        "       SUM(CASE WHEN UPPER(e.descricao) LIKE '%SERVICO%' OR UPPER(e.descricao) LIKE '%SERVIÇO%' THEN l.valor ELSE 0 END) desc_servico, " +
-        "       SUM(CASE WHEN UPPER(e.descricao) LIKE '%MELACO%'  OR UPPER(e.descricao) LIKE '%MELAÇO%'  THEN l.valor ELSE 0 END) desc_melaco " +
-        // Valores dos eventos vêm da consulta oficial de fechamento: só eventos que
-        // imprimem na folha (EVENTO.IMPRIMEFOLHA='T'), nome pela VW_FORNECEDOR/VW_PESSOA,
-        // no período de lançamento (BETWEEN).
-        "  FROM agricola.lancamento_cana l " +
-        "  INNER JOIN material.vw_fornecedor fornic ON fornic.cod_fornecedor = l.cod_fornecedor " +
-        "  INNER JOIN rh.vw_pessoa p ON p.cod_pessoa = fornic.cod_pessoa " +
-        "  INNER JOIN rh.evento e ON e.cod_evento = l.cod_evento AND e.imprimefolha = 'T' " +
-        "  INNER JOIN agricola.fazenda fz ON fz.cod_fazenda = l.cod_fazenda " +
-        "  INNER JOIN agricola.historico_fazenda hf ON hf.cod_fazenda = fz.cod_fazenda " +
-        "        AND hf.data_inicio = (SELECT MAX(h2.data_inicio) FROM agricola.historico_fazenda h2 " +
-        "                               WHERE h2.cod_fazenda = fz.cod_fazenda AND h2.data_inicio <= l.data_lancamento) " +
-        " WHERE l.cod_grupoempresa=1 AND l.cod_empresa=1 AND l.cod_filial=1 AND l.cod_safra=" + s +
-        "   AND l.cod_tipoprocessamento=2 " +
-        "   AND l.data_lancamento BETWEEN " + eIni + " AND " + eFim + " " +
-        " GROUP BY l.cod_fornecedor, p.nome " +
-        " ORDER BY p.nome";
+            "SELECT l.cod_fornecedor cod_fornecedor, p.nome nome, " +
+            "       e.cod_evento cod_evento, e.descricao desc_evento, e.natureza natureza, " +
+            "       SUM(l.valor) valor " +
+            "  FROM agricola.lancamento_cana l " +
+            "  INNER JOIN material.vw_fornecedor fornic ON fornic.cod_fornecedor = l.cod_fornecedor " +
+            "  INNER JOIN rh.vw_pessoa p ON p.cod_pessoa = fornic.cod_pessoa " +
+            "  INNER JOIN rh.evento e ON e.cod_evento = l.cod_evento AND e.imprimefolha = 'T' " +
+            "  INNER JOIN agricola.fazenda fz ON fz.cod_fazenda = l.cod_fazenda " +
+            "  INNER JOIN agricola.historico_fazenda hf ON hf.cod_fazenda = fz.cod_fazenda " +
+            "        AND hf.data_inicio = (SELECT MAX(h2.data_inicio) FROM agricola.historico_fazenda h2 " +
+            "                               WHERE h2.cod_fazenda = fz.cod_fazenda AND h2.data_inicio <= l.data_lancamento) " +
+            " WHERE l.cod_grupoempresa=1 AND l.cod_empresa=1 AND l.cod_filial=1 AND l.cod_safra=" + s +
+            "   AND l.cod_tipoprocessamento=2 " +
+            "   AND l.data_lancamento BETWEEN " + eIni + " AND " + eFim + " " +
+            " GROUP BY l.cod_fornecedor, p.nome, e.cod_evento, e.descricao, e.natureza " +
+            " ORDER BY p.nome, e.natureza, e.descricao";
     }
 
     // ── Execução / conversões ─────────────────────────────────────────────────
@@ -181,6 +177,11 @@ public class PagamentoCanaDAO {
             LOG.log(Level.SEVERE, "Erro no pagamento de cana: " + e.getMessage(), e);
             throw new RuntimeException("Falha na consulta de pagamento de cana: " + e.getMessage(), e);
         }
+    }
+
+    /** Proventos primeiro, depois descontos, depois outros. */
+    private static int ordemNat(String nat) {
+        return "P".equals(nat) ? 1 : "D".equals(nat) ? 2 : 3;
     }
 
     private static void validarData(String iso) {
@@ -206,5 +207,11 @@ public class PagamentoCanaDAO {
         if (v instanceof BigDecimal b) return b;
         if (v instanceof Number n) return BigDecimal.valueOf(n.doubleValue());
         try { return new BigDecimal(v.toString().trim()); } catch (NumberFormatException e) { return BigDecimal.ZERO; }
+    }
+
+    private static String texto(Object v, String padrao) {
+        if (v == null) return padrao;
+        String s = v.toString().trim();
+        return s.isEmpty() ? padrao : s;
     }
 }

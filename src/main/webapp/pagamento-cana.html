@@ -112,9 +112,8 @@
   <div class="filtros-card">
     <div class="filtros-grid">
       <div class="campo"><label>Safra</label><input type="number" id="safra" class="safra" value="74"></div>
-      <div class="campo"><label>Entrega de</label><input type="date" id="entIni" value="2025-09-01"></div>
-      <div class="campo"><label>Entrega até</label><input type="date" id="entFim" value="2026-03-31"></div>
-      <div class="campo"><label>Data Consecana</label><input type="date" id="consecana" value="2026-02-28"></div>
+      <div class="campo"><label>Lançamentos de</label><input type="date" id="entIni" value="2025-09-01"></div>
+      <div class="campo"><label>Lançamentos até</label><input type="date" id="entFim" value="2026-03-31"></div>
       <div class="campo"><label>Pagamentos de</label><input type="date" id="pagIni" value="2025-09-01"></div>
       <div class="campo"><label>Pagamentos até</label><input type="date" id="pagFim"></div>
       <button class="btn-gerar" id="btnGerar" onclick="carregar()">
@@ -135,27 +134,26 @@
 "use strict";
 
 let LINHAS = [];
+let EVENTOS = [];   // metadados das colunas dinâmicas (cod, key, descricao, natureza)
+let COLS = [];      // montado a cada consulta a partir de EVENTOS
+let SOMAR = new Set();
 
 const nf = (n, d = 2) => (isFinite(+n) ? +n : 0).toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
 
-// Colunas: g=grupo, h=título, k=chave, d=casas, cls=classe, money=colore negativo.
-const COLS = [
-  { g: "", h: "Cód.", k: "cod_fornecedor", d: 0, cls: "left" },
-  { g: "Cana / Safra", h: "Qtd Faz.", k: "qtd_fazendas", d: 0, cls: "cana" },
-  { g: "Cana / Safra", h: "Cana Período (kg)", k: "cana_periodo", d: 0, cls: "cana" },
-  { g: "Cana / Safra", h: "ATR", k: "atr", d: 2, cls: "cana" },
-  { g: "Cana / Safra", h: "ATR/R$", k: "atr_rs", d: 4, cls: "cana" },
-  { g: "Eventos", h: "Desc. CCT", k: "desc_cct", d: 2, cls: "evt", money: true },
-  { g: "Eventos", h: "Ajuda Frete", k: "ajuda_frete", d: 2, cls: "evt", money: true },
-  { g: "Eventos", h: "Desc. Diversos", k: "desc_diversos", d: 2, cls: "evt", money: true },
-  { g: "Eventos", h: "Desc. Serviço", k: "desc_servico", d: 2, cls: "evt", money: true },
-  { g: "Eventos", h: "Desc. Melaço", k: "desc_melaco", d: 2, cls: "evt", money: true },
-  { g: "Financeiro", h: "Cana Entregue R$", k: "cana_entregue", d: 2, cls: "fin", money: true },
-  { g: "Financeiro", h: "Pagamento Realizado", k: "pagamento_realizado", d: 2, cls: "fin", money: true },
-  { g: "Financeiro", h: "Diferença (Cana − Pago)", k: "saldo", d: 2, cls: "fin", money: true }
-];
-// Colunas que somam no total (as demais — ATR, ATR/R$ — não fazem média aqui).
-const SOMAR = new Set(["qtd_fazendas", "cana_periodo", "cana_entregue", "desc_cct", "ajuda_frete", "desc_diversos", "desc_servico", "desc_melaco", "pagamento_realizado", "saldo"]);
+// Monta as colunas: Cód, um por evento (agrupado em Proventos/Descontos/Outros),
+// e o bloco Financeiro (Cana Entregue, Pagamento Realizado, Diferença).
+function montarColunas() {
+  COLS = [{ g: "", h: "Cód.", k: "cod_fornecedor", d: 0, cls: "left" }];
+  const grupoNat = n => n === "P" ? "Proventos" : n === "D" ? "Descontos" : "Outros";
+  EVENTOS.forEach(ev => {
+    COLS.push({ g: grupoNat(ev.natureza), h: ev.descricao, k: ev.key, d: 2, cls: "evt", money: true });
+  });
+  COLS.push({ g: "Financeiro", h: "Cana Entregue R$", k: "cana_entregue", d: 2, cls: "fin", money: true });
+  COLS.push({ g: "Financeiro", h: "Pagamento Realizado", k: "pagamento_realizado", d: 2, cls: "fin", money: true });
+  COLS.push({ g: "Financeiro", h: "Diferença (Cana − Pago)", k: "saldo", d: 2, cls: "fin", money: true });
+
+  SOMAR = new Set(COLS.filter(c => c.k !== "cod_fornecedor").map(c => c.k));
+}
 
 function fmtBR(s) { const [a, b, c] = s.split("-"); return c + "/" + b + "/" + a; }
 
@@ -163,7 +161,6 @@ async function carregar() {
   const safra = document.getElementById("safra").value || "74";
   const entIni = document.getElementById("entIni").value;
   const entFim = document.getElementById("entFim").value;
-  const consecana = document.getElementById("consecana").value;
   const pagIni = document.getElementById("pagIni").value;
   const pagFim = document.getElementById("pagFim").value;
   if (!entIni || !entFim) { alert("Informe a janela de entrega."); return; }
@@ -173,7 +170,6 @@ async function carregar() {
 
   try {
     let url = "api/pagamento-cana?safra=" + encodeURIComponent(safra) + "&entIni=" + entIni + "&entFim=" + entFim;
-    if (consecana) url += "&consecana=" + consecana;
     if (pagIni) url += "&pagIni=" + pagIni;
     if (pagFim) url += "&pagFim=" + pagFim;
     const r = await fetch(url);
@@ -181,8 +177,10 @@ async function carregar() {
     if (!j.ok) { painel.innerHTML = '<div class="tabela-wrap"><div class="estado"><div class="erro-box">' + (j.erro || "Falha ao consultar.") + '</div></div></div>'; return; }
 
     LINHAS = j.fornecedores || [];
+    EVENTOS = j.eventos || [];
+    montarColunas();
     document.getElementById("headerPeriodo").textContent =
-      "Safra " + j.safra + " · Entrega " + fmtBR(j.entIni) + " a " + fmtBR(j.entFim) + " · Consecana " + fmtBR(j.consecana) + " · Pagamentos " + fmtBR(j.pagIni) + " a " + fmtBR(j.pagFim);
+      "Safra " + j.safra + " · Lançamentos " + fmtBR(j.entIni) + " a " + fmtBR(j.entFim) + " · Pagamentos " + fmtBR(j.pagIni) + " a " + fmtBR(j.pagFim);
     document.getElementById("headerEmitido").textContent = new Date().toLocaleDateString("pt-BR");
     render();
   } catch (e) {
