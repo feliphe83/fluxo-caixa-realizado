@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pagamento a Fornecedor de Cana</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --ink: #0f2460; --ink-2: #52514e; --ink-3: #898781; --grade: #e9edf6;
+    --cana: #eef7ef; --evt: #fbf3e7; --tot: #eef1f7; --fin: #eaf2fd;
+    --pos: #14603f; --neg: #b23b3b;
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f4f6fb; color: #1a1a2e; }
+
+  .header { background: linear-gradient(135deg, #16342a 0%, #234f3b 100%); color: white; padding: 16px 28px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+  .header-left { display: flex; align-items: center; gap: 14px; min-width: 0; }
+  .header-logo { width: 44px; height: 44px; border-radius: 8px; background: white; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 5px; flex-shrink: 0; }
+  .header-logo img { width: 100%; height: 100%; object-fit: contain; }
+  .header-title { font-size: 19px; font-weight: 800; }
+  .header-sub { font-size: 12.5px; opacity: .9; margin-top: 3px; font-weight: 600; }
+  .header-periodo { font-size: 11.5px; opacity: .72; margin-top: 3px; }
+  .header-right { display: flex; align-items: center; gap: 18px; flex-shrink: 0; }
+  .header-emitido { font-size: 10.5px; opacity: .85; text-align: right; line-height: 1.5; white-space: nowrap; }
+  .header-emitido b { font-size: 13px; display: block; }
+  .btn-voltar { display: flex; align-items: center; gap: 7px; padding: 8px 16px; border-radius: 8px; border: 1.5px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.9); font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .btn-voltar:hover { background: rgba(255,255,255,0.18); }
+
+  .conteudo { max-width: 1700px; margin: 0 auto; padding: 22px; }
+
+  .filtros-card { background: white; border: 1.5px solid #e3e8f5; border-radius: 14px; padding: 16px 20px; margin-bottom: 18px; }
+  .filtros-grid { display: flex; flex-wrap: wrap; align-items: end; gap: 14px; }
+  .campo { display: flex; flex-direction: column; gap: 5px; }
+  .campo label { font-size: 11px; font-weight: 700; color: var(--ink-3); text-transform: uppercase; letter-spacing: .4px; }
+  .campo input { padding: 8px 10px; border: 1.5px solid #d6ddec; border-radius: 8px; font-size: 14px; color: var(--ink); }
+  .campo input.safra { width: 90px; }
+  .btn-gerar { display: flex; align-items: center; gap: 8px; padding: 9px 18px; border-radius: 8px; border: none; background: #234f3b; color: white; font-size: 14px; font-weight: 700; cursor: pointer; }
+  .btn-gerar:hover { background: #1a3d2d; }
+
+  .barra-acoes { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+  .barra-acoes .esp { flex: 1; }
+  .btn-acao { display: flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 8px; border: 1.5px solid #d6ddec; background: white; color: var(--ink-2); font-size: 13px; font-weight: 600; cursor: pointer; }
+  .btn-acao:hover { border-color: #234f3b; color: #234f3b; }
+  .btn-acao.destaque { background: #1baf7a; border-color: #1baf7a; color: white; }
+  .btn-acao.destaque:hover { background: #159066; }
+
+  .tabela-wrap { background: white; border: 1.5px solid #e3e8f5; border-radius: 14px; overflow: auto; }
+  table.pg { border-collapse: collapse; width: 100%; font-size: 12px; white-space: nowrap; }
+  table.pg thead th { background: #16342a; color: #fff; font-weight: 700; font-size: 11px; padding: 8px; position: sticky; top: 0; z-index: 2; text-align: right; }
+  table.pg thead th.grp { background: #234f3b; text-align: center; }
+  table.pg th.nome, table.pg td.nome { position: sticky; left: 0; z-index: 1; background: #16342a; text-align: left; min-width: 220px; }
+  table.pg tbody td.nome { background: #f7f9fd; font-weight: 600; color: var(--ink); border-right: 2px solid #e3e8f5; }
+  table.pg td { padding: 5px 8px; border-bottom: 1px solid var(--grade); text-align: right; color: var(--ink-2); }
+  table.pg td.left { text-align: left; }
+  table.pg td.cana { background: var(--cana); }
+  table.pg td.evt { background: var(--evt); }
+  table.pg td.tot { background: var(--tot); color: var(--ink); font-weight: 600; }
+  table.pg td.fin { background: var(--fin); color: var(--ink); font-weight: 700; }
+  table.pg td.neg { color: var(--neg); }
+  table.pg tbody tr:hover td { filter: brightness(0.97); }
+  table.pg tfoot td { padding: 9px 8px; border-top: 2px solid #234f3b; background: #eef1f7; font-weight: 800; color: var(--ink); text-align: right; }
+  table.pg tfoot td.nome { background: #234f3b; color: #fff; text-align: left; }
+
+  .estado { padding: 60px 20px; text-align: center; color: var(--ink-3); }
+  .spinner { width: 34px; height: 34px; border: 3px solid #e3e8f5; border-top-color: #234f3b; border-radius: 50%; animation: girar .8s linear infinite; margin: 0 auto 14px; }
+  @keyframes girar { to { transform: rotate(360deg); } }
+  .erro-box { background: #fdecec; border: 1.5px solid #f5c2c2; color: #b23b3b; border-radius: 10px; padding: 14px 18px; font-size: 13px; }
+
+  @media print {
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    .filtros-card, .barra-acoes, .btn-voltar, .snav-sidebar, .snav-toggle, .snav-backdrop { display: none !important; }
+    body { background: #fff; }
+    .conteudo { max-width: none; padding: 0; }
+    .header { background: #fff !important; color: #16342a !important; padding: 0 0 8px; border-bottom: 2px solid #16342a; margin-bottom: 10px; }
+    .header-logo { background: #16342a !important; }
+    .header-title, .header-sub, .header-periodo, .header-emitido, .header-emitido b { color: #16342a !important; opacity: 1 !important; }
+    .tabela-wrap { border: none; overflow: visible; }
+    table.pg { font-size: 7px; width: 100%; }
+    table.pg thead th { position: static; background: #e8eef7 !important; color: #16342a !important; border: 1px solid #cdd7ea; padding: 3px; }
+    table.pg thead th.grp { background: #d6deee !important; }
+    table.pg th.nome, table.pg td.nome { position: static; min-width: 0; white-space: normal; background: #f2f5fb !important; color: #16342a !important; font-weight: 700; border: 1px solid #cdd7ea; }
+    table.pg td { padding: 2px 3px; border: 1px solid #e3e8f5; color: #1a1a2e; }
+    table.pg td.cana, table.pg td.evt, table.pg td.tot, table.pg td.fin { background: #fff !important; }
+    table.pg td.neg { color: #b23b3b !important; }
+    table.pg tfoot td { background: #e8eef7 !important; color: #16342a !important; border: 1px solid #cdd7ea; }
+    @page { size: landscape; margin: 6mm; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="header-logo"><img src="img/logo.png" alt="USC"></div>
+    <div>
+      <div class="header-title">Usina Santa Clotilde S/A</div>
+      <div class="header-sub">Controle de Pagamento — Fornecedor de Cana</div>
+      <div class="header-periodo" id="headerPeriodo">&nbsp;</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="header-emitido">Emitido em<b id="headerEmitido">—</b></div>
+    <button class="btn-voltar" onclick="window.location.href='hub.html'">
+      <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Voltar
+    </button>
+  </div>
+</div>
+
+<div class="conteudo">
+
+  <div class="filtros-card">
+    <div class="filtros-grid">
+      <div class="campo"><label>Safra</label><input type="number" id="safra" class="safra" value="74"></div>
+      <div class="campo"><label>Entrega de</label><input type="date" id="entIni" value="2025-09-01"></div>
+      <div class="campo"><label>Entrega até</label><input type="date" id="entFim" value="2026-03-01"></div>
+      <div class="campo"><label>Data Consecana</label><input type="date" id="consecana" value="2026-02-28"></div>
+      <div class="campo"><label>Pagamentos de</label><input type="date" id="pagIni" value="2025-09-01"></div>
+      <div class="campo"><label>Pagamentos até</label><input type="date" id="pagFim"></div>
+      <button class="btn-gerar" id="btnGerar" onclick="carregar()">
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+        Carregar do sistema
+      </button>
+    </div>
+  </div>
+
+  <div id="painel">
+    <div class="tabela-wrap"><div class="estado">Defina os parâmetros e clique em <b>Carregar do sistema</b>.</div></div>
+  </div>
+
+</div>
+
+<script src="js/xlsx.full.min.js"></script>
+<script>
+"use strict";
+
+let LINHAS = [];
+
+const nf = (n, d = 2) => (isFinite(+n) ? +n : 0).toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
+
+// Colunas: g=grupo, h=título, k=chave, d=casas, cls=classe, money=colore negativo.
+const COLS = [
+  { g: "", h: "Cód.", k: "cod_fornecedor", d: 0, cls: "left" },
+  { g: "Cana / Safra", h: "Qtd Faz.", k: "qtd_fazendas", d: 0, cls: "cana" },
+  { g: "Cana / Safra", h: "Cana Período (kg)", k: "cana_periodo", d: 0, cls: "cana" },
+  { g: "Cana / Safra", h: "ATR", k: "atr", d: 2, cls: "cana" },
+  { g: "Cana / Safra", h: "ATR/R$", k: "atr_rs", d: 4, cls: "cana" },
+  { g: "Eventos", h: "Desc. CCT", k: "desc_cct", d: 2, cls: "evt", money: true },
+  { g: "Eventos", h: "Ajuda Frete", k: "ajuda_frete", d: 2, cls: "evt", money: true },
+  { g: "Eventos", h: "Desc. Diversos", k: "desc_diversos", d: 2, cls: "evt", money: true },
+  { g: "Eventos", h: "Desc. Serviço", k: "desc_servico", d: 2, cls: "evt", money: true },
+  { g: "Eventos", h: "Desc. Melaço", k: "desc_melaco", d: 2, cls: "evt", money: true },
+  { g: "Totais", h: "Proventos", k: "total_proventos", d: 2, cls: "tot", money: true },
+  { g: "Totais", h: "Descontos", k: "total_descontos", d: 2, cls: "tot", money: true },
+  { g: "Totais", h: "Líquido", k: "liquido", d: 2, cls: "tot", money: true },
+  { g: "Financeiro", h: "Pagamento Realizado", k: "pagamento_realizado", d: 2, cls: "fin", money: true },
+  { g: "Financeiro", h: "Diferença (Líq − Pago)", k: "saldo", d: 2, cls: "fin", money: true }
+];
+// Colunas que somam no total (as demais — ATR, ATR/R$ — não fazem média aqui).
+const SOMAR = new Set(["qtd_fazendas", "cana_periodo", "desc_cct", "ajuda_frete", "desc_diversos", "desc_servico", "desc_melaco", "total_proventos", "total_descontos", "liquido", "pagamento_realizado", "saldo"]);
+
+function fmtBR(s) { const [a, b, c] = s.split("-"); return c + "/" + b + "/" + a; }
+
+async function carregar() {
+  const safra = document.getElementById("safra").value || "74";
+  const entIni = document.getElementById("entIni").value;
+  const entFim = document.getElementById("entFim").value;
+  const consecana = document.getElementById("consecana").value;
+  const pagIni = document.getElementById("pagIni").value;
+  const pagFim = document.getElementById("pagFim").value;
+  if (!entIni || !entFim) { alert("Informe a janela de entrega."); return; }
+
+  const painel = document.getElementById("painel");
+  painel.innerHTML = '<div class="tabela-wrap"><div class="estado"><div class="spinner"></div>Consultando cana e pagamentos… (pode levar alguns segundos)</div></div>';
+
+  try {
+    let url = "api/pagamento-cana?safra=" + encodeURIComponent(safra) + "&entIni=" + entIni + "&entFim=" + entFim;
+    if (consecana) url += "&consecana=" + consecana;
+    if (pagIni) url += "&pagIni=" + pagIni;
+    if (pagFim) url += "&pagFim=" + pagFim;
+    const r = await fetch(url);
+    const j = await r.json();
+    if (!j.ok) { painel.innerHTML = '<div class="tabela-wrap"><div class="estado"><div class="erro-box">' + (j.erro || "Falha ao consultar.") + '</div></div></div>'; return; }
+
+    LINHAS = j.fornecedores || [];
+    document.getElementById("headerPeriodo").textContent =
+      "Safra " + j.safra + " · Entrega " + fmtBR(j.entIni) + " a " + fmtBR(j.entFim) + " · Consecana " + fmtBR(j.consecana) + " · Pagamentos " + fmtBR(j.pagIni) + " a " + fmtBR(j.pagFim);
+    document.getElementById("headerEmitido").textContent = new Date().toLocaleDateString("pt-BR");
+    render();
+  } catch (e) {
+    painel.innerHTML = '<div class="tabela-wrap"><div class="estado"><div class="erro-box">Erro de conexão: ' + e.message + '</div></div></div>';
+  }
+}
+
+function celClasse(c, valor) {
+  let cls = c.cls || "";
+  if (c.money && +valor < 0) cls += " neg";
+  return cls.trim();
+}
+
+function render() {
+  const painel = document.getElementById("painel");
+  if (!LINHAS.length) {
+    painel.innerHTML = '<div class="tabela-wrap"><div class="estado">Nenhum fornecedor de cana no período.</div></div>';
+    return;
+  }
+
+  // Cabeçalho com grupos.
+  let grpRow = '<tr><th class="nome grp" rowspan="2">Fornecedor</th>';
+  let subRow = '<tr>';
+  for (let i = 0; i < COLS.length;) {
+    const g = COLS[i].g;
+    if (g) { let span = 0; while (i + span < COLS.length && COLS[i + span].g === g) span++;
+      grpRow += '<th class="grp" colspan="' + span + '">' + g + '</th>';
+      for (let k = 0; k < span; k++) subRow += '<th>' + COLS[i + k].h + '</th>';
+      i += span;
+    } else { grpRow += '<th rowspan="2">' + COLS[i].h + '</th>'; i++; }
+  }
+  grpRow += '</tr>'; subRow += '</tr>';
+
+  let corpo = "";
+  LINHAS.forEach(l => {
+    corpo += '<tr><td class="nome">' + escapar(l.nome || l.cod_fornecedor) + '</td>';
+    COLS.forEach(c => {
+      const v = l[c.k];
+      const txt = c.cls === "left" ? escapar(v == null ? "" : v) : nf(v, c.d);
+      corpo += '<td class="' + celClasse(c, v) + '">' + txt + '</td>';
+    });
+    corpo += '</tr>';
+  });
+
+  // Totais.
+  const tot = {};
+  SOMAR.forEach(k => tot[k] = 0);
+  LINHAS.forEach(l => SOMAR.forEach(k => tot[k] += (+l[k] || 0)));
+  let rodape = '<tr><td class="nome">TOTAL (' + LINHAS.length + ' fornecedores)</td>';
+  COLS.forEach(c => {
+    if (SOMAR.has(c.k)) rodape += '<td class="' + celClasse(c, tot[c.k]) + '">' + nf(tot[c.k], c.d) + '</td>';
+    else rodape += '<td class="' + (c.cls || "") + '"></td>';
+  });
+  rodape += '</tr>';
+
+  painel.innerHTML =
+    '<div class="barra-acoes"><span class="esp"></span>' +
+    '  <button class="btn-acao" onclick="window.print()">🖨️ Imprimir / PDF</button>' +
+    '  <button class="btn-acao destaque" onclick="exportarExcel()">⬇️ Exportar Excel</button>' +
+    '</div>' +
+    '<div class="tabela-wrap"><table class="pg"><thead>' + grpRow + subRow + '</thead><tbody>' + corpo + '</tbody><tfoot>' + rodape + '</tfoot></table></div>';
+}
+
+function escapar(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+
+function exportarExcel() {
+  const cab1 = ["Fornecedor", ...COLS.map(c => c.g || "")];
+  const cab2 = ["", ...COLS.map(c => c.h)];
+  const linhas = LINHAS.map(l => [l.nome || l.cod_fornecedor, ...COLS.map(c => c.k === "cod_fornecedor" ? l[c.k] : (+l[c.k] || 0))]);
+  const tot = {}; SOMAR.forEach(k => tot[k] = 0);
+  LINHAS.forEach(l => SOMAR.forEach(k => tot[k] += (+l[k] || 0)));
+  const linhaTot = ["TOTAL", ...COLS.map(c => SOMAR.has(c.k) ? tot[c.k] : "")];
+  const aoa = [
+    ["Usina Santa Clotilde S/A"],
+    ["Controle de Pagamento — Fornecedor de Cana"],
+    [document.getElementById("headerPeriodo").textContent],
+    [], cab1, cab2, ...linhas, linhaTot
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Pagamento Cana");
+  XLSX.writeFile(wb, "Pagamento-Cana_safra" + (document.getElementById("safra").value || "") + ".xlsx");
+}
+
+// Padrão: pagamentos até hoje.
+document.getElementById("pagFim").value = new Date().toISOString().slice(0, 10);
+</script>
+
+<script src="js/icones-modulos.js?v=20260825a"></script>
+<script src="js/sidebar-nav.js?v=20260825a" defer></script>
+</body>
+</html>
