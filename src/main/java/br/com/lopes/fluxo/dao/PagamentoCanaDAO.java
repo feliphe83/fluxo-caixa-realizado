@@ -78,6 +78,9 @@ public class PagamentoCanaDAO {
             String nat = texto(row.get("natureza"), "O").toUpperCase();
             BigDecimal valor = numero(row.get("valor"));
 
+            // Só proventos e descontos; o grupo "Outros" fica de fora (e soma 0 no líquido).
+            if (!"P".equals(nat) && !"D".equals(nat)) continue;
+
             eventoMeta.putIfAbsent(codEv, new String[]{descEv, nat});
 
             Map<String, Object> f = forn.computeIfAbsent(codForn, k -> {
