@@ -54,9 +54,12 @@ public class PagamentoCanaDAO {
      * @param consecana  data do índice Consecana (ATR/R$), yyyy-MM-dd
      * @param pagIni     início da janela de pagamentos realizados, yyyy-MM-dd
      * @param pagFim     fim da janela de pagamentos realizados, yyyy-MM-dd
+     * @param precoConsecana  opcional; se informado, sobrepõe o ATR/R$ buscado no
+     *                        ERP (útil quando a busca_indicefinanceiro não tem
+     *                        índice para a data e retorna 0).
      */
     public List<Map<String, Object>> resumo(int safra, String entIni, String entFim, String consecana,
-                                            String pagIni, String pagFim) {
+                                            String pagIni, String pagFim, BigDecimal precoConsecana) {
         validarData(entIni); validarData(entFim); validarData(consecana);
         validarData(pagIni); validarData(pagFim);
 
@@ -76,9 +79,13 @@ public class PagamentoCanaDAO {
         for (Map<String, Object> l : linhas) {
             Integer cod = inteiroObj(l.get("cod_fornecedor"));
 
+            // ATR/R$: usa o preço informado (se houver); senão o buscado no ERP.
+            BigDecimal atrRs = (precoConsecana != null) ? precoConsecana : numero(l.get("atr_rs"));
+            if (precoConsecana != null) l.put("atr_rs", precoConsecana);
+
             BigDecimal canaEntregue = numero(l.get("cana_periodo"))
                     .multiply(numero(l.get("atr")))
-                    .multiply(numero(l.get("atr_rs")))
+                    .multiply(atrRs)
                     .divide(MIL, 2, java.math.RoundingMode.HALF_UP);
 
             BigDecimal eventos = numero(l.get("desc_cct"))

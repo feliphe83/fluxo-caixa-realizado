@@ -115,6 +115,7 @@
       <div class="campo"><label>Entrega de</label><input type="date" id="entIni" value="2025-09-01"></div>
       <div class="campo"><label>Entrega até</label><input type="date" id="entFim" value="2026-03-01"></div>
       <div class="campo"><label>Data Consecana</label><input type="date" id="consecana" value="2026-02-28"></div>
+      <div class="campo"><label>Preço Consecana R$/kg ATR</label><input type="text" id="precoConsecana" placeholder="auto (ERP)" style="width:150px"></div>
       <div class="campo"><label>Pagamentos de</label><input type="date" id="pagIni" value="2025-09-01"></div>
       <div class="campo"><label>Pagamentos até</label><input type="date" id="pagFim"></div>
       <button class="btn-gerar" id="btnGerar" onclick="carregar()">
@@ -167,6 +168,7 @@ async function carregar() {
   const consecana = document.getElementById("consecana").value;
   const pagIni = document.getElementById("pagIni").value;
   const pagFim = document.getElementById("pagFim").value;
+  const precoConsecana = document.getElementById("precoConsecana").value.trim();
   if (!entIni || !entFim) { alert("Informe a janela de entrega."); return; }
 
   const painel = document.getElementById("painel");
@@ -177,6 +179,7 @@ async function carregar() {
     if (consecana) url += "&consecana=" + consecana;
     if (pagIni) url += "&pagIni=" + pagIni;
     if (pagFim) url += "&pagFim=" + pagFim;
+    if (precoConsecana) url += "&precoConsecana=" + encodeURIComponent(precoConsecana);
     const r = await fetch(url);
     const j = await r.json();
     if (!j.ok) { painel.innerHTML = '<div class="tabela-wrap"><div class="estado"><div class="erro-box">' + (j.erro || "Falha ao consultar.") + '</div></div></div>'; return; }
