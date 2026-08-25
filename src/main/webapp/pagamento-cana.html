@@ -39,6 +39,10 @@
 
   .barra-acoes { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
   .barra-acoes .esp { flex: 1; }
+  .abas { display: inline-flex; gap: 4px; background: #eef1f7; border-radius: 10px; padding: 4px; }
+  .aba { padding: 7px 16px; border-radius: 8px; border: none; background: transparent; color: var(--ink-2); font-size: 13px; font-weight: 700; cursor: pointer; }
+  .aba.ativa { background: #234f3b; color: #fff; }
+  .aba:not(.ativa):hover { background: #e0e5f0; }
   .btn-acao { display: flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 8px; border: 1.5px solid #d6ddec; background: white; color: var(--ink-2); font-size: 13px; font-weight: 600; cursor: pointer; }
   .btn-acao:hover { border-color: #234f3b; color: #234f3b; }
   .btn-acao.destaque { background: #1baf7a; border-color: #1baf7a; color: white; }
@@ -135,6 +139,7 @@
 "use strict";
 
 let LINHAS = [];
+let ABA = "detalhado";   // aba visível: "detalhado" ou "levantamento"
 let EVENTOS = [];   // metadados das colunas dinâmicas (cod, key, descricao, natureza)
 let COLS = [];      // montado a cada consulta a partir de EVENTOS
 let SOMAR = new Set();
@@ -198,29 +203,53 @@ function celClasse(c, valor) {
   return cls.trim();
 }
 
+const TH_NOME = '<th class="nome grp" rowspan="2">Cód. · Fornecedor</th>';
+
+// Monta as duas linhas de cabeçalho (grupos + colunas) para uma lista de colunas.
+function cabecalhoGrupos(cols) {
+  let grpRow = '<tr>' + TH_NOME;
+  let subRow = '<tr>';
+  for (let i = 0; i < cols.length;) {
+    const g = cols[i].g;
+    if (g) { let span = 0; while (i + span < cols.length && cols[i + span].g === g) span++;
+      grpRow += '<th class="grp" colspan="' + span + '">' + g + '</th>';
+      for (let k = 0; k < span; k++) subRow += '<th>' + cols[i + k].h + '</th>';
+      i += span;
+    } else { grpRow += '<th rowspan="2">' + cols[i].h + '</th>'; i++; }
+  }
+  return [grpRow + '</tr>', subRow + '</tr>'];
+}
+
+const celNome = l => '<td class="nome"><span class="cod">' + escapar(l.cod_fornecedor) + '</span> ' + escapar(l.nome || "") + '</td>';
+
 function render() {
   const painel = document.getElementById("painel");
   if (!LINHAS.length) {
     painel.innerHTML = '<div class="tabela-wrap"><div class="estado">Nenhum fornecedor de cana no período.</div></div>';
     return;
   }
+  painel.innerHTML =
+    '<div class="barra-acoes">' +
+    '  <div class="abas">' +
+    '    <button class="aba' + (ABA === "detalhado" ? " ativa" : "") + '" onclick="setAba(\'detalhado\')">Detalhado</button>' +
+    '    <button class="aba' + (ABA === "levantamento" ? " ativa" : "") + '" onclick="setAba(\'levantamento\')">Levantamento</button>' +
+    '  </div>' +
+    '  <span class="esp"></span>' +
+    '  <button class="btn-acao" onclick="window.print()">🖨️ Imprimir / PDF</button>' +
+    '  <button class="btn-acao destaque" onclick="exportarExcel()">⬇️ Exportar Excel</button>' +
+    '</div>' +
+    '<div id="tabelaArea"></div>';
+  desenharTabela();
+}
 
-  // Cabeçalho com grupos.
-  let grpRow = '<tr><th class="nome grp" rowspan="2">Cód. · Fornecedor</th>';
-  let subRow = '<tr>';
-  for (let i = 0; i < COLS.length;) {
-    const g = COLS[i].g;
-    if (g) { let span = 0; while (i + span < COLS.length && COLS[i + span].g === g) span++;
-      grpRow += '<th class="grp" colspan="' + span + '">' + g + '</th>';
-      for (let k = 0; k < span; k++) subRow += '<th>' + COLS[i + k].h + '</th>';
-      i += span;
-    } else { grpRow += '<th rowspan="2">' + COLS[i].h + '</th>'; i++; }
-  }
-  grpRow += '</tr>'; subRow += '</tr>';
+function setAba(a) { ABA = a; render(); }
+function desenharTabela() { ABA === "levantamento" ? desenharLevantamento() : desenharDetalhado(); }
 
+function desenharDetalhado() {
+  const [grpRow, subRow] = cabecalhoGrupos(COLS);
   let corpo = "";
   LINHAS.forEach(l => {
-    corpo += '<tr><td class="nome"><span class="cod">' + escapar(l.cod_fornecedor) + '</span> ' + escapar(l.nome || "") + '</td>';
+    corpo += '<tr>' + celNome(l);
     COLS.forEach(c => {
       const v = l[c.k];
       const txt = c.cls === "left" ? escapar(v == null ? "" : v) : nf(v, c.d);
@@ -228,8 +257,6 @@ function render() {
     });
     corpo += '</tr>';
   });
-
-  // Totais.
   const tot = {};
   SOMAR.forEach(k => tot[k] = 0);
   LINHAS.forEach(l => SOMAR.forEach(k => tot[k] += (+l[k] || 0)));
@@ -239,12 +266,42 @@ function render() {
     else rodape += '<td class="' + (c.cls || "") + '"></td>';
   });
   rodape += '</tr>';
+  document.getElementById("tabelaArea").innerHTML =
+    '<div class="tabela-wrap"><table class="pg"><thead>' + grpRow + subRow + '</thead><tbody>' + corpo + '</tbody><tfoot>' + rodape + '</tfoot></table></div>';
+}
 
-  painel.innerHTML =
-    '<div class="barra-acoes"><span class="esp"></span>' +
-    '  <button class="btn-acao" onclick="window.print()">🖨️ Imprimir / PDF</button>' +
-    '  <button class="btn-acao destaque" onclick="exportarExcel()">⬇️ Exportar Excel</button>' +
-    '</div>' +
+// Colunas da aba Levantamento (por tonelada + totais).
+const LEV = [
+  { g: "", h: "Qtde t", f: v => v.t, d: 3, cls: "cana" },
+  { g: "", h: "ATR kg/t", f: v => v.atr, d: 2, cls: "cana" },
+  { g: "Por tonelada (R$/t)", h: "Bruto", f: v => v.brutoT, d: 2, cls: "evt" },
+  { g: "Por tonelada (R$/t)", h: "CCT", f: v => v.cctT, d: 2, cls: "evt" },
+  { g: "Por tonelada (R$/t)", h: "Outros desc.", f: v => v.outrosT, d: 2, cls: "evt" },
+  { g: "Por tonelada (R$/t)", h: "Líquido", f: v => v.liquidoT, d: 2, cls: "evt" },
+  { g: "Totais (R$)", h: "Líquido total", f: v => v.liquidoTotal, d: 2, cls: "fin", money: true },
+  { g: "Totais (R$)", h: "Recebido", f: v => v.recebido, d: 2, cls: "fin", money: true },
+  { g: "Totais (R$)", h: "Saldo", f: v => v.saldo, d: 2, cls: "fin", money: true }
+];
+
+function desenharLevantamento() {
+  const [grpRow, subRow] = cabecalhoGrupos(LEV);
+  let corpo = "";
+  LINHAS.forEach(l => {
+    const v = levantamentoDe(l);
+    corpo += '<tr>' + celNome(l);
+    LEV.forEach(c => { const val = c.f(v); corpo += '<td class="' + celClasse(c, val) + '">' + nf(val, c.d) + '</td>'; });
+    corpo += '</tr>';
+  });
+  // Totais: t somado; valores/t recompostos sobre o total; ATR ponderado pela t.
+  const T = LINHAS.reduce((s, l) => s + (+l.peso_t || 0), 0);
+  let sB = 0, sC = 0, sO = 0, sL = 0, sR = 0, sS = 0, sAP = 0;
+  LINHAS.forEach(l => { const v = levantamentoDe(l); sB += v.bruto; sC += v.cct; sO += v.outros; sL += v.liquidoTotal; sR += v.recebido; sS += v.saldo; sAP += v.atr * v.t; });
+  const pT = x => T > 0 ? x / T : 0;
+  const totV = { t: T, atr: pT(sAP), brutoT: pT(sB), cctT: pT(sC), outrosT: pT(sO), liquidoT: pT(sL), liquidoTotal: sL, recebido: sR, saldo: sS };
+  let rodape = '<tr><td class="nome">TOTAL (' + LINHAS.length + ' fornecedores)</td>';
+  LEV.forEach(c => { rodape += '<td class="' + celClasse(c, c.f(totV)) + '">' + nf(c.f(totV), c.d) + '</td>'; });
+  rodape += '</tr>';
+  document.getElementById("tabelaArea").innerHTML =
     '<div class="tabela-wrap"><table class="pg"><thead>' + grpRow + subRow + '</thead><tbody>' + corpo + '</tbody><tfoot>' + rodape + '</tfoot></table></div>';
 }
 
