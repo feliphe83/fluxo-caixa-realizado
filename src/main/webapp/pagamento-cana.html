@@ -145,19 +145,18 @@ const COLS = [
   { g: "Cana / Safra", h: "Cana Período (kg)", k: "cana_periodo", d: 0, cls: "cana" },
   { g: "Cana / Safra", h: "ATR", k: "atr", d: 2, cls: "cana" },
   { g: "Cana / Safra", h: "ATR/R$", k: "atr_rs", d: 4, cls: "cana" },
+  { g: "Cana / Safra", h: "Cana Entregue R$", k: "cana_entregue", d: 2, cls: "cana", money: true },
   { g: "Eventos", h: "Desc. CCT", k: "desc_cct", d: 2, cls: "evt", money: true },
   { g: "Eventos", h: "Ajuda Frete", k: "ajuda_frete", d: 2, cls: "evt", money: true },
   { g: "Eventos", h: "Desc. Diversos", k: "desc_diversos", d: 2, cls: "evt", money: true },
   { g: "Eventos", h: "Desc. Serviço", k: "desc_servico", d: 2, cls: "evt", money: true },
   { g: "Eventos", h: "Desc. Melaço", k: "desc_melaco", d: 2, cls: "evt", money: true },
-  { g: "Totais", h: "Proventos", k: "total_proventos", d: 2, cls: "tot", money: true },
-  { g: "Totais", h: "Descontos", k: "total_descontos", d: 2, cls: "tot", money: true },
-  { g: "Totais", h: "Líquido", k: "liquido", d: 2, cls: "tot", money: true },
+  { g: "Financeiro", h: "Líquido", k: "liquido", d: 2, cls: "fin", money: true },
   { g: "Financeiro", h: "Pagamento Realizado", k: "pagamento_realizado", d: 2, cls: "fin", money: true },
   { g: "Financeiro", h: "Diferença (Líq − Pago)", k: "saldo", d: 2, cls: "fin", money: true }
 ];
 // Colunas que somam no total (as demais — ATR, ATR/R$ — não fazem média aqui).
-const SOMAR = new Set(["qtd_fazendas", "cana_periodo", "desc_cct", "ajuda_frete", "desc_diversos", "desc_servico", "desc_melaco", "total_proventos", "total_descontos", "liquido", "pagamento_realizado", "saldo"]);
+const SOMAR = new Set(["qtd_fazendas", "cana_periodo", "cana_entregue", "desc_cct", "ajuda_frete", "desc_diversos", "desc_servico", "desc_melaco", "liquido", "pagamento_realizado", "saldo"]);
 
 function fmtBR(s) { const [a, b, c] = s.split("-"); return c + "/" + b + "/" + a; }
 

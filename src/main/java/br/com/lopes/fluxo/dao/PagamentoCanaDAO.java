@@ -42,6 +42,8 @@ import java.util.logging.Logger;
 public class PagamentoCanaDAO {
 
     private static final Logger LOG = Logger.getLogger(PagamentoCanaDAO.class.getName());
+    /** peso está em kg e o ATR em kg/ton — divide por mil para chegar em ton × ATR × R$. */
+    private static final BigDecimal MIL = BigDecimal.valueOf(1000);
 
     private final FluxoRealizadoDAO fluxoDAO = new FluxoRealizadoDAO();
 
@@ -65,13 +67,34 @@ public class PagamentoCanaDAO {
         //    Fluxo de Caixa Realizado.
         Map<Integer, BigDecimal> realizadoPorForn = realizadoCanaPorFornecedor(pagIni, pagFim);
 
-        // 3) Junta.
+        // 3) Junta e calcula o líquido pela conta do fechamento de cana:
+        //    Líquido = Cana Entregue − CCT + Frete − Diversos − Serviço − Melaço.
+        //    O lancamento_cana traz só os EVENTOS (descontos negativos, ajuda de
+        //    frete positiva); o valor da cana entregue não está lá, é
+        //    peso × ATR × preço Consecana ÷ 1000 (peso em kg, ATR em kg/ton).
+        //    Por isso somar l.valor dava o líquido sem a cana.
         for (Map<String, Object> l : linhas) {
             Integer cod = inteiroObj(l.get("cod_fornecedor"));
+
+            BigDecimal canaEntregue = numero(l.get("cana_periodo"))
+                    .multiply(numero(l.get("atr")))
+                    .multiply(numero(l.get("atr_rs")))
+                    .divide(MIL, 2, java.math.RoundingMode.HALF_UP);
+
+            BigDecimal eventos = numero(l.get("desc_cct"))
+                    .add(numero(l.get("ajuda_frete")))
+                    .add(numero(l.get("desc_diversos")))
+                    .add(numero(l.get("desc_servico")))
+                    .add(numero(l.get("desc_melaco")));
+
+            BigDecimal liquido = canaEntregue.add(eventos);
             BigDecimal realizado = cod == null ? null : realizadoPorForn.get(cod);
-            BigDecimal liquido = numero(l.get("liquido"));
-            l.put("pagamento_realizado", realizado == null ? BigDecimal.ZERO : realizado);
-            l.put("saldo", liquido.subtract(realizado == null ? BigDecimal.ZERO : realizado));
+            if (realizado == null) realizado = BigDecimal.ZERO;
+
+            l.put("cana_entregue", canaEntregue);
+            l.put("liquido", liquido);
+            l.put("pagamento_realizado", realizado);
+            l.put("saldo", liquido.subtract(realizado));
         }
         return linhas;
     }
