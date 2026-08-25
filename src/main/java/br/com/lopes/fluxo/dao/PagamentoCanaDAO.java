@@ -1,6 +1,5 @@
 package br.com.lopes.fluxo.dao;
 
-import br.com.lopes.fluxo.model.FluxoRealizadoItem;
 import br.com.lopes.fluxo.util.OracleConnectionUtil;
 import br.com.lopes.fluxo.util.RowMapperUtil;
 
@@ -9,7 +8,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -31,10 +29,9 @@ import java.util.logging.Logger;
  *     natureza (P = proventos, D = descontos). A "Cana Entregue R$" é o líquido:
  *     SUM(P: +valor, D: -valor).
  *
- *  2) Financeiro — o Pagamento Realizado vem da MESMA consulta do Fluxo de
- *     Caixa Realizado ({@link FluxoRealizadoDAO}), somando o REALIZADO das
- *     linhas cuja conta do fluxo contém "CANA", por fornecedor, na janela de
- *     pagamento informada.
+ *  2) Financeiro — o Pagamento Realizado = SUM(valorpago) das baixas efetuadas/
+ *     parciais das contas a pagar do tipo de fornecedores de cana
+ *     (cod_tipocontaspagar = 151), por fornecedor, na janela de baixa informada.
  *
  * Empresa fixada em 1/1/1. Não roda Oracle neste ambiente: a lógica é
  * verificável, mas os números só se confirmam no primeiro deploy real.
@@ -42,8 +39,6 @@ import java.util.logging.Logger;
 public class PagamentoCanaDAO {
 
     private static final Logger LOG = Logger.getLogger(PagamentoCanaDAO.class.getName());
-
-    private final FluxoRealizadoDAO fluxoDAO = new FluxoRealizadoDAO();
 
     /**
      * @param safra   cod_safra (ex.: 74)
@@ -296,17 +291,44 @@ public class PagamentoCanaDAO {
         return mapa;
     }
 
-    /** Soma o REALIZADO do Fluxo de Caixa Realizado, conta contendo "CANA", por fornecedor. */
+    /**
+     * Pagamento realizado por fornecedor = SUM(valorpago) das baixas efetuadas e
+     * parciais (blocos 2+3 da consulta de contas a pagar), do tipo de conta a
+     * pagar de fornecedores de cana (cod_tipocontaspagar = 151), com baixa na
+     * janela informada. valorpago = SUM(bx.valorbaixa) (valor positivo pago).
+     */
     private Map<Integer, BigDecimal> realizadoCanaPorFornecedor(String pagIni, String pagFim) {
+        String dIni = td(pagIni);
+        String dFim = td(pagFim);
+        String sql =
+            "SELECT p.cod_fornecedor cod_fornecedor, SUM(bx.valorbaixa) valorpago " +
+            "  FROM financeiro.parcelascontaspagar p, financeiro.baixaparcelas bx, " +
+            "       financeiro.movimentobancario mb, rh.contabancaria cbc, " +
+            "       financeiro.tipocontaspagar tcp, financeiro.situacaoparcelascontaspagar sit, " +
+            "       custo.empenho emp " +
+            " WHERE p.cod_grupoempresa = 1 AND p.cod_empresa = 1 AND p.cod_filial = 1 " +
+            "   AND p.cod_tipocontaspagar = 151 " +
+            "   AND p.pagarreceber = 'P' AND p.provisao <> 'S' AND p.valorparcela <> 0 " +
+            "   AND bx.parcela = p.parcela AND bx.documento = p.documento " +
+            "   AND bx.cod_tipocontaspagar = p.cod_tipocontaspagar AND bx.cod_grupoempresa = p.cod_grupoempresa " +
+            "   AND NVL(bx.num_lancamentobancario, 0) > 0 " +
+            "   AND NVL(bx.databaixa, TO_DATE('01/01/1900','DD/MM/YYYY')) BETWEEN " + dIni + " AND " + dFim + " " +
+            "   AND mb.num_lancamentobancario = bx.num_lancamentobancario AND mb.cod_grupoempresa = bx.cod_grupoempresa " +
+            "   AND cbc.cod_banco = mb.cod_banco AND cbc.cod_agencia = mb.cod_agencia " +
+            "   AND cbc.cod_contabancaria = mb.cod_contabancaria AND cbc.cod_tipocontabancaria = mb.cod_tipocontabancaria " +
+            "   AND cbc.cod_empresa = p.cod_empresa AND cbc.cod_filial = p.cod_filial " +
+            "   AND tcp.cod_tipocontaspagar = p.cod_tipocontaspagar AND tcp.cod_filial = p.cod_filial " +
+            "       AND tcp.cod_empresa = p.cod_empresa AND tcp.cod_grupoempresa = p.cod_grupoempresa " +
+            "   AND p.dataentrada BETWEEN tcp.datainicio AND NVL(tcp.datafim, TO_DATE('31/12/2999','DD/MM/YYYY')) " +
+            "   AND sit.cod_situacao = p.cod_situacao AND NVL(sit.visualizar_parcela,'S') = 'S' " +
+            "   AND emp.cod_empenho = p.cod_empenho " +
+            " GROUP BY p.cod_fornecedor";
+
         Map<Integer, BigDecimal> mapa = new LinkedHashMap<>();
-        List<FluxoRealizadoItem> itens = fluxoDAO.buscar(LocalDate.parse(pagIni), LocalDate.parse(pagFim));
-        for (FluxoRealizadoItem it : itens) {
-            String conta = it.getDescricaoConta();
-            if (conta == null || !conta.toUpperCase().contains("CANA")) continue;
-            Integer cod = it.getCodFornecedor();
+        for (Map<String, Object> row : executar(sql)) {
+            Integer cod = inteiroObj(row.get("cod_fornecedor"));
             if (cod == null) continue;
-            BigDecimal v = it.getRealizado() == null ? BigDecimal.ZERO : it.getRealizado();
-            mapa.merge(cod, v, BigDecimal::add);
+            mapa.put(cod, numero(row.get("valorpago")));
         }
         return mapa;
     }
