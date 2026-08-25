@@ -29,7 +29,8 @@ import java.util.logging.Logger;
  *  - Colaboradores   = soma de nr_pessoas (pessoas transportadas) dos itens.
  *  - Nº Equipamentos = equipamentos distintos do prestador no período.
  *  - Litros / Valor Combustível = do abastecimento, por fornecedor, reaproveitando
- *                      {@link AgroCombustivelDAO#buscarPorFornecedor} (diesel).
+ *                      {@link AgroCombustivelDAO#buscarPorFornecedor} — soma
+ *                      diesel + etanol (os dois entram na dedução).
  *
  * O prestador é o fornecedor do apontamento (a.cod_fornecedor) — a transportadora,
  * não o proprietário da fazenda. O nome sai de material.fornecedor -> rh.pessoa,
@@ -64,11 +65,18 @@ public class FechamentoFreteDAO {
         // 1) Frete de transporte de pessoal por prestador.
         List<Map<String, Object>> frete = executar(sqlTransporte(dataIni, dataFim, filtroContrato));
 
-        // 2) Combustível (diesel) por fornecedor, indexado por cod_fornecedor.
-        Map<Long, Map<String, Object>> combPorForn = new LinkedHashMap<>();
-        for (Map<String, Object> c : combustivelDAO.buscarPorFornecedor(dataIni, dataFim, "diesel")) {
-            Long cod = paraLong(c.get("cod_fornecedor"));
-            if (cod != null) combPorForn.put(cod, c);
+        // 2) Combustível por fornecedor, indexado por cod_fornecedor. Soma diesel
+        //    E etanol — os dois entram na dedução do frete. Cada posição guarda
+        //    [litros, valor].
+        Map<Long, double[]> combPorForn = new LinkedHashMap<>();
+        for (String combustivel : new String[]{"diesel", "etanol"}) {
+            for (Map<String, Object> c : combustivelDAO.buscarPorFornecedor(dataIni, dataFim, combustivel)) {
+                Long cod = paraLong(c.get("cod_fornecedor"));
+                if (cod == null) continue;
+                double[] ac = combPorForn.computeIfAbsent(cod, k -> new double[2]);
+                ac[0] += numero(c.get("total_litros")).doubleValue();
+                ac[1] += numero(c.get("valor_total")).doubleValue();
+            }
         }
 
         // 3) Casa um no outro por cod_fornecedor.
@@ -86,9 +94,9 @@ public class FechamentoFreteDAO {
             linha.put("colab", numero(f.get("colab")));
             linha.put("valorBruto", numero(f.get("valor_bruto")));
 
-            Map<String, Object> c = cod == null ? null : combPorForn.get(cod);
-            linha.put("litros", c == null ? BigDecimal.ZERO : numero(c.get("total_litros")));
-            linha.put("valorCombustivel", c == null ? BigDecimal.ZERO : numero(c.get("valor_total")));
+            double[] c = cod == null ? null : combPorForn.get(cod);
+            linha.put("litros", c == null ? BigDecimal.ZERO : arredondar(c[0]));
+            linha.put("valorCombustivel", c == null ? BigDecimal.ZERO : arredondar(c[1]));
 
             saida.add(linha);
         }
@@ -176,6 +184,10 @@ public class FechamentoFreteDAO {
         if (v instanceof Number n) return n.intValue();
         try { return v == null ? 0 : (int) Double.parseDouble(v.toString().trim()); }
         catch (NumberFormatException e) { return 0; }
+    }
+
+    private static BigDecimal arredondar(double v) {
+        return BigDecimal.valueOf(v).setScale(2, java.math.RoundingMode.HALF_UP);
     }
 
     private static BigDecimal numero(Object v) {
