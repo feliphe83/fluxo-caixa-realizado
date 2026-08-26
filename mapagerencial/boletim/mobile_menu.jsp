@@ -11,7 +11,7 @@
   html, body { margin: 0; height: 100%; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: linear-gradient(135deg, #16342a 0%, #234f3b 100%);
+    background: linear-gradient(135deg, #0f2460 0%, #1a3a7c 100%);
     color: #fff;
   }
   .barra {
@@ -41,7 +41,7 @@
     color: #fff; font-size: 13px; font-weight: 700; white-space: nowrap;
   }
   .bt:hover { background: rgba(255,255,255,.22); }
-  .bt.ativo { background: #fff; color: #16342a; border-color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+  .bt.ativo { background: #fff; color: #0f2460; border-color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
   .bt.toggle { border-style: dashed; }
   .bt.toggle.ativo { background: #1baf7a; color: #fff; border-color: #1baf7a; border-style: solid; }
 

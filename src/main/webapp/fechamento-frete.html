@@ -23,7 +23,7 @@
 
   /* ── Header ── */
   .header {
-    background: linear-gradient(135deg, #16342a 0%, #234f3b 100%);
+    background: linear-gradient(135deg, #0f2460 0%, #1a3a7c 100%);
     color: white; padding: 16px 28px;
     display: flex; align-items: center; justify-content: space-between; gap: 20px;
   }
@@ -53,17 +53,17 @@
   .campo input[type=date] { padding: 8px 10px; border: 1.5px solid #d6ddec; border-radius: 8px; font-size: 14px; color: var(--ink); }
   .btn-gerar {
     display: flex; align-items: center; gap: 8px; padding: 9px 18px; border-radius: 8px; border: none;
-    background: #234f3b; color: white; font-size: 14px; font-weight: 700; cursor: pointer;
+    background: #1a3a7c; color: white; font-size: 14px; font-weight: 700; cursor: pointer;
   }
-  .btn-gerar:hover { background: #1a3d2d; }
+  .btn-gerar:hover { background: #14306a; }
   .presets { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
   .preset { padding: 6px 12px; border-radius: 20px; border: 1.5px solid #d6ddec; background: #f7f9fd; color: var(--ink-2); font-size: 12px; font-weight: 600; cursor: pointer; }
-  .preset:hover { border-color: #234f3b; color: #234f3b; }
+  .preset:hover { border-color: #1a3a7c; color: #1a3a7c; }
 
   .barra-acoes { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
   .barra-acoes .esp { flex: 1; }
   .btn-acao { display: flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 8px; border: 1.5px solid #d6ddec; background: white; color: var(--ink-2); font-size: 13px; font-weight: 600; cursor: pointer; }
-  .btn-acao:hover { border-color: #234f3b; color: #234f3b; }
+  .btn-acao:hover { border-color: #1a3a7c; color: #1a3a7c; }
   .btn-acao.destaque { background: #1baf7a; border-color: #1baf7a; color: white; }
   .btn-acao.destaque:hover { background: #159066; }
 
@@ -75,13 +75,13 @@
   .tabela-wrap { background: white; border: 1.5px solid #e3e8f5; border-radius: 14px; overflow: auto; }
   table.fech { border-collapse: collapse; width: 100%; font-size: 12px; white-space: nowrap; }
   table.fech thead th {
-    background: #16342a; color: #fff; font-weight: 700; font-size: 11px; padding: 8px 8px;
+    background: #0f2460; color: #fff; font-weight: 700; font-size: 11px; padding: 8px 8px;
     position: sticky; top: 0; z-index: 2; text-align: right;
   }
-  table.fech thead th.grp { background: #234f3b; text-align: center; font-size: 11px; letter-spacing: .3px; }
+  table.fech thead th.grp { background: #1a3a7c; text-align: center; font-size: 11px; letter-spacing: .3px; }
   table.fech thead th.left, table.fech td.left { text-align: left; }
   table.fech th.prest, table.fech td.prest {
-    position: sticky; left: 0; z-index: 1; background: #16342a; text-align: left; min-width: 210px;
+    position: sticky; left: 0; z-index: 1; background: #0f2460; text-align: left; min-width: 210px;
   }
   table.fech tbody td.prest { background: #f7f9fd; font-weight: 600; color: var(--ink); border-right: 2px solid #e3e8f5; }
   table.fech td { padding: 4px 8px; border-bottom: 1px solid var(--grade); text-align: right; color: var(--ink-2); }
@@ -91,16 +91,16 @@
   table.fech input { width: 92px; padding: 4px 6px; border: 1.5px solid var(--manual-bd); border-radius: 6px; background: var(--manual); font-size: 12px; text-align: right; color: var(--ink); font-weight: 600; }
   table.fech input.in-auto { background: var(--auto); border-color: var(--auto-bd); }
   table.fech input.prest-in { width: 200px; text-align: left; border-color: #d6ddec; background: #fff; font-weight: 600; }
-  table.fech input:focus { outline: 2px solid #234f3b; outline-offset: -1px; }
+  table.fech input:focus { outline: 2px solid #1a3a7c; outline-offset: -1px; }
   table.fech tbody tr:hover td { background: #eef7f1; }
   table.fech tbody tr:hover td.prest { background: #e6f3ec; }
-  table.fech tfoot td { padding: 8px; border-top: 2px solid #234f3b; background: #eef1f7; font-weight: 800; color: var(--ink); text-align: right; }
-  table.fech tfoot td.prest { background: #234f3b; color: #fff; text-align: left; }
+  table.fech tfoot td { padding: 8px; border-top: 2px solid #1a3a7c; background: #eef1f7; font-weight: 800; color: var(--ink); text-align: right; }
+  table.fech tfoot td.prest { background: #1a3a7c; color: #fff; text-align: left; }
   table.fech tfoot td.liq { background: #cdeede; color: #0f4d31; }
   .btn-rm { border: none; background: transparent; color: #c0392b; cursor: pointer; font-size: 14px; font-weight: 700; margin-left: 6px; }
 
   .estado { padding: 60px 20px; text-align: center; color: var(--ink-3); }
-  .spinner { width: 34px; height: 34px; border: 3px solid #e3e8f5; border-top-color: #234f3b; border-radius: 50%; animation: girar .8s linear infinite; margin: 0 auto 14px; }
+  .spinner { width: 34px; height: 34px; border: 3px solid #e3e8f5; border-top-color: #1a3a7c; border-radius: 50%; animation: girar .8s linear infinite; margin: 0 auto 14px; }
   @keyframes girar { to { transform: rotate(360deg); } }
   .erro-box { background: #fdecec; border: 1.5px solid #f5c2c2; color: #b23b3b; border-radius: 10px; padding: 14px 18px; font-size: 13px; }
 
@@ -112,20 +112,20 @@
 
     /* Cabeçalho impresso: texto escuro sobre branco (o degradê verde não sai na
        impressão e deixava o texto branco invisível). */
-    .header { background: #fff !important; color: #16342a !important; padding: 0 0 8px; border-bottom: 2px solid #16342a; margin-bottom: 10px; }
-    .header-logo { background: #16342a !important; }
-    .header-title, .header-sub, .header-periodo, .header-emitido, .header-emitido b { color: #16342a !important; opacity: 1 !important; }
+    .header { background: #fff !important; color: #0f2460 !important; padding: 0 0 8px; border-bottom: 2px solid #0f2460; margin-bottom: 10px; }
+    .header-logo { background: #0f2460 !important; }
+    .header-title, .header-sub, .header-periodo, .header-emitido, .header-emitido b { color: #0f2460 !important; opacity: 1 !important; }
 
     /* Tabela: compacta e sem colunas fixas/inputs, para caber na folha. */
     .tabela-wrap { border: none; overflow: visible; }
     table.fech { font-size: 7.5px; width: 100%; }
-    table.fech thead th { position: static; background: #e8eef7 !important; color: #16342a !important; border: 1px solid #cdd7ea; padding: 3px 3px; }
+    table.fech thead th { position: static; background: #e8eef7 !important; color: #0f2460 !important; border: 1px solid #cdd7ea; padding: 3px 3px; }
     table.fech thead th.grp { background: #d6deee !important; }
-    table.fech th.prest, table.fech td.prest { position: static; min-width: 0; white-space: normal; background: #f2f5fb !important; color: #16342a !important; font-weight: 700; border: 1px solid #cdd7ea; }
+    table.fech th.prest, table.fech td.prest { position: static; min-width: 0; white-space: normal; background: #f2f5fb !important; color: #0f2460 !important; font-weight: 700; border: 1px solid #cdd7ea; }
     table.fech td { padding: 2px 3px; border: 1px solid #e3e8f5; color: #1a1a2e; }
     table.fech td.auto, table.fech td.deriv { background: #fff !important; }
     table.fech td.liq { background: #dff2e8 !important; color: #0f4d31 !important; }
-    table.fech tfoot td { background: #e8eef7 !important; color: #16342a !important; border: 1px solid #cdd7ea; }
+    table.fech tfoot td { background: #e8eef7 !important; color: #0f2460 !important; border: 1px solid #cdd7ea; }
     table.fech tfoot td.liq { background: #cdeede !important; }
     @page { size: landscape; margin: 7mm; }
   }

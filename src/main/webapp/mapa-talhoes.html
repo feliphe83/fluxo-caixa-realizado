@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="Talhões">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#16342a">
+<meta name="theme-color" content="#0f2460">
 <meta name="mobile-web-app-capable" content="yes">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -37,7 +37,7 @@
   }
 
   .header {
-    background: linear-gradient(135deg, #16342a 0%, #234f3b 100%);
+    background: linear-gradient(135deg, #0f2460 0%, #1a3a7c 100%);
     color: white; padding: 12px 20px; display: flex; align-items: center;
     justify-content: space-between; gap: 16px; flex-wrap: wrap; flex-shrink: 0;
   }
@@ -181,7 +181,7 @@
     display: none; white-space: nowrap; box-shadow: 0 2px 10px rgba(0,0,0,.12);
   }
   .tarja.on { display: block; }
-  .btn-topo.ativo { background: white; color: #16342a; border-color: white; }
+  .btn-topo.ativo { background: white; color: #0f2460; border-color: white; }
 
   /* Gravar trilha: bolinha vermelha de verdade, não o glifo ⏺, que desenha
      como um círculo preto qualquer e some no meio dos outros botões — abaixo
@@ -253,7 +253,7 @@
   .modal button { flex: 1; padding: 11px 10px; border-radius: 9px; font-size: 13.5px;
                   font-weight: 700; cursor: pointer; border: 1.5px solid #d8dfee;
                   background: white; color: #475569; font-family: inherit; }
-  .modal button.pri { background: #16342a; border-color: #16342a; color: white; }
+  .modal button.pri { background: #0f2460; border-color: #0f2460; color: white; }
 
   /* Lista de trilhas no painel lateral */
   .trilha-item { display: flex; align-items: center; gap: 8px; padding: 7px 16px;
@@ -1039,8 +1039,8 @@ function renderTrilhas() {
   const botao = !pendentes ? '' :
     `<div style="padding:2px 16px 10px">
        <button id="btnEnviarTrilhas" onclick="enviarPendentes(true)" ${ENVIANDO ? 'disabled' : ''}
-         style="width:100%;padding:9px;border-radius:8px;border:1.5px solid #16342a;
-                background:${ENVIANDO ? '#8ba39a' : '#16342a'};color:#fff;font-size:12.5px;
+         style="width:100%;padding:9px;border-radius:8px;border:1.5px solid #0f2460;
+                background:${ENVIANDO ? '#8ba39a' : '#0f2460'};color:#fff;font-size:12.5px;
                 font-weight:700;font-family:inherit;cursor:pointer">
          ${ENVIANDO ? 'Enviando…' : '⬆ Enviar ' + pendentes + (pendentes === 1 ? ' trilha' : ' trilhas') + ' ao servidor'}
        </button>

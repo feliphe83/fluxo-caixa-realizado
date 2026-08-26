@@ -32,16 +32,16 @@
 <title>Safra do Mapa Gerencial</title>
 <style>
   * { box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #eef2f7; margin: 0; padding: 28px; color: #16342a; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #eef2f7; margin: 0; padding: 28px; color: #0f2460; }
   .card { max-width: 460px; margin: 0 auto; background: #fff; border: 1.5px solid #dfe6ef; border-radius: 14px; padding: 24px; box-shadow: 0 6px 24px rgba(0,0,0,.06); }
   h2 { margin: 0 0 4px; font-size: 19px; }
   .sub { color: #64748b; font-size: 13px; margin-bottom: 18px; }
   .atual { background: #eaf7f0; border: 1.5px solid #b6e3cc; color: #14603f; border-radius: 10px; padding: 12px 14px; font-size: 14px; margin-bottom: 18px; }
   .atual b { font-size: 22px; }
   label { display: block; font-size: 12px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 6px; }
-  input[type=number] { width: 140px; padding: 10px 12px; border: 1.5px solid #cbd5e1; border-radius: 9px; font-size: 18px; font-weight: 700; color: #16342a; }
-  button { margin-left: 10px; padding: 11px 20px; border: none; border-radius: 9px; background: #234f3b; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; }
-  button:hover { background: #1a3d2d; }
+  input[type=number] { width: 140px; padding: 10px 12px; border: 1.5px solid #cbd5e1; border-radius: 9px; font-size: 18px; font-weight: 700; color: #0f2460; }
+  button { margin-left: 10px; padding: 11px 20px; border: none; border-radius: 9px; background: #1a3a7c; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; }
+  button:hover { background: #14306a; }
   .msg { margin-top: 16px; padding: 11px 14px; border-radius: 9px; font-size: 13.5px; font-weight: 600; }
   .msg.ok { background: #e7f7ef; border: 1.5px solid #a8dcc1; color: #14603f; }
   .msg.erro { background: #fdecec; border: 1.5px solid #f5c2c2; color: #b23b3b; }
