@@ -36,11 +36,14 @@ public class MapaGerencialEntradaServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        boolean json = "1".equals(req.getParameter("json"));
+
         HttpSession sessao = req.getSession(false);
         Object idUsuario = sessao == null ? null : sessao.getAttribute("idUsuario");
         if (idUsuario == null) {
             // AuthFilter normalmente já barra antes de chegar aqui; por garantia.
-            resp.sendRedirect("login.html");
+            if (json) { resp.setContentType("application/json;charset=UTF-8"); resp.getWriter().print("{\"ok\":false}"); }
+            else resp.sendRedirect("login.html");
             return;
         }
 
@@ -55,7 +58,17 @@ public class MapaGerencialEntradaServlet extends HttpServlet {
         }
 
         // Caminho absoluto do host: o Mapa Gerencial é outro contexto (/mapagerencial).
-        resp.sendRedirect("/mapagerencial/entrada.jsp?tk=" + URLEncoder.encode(token, StandardCharsets.UTF_8));
+        String destino = "/mapagerencial/entrada.jsp?tk=" + URLEncoder.encode(token, StandardCharsets.UTF_8);
+
+        if (json) {
+            // Usado pela moldura (mapa-gerencial.html): ela pega a URL já com token e
+            // aponta o iframe DIRETO para /mapagerencial, sem cadeia de redirect
+            // cruzando contextos dentro do iframe (que quebrava o cookie de sessão).
+            resp.setContentType("application/json;charset=UTF-8");
+            resp.getWriter().print("{\"ok\":true,\"url\":\"" + destino + "\"}");
+        } else {
+            resp.sendRedirect(destino);
+        }
     }
 
     static String segredo() {

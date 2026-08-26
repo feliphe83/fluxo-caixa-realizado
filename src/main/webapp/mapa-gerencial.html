@@ -13,7 +13,20 @@
 </style>
 </head>
 <body>
-  <iframe id="mapa" src="ir-mapa-gerencial" title="Mapa Gerencial"></iframe>
+  <iframe id="mapa" title="Mapa Gerencial"></iframe>
+
+  <script>
+    // Pega a URL de entrada já com o token e aponta o iframe DIRETO para o
+    // contexto /mapagerencial — assim o cookie de sessão dele é criado sem a
+    // cadeia de redirect cruzando /fluxo-caixa (que deixava o iframe em branco).
+    (function () {
+      var mapa = document.getElementById('mapa');
+      fetch('ir-mapa-gerencial?json=1', { credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (j) { mapa.src = (j && j.ok && j.url) ? j.url : 'ir-mapa-gerencial'; })
+        .catch(function () { mapa.src = 'ir-mapa-gerencial'; });
+    })();
+  </script>
 
   <script src="js/icones-modulos.js?v=20260826a"></script>
   <script src="js/sidebar-nav.js?v=20260826a" defer></script>
