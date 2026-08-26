@@ -43,6 +43,12 @@ if [ -n "$REMOTE_HOST" ]; then
         scp -rq "${MAPA_DIR}" "${REMOTE_HOST}:${TOMCAT_WEBAPPS}/mapagerencial"
     fi
 
+    if [ -f registrar-modulos.sql ]; then
+        echo "▸ Registrando módulos no menu (MySQL) em ${REMOTE_HOST}…"
+        ssh "${REMOTE_HOST}" "mysql -u lopes_app -p'Lopes@App2024' intranet" < registrar-modulos.sql \
+            || echo "  (aviso: não registrou os módulos no servidor)"
+    fi
+
     echo "▸ Reiniciando Tomcat no servidor…"
     ssh "${REMOTE_HOST}" "
         # Remove deploy anterior se existir
@@ -63,6 +69,12 @@ else
         echo "▸ Publicando Mapa Gerencial em ${TOMCAT_WEBAPPS}/mapagerencial…"
         sudo rm -rf "${TOMCAT_WEBAPPS}/mapagerencial"
         sudo cp -r "${MAPA_DIR}" "${TOMCAT_WEBAPPS}/mapagerencial"
+    fi
+
+    if [ -f registrar-modulos.sql ]; then
+        echo "▸ Registrando módulos no menu (MySQL, idempotente)…"
+        mysql -u lopes_app -p'Lopes@App2024' intranet < registrar-modulos.sql \
+            || echo "  (aviso: não registrou os módulos — rode: mysql -u lopes_app -p intranet < registrar-modulos.sql)"
     fi
 
     echo "▸ Reiniciando Tomcat local…"
