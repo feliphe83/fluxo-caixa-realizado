@@ -43,17 +43,18 @@ public class RelatorioAgendadoScheduler implements ServletContextListener {
     private static final int INTERVALO_MINUTOS = 1;
     private static final ZoneId FUSO = ZoneId.of("America/Maceio");
 
-    private static final Map<String, RelatorioAgendadoHandler> HANDLERS = Map.of(
-            "combustivel", new CombustivelRelatorioAgendadoHandler(),
-            "oc_pendente", new AlertaOcPendenteHandler(),
-            "variacao_preco", new AlertaVariacaoPrecoHandler(),
-            "divergencia_nf", new AlertaDivergenciaNfHandler(),
-            "contrato_limite", new AlertaContratoLimiteHandler(),
-            "contrato_vencendo", new AlertaContratoArrendamentoHandler(),
-            "oc_aprovada_alto_valor", new AlertaOrdemCompraAprovadaHandler(),
-            "contrato_aprovacao", new AlertaContratoAprovacaoHandler(),
-            "parcela_contrato_aprovacao", new AlertaParcelaContratoHandler(),
-            "orcamento_estourado", new AlertaOrcamentoEstouradoHandler()
+    private static final Map<String, RelatorioAgendadoHandler> HANDLERS = Map.ofEntries(
+            Map.entry("combustivel", new CombustivelRelatorioAgendadoHandler()),
+            Map.entry("oc_pendente", new AlertaOcPendenteHandler()),
+            Map.entry("variacao_preco", new AlertaVariacaoPrecoHandler()),
+            Map.entry("divergencia_nf", new AlertaDivergenciaNfHandler()),
+            Map.entry("contrato_limite", new AlertaContratoLimiteHandler()),
+            Map.entry("contrato_vencendo", new AlertaContratoArrendamentoHandler()),
+            Map.entry("oc_aprovada_alto_valor", new AlertaOrdemCompraAprovadaHandler()),
+            Map.entry("contrato_aprovacao", new AlertaContratoAprovacaoHandler()),
+            Map.entry("parcela_contrato_aprovacao", new AlertaParcelaContratoHandler()),
+            Map.entry("orcamento_estourado", new AlertaOrcamentoEstouradoHandler()),
+            Map.entry("solicitacao_estourada", new AlertaSolicitacaoEstouradaHandler())
     );
 
     /** Execuções mais antigas que isso são descartadas — os recorrentes geram um registro por ciclo. */
