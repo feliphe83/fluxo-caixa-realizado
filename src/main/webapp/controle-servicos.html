@@ -1056,6 +1056,8 @@ function montarResumo() {
   const combTotal = COMBUSTIVEL.reduce((a, c) => a + (Number(c.valor) || 0), 0);
   const combLitros = COMBUSTIVEL.reduce((a, c) => a + (Number(c.litros) || 0), 0);
   const totalComCombustivel = totalGeral + combTotal;
+  // Combustível no resumo só aparece com a flag marcada (padrão desmarcado).
+  const mostrarComb = MOSTRAR_COMBUSTIVEL && combTotal > 0;
 
   const dataIni = document.getElementById('dataIni').value;
   const dataFim = document.getElementById('dataFim').value;
@@ -1085,7 +1087,7 @@ function montarResumo() {
           <tr><td>ENCARGOS</td><td>%</td><td class="num">${fmtNum(70)}</td><td class="num">${fmtMoeda(divSafe(encargosTotal.valor, 70))}</td><td class="num">${fmtMoeda(encargosTotal.valor)}</td></tr>
           <tr><td>TRANSPORTE PESSOAL</td><td>DIARIAS</td><td class="num">${fmtNum(transporteDias)}</td><td class="num">${fmtMoeda(divSafe(transporteTotal.valor, transporteDias))}</td><td class="num">${fmtMoeda(transporteTotal.valor)}</td></tr>
           <tr class="linha-total-geral"><td colspan="4">TOTAL GERAL</td><td class="num">${fmtMoeda(totalGeral)}</td></tr>
-          ${combTotal > 0 ? `
+          ${mostrarComb ? `
           <tr style="color:#b45309">
             <td>(+) COMBUSTÍVEL</td><td>LITROS</td>
             <td class="num">${fmtNum(combLitros)}</td>
@@ -1097,7 +1099,7 @@ function montarResumo() {
       </table>
     </div>
 
-    ${combTotal > 0 ? `
+    ${mostrarComb ? `
     <div class="resumo-bloco resumo-curto">
       <div class="resumo-titulo-secao">COMBUSTÍVEL POR FORNECEDOR</div>
       <table class="resumo-table">
