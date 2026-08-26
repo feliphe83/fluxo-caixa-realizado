@@ -18,6 +18,9 @@ WAR_FILE="target/${APP_NAME}.war"
 TOMCAT_WEBAPPS="/opt/tomcat9/webapps"
 TOMCAT_SERVICE="tomcat"      # ajuste se o serviço tiver outro nome
 REMOTE_HOST="${1:-}"
+# Mapa Gerencial: app JSP legada, publicada como contexto próprio /mapagerencial
+# (classpath isolado). Vai como diretório explodido, direto do repo.
+MAPA_DIR="mapagerencial"
 
 echo "══════════════════════════════════════"
 echo "  BUILD  — ${APP_NAME}"
@@ -34,6 +37,12 @@ if [ -n "$REMOTE_HOST" ]; then
     echo "▸ Copiando WAR para ${REMOTE_HOST}…"
     scp "${WAR_FILE}" "${REMOTE_HOST}:${TOMCAT_WEBAPPS}/${APP_NAME}.war"
 
+    if [ -d "${MAPA_DIR}" ]; then
+        echo "▸ Publicando Mapa Gerencial em ${REMOTE_HOST}…"
+        ssh "${REMOTE_HOST}" "rm -rf ${TOMCAT_WEBAPPS}/mapagerencial"
+        scp -rq "${MAPA_DIR}" "${REMOTE_HOST}:${TOMCAT_WEBAPPS}/mapagerencial"
+    fi
+
     echo "▸ Reiniciando Tomcat no servidor…"
     ssh "${REMOTE_HOST}" "
         # Remove deploy anterior se existir
@@ -49,6 +58,12 @@ else
     # ── DEPLOY LOCAL ───────────────────────────────────────────────────────
     echo "▸ Copiando WAR para ${TOMCAT_WEBAPPS}…"
     sudo cp "${WAR_FILE}" "${TOMCAT_WEBAPPS}/${APP_NAME}.war"
+
+    if [ -d "${MAPA_DIR}" ]; then
+        echo "▸ Publicando Mapa Gerencial em ${TOMCAT_WEBAPPS}/mapagerencial…"
+        sudo rm -rf "${TOMCAT_WEBAPPS}/mapagerencial"
+        sudo cp -r "${MAPA_DIR}" "${TOMCAT_WEBAPPS}/mapagerencial"
+    fi
 
     echo "▸ Reiniciando Tomcat local…"
     sudo systemctl restart "${TOMCAT_SERVICE}"

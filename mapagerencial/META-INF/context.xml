@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Context path="/mapagerencial">
+    <!-- Datasource JNDI usado pela app (ConnectionFactory.Conexao) — mesmo Oracle
+         da intranet. O driver vem do classes12.jar em WEB-INF/lib desta app. -->
+    <Resource name="jdbc/conn"
+              auth="Container"
+              type="javax.sql.DataSource"
+              driverClassName="oracle.jdbc.driver.OracleDriver"
+              url="jdbc:oracle:thin:@123.0.0.200:1521:o9i"
+              username="cpd"
+              password="softcana"
+              maxTotal="20"
+              maxIdle="5"
+              maxWaitMillis="10000"
+              validationQuery="SELECT 1 FROM DUAL"
+              testOnBorrow="true"/>
+</Context>
