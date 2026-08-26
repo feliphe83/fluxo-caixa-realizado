@@ -39,8 +39,9 @@ if [ -n "$REMOTE_HOST" ]; then
 
     if [ -d "${MAPA_DIR}" ]; then
         echo "▸ Publicando Mapa Gerencial em ${REMOTE_HOST}…"
-        ssh "${REMOTE_HOST}" "rm -rf ${TOMCAT_WEBAPPS}/mapagerencial"
+        ssh "${REMOTE_HOST}" "[ -f ${TOMCAT_WEBAPPS}/mapagerencial/safra.txt ] && cp ${TOMCAT_WEBAPPS}/mapagerencial/safra.txt /tmp/mg-safra.txt; rm -rf ${TOMCAT_WEBAPPS}/mapagerencial"
         scp -rq "${MAPA_DIR}" "${REMOTE_HOST}:${TOMCAT_WEBAPPS}/mapagerencial"
+        ssh "${REMOTE_HOST}" "[ -f /tmp/mg-safra.txt ] && cp /tmp/mg-safra.txt ${TOMCAT_WEBAPPS}/mapagerencial/safra.txt && rm -f /tmp/mg-safra.txt; chown -R \$(stat -c '%U:%G' ${TOMCAT_WEBAPPS}) ${TOMCAT_WEBAPPS}/mapagerencial"
     fi
 
     if [ -f registrar-modulos.sql ]; then
@@ -67,8 +68,14 @@ else
 
     if [ -d "${MAPA_DIR}" ]; then
         echo "▸ Publicando Mapa Gerencial em ${TOMCAT_WEBAPPS}/mapagerencial…"
+        # Preserva a safra configurada no próprio Mapa Gerencial entre deploys.
+        [ -f "${TOMCAT_WEBAPPS}/mapagerencial/safra.txt" ] && sudo cp "${TOMCAT_WEBAPPS}/mapagerencial/safra.txt" /tmp/mg-safra.txt || true
         sudo rm -rf "${TOMCAT_WEBAPPS}/mapagerencial"
         sudo cp -r "${MAPA_DIR}" "${TOMCAT_WEBAPPS}/mapagerencial"
+        [ -f /tmp/mg-safra.txt ] && sudo cp /tmp/mg-safra.txt "${TOMCAT_WEBAPPS}/mapagerencial/safra.txt" && sudo rm -f /tmp/mg-safra.txt || true
+        # Deixa a pasta com o mesmo dono do webapps (o usuário do Tomcat), para a
+        # tela de safra conseguir gravar o safra.txt.
+        sudo chown -R "$(stat -c '%U:%G' "${TOMCAT_WEBAPPS}")" "${TOMCAT_WEBAPPS}/mapagerencial"
     fi
 
     if [ -f registrar-modulos.sql ]; then

@@ -89,6 +89,7 @@
       <button id="bt3" class="bt" onclick="acionatela(3)">Frota</button>
       <button id="bt4" class="bt" onclick="acionatela(4)">Disponibilidade da Frota</button>
       <button id="btnAtivaAutomatico" class="bt toggle" onclick="ativaatualizacao()">▶ Atualização automática</button>
+      <button class="bt" onclick="window.open('safra.jsp','frm_mobile_tela')" title="Definir a safra do Mapa Gerencial">⚙️ Safra</button>
     </nav>
   </div>
 

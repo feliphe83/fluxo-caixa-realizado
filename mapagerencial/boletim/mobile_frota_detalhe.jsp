@@ -22,7 +22,7 @@
 
     <%
         
-    String sCodSafra = "74";
+    String sCodSafra = "74"; try { java.io.File _sf = new java.io.File(application.getRealPath("/safra.txt")); if (_sf.exists()) { String _sv = new String(java.nio.file.Files.readAllBytes(_sf.toPath())).trim(); Integer.parseInt(_sv); sCodSafra = _sv; } } catch (Exception _e) {}
 
     Connection con = null;
     try{

@@ -25,7 +25,7 @@
     Connection con = null;
     try{
 
-        String sCodSafra = "74" ;
+        String sCodSafra = "74"; try { java.io.File _sf = new java.io.File(application.getRealPath("/safra.txt")); if (_sf.exists()) { String _sv = new String(java.nio.file.Files.readAllBytes(_sf.toPath())).trim(); Integer.parseInt(_sv); sCodSafra = _sv; } } catch (Exception _e) {}
         
         Class.forName("oracle.jdbc.driver.OracleDriver").newInstance();
         con = DriverManager.getConnection("jdbc:oracle:thin:@123.0.0.200:1521:o9i","consulta","consulta");
