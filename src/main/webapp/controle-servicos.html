@@ -327,6 +327,9 @@
                        color:#1a1a2e;background:white;outline:none;min-width:210px">
           <option value="">Todos</option>
         </select>
+        <label style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:#334155;cursor:pointer">
+          <input type="checkbox" id="chkCombustivel" onchange="alternarCombustivel()"> Combustível
+        </label>
         <label style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.4px">Comparar com</label>
         <select id="selComparativo" onchange="aoTrocarComparativo()"
                 style="padding:7px 10px;border:1.5px solid #d8dfee;border-radius:8px;font-size:12.5px;
@@ -373,6 +376,7 @@
 let DADOS_RAW = [];
 let DADOS_TODOS = [];   // conjunto completo (após filtro de fornecedor); DADOS_RAW é a visão filtrada por subprocesso
 let FILTRO_ORIGEM = ''; // subprocesso (origem) selecionado; '' = todos
+let MOSTRAR_COMBUSTIVEL = false; // flag da coluna de combustível — começa desmarcada
 // Combustível levado por cada fornecedor no período, para descontar do que a
 // usina paga. Vem junto da mesma chamada do relatório.
 let COMBUSTIVEL = [];
@@ -434,7 +438,14 @@ function combustivelDe(grupo) {
 
 /** Há desconto a mostrar? Sem combustível nenhum, as colunas não aparecem. */
 function temCombustivel() {
-  return COMBUSTIVEL.length > 0;
+  return MOSTRAR_COMBUSTIVEL && COMBUSTIVEL.length > 0;
+}
+
+// Liga/desliga a coluna de combustível (flag desmarcada por padrão).
+function alternarCombustivel() {
+  const chk = document.getElementById('chkCombustivel');
+  MOSTRAR_COMBUSTIVEL = chk ? chk.checked : false;
+  renderizarTabela();
 }
 
 function thsComp() {
