@@ -31,19 +31,23 @@ WHERE  (UPPER(c.nome) LIKE '%AGRICOLA%' OR UPPER(c.nome) LIKE '%AGRÍCOLA%')
   AND  NOT EXISTS (SELECT 1 FROM intranet_modulo m2 WHERE m2.url_destino = '/fluxo-caixa/fechamento-frete.html')
 LIMIT 1;
 
--- 3) Mapa Gerencial (sistema JSP em contexto próprio, via ponte de login) -> Agrícola
---    A URL é o servlet-ponte da intranet, que gera o token e redireciona.
+-- 3) Mapa Gerencial (JSP em contexto próprio) -> Agrícola
+--    Aponta para a página-moldura da intranet (mantém o menu lateral à vista);
+--    ela embute o Mapa Gerencial num iframe, que passa pela ponte de login.
+-- Migra quem já foi cadastrado apontando direto para a ponte:
+UPDATE intranet_modulo SET url_destino = '/fluxo-caixa/mapa-gerencial.html'
+ WHERE url_destino = '/fluxo-caixa/ir-mapa-gerencial';
 INSERT INTO intranet_modulo (id_categoria, nome, descricao, icone, url_destino, ordem, ativo)
 SELECT c.id,
        'Mapa Gerencial',
        'Boletim mobile: entrada de cana, frota, indústria, chuva e mais (login unificado)',
        'map',
-       '/fluxo-caixa/ir-mapa-gerencial',
+       '/fluxo-caixa/mapa-gerencial.html',
        COALESCE((SELECT MAX(m.ordem) + 1 FROM intranet_modulo m WHERE m.id_categoria = c.id), 1),
        1
 FROM   intranet_categoria c
 WHERE  (UPPER(c.nome) LIKE '%AGRICOLA%' OR UPPER(c.nome) LIKE '%AGRÍCOLA%')
-  AND  NOT EXISTS (SELECT 1 FROM intranet_modulo m2 WHERE m2.url_destino = '/fluxo-caixa/ir-mapa-gerencial')
+  AND  NOT EXISTS (SELECT 1 FROM intranet_modulo m2 WHERE m2.url_destino = '/fluxo-caixa/mapa-gerencial.html')
 LIMIT 1;
 
 -- Conferir:
