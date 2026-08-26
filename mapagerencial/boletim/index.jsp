@@ -13,7 +13,8 @@
         <meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
         <link rel="icon" type="image/png" href="../../Imagens/logo.png" />
     </head>
-    <FRAMESET rows="100%,*" FRAMEBORDER="1"  BORDER="1" scroolling="none">
-       <FRAME marginheight="0px" MARGINWIDTH="0px" NAME="frm_mobile_menu" SCROLLING="auto" NORESIZE SRC="mobile_menu.jsp">
+    <FRAMESET rows="70,*" FRAMEBORDER="0" BORDER="0" scroolling="none">
+       <FRAME marginheight="0px" MARGINWIDTH="0px" NAME="frm_mobile_menu"  SCROLLING="no"   NORESIZE SRC="mobile_menu.jsp">
+       <FRAME marginheight="0px" MARGINWIDTH="0px" NAME="frm_mobile_tela"  SCROLLING="auto"          SRC="blanck.jsp">
     </FRAMESET>
 </html>
