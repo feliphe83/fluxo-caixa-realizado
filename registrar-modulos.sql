@@ -9,12 +9,12 @@ SELECT c.id,
        'Pagamento de Cana',
        'Controle de pagamento a fornecedor de cana — líquido do fechamento x realizado, com levantamento por tonelada',
        'sprout',
-       'pagamento-cana.html',
+       '/fluxo-caixa/pagamento-cana.html',
        COALESCE((SELECT MAX(m.ordem) + 1 FROM intranet_modulo m WHERE m.id_categoria = c.id), 1),
        1
 FROM   intranet_categoria c
 WHERE  (UPPER(c.nome) LIKE '%AGRICOLA%' OR UPPER(c.nome) LIKE '%AGRÍCOLA%')
-  AND  NOT EXISTS (SELECT 1 FROM intranet_modulo m2 WHERE m2.url_destino = 'pagamento-cana.html')
+  AND  NOT EXISTS (SELECT 1 FROM intranet_modulo m2 WHERE m2.url_destino = '/fluxo-caixa/pagamento-cana.html')
 LIMIT 1;
 
 -- 2) Fechamento de Fretes -> categoria Agrícola
@@ -23,12 +23,12 @@ SELECT c.id,
        'Fechamento de Fretes',
        'Fechamento de fretes de transporte de pessoal (Depto. Agrícola)',
        'truck',
-       'fechamento-frete.html',
+       '/fluxo-caixa/fechamento-frete.html',
        COALESCE((SELECT MAX(m.ordem) + 1 FROM intranet_modulo m WHERE m.id_categoria = c.id), 1),
        1
 FROM   intranet_categoria c
 WHERE  (UPPER(c.nome) LIKE '%AGRICOLA%' OR UPPER(c.nome) LIKE '%AGRÍCOLA%')
-  AND  NOT EXISTS (SELECT 1 FROM intranet_modulo m2 WHERE m2.url_destino = 'fechamento-frete.html')
+  AND  NOT EXISTS (SELECT 1 FROM intranet_modulo m2 WHERE m2.url_destino = '/fluxo-caixa/fechamento-frete.html')
 LIMIT 1;
 
 -- 3) Mapa Gerencial (sistema JSP em contexto próprio, via ponte de login) -> Agrícola
@@ -38,21 +38,21 @@ SELECT c.id,
        'Mapa Gerencial',
        'Boletim mobile: entrada de cana, frota, indústria, chuva e mais (login unificado)',
        'map',
-       'ir-mapa-gerencial',
+       '/fluxo-caixa/ir-mapa-gerencial',
        COALESCE((SELECT MAX(m.ordem) + 1 FROM intranet_modulo m WHERE m.id_categoria = c.id), 1),
        1
 FROM   intranet_categoria c
 WHERE  (UPPER(c.nome) LIKE '%AGRICOLA%' OR UPPER(c.nome) LIKE '%AGRÍCOLA%')
-  AND  NOT EXISTS (SELECT 1 FROM intranet_modulo m2 WHERE m2.url_destino = 'ir-mapa-gerencial')
+  AND  NOT EXISTS (SELECT 1 FROM intranet_modulo m2 WHERE m2.url_destino = '/fluxo-caixa/ir-mapa-gerencial')
 LIMIT 1;
 
 -- Conferir:
 -- SELECT id, id_categoria, nome, url_destino, ordem, ativo
--- FROM intranet_modulo WHERE url_destino IN ('pagamento-cana.html','fechamento-frete.html');
+-- FROM intranet_modulo WHERE url_destino IN ('/fluxo-caixa/pagamento-cana.html','/fluxo-caixa/fechamento-frete.html');
 
 -- (Opcional) Liberar para um usuário NÃO-admin: repita por usuário/módulo.
 -- INSERT INTO intranet_permissao_modulo (id_usuario, id_modulo)
 -- SELECT :ID_USUARIO, m.id FROM intranet_modulo m
--- WHERE m.url_destino IN ('pagamento-cana.html','fechamento-frete.html')
+-- WHERE m.url_destino IN ('/fluxo-caixa/pagamento-cana.html','/fluxo-caixa/fechamento-frete.html')
 --   AND NOT EXISTS (SELECT 1 FROM intranet_permissao_modulo p
 --                   WHERE p.id_usuario = :ID_USUARIO AND p.id_modulo = m.id);

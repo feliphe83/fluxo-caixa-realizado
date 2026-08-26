@@ -4,7 +4,7 @@
     // login da intranet (AuthFilter) e devolve com um token assinado.
     HttpSession sessao = request.getSession();
     if (!Boolean.TRUE.equals(sessao.getAttribute("autenticado"))) {
-        response.sendRedirect("/ir-mapa-gerencial");
+        response.sendRedirect("/fluxo-caixa/ir-mapa-gerencial");
         return;
     }
 %>

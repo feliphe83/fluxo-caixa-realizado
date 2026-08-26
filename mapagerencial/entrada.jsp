@@ -5,6 +5,8 @@
     static final String SEGREDO_PADRAO = "USC-MapaGerencial-Ponte-2026";
     // Tela inicial após entrar (o "mapa gerencial" / entrada de cana).
     static final String HOME = "boletim/index.jsp";
+    // Ponte de login na intranet (contexto /fluxo-caixa).
+    static final String PONTE = "/fluxo-caixa/ir-mapa-gerencial";
 
     static String segredo() {
         String s = System.getenv("MAPA_GERENCIAL_SECRET");
@@ -54,6 +56,6 @@
     } else {
         // Sem token válido (acesso direto ou expirado): volta pela ponte da
         // intranet, que exige o nosso login.
-        response.sendRedirect("/ir-mapa-gerencial");
+        response.sendRedirect(PONTE);
     }
 %>
