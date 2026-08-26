@@ -57,7 +57,7 @@
     <body bgcolor="lavender">
         <table width="100%">
             <tr bgcolor="#009999" style="font-family: Verdana; font-size: 15px; color: white">
-                <td align="center"><input type="button" value="Agrícola"  style="width: 180px" onclick="acionatela(1);">
+                <td align="center"><input type="button" value="&lt; Intranet" style="width:120px" onclick="top.location.href='/fluxo-caixa/hub.html';"> <input type="button" value="Agrícola"  style="width: 180px" onclick="acionatela(1);">
                                    <input type="button" value="Indústria" style="width: 180px" onclick="acionatela(2);">
                                    <input type="button" value="Frota"     style="width: 180px" onclick="acionatela(3);">
                                    <input type="button" value="Disponibilidade da Frota"     style="width: 180px" onclick="acionatela(4);">
