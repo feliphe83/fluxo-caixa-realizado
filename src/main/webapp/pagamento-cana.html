@@ -116,7 +116,7 @@
 
   <div class="filtros-card">
     <div class="filtros-grid">
-      <div class="campo"><label>Safra</label><input type="number" id="safra" class="safra" value="74"></div>
+      <div class="campo"><label>Safra</label><input type="number" id="safra" class="safra" value="76"></div>
       <div class="campo"><label>Lançamentos de</label><input type="date" id="entIni" value="2025-09-01"></div>
       <div class="campo"><label>Lançamentos até</label><input type="date" id="entFim" value="2026-03-31"></div>
       <div class="campo"><label>Pagamentos de</label><input type="date" id="pagIni" value="2025-09-01"></div>
@@ -380,6 +380,12 @@ function exportarExcel() {
 
 // Padrão: pagamentos até hoje.
 document.getElementById("pagFim").value = new Date().toISOString().slice(0, 10);
+
+// Safra padrão da intranet (Administração → Parâmetros gerais → Safra padrão).
+fetch("api/parametros", { cache: "no-store" })
+  .then(r => r.json())
+  .then(j => { const s = j && j.data && j.data["safra.padrao"]; if (s) document.getElementById("safra").value = s; })
+  .catch(() => {});
 </script>
 
 <script src="js/icones-modulos.js?v=20260825a"></script>

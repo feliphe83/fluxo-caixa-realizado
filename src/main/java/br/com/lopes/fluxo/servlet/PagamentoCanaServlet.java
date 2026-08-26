@@ -1,6 +1,7 @@
 package br.com.lopes.fluxo.servlet;
 
 import br.com.lopes.fluxo.dao.PagamentoCanaDAO;
+import br.com.lopes.fluxo.dao.ParametroDAO;
 import br.com.lopes.fluxo.util.DataParamUtil;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -30,6 +31,7 @@ public class PagamentoCanaServlet extends HttpServlet {
     private static final Logger LOG = Logger.getLogger(PagamentoCanaServlet.class.getName());
     private final Gson gson = new Gson();
     private final PagamentoCanaDAO dao = new PagamentoCanaDAO();
+    private final ParametroDAO parametros = new ParametroDAO();
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
@@ -37,7 +39,8 @@ public class PagamentoCanaServlet extends HttpServlet {
         PrintWriter out = resp.getWriter();
 
         try {
-            int safra = parseInt(req.getParameter("safra"), 74);
+            int safra = parseInt(req.getParameter("safra"),
+                                 parametros.inteiro(ParametroDAO.SAFRA_PADRAO, 76));
             String entIni    = ou(DataParamUtil.normalizar(req.getParameter("entIni")),    "2025-09-01");
             String entFim    = ou(DataParamUtil.normalizar(req.getParameter("entFim")),    "2026-03-31");
             String pagIni    = ou(DataParamUtil.normalizar(req.getParameter("pagIni")),    entIni);
