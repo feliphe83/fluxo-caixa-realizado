@@ -397,10 +397,10 @@ setInterval(carregar, INTERVALO_MS);
       bloco.querySelectorAll('.nt-col').forEach(function (col) {
         var h3 = col.querySelector('h3');
         var tema = h3 ? h3.textContent.trim() : '';
-        col.querySelectorAll('.nt-tit').forEach(function (t) {
-          var prox = t.nextElementSibling;
-          var meta = (prox && prox.classList && prox.classList.contains('nt-meta')) ? prox.outerHTML : '';
-          itens.push('<div class="tk-item"><span class="tk-tema">' + tema + '</span>' + t.outerHTML + meta + '</div>');
+        // Pega a âncora .nt inteira (mantém href e target=_blank) para a notícia
+        // continuar clicável dentro do destaque.
+        col.querySelectorAll('a.nt').forEach(function (a) {
+          itens.push('<div class="tk-item"><span class="tk-tema">' + tema + '</span>' + a.outerHTML + '</div>');
         });
       });
       if (!itens.length) return;
