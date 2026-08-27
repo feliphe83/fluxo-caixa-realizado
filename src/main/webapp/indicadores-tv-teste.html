@@ -63,14 +63,14 @@
      A coluna da esquerda (dólar + açúcar) desce inteira pelas duas. */
   .grade { display: grid; gap: 14px; min-height: 0;
            grid-template-columns: 1.12fr 1fr 1fr;
-           grid-template-rows: auto 1fr;
-           grid-template-areas: "esq mid prod" "esq news news"; }
+           grid-template-rows: 1fr;
+           grid-template-areas: "esq mid news"; }
   .coluna { display: flex; flex-direction: column; gap: 14px; min-height: 0; }
   .col-esq { grid-area: esq; }
   .col-esq .bloco { flex: 1; }   /* dólar e açúcar dividem a altura */
   .col-mid { grid-area: mid; }
-  #bProdutos { grid-area: prod; }
-  #bNoticias { grid-area: news; }
+  /* Preço da cana em cima, Preço dos produtos logo abaixo (o "quadrado" desceu). */
+  #bNoticias { grid-area: news; }   /* notícias ocupam a coluna direita inteira, como ticker */
 
   .noticias-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 24px;
                    flex: 1; min-height: 0; overflow: hidden; }
@@ -181,8 +181,8 @@
     <div class="coluna col-mid">
       <div class="bloco" id="bIndicadores"></div>
       <div class="bloco" id="bCana"></div>
+      <div class="bloco" id="bProdutos"></div>
     </div>
-    <div class="bloco" id="bProdutos"></div>
     <div class="bloco" id="bNoticias"></div>
   </div>
 
