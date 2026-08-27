@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Indicadores Econômicos — Usina Santa Clotilde</title>
+<link rel="icon" href="img/logo.png">
+<style>
+/* ────────────────────────────────────────────────────────────────────────
+   Painel de televisão dos indicadores econômicos.
+
+   Palco de 1920×1080 fixos, ESCALADO para caber na tela em vez de se
+   reorganizar. Numa TV ninguém corrige layout quebrado.
+
+   Tudo numa tela só, sem clique. E com a IDADE DE CADA FONTE à vista: uma
+   parede que mostra cotação de ontem como se fosse de agora é pior do que
+   uma parede apagada, porque alguém decide preço olhando para ela.
+   ──────────────────────────────────────────────────────────────────────── */
+  :root {
+    --serie-1: #2a78d6; --serie-2: #eb6834; --serie-3: #1baf7a;
+    --serie-4: #eda100; --serie-6: #008300;
+    --sobe: #0ca30c; --desce: #d03b3b;
+    --ink: #0f2460; --ink-2: #52514e; --ink-3: #898781; --rotulo: #64748b;
+    --borda: #e3e8f5; --papel: #fff; --papel-2: #f8faff; --fundo: #f4f6fb;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--fundo); color: var(--ink-2);
+               font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+               overflow: hidden; font-variant-numeric: tabular-nums; }
+
+  #palco-wrap { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
+  #palco { position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px;
+           transform-origin: center center; padding: 20px 26px 18px;
+           display: grid; grid-template-rows: auto auto 1fr; gap: 14px; }
+
+  .topo { display: flex; align-items: center; gap: 18px; }
+  .marca { width: 46px; height: 46px; border-radius: 11px; background: var(--ink);
+           display: flex; align-items: center; justify-content: center; padding: 6px; flex: none; }
+  .marca img { width: 100%; height: 100%; object-fit: contain; }
+  .topo h1 { font-size: 30px; font-weight: 800; color: var(--ink); letter-spacing: -.6px; }
+  .topo .sub { font-size: 13.5px; font-weight: 700; color: var(--ink-3);
+               text-transform: uppercase; letter-spacing: .8px; margin-top: 1px; }
+  .topo .direita { margin-left: auto; text-align: right; }
+  .relogio { font-size: 26px; font-weight: 800; color: var(--ink); }
+  .quando { font-size: 13px; font-weight: 700; color: var(--ink-3); margin-top: 3px; }
+
+  .capa { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .cartao { background: var(--papel); border: 1px solid var(--borda); border-radius: 13px;
+            padding: 13px 20px 14px; position: relative; overflow: hidden; }
+  .cartao::before { content:''; position:absolute; left:0; top:0; bottom:0; width:4px;
+                    background: var(--cor, var(--ink)); }
+  .cartao .rot { font-size: 13px; font-weight: 800; color: var(--rotulo);
+                 text-transform: uppercase; letter-spacing: .8px; }
+  .cartao .cifra { font-size: 40px; font-weight: 800; color: var(--ink); line-height: 1.1;
+                   margin-top: 4px; letter-spacing: -1.1px; white-space: nowrap; }
+  .cartao .un { font-size: 19px; font-weight: 700; color: var(--ink-3); margin-left: 5px; }
+  .cartao .base { font-size: 14px; font-weight: 700; color: var(--ink-3); margin-top: 4px;
+                  white-space: nowrap; }
+  .sobe { color: var(--sobe); font-weight: 800; }
+  .desce { color: var(--desce); font-weight: 800; }
+
+  /* Duas fileiras: em cima os dados, embaixo as notícias ocupando o resto.
+     A coluna da esquerda (dólar + açúcar) desce inteira pelas duas. */
+  .grade { display: grid; gap: 14px; min-height: 0;
+           grid-template-columns: 1.12fr 1fr 1fr;
+           grid-template-rows: auto 1fr;
+           grid-template-areas: "esq mid prod" "esq news news"; }
+  .coluna { display: flex; flex-direction: column; gap: 14px; min-height: 0; }
+  .col-esq { grid-area: esq; }
+  .col-esq .bloco { flex: 1; }   /* dólar e açúcar dividem a altura */
+  .col-mid { grid-area: mid; }
+  #bProdutos { grid-area: prod; }
+  #bNoticias { grid-area: news; }
+
+  .noticias-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 24px;
+                   flex: 1; min-height: 0; overflow: hidden; }
+  .nt-col { min-width: 0; display: flex; flex-direction: column; }
+  .nt-col h3 { font-size: 13px; font-weight: 800; color: var(--ink); margin-bottom: 4px;
+               text-transform: uppercase; letter-spacing: .6px; display: flex; align-items: center; gap: 7px; }
+  .nt-col h3 .pt { width: 9px; height: 9px; border-radius: 50%; background: var(--cor, var(--ink)); }
+  .nt { display: block; text-decoration: none; padding: 7px 0; border-bottom: 1px solid #eef1f8; }
+  .nt:last-child { border-bottom: none; }
+  .nt-tit { font-size: 14.5px; font-weight: 700; color: var(--ink); line-height: 1.22;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .nt-meta { font-size: 12px; font-weight: 700; color: var(--ink-3); margin-top: 2px; }
+
+  /* Notícias do etanol no espaço que sobra sob a tabela de produtos. */
+  .prod-noticias { margin-top: 12px; flex: 1; min-height: 0; overflow: hidden;
+                   border-top: 1px solid #eef1f8; padding-top: 10px; }
+  .prod-noticias h3 { font-size: 13px; font-weight: 800; color: var(--ink); margin-bottom: 4px;
+                      text-transform: uppercase; letter-spacing: .6px; display: flex; align-items: center; gap: 7px; }
+  .prod-noticias h3 .pt { width: 9px; height: 9px; border-radius: 50%; background: var(--cor, var(--ink)); }
+  .bloco { background: var(--papel); border: 1px solid var(--borda); border-radius: 13px;
+           padding: 12px 18px 14px; min-height: 0; overflow: hidden;
+           display: flex; flex-direction: column; }
+  .bloco h2 { font-size: 19px; font-weight: 800; color: var(--ink); }
+  .bloco .fonte { font-size: 12px; font-weight: 700; color: var(--ink-3); margin-top: 1px; }
+  .cab { display: flex; align-items: baseline; gap: 10px; margin-bottom: 7px; }
+  .idade { margin-left: auto; font-size: 12.5px; font-weight: 800; color: var(--ink-3); }
+  .idade.velho { color: var(--serie-2); }
+  .idade.erro { color: var(--desce); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 16px; }
+  thead th { text-align: right; font-size: 12.5px; font-weight: 800; color: #fff;
+             background: var(--ink); padding: 6px 9px; white-space: nowrap; }
+  thead th:first-child { text-align: left; border-radius: 6px 0 0 6px; }
+  thead th:last-child { border-radius: 0 6px 6px 0; }
+  tbody td { padding: 7px 9px; text-align: right; white-space: nowrap;
+             border-bottom: 1px solid #eef1f8; color: var(--ink); font-weight: 700; }
+  tbody td:first-child { text-align: left; }
+  tbody tr:last-child td { border-bottom: none; }
+  tr.destaque td { background: var(--papel-2); font-weight: 800; }
+
+  .tela { position: relative; flex: 1; min-height: 120px; margin-top: 8px; }
+  /* Os dois recortes lado a lado: perto (7 dias) e longe (3 meses). */
+  .graficos { display: flex; gap: 16px; flex: 1; min-height: 0; margin-top: 8px; }
+  .mini { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .mtit { font-size: 12px; font-weight: 800; color: var(--ink-3);
+          text-transform: uppercase; letter-spacing: .5px; }
+  .mini .tela { flex: 1; margin-top: 2px; min-height: 0; }
+  .vazio { padding: 14px 2px; font-size: 14px; font-weight: 700; color: var(--ink-3); }
+  .vazio b { color: var(--desce); }
+
+  /* Preço acima do gatilho pisca: numa parede, o número que autoriza fechar
+     negócio não pode depender de alguém estar olhando na hora certa. */
+  @keyframes pulsar { 50% { background: var(--serie-6); color: #fff; } }
+  td.gatilho { animation: pulsar 1.1s step-end infinite; font-weight: 800;
+               border-radius: 6px; }
+
+  .tarja { position: fixed; top: 0; left: 0; right: 0; background: #eda100; color: #1a1a19;
+           font-size: 17px; font-weight: 800; text-align: center; padding: 7px;
+           display: none; z-index: 40; }
+  .tarja.on { display: block; }
+  .carregando { color: var(--ink-3); font-size: 22px; font-weight: 700; padding: 40px 4px; }
+
+  /* ===== TESTE: notícias com fonte maior + ticker (fica passando) ===== */
+  #bNoticias h2 { font-size: 26px; }
+  #bNoticias .fonte { font-size: 14px; }
+  #bNoticias .nt-col h3 { font-size: 19px; margin-bottom: 8px; }
+  #bNoticias .nt-tit { font-size: 22px; line-height: 1.25; }
+  #bNoticias .nt-meta { font-size: 15px; margin-top: 3px; }
+  /* rolagem contínua das notícias */
+  .tk-view { flex: 1; min-height: 0; overflow: hidden; position: relative; margin-top: 8px; }
+  .tk-track { display: flex; flex-direction: column; gap: 14px; will-change: transform;
+              animation: tkscroll 40s linear infinite; }
+  #bNoticias:hover .tk-track { animation-play-state: paused; }
+  .tk-item { border-left: 6px solid var(--serie-2); background: rgba(235,104,52,.07);
+             border-radius: 8px; padding: 10px 14px 12px; }
+  .tk-item .tk-tema { display: inline-block; font-size: 13px; font-weight: 800; text-transform: uppercase;
+                      letter-spacing: .5px; color: var(--serie-2); margin-bottom: 4px; }
+  .tk-item .nt-tit { font-size: 24px; font-weight: 800; line-height: 1.22; }
+  .tk-item .nt-meta { font-size: 15px; }
+  @keyframes tkscroll { from { transform: translateY(0); } to { transform: translateY(-50%); } }
+</style>
+</head>
+<body>
+
+<div class="tarja" id="tarja"></div>
+
+<div id="palco-wrap"><div id="palco">
+
+  <div class="topo">
+    <div class="marca"><img src="img/logo.png" alt="USC"></div>
+    <div>
+      <h1>Usina Santa Clotilde</h1>
+      <div class="sub">Indicadores Econômicos / Financeiros · câmbio, commodities e índices</div>
+    </div>
+    <div class="direita">
+      <div class="relogio" id="relogio">—</div>
+      <div class="quando" id="quando"></div>
+    </div>
+  </div>
+
+  <div class="capa" id="capa"></div>
+
+  <div class="grade">
+    <div class="coluna col-esq">
+      <div class="bloco" id="bDolar"><div class="carregando">Consultando…</div></div>
+      <div class="bloco" id="bAcucar"></div>
+    </div>
+    <div class="coluna col-mid">
+      <div class="bloco" id="bIndicadores"></div>
+      <div class="bloco" id="bCana"></div>
+    </div>
+    <div class="bloco" id="bProdutos"></div>
+    <div class="bloco" id="bNoticias"></div>
+  </div>
+
+</div></div>
+
+<script src="js/chart.umd.min.js"></script>
+<script src="indicadores-comum.js?v=20260820g"></script>
+<script>
+// A cotação anda o dia inteiro; de cinco em cinco minutos a parede
+// acompanha sem martelar as fontes — o servidor guarda em cache de dez
+// minutos, então isto aqui nunca gera mais tráfego externo do que aquilo.
+const INTERVALO_MS = 5 * 60 * 1000;
+let DADOS = null;
+const graficos = {};
+
+function ajustarEscala() {
+  const s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+  document.getElementById('palco').style.transform = 'translate(-50%, -50%) scale(' + s + ')';
+}
+window.addEventListener('resize', ajustarEscala);
+
+function tique() {
+  const h = new Date();
+  document.getElementById('relogio').textContent =
+    String(h.getHours()).padStart(2,'0') + ':' + String(h.getMinutes()).padStart(2,'0');
+}
+
+async function carregar() {
+  try {
+    const r = await fetch('api/indicadores', {headers:{'Accept':'application/json'}});
+    if (r.status === 401) {
+      const t = document.getElementById('tarja');
+      t.textContent = '⚠ Sessão expirada — faça login neste navegador para o painel voltar a atualizar';
+      t.classList.add('on');
+      return;
+    }
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro || 'Consulta recusada');
+    document.getElementById('tarja').classList.remove('on');
+    DADOS = j;
+    desenhar();
+  } catch (e) {
+    // Numa parede, o número de dez minutos atrás vale mais do que uma tela
+    // em branco — e a idade de cada fonte já está escrita ao lado dela.
+    if (!DADOS) document.getElementById('bDolar').innerHTML =
+      `<div class="carregando" style="color:#d03b3b">Não foi possível consultar: ${esc(e.message||e)}</div>`;
+  }
+}
+
+function desenhar() {
+  const d = DADOS;
+  document.getElementById('quando').textContent = 'Atualizado em ' + d.atualizadoEm;
+  document.getElementById('capa').innerHTML = cartoesCapa(d);
+
+  document.getElementById('bDolar').innerHTML = `
+    <div class="cab"><div><h2>Cotação do dólar</h2>
+      <div class="fonte">USD/BRL comercial</div></div>${idade(d.dolar)}</div>
+    ${tabelaDolar(d.dolar)}
+    <div class="graficos">
+      <div class="mini"><div class="mtit">Últimos 7 dias</div>
+        <div class="tela"><canvas id="gDolarD"></canvas></div></div>
+    </div>`;
+
+  document.getElementById('bAcucar').innerHTML = `
+    <div class="cab"><div><h2>Açúcar NY nº 11</h2>
+      <div class="fonte">Centavos de dólar por libra-peso</div></div>${idade(d.acucar)}</div>
+    ${tabelaAcucar(d.acucar)}
+    <div class="graficos">
+      <div class="mini"><div class="mtit">Últimos 7 dias</div>
+        <div class="tela"><canvas id="gAcucarD"></canvas></div></div>
+      <div class="mini"><div class="mtit">Últimos 3 meses</div>
+        <div class="tela"><canvas id="gAcucarM"></canvas></div></div>
+    </div>`;
+
+  document.getElementById('bIndicadores').innerHTML = `
+    <div class="cab"><div><h2>Indicadores econômicos</h2>
+      <div class="fonte">Banco Central do Brasil</div></div>${idade(d.indicadores)}</div>
+    ${tabelaIndicadores(d.indicadores)}`;
+
+  document.getElementById('bCana').innerHTML = `
+    <div class="cab"><div><h2>Preço da cana</h2>
+      <div class="fonte">Sindaçúcar/AL · R$ por kg de ATR</div></div></div>
+    ${tabelaCana(d.precoCana)}`;
+
+  const nt = (d.noticias && d.noticias.dado) || {};
+  // Dólar no quadrado dos produtos: poucas manchetes, para caber no espaço
+  // que sobra sob a tabela sem empurrar o resto para baixo.
+  document.getElementById('bProdutos').innerHTML = `
+    <div class="cab"><div><h2>Preço dos produtos</h2>
+      <div class="fonte">CEPEA/ESALQ e bolsa, já convertidos</div></div>${idade(d.cepea)}</div>
+    ${tabelaProdutos(d.produtos)}
+    <div class="prod-noticias">
+      <h3><span class="pt" style="--cor:var(--serie-1)"></span>Notícias do dólar</h3>
+      ${listaNoticias((nt.dolar || []).slice(0, 4))}
+    </div>`;
+
+  // Rodapé largo: açúcar e etanol lado a lado.
+  document.getElementById('bNoticias').innerHTML = `
+    <div class="cab"><div><h2>Notícias</h2>
+      <div class="fonte">Açúcar e etanol · Google Notícias</div></div>${idade(d.noticias)}</div>
+    <div class="noticias-cols">
+      <div class="nt-col">
+        <h3><span class="pt" style="--cor:var(--serie-2)"></span>Açúcar</h3>
+        ${listaNoticias(nt.acucar)}
+      </div>
+      <div class="nt-col">
+        <h3><span class="pt" style="--cor:var(--serie-3)"></span>Etanol</h3>
+        ${listaNoticias(nt.etanol)}
+      </div>
+    </div>`;
+
+  const dolarDia = ((d.dolarDiario && d.dolarDiario.dado) || [])
+    .map(p => ({ rotulo: rotuloDia(p.data), valor: p.valor })).slice(-7);
+  // O dólar tem um gráfico só (7 dias), com o valor em cada ponto.
+  plotarTv('gDolarD', dolarDia, 'R$ ', '#2a78d6', 2, 'Sem histórico recente.', true);
+  plotarTv('gAcucarD', serieAcucar(d.acucarDiario), '', '#eb6834', 2,
+           'Juntando o histórico diário — depende de mais pregões coletados.', true);
+  plotarTv('gAcucarM', serieMensal(d.acucarMensal), '', '#eb6834', 2,
+           'Juntando o histórico mensal.', true);
+}
+
+/** Desenha uma série de pares {rotulo, valor}; se vier vazia, avisa no lugar. */
+function plotarTv(id, pares, prefixo, cor, casas, vazioMsg, rotularTodos) {
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  if (!pares.length) {
+    const box = canvas.closest('.tela');
+    if (box) box.innerHTML = `<div class="vazio">${esc(vazioMsg)}</div>`;
+    return;
+  }
+  grafico(id, pares, p => p.rotulo, p => p.valor, prefixo, cor, casas, rotularTodos);
+}
+
+function grafico(id, serie, rotulo, valor, prefixo, cor, casas, rotularTodos) {
+  const canvas = document.getElementById(id);
+  if (!canvas || !serie.length) return;
+  if (graficos[id]) graficos[id].destroy();
+  graficos[id] = new Chart(canvas, {
+    type: 'line',
+    data: { labels: serie.map(rotulo), datasets: [{
+      data: serie.map(valor), borderColor: cor, backgroundColor: 'transparent',
+      borderWidth: 3, pointRadius: 4, pointBackgroundColor: cor,
+      pointBorderColor: '#fff', pointBorderWidth: 1.5, tension: .25 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      layout: { padding: { top: 24, right: 16, left: 12, bottom: 2 } },
+      scales: {
+        x: { grid: { display: false }, border: { color: '#e3e8f5' },
+             ticks: { color: '#898781', font: { size: 12, weight: '800' },
+                      maxRotation: 0, autoSkipPadding: 14 } },
+        // Sem começar no zero: câmbio e commodity variam poucos por cento, e
+        // um eixo desde zero achataria a linha até virar um traço reto.
+        y: { beginAtZero: false, grace: '18%', grid: { color: '#e9edf6' },
+             border: { display: false },
+             ticks: { color: '#898781', font: { size: 12, weight: '700' }, maxTicksLimit: 4,
+                      callback: v => prefixo + fmt(v, casas) } }
+      },
+      plugins: { legend: { display: false }, tooltip: { enabled: false } }
+    },
+    plugins: [{
+      id: 'pontas',
+      afterDatasetsDraw(chart) {
+        // Só as pontas: de onde saiu e onde está agora. Quinze rótulos numa
+        // faixa dessa altura viram borrão.
+        const ctx = chart.ctx, pts = chart.getDatasetMeta(0).data;
+        const v = chart.data.datasets[0].data;
+        if (!pts.length) return;
+        ctx.save();
+        ctx.font = '800 14px system-ui, sans-serif';
+        ctx.fillStyle = '#0f2460';
+        ctx.textBaseline = 'bottom';
+        // rotularTodos: o valor em cada ponto (dólar, 7 dias). Senão, só as
+        // pontas — e com um ponto só, um rótulo apenas, sem borrão.
+        let marcas;
+        if (rotularTodos) {
+          marcas = pts.map((_, i) => [i,
+            i === 0 ? 'left' : (i === pts.length-1 ? 'right' : 'center'),
+            i === 0 ? 4 : (i === pts.length-1 ? -4 : 0)]);
+        } else {
+          marcas = pts.length < 2
+            ? [[0, 'left', 6]]
+            : [[0, 'left', 6], [pts.length-1, 'right', -6]];
+        }
+        marcas.forEach(([i, al, dx]) => {
+          if (!pts[i]) return;
+          ctx.textAlign = al;
+          // Rotulando todos, escalona: um ponto acima, o vizinho abaixo, para
+          // dois valores próximos não encavalarem os rótulos.
+          const abaixo = rotularTodos && i % 2 === 1;
+          ctx.textBaseline = abaixo ? 'top' : 'bottom';
+          ctx.fillText(prefixo + fmt(v[i], casas),
+                       pts[i].x + dx, pts[i].y + (abaixo ? 10 : -9));
+        });
+        ctx.restore();
+      }
+    }]
+  });
+}
+
+ajustarEscala();
+tique();
+carregar();
+setInterval(tique, 20000);
+setInterval(carregar, INTERVALO_MS);
+</script>
+<script>
+  // TESTE: transforma o bloco de notícias num ticker vertical que fica passando.
+  // Roda periodicamente porque o painel recarrega e reescreve #bNoticias; quando
+  // isso acontece, o marcador some e a função remonta o ticker.
+  (function () {
+    function tickerize() {
+      var bloco = document.getElementById('bNoticias');
+      if (!bloco || bloco.dataset.ticker === '1') return;
+      var cols = bloco.querySelector('.noticias-cols');
+      if (!cols) return;
+
+      var itens = [];
+      bloco.querySelectorAll('.nt-col').forEach(function (col) {
+        var h3 = col.querySelector('h3');
+        var tema = h3 ? h3.textContent.trim() : '';
+        col.querySelectorAll('.nt-tit').forEach(function (t) {
+          var prox = t.nextElementSibling;
+          var meta = (prox && prox.classList && prox.classList.contains('nt-meta')) ? prox.outerHTML : '';
+          itens.push('<div class="tk-item"><span class="tk-tema">' + tema + '</span>' + t.outerHTML + meta + '</div>');
+        });
+      });
+      if (!itens.length) return;
+
+      var track = itens.join('');
+      // duplica a lista para o loop ser contínuo (translateY -50%)
+      cols.outerHTML = '<div class="tk-view"><div class="tk-track">' + track + track + '</div></div>';
+      bloco.dataset.ticker = '1';
+      var tk = bloco.querySelector('.tk-track');
+      if (tk) tk.style.animationDuration = Math.max(24, itens.length * 7) + 's';
+    }
+    setInterval(tickerize, 1500);
+  })();
+</script>
+</body>
+</html>
