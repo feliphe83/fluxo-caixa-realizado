@@ -273,11 +273,7 @@ function desenhar() {
   document.getElementById('bProdutos').innerHTML = `
     <div class="cab"><div><h2>Preço dos produtos</h2>
       <div class="fonte">CEPEA/ESALQ e bolsa, já convertidos</div></div>${idade(d.cepea)}</div>
-    ${tabelaProdutos(d.produtos)}
-    <div class="prod-noticias">
-      <h3><span class="pt" style="--cor:var(--serie-1)"></span>Notícias do dólar</h3>
-      ${listaNoticias((nt.dolar || []).slice(0, 4))}
-    </div>`;
+    ${tabelaProdutos(d.produtos)}`;
 
   // Rodapé largo: açúcar e etanol lado a lado.
   document.getElementById('bNoticias').innerHTML = `
