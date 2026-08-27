@@ -63,14 +63,14 @@
      A coluna da esquerda (dólar + açúcar) desce inteira pelas duas. */
   .grade { display: grid; gap: 14px; min-height: 0;
            grid-template-columns: 1.12fr 1fr 1fr;
-           grid-template-rows: 1fr;
-           grid-template-areas: "esq mid news"; }
+           grid-template-rows: auto 1fr;
+           grid-template-areas: "esq mid prod" "esq news news"; }
   .coluna { display: flex; flex-direction: column; gap: 14px; min-height: 0; }
   .col-esq { grid-area: esq; }
   .col-esq .bloco { flex: 1; }   /* dólar e açúcar dividem a altura */
   .col-mid { grid-area: mid; }
-  /* Preço da cana em cima, Preço dos produtos logo abaixo (o "quadrado" desceu). */
-  #bNoticias { grid-area: news; }   /* notícias ocupam a coluna direita inteira, como ticker */
+  #bProdutos { grid-area: prod; }
+  #bNoticias { grid-area: news; }
 
   .noticias-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 24px;
                    flex: 1; min-height: 0; overflow: hidden; }
@@ -132,25 +132,6 @@
            display: none; z-index: 40; }
   .tarja.on { display: block; }
   .carregando { color: var(--ink-3); font-size: 22px; font-weight: 700; padding: 40px 4px; }
-
-  /* ===== TESTE: notícias com fonte maior + ticker (fica passando) ===== */
-  #bNoticias h2 { font-size: 26px; }
-  #bNoticias .fonte { font-size: 14px; }
-  #bNoticias .nt-col h3 { font-size: 19px; margin-bottom: 8px; }
-  #bNoticias .nt-tit { font-size: 22px; line-height: 1.25; }
-  #bNoticias .nt-meta { font-size: 15px; margin-top: 3px; }
-  /* rolagem contínua das notícias */
-  .tk-view { flex: 1; min-height: 0; overflow: hidden; position: relative; margin-top: 8px; }
-  .tk-track { display: flex; flex-direction: column; gap: 14px; will-change: transform;
-              animation: tkscroll 160s linear infinite; }
-  #bNoticias:hover .tk-track { animation-play-state: paused; }
-  .tk-item { border-left: 6px solid var(--serie-2); background: rgba(235,104,52,.07);
-             border-radius: 8px; padding: 10px 14px 12px; }
-  .tk-item .tk-tema { display: inline-block; font-size: 13px; font-weight: 800; text-transform: uppercase;
-                      letter-spacing: .5px; color: var(--serie-2); margin-bottom: 4px; }
-  .tk-item .nt-tit { font-size: 24px; font-weight: 800; line-height: 1.22; }
-  .tk-item .nt-meta { font-size: 15px; }
-  @keyframes tkscroll { from { transform: translateY(0); } to { transform: translateY(-50%); } }
 </style>
 </head>
 <body>
@@ -181,8 +162,8 @@
     <div class="coluna col-mid">
       <div class="bloco" id="bIndicadores"></div>
       <div class="bloco" id="bCana"></div>
-      <div class="bloco" id="bProdutos"></div>
     </div>
+    <div class="bloco" id="bProdutos"></div>
     <div class="bloco" id="bNoticias"></div>
   </div>
 
@@ -273,7 +254,11 @@ function desenhar() {
   document.getElementById('bProdutos').innerHTML = `
     <div class="cab"><div><h2>Preço dos produtos</h2>
       <div class="fonte">CEPEA/ESALQ e bolsa, já convertidos</div></div>${idade(d.cepea)}</div>
-    ${tabelaProdutos(d.produtos)}`;
+    ${tabelaProdutos(d.produtos)}
+    <div class="prod-noticias">
+      <h3><span class="pt" style="--cor:var(--serie-1)"></span>Notícias do dólar</h3>
+      ${listaNoticias((nt.dolar || []).slice(0, 4))}
+    </div>`;
 
   // Rodapé largo: açúcar e etanol lado a lado.
   document.getElementById('bNoticias').innerHTML = `
@@ -383,40 +368,6 @@ tique();
 carregar();
 setInterval(tique, 20000);
 setInterval(carregar, INTERVALO_MS);
-</script>
-<script>
-  // TESTE: transforma o bloco de notícias num ticker vertical que fica passando.
-  // Roda periodicamente porque o painel recarrega e reescreve #bNoticias; quando
-  // isso acontece, o marcador some e a função remonta o ticker.
-  (function () {
-    function tickerize() {
-      var bloco = document.getElementById('bNoticias');
-      if (!bloco || bloco.dataset.ticker === '1') return;
-      var cols = bloco.querySelector('.noticias-cols');
-      if (!cols) return;
-
-      var itens = [];
-      bloco.querySelectorAll('.nt-col').forEach(function (col) {
-        var h3 = col.querySelector('h3');
-        var tema = h3 ? h3.textContent.trim() : '';
-        // Pega a âncora .nt inteira (mantém href e target=_blank) para a notícia
-        // continuar clicável dentro do destaque.
-        col.querySelectorAll('a.nt').forEach(function (a) {
-          itens.push('<div class="tk-item"><span class="tk-tema">' + tema + '</span>' + a.outerHTML + '</div>');
-        });
-      });
-      if (!itens.length) return;
-
-      var track = itens.join('');
-      // Duplica a lista para o loop ser contínuo (translateY -50%).
-      cols.outerHTML = '<div class="tk-view"><div class="tk-track">' + track + track + '</div></div>';
-      bloco.dataset.ticker = '1';
-      // Bem devagar (quase parando): ~18s por notícia, mínimo de 120s.
-      var tk = bloco.querySelector('.tk-track');
-      if (tk) tk.style.animationDuration = Math.max(120, itens.length * 18) + 's';
-    }
-    setInterval(tickerize, 1500);
-  })();
 </script>
 </body>
 </html>
