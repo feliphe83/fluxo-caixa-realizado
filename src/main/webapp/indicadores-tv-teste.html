@@ -391,9 +391,9 @@ setInterval(carregar, INTERVALO_MS);
   (function () {
     function tickerize() {
       var bloco = document.getElementById('bNoticias');
-      if (!bloco || bloco.dataset.ticker === '1') return;
+      if (!bloco) return;
       var cols = bloco.querySelector('.noticias-cols');
-      if (!cols) return;
+      if (!cols) return;   // já virou ticker (ou está vazio) → nada a remontar
 
       var itens = [];
       bloco.querySelectorAll('.nt-col').forEach(function (col) {
@@ -410,12 +410,15 @@ setInterval(carregar, INTERVALO_MS);
       var track = itens.join('');
       // Duplica a lista para o loop ser contínuo (translateY -50%).
       cols.outerHTML = '<div class="tk-view"><div class="tk-track">' + track + track + '</div></div>';
-      bloco.dataset.ticker = '1';
       // Bem devagar (quase parando): ~18s por notícia, mínimo de 120s.
       var tk = bloco.querySelector('.tk-track');
       if (tk) tk.style.animationDuration = Math.max(120, itens.length * 18) + 's';
     }
-    setInterval(tickerize, 1500);
+    // Remonta o ticker toda vez que o painel reescreve as notícias (sem piscar
+    // e sem depender de marcador que grudava no elemento).
+    var alvo = document.getElementById('bNoticias');
+    if (alvo) new MutationObserver(tickerize).observe(alvo, { childList: true });
+    tickerize();
   })();
 </script>
 </body>
