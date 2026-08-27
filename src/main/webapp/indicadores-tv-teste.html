@@ -141,9 +141,7 @@
   #bNoticias .nt-meta { font-size: 15px; margin-top: 3px; }
   /* rolagem contínua das notícias */
   .tk-view { flex: 1; min-height: 0; overflow: hidden; position: relative; margin-top: 8px; }
-  .tk-track { display: flex; flex-direction: column; gap: 14px; will-change: transform;
-              animation: tkscroll 40s linear infinite; }
-  #bNoticias:hover .tk-track { animation-play-state: paused; }
+  .tk-track { display: flex; flex-direction: column; gap: 14px; }
   .tk-item { border-left: 6px solid var(--serie-2); background: rgba(235,104,52,.07);
              border-radius: 8px; padding: 10px 14px 12px; }
   .tk-item .tk-tema { display: inline-block; font-size: 13px; font-weight: 800; text-transform: uppercase;
@@ -408,11 +406,9 @@ setInterval(carregar, INTERVALO_MS);
       if (!itens.length) return;
 
       var track = itens.join('');
-      // duplica a lista para o loop ser contínuo (translateY -50%)
-      cols.outerHTML = '<div class="tk-view"><div class="tk-track">' + track + track + '</div></div>';
+      // Estático (sem rolar): lista única em destaque.
+      cols.outerHTML = '<div class="tk-view"><div class="tk-track">' + track + '</div></div>';
       bloco.dataset.ticker = '1';
-      var tk = bloco.querySelector('.tk-track');
-      if (tk) tk.style.animationDuration = Math.max(24, itens.length * 7) + 's';
     }
     setInterval(tickerize, 1500);
   })();
