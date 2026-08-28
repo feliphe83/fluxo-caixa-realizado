@@ -39,7 +39,7 @@
   #palco-wrap { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
   #palco { position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px;
            transform-origin: center center; padding: 18px 24px 16px;
-           display: grid; grid-template-rows: auto auto auto 1fr 300px; gap: 10px; }
+           display: grid; grid-template-rows: auto auto auto auto 1fr 300px; gap: 10px; }
 
   /* ── Topo ── */
   .topo { display: flex; align-items: center; gap: 16px; }
@@ -234,6 +234,7 @@
   </div>
 
   <div class="meses" id="meses"></div>
+  <div class="negocios" id="tipos"></div>
   <div class="negocios" id="negocios" style="display:none"></div>
 
   <div class="bloco"><div id="quadro"><div class="carregando">Consultando o orçamento…</div></div></div>
@@ -294,6 +295,7 @@ const VOLTA_MS = 3 * 60 * 1000;
 let MANUAL = false;          // alguém mexeu?
 let ABERTOS = {};            // grupos abertos
 let NEGOCIO = '';            // '' = todos
+let TIPO = '';                // '' = Compra + Investimento
 let relogioVolta = null;     // conta o tempo até voltar ao automático
 
 function mexeu() {
@@ -307,6 +309,7 @@ function voltarAoAutomatico() {
   MANUAL = false;
   ABERTOS = {};
   NEGOCIO = '';
+  TIPO = '';
   clearTimeout(relogioVolta);
   document.getElementById('manual').classList.remove('on');
   SEL = new Set([ mesAutomatico() ]);
@@ -385,6 +388,14 @@ function trocarNegocio(n) {
   desenhar();
 }
 
+function trocarTipo(t) {
+  if (t === TIPO) return;
+  TIPO = t;
+  ABERTOS = {};
+  mexeu();
+  desenhar();
+}
+
 const fmt0 = v => Math.round(Number(v)||0).toLocaleString('pt-BR');
 const fmt2 = (v,c) => (Number(v)||0).toLocaleString('pt-BR',
   {minimumFractionDigits:c==null?2:c, maximumFractionDigits:c==null?2:c});
@@ -443,6 +454,7 @@ function agregar() {
   const grupos = new Map();
   for (const l of DADOS.linhas) {
     if (NEGOCIO && l.negocio !== NEGOCIO) continue;
+    if (TIPO && l.tipo !== TIPO) continue;
     const noMes = SEL.has(l.anomes), noAcum = l.anomes <= limite;
     if (!noMes && !noAcum) continue;
     const k = l.codGrupo + '|' + l.grupo;
@@ -476,6 +488,7 @@ function serie() {
   const porMes = new Map(DADOS.meses.map(m => [m.anomes, {label:m.label, p:0, r:0}]));
   for (const l of DADOS.linhas) {
     if (NEGOCIO && l.negocio !== NEGOCIO) continue;
+    if (TIPO && l.tipo !== TIPO) continue;
     const m = porMes.get(l.anomes);
     if (m) { m.p += +l.orcado; m.r += +l.realizado; }
   }
@@ -503,6 +516,13 @@ function desenhar() {
   document.getElementById('meses').innerHTML = DADOS.meses.map(m =>
     `<button class="${SEL.has(m.anomes)?'on':''} ${comDado.has(m.anomes)?'':'futuro'}"
              onclick="trocarMes(${m.anomes}, event)">${esc(m.nome)}</button>`).join('');
+
+  // A tira de Compra/Investimento fica sempre visível — a distinção sempre
+  // existe, ao contrário do negócio, que depende de a base ter a coluna.
+  document.getElementById('tipos').innerHTML = '<span class="rot">Tipo</span>'
+    + `<button class="${TIPO===''?'on':''}" onclick="trocarTipo('')">Compra + Investimento</button>`
+    + `<button class="${TIPO==='Compra'?'on':''}" onclick="trocarTipo('Compra')">Compra</button>`
+    + `<button class="${TIPO==='Investimento'?'on':''}" onclick="trocarTipo('Investimento')">Investimento</button>`;
 
   // A tira de negócios só existe quando há negócio: filtro que não filtra é
   // pior do que filtro nenhum.
