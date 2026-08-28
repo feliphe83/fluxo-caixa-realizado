@@ -38,6 +38,12 @@ import java.util.logging.Logger;
  * Colunas devolvidas: tipo, nr_solicitacao, cod_material (já é a descrição
  * do material, não o código), cod_unidade, preco_unitario, precototal,
  * quantidade, nome (fornecedor), observacao, desc_objetocusto.
+ *
+ * Na ordem de compra IMEDIATA, preco_unitario vinha igual a precototal (o
+ * total do item, de fn_calcula_valoritem, sem dividir pela quantidade) —
+ * corrigido para preco_total/quantidade, senão "Preço Unitário × Quantidade"
+ * na mensagem do alerta não batia com o "Total". A ordem de compra normal
+ * (cotação) já calculava o unitário corretamente e não foi alterada.
  */
 public class OrdemCompraPendenteDAO {
 
@@ -241,7 +247,7 @@ public class OrdemCompraPendenteDAO {
         UNION ALL
 
         select 'ORDEM DE COMPRA IMEDIATA', nroc_imediata, material.fn_buscadescmaterial(cod_material,sysdate) cod_material,
-               unidade, preco_total, preco_total, quantidade, fornecedor, observacao, null objetodecusto
+               unidade, decode(quantidade, 0, 0, preco_total/quantidade), preco_total, quantidade, fornecedor, observacao, null objetodecusto
         from (
         select ordemcompraimediata.nroc_imediata
              , ordemcompraimediata.data_oc
