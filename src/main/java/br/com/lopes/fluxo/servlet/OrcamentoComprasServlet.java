@@ -225,6 +225,7 @@ public class OrcamentoComprasServlet extends HttpServlet {
             e.addProperty("empenho", vazioVira(texto(l.get("empenho")), "Sem descrição"));
             e.addProperty("codObjeto", texto(l.get("cod_objeto")));
             e.addProperty("objeto", vazioVira(texto(l.get("objeto")), "Sem objeto de custo"));
+            e.addProperty("tipo", vazioVira(texto(l.get("tipo")), "Compra"));
             e.addProperty("orcado", o);
             e.addProperty("realizado", rr);
             arr.add(e);

@@ -15,6 +15,11 @@
 -- orçamento em custo.lancamento_custo (para as filiais que ainda não têm
 -- atualização de início de produção), orçamento em material.realizado para as
 -- que têm, orçamento lançado à mão (geradomanual = 'M') e o realizado.
+--
+-- COMPRA x INVESTIMENTO: cod_tipoempenho = 5 é investimento, os demais
+-- (1, 2, 6, 8, 9, 11, 14) são compra — a mesma distinção em todas as quatro
+-- pernas. Antes só entravam os tipos de compra; agora as duas categorias
+-- vêm juntas, com a coluna TIPO dizendo qual é qual, e a tela filtra.
 select tmp.anomes
      , tmp.cod_negocio
      , tmp.negocio
@@ -24,6 +29,7 @@ select tmp.anomes
      , tmp.empenho
      , tmp.cod_objeto
      , tmp.objeto
+     , tmp.tipo
      , sum(tmp.vlr_orcado)                        orcado
      , sum(tmp.vlr_realizado)                     realizado
      , sum(tmp.vlr_orcado - tmp.vlr_realizado)    diferenca
@@ -36,6 +42,7 @@ from ( select lc.anomes
             , empenho.descricao                   empenho
             , %OBJ_COD%                           cod_objeto
             , %OBJ_DESC%                          objeto
+            , case when empenho.cod_tipoempenho = 5 then 'Investimento' else 'Compra' end tipo
             , nvl(lc.valor,0)                     vlr_orcado
             , 0                                   vlr_realizado
        from   custo.lancamento_custo lc
@@ -56,7 +63,7 @@ from ( select lc.anomes
        and    lc.cod_grupoempresa            = 1
        and    grupoempenho.cod_grupoempenho  = empenho.cod_grupoempenho
        and    empenho.cod_empenho            = lc.cod_empenho
-       and    empenho.cod_tipoempenho        in (1, 2, 6, 8, 9, 11, 14)
+       and    empenho.cod_tipoempenho        in (1, 2, 5, 6, 8, 9, 11, 14)
        and    empenho.orcamento_material     = 'S'
 
        union  all
@@ -70,6 +77,7 @@ from ( select lc.anomes
             , empenho.descricao                   empenho
             , %OBJ_COD%                           cod_objeto
             , %OBJ_DESC%                          objeto
+            , case when empenho.cod_tipoempenho = 5 then 'Investimento' else 'Compra' end tipo
             , nvl(lc.valor,0)                     vlr_orcado
             , 0                                   vlr_realizado
        from   geral.atualizacaoinicioproducao
@@ -90,7 +98,7 @@ from ( select lc.anomes
        and    lc.cod_grupoempresa                                     = 1
        and    grupoempenho.cod_grupoempenho                           = empenho.cod_grupoempenho
        and    empenho.cod_empenho                                     = lc.cod_empenho
-       and    empenho.cod_tipoempenho        in (1, 2, 6, 8, 9, 11, 14)
+       and    empenho.cod_tipoempenho        in (1, 2, 5, 6, 8, 9, 11, 14)
        and    empenho.orcamento_material                              = 'S'
 
        union  all
@@ -104,13 +112,14 @@ from ( select lc.anomes
             , empenho.descricao                   empenho
             , %OBJ_COD%                           cod_objeto
             , %OBJ_DESC%                          objeto
+            , case when empenho.cod_tipoempenho = 5 then 'Investimento' else 'Compra' end tipo
             , nvl(lc.valor,0)                     vlr_orcado
             , 0                                   vlr_realizado
        from   material.realizado lc
             , custo.empenho
             , custo.grupoempenho
        where  grupoempenho.cod_grupoempenho = empenho.cod_grupoempenho
-       and    empenho.cod_tipoempenho        in (1, 2, 6, 8, 9, 11, 14)
+       and    empenho.cod_tipoempenho        in (1, 2, 5, 6, 8, 9, 11, 14)
        and    empenho.orcamento_material    = 'S'
        and    empenho.cod_empenho           = lc.cod_empenho
        and    lc.tipo                       = 'O'
@@ -132,13 +141,14 @@ from ( select lc.anomes
             , empenho.descricao                   empenho
             , %OBJ_COD%                           cod_objeto
             , %OBJ_DESC%                          objeto
+            , case when empenho.cod_tipoempenho = 5 then 'Investimento' else 'Compra' end tipo
             , 0                                   vlr_orcado
             , nvl(lc.valor,0)                     vlr_realizado
        from   material.realizado lc
             , custo.empenho
             , custo.grupoempenho
        where  grupoempenho.cod_grupoempenho = empenho.cod_grupoempenho
-       and    empenho.cod_tipoempenho        in (1, 2, 6, 8, 9, 11, 14)
+       and    empenho.cod_tipoempenho        in (1, 2, 5, 6, 8, 9, 11, 14)
        and    empenho.orcamento_material    = 'S'
        and    empenho.cod_empenho           = lc.cod_empenho
        and    lc.tipo                       = 'R'
@@ -151,5 +161,5 @@ from ( select lc.anomes
 where 1 = 1
 %FILTRO_NEGOCIO%
 group by tmp.anomes, tmp.cod_negocio, tmp.negocio, tmp.cod_grupoempenho, tmp.grupo
-       , tmp.cod_empenho, tmp.empenho, tmp.cod_objeto, tmp.objeto
+       , tmp.cod_empenho, tmp.empenho, tmp.cod_objeto, tmp.objeto, tmp.tipo
 order by tmp.grupo, tmp.empenho, tmp.objeto, tmp.anomes

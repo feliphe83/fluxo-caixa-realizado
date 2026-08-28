@@ -260,6 +260,14 @@
         <label for="selPeriodo">Período</label>
         <select id="selPeriodo" onchange="carregar()"></select>
       </div>
+      <div class="campo">
+        <label for="selTipo">Tipo</label>
+        <select id="selTipo" onchange="desenhar()">
+          <option value="Compra">Compra</option>
+          <option value="Investimento">Investimento</option>
+          <option value="">Compra + Investimento</option>
+        </select>
+      </div>
       <div class="campo" id="campoNegocio" style="display:none">
         <label for="selNegocio">Negócio</label>
         <select id="selNegocio" onchange="desenhar()"></select>
@@ -367,6 +375,8 @@ function montarNegocios(j) {
 }
 function negocio(){ return document.getElementById('campoNegocio').style.display==='none'
                       ? '' : document.getElementById('selNegocio').value; }
+/** "" = Compra + Investimento (sem filtro); senão filtra por um dos dois. */
+function tipoEmpenho(){ return document.getElementById('selTipo').value; }
 
 /** A tira de meses. O último com movimento abre marcado — é onde a
  *  execução está acontecendo; abrir em março obrigaria a clicar sempre. */
@@ -425,10 +435,12 @@ function rotuloSelecao() {
 
 function agregar() {
   const neg = negocio();
+  const tipo = tipoEmpenho();
   const limite = mesLimite();
   const grupos = new Map();
   for (const l of DADOS.linhas) {
     if (neg && l.negocio !== neg) continue;
+    if (tipo && l.tipo !== tipo) continue;
     const noMes = SEL.has(l.anomes);
     const noAcum = l.anomes <= limite;
     if (!noMes && !noAcum) continue;
@@ -467,9 +479,11 @@ function agregar() {
 /** Série mês a mês para os gráficos, já com o negócio aplicado. */
 function serie() {
   const neg = negocio();
+  const tipo = tipoEmpenho();
   const porMes = new Map(DADOS.meses.map(m => [m.anomes, {label:m.label, p:0, r:0}]));
   for (const l of DADOS.linhas) {
     if (neg && l.negocio !== neg) continue;
+    if (tipo && l.tipo !== tipo) continue;
     const m = porMes.get(l.anomes);
     if (m) { m.p += +l.orcado; m.r += +l.realizado; }
   }
@@ -663,6 +677,7 @@ function exportarExcel() {
   if (!mensal && !acum) { alert('Marque "Mensal" ou "Acumulado" para exportar.'); return; }
   const nomeMes = rotuloSelecao();
   const neg = negocio();
+  const tipo = tipoEmpenho();
   const p = periodoEscolhido();
 
   const cab = ['Nível', 'Código', 'Descrição'];
@@ -701,7 +716,7 @@ function exportarExcel() {
   const aoa = [
     ['Usina Santa Clotilde S/A'],
     ['Orçamento de Compras — Planejado x Realizado'],
-    [p.rotulo + (neg ? ' · Negócio: ' + neg : '')],
+    [p.rotulo + ' · ' + (tipo || 'Compra + Investimento') + (neg ? ' · Negócio: ' + neg : '')],
     [],
     cab,
     ...linhas
