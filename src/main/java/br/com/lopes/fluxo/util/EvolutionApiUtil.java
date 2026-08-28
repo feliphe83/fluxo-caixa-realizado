@@ -82,16 +82,21 @@ public final class EvolutionApiUtil {
     }
 
     public static void enviarDocumento(String telefone, byte[] pdf, String nomeArquivo, String legenda) throws Exception {
+        enviarDocumento(telefone, pdf, nomeArquivo, legenda, "application/pdf");
+    }
+
+    /** Mesmo que {@link #enviarDocumento(String, byte[], String, String)}, com o mimetype explícito (ex.: anexo Excel). */
+    public static void enviarDocumento(String telefone, byte[] arquivo, String nomeArquivo, String legenda, String mimetype) throws Exception {
         String numero = normalizarNumero(telefone);
         if (numero == null) throw new IllegalArgumentException("Telefone vazio/inválido");
 
         JsonObject body = new JsonObject();
         body.addProperty("number", numero);
         body.addProperty("mediatype", "document");
-        body.addProperty("mimetype", "application/pdf");
+        body.addProperty("mimetype", mimetype);
         body.addProperty("fileName", nomeArquivo);
         body.addProperty("caption", legenda);
-        body.addProperty("media", Base64.getEncoder().encodeToString(pdf));
+        body.addProperty("media", Base64.getEncoder().encodeToString(arquivo));
 
         chamar("/message/sendMedia/" + instancia(), body);
     }

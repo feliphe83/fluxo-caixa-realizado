@@ -54,7 +54,8 @@ public class RelatorioAgendadoScheduler implements ServletContextListener {
             Map.entry("contrato_aprovacao", new AlertaContratoAprovacaoHandler()),
             Map.entry("parcela_contrato_aprovacao", new AlertaParcelaContratoHandler()),
             Map.entry("orcamento_estourado", new AlertaOrcamentoEstouradoHandler()),
-            Map.entry("solicitacao_estourada", new AlertaSolicitacaoEstouradaHandler())
+            Map.entry("solicitacao_estourada", new AlertaSolicitacaoEstouradaHandler()),
+            Map.entry("estoque_parado", new EstoqueParadoHandler())
     );
 
     /** Execuções mais antigas que isso são descartadas — os recorrentes geram um registro por ciclo. */
@@ -92,6 +93,8 @@ public class RelatorioAgendadoScheduler implements ServletContextListener {
             // Preço da cana: cria a tabela e semeia os meses conhecidos antes
             // de o painel de indicadores pedir a tabela pela primeira vez.
             new br.com.lopes.fluxo.dao.PrecoCanaDAO().garantirEstrutura();
+            // Alerta de estoque parado: tabelas do histórico semanal (snapshot/comparação).
+            new br.com.lopes.fluxo.dao.EstoqueParadoSnapshotDAO().garantirEstrutura();
         } catch (Exception e) {
             LOG.log(Level.SEVERE, "Não foi possível preparar as tabelas dos agendamentos", e);
         }

@@ -223,6 +223,10 @@
       <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
       Relatórios WhatsApp
     </div>
+    <div class="sb-item" id="nav-relatoriosusuario" onclick="setSec('relatoriosusuario')">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+      Relatórios por Usuário
+    </div>
   </nav>
   <div class="sb-foot">
     <div class="sb-user">
@@ -267,6 +271,7 @@
       <button class="tab"    id="tab-servicoscorte" onclick="setSec('servicoscorte')">🌾 Serviços de Corte</button>
       <button class="tab"    id="tab-classeoperativa" onclick="setSec('classeoperativa')">🚜 De-Para Classe Operativa</button>
       <button class="tab"    id="tab-whatsapp"    onclick="setSec('whatsapp')">📱 Relatórios WhatsApp</button>
+      <button class="tab"    id="tab-relatoriosusuario" onclick="setSec('relatoriosusuario')">👤 Relatórios por Usuário</button>
       <button class="tab"    id="tab-reenvio"     onclick="setSec('reenvio')">🔁 Reenviar Alerta</button>
       <button class="tab"    id="tab-externo"     onclick="setSec('externo')">🚛 Empresas Externas</button>
       <button class="tab"    id="tab-paradas"     onclick="setSec('paradas')">🛑 Paradas da Moagem</button>
@@ -600,6 +605,33 @@
           </thead>
           <tbody id="tbWpp">
             <tr><td colspan="7" style="text-align:center;padding:28px;color:var(--text3)">Carregando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="sec" id="sec-relatoriosusuario">
+      <div class="panel">
+        <div class="ph">
+          <div class="ph-title">Relatórios por Usuário</div>
+          <div class="search-wrap">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input class="search-inp" id="searchRU" placeholder="Buscar usuário…" oninput="filtrarRelatoriosUsuario()">
+          </div>
+        </div>
+        <div style="padding:14px 18px 0;font-size:12.5px;color:var(--text2);line-height:1.6">
+          Cada usuário ativo aparece aqui, mesmo sem nenhum relatório configurado — pra notar quem deveria
+          estar recebendo algo e não está. Pra mudar quem recebe o quê, edite o agendamento em
+          <b>Relatórios WhatsApp</b>.
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Usuário</th><th>Telefone</th><th>Relatórios que recebe</th>
+            </tr>
+          </thead>
+          <tbody id="tbRU">
+            <tr><td colspan="3" style="text-align:center;padding:28px;color:var(--text3)">Carregando…</td></tr>
           </tbody>
         </table>
       </div>
@@ -1128,6 +1160,7 @@
       <label>Tipo de Envio</label>
       <select id="mWppTipo" onchange="atualizarCamposTipoWpp()">
         <option value="combustivel">Relatório de Combustível (PDF)</option>
+        <option value="estoque_parado">Alerta de Estoque Parado (PDF)</option>
         <option value="oc_pendente">Alerta de Ordem de Compra pendente</option>
         <option value="variacao_preco">Alerta de Variação de Preço</option>
         <option value="divergencia_nf">Alerta de Divergência de NF</option>
@@ -1338,6 +1371,11 @@ function setSec(s) {
     document.getElementById('tsub').textContent='Agende o envio automático de relatórios em PDF por WhatsApp';
     document.getElementById('btnAcao').style.display='none';
     carregarRelatoriosAgendados();
+  } else if(s==='relatoriosusuario'){
+    document.getElementById('ttitle').textContent='Relatórios por Usuário';
+    document.getElementById('tsub').textContent='Acompanhe quais relatórios cada usuário está configurado para receber';
+    document.getElementById('btnAcao').style.display='none';
+    carregarRelatoriosPorUsuario();
   } else if(s==='externo'){
     document.getElementById('ttitle').textContent='Empresas Externas';
     document.getElementById('tsub').textContent='Acesso das empresas contratadas ao portal de manobra';
@@ -2677,7 +2715,7 @@ async function excluirTodosClasseOp() {
 
 // ── Relatórios WhatsApp ───────────────────────────────────────────
 const DIAS_SEMANA_WPP = {1:'Segunda',2:'Terça',3:'Quarta',4:'Quinta',5:'Sexta',6:'Sábado',7:'Domingo'};
-const TIPOS_RELATORIO_WPP = {combustivel:'Combustível (PDF)', oc_pendente:'Alerta de Ordem de Compra',
+const TIPOS_RELATORIO_WPP = {combustivel:'Combustível (PDF)', estoque_parado:'Estoque Parado (PDF)', oc_pendente:'Alerta de Ordem de Compra',
                              variacao_preco:'Alerta de Variação de Preço', divergencia_nf:'Alerta de Divergência de NF',
                              contrato_limite:'Alerta de Contrato no Limite',
                              contrato_vencendo:'Contrato de Arrendamento a Vencer',
@@ -3016,6 +3054,67 @@ async function excluirWpp(id, nome) {
     carregarRelatoriosAgendados();
   } catch(e) { toast('Erro: ' + e.message, 'red'); }
 }
+
+// ── Relatórios por Usuário ──────────────────────────────────────────
+let RELATORIOS_POR_USUARIO = [];
+
+/** "Segunda às 08:00" ou "A cada 10 min" — mesma leitura da tela de agendamentos. */
+function recorrenciaTexto(a) {
+  if (a.intervaloMinutos) return 'A cada ' + a.intervaloMinutos + ' min';
+  if (a.diaSemana && a.horaEnvio) return DIAS_SEMANA_WPP[a.diaSemana] + ' às ' + String(a.horaEnvio).slice(0, 5);
+  return '—';
+}
+
+async function carregarRelatoriosPorUsuario() {
+  try {
+    const r = await fetch('api/admin/relatorio-agendado/por-usuario');
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro);
+    RELATORIOS_POR_USUARIO = j.data;
+    renderRelatoriosPorUsuario();
+  } catch(e) {
+    document.getElementById('tbRU').innerHTML =
+      `<tr><td colspan="3" style="text-align:center;padding:28px;color:var(--red)">Erro: ${esc(e.message)}</td></tr>`;
+  }
+}
+
+/** Agrupa as linhas (uma por usuário+relatório, vindas com LEFT JOIN) por usuário. */
+function agruparPorUsuario(linhas) {
+  const mapa = new Map();
+  linhas.forEach(l => {
+    if (!mapa.has(l.idUsuario)) mapa.set(l.idUsuario, { nome: l.nomeUsuario, telefone: l.telefone, relatorios: [] });
+    if (l.idAgendamento) mapa.get(l.idUsuario).relatorios.push(l);
+  });
+  return mapa;
+}
+
+function renderRelatoriosPorUsuario() {
+  const termo = (document.getElementById('searchRU').value || '').toLowerCase();
+  const mapa = agruparPorUsuario(RELATORIOS_POR_USUARIO);
+  const usuarios = [...mapa.values()].filter(u => !termo || u.nome.toLowerCase().includes(termo));
+
+  if (usuarios.length === 0) {
+    document.getElementById('tbRU').innerHTML =
+      '<tr><td colspan="3" style="text-align:center;padding:32px;color:var(--text3)">Nenhum usuário encontrado.</td></tr>';
+    return;
+  }
+
+  document.getElementById('tbRU').innerHTML = usuarios.map(u => `
+    <tr>
+      <td><strong>${esc(u.nome)}</strong></td>
+      <td class="muted">${esc(u.telefone || '—')}</td>
+      <td>${u.relatorios.length === 0
+        ? '<span class="muted">Nenhum relatório configurado</span>'
+        : u.relatorios.map(rel => `
+            <span class="badge ${rel.ativoAgendamento ? 'badge-green' : 'badge-red'}"
+                  style="margin:2px 6px 2px 0" title="${esc(recorrenciaTexto(rel))}${rel.ativoAgendamento ? '' : ' · agendamento desativado'}">
+              ${esc(TIPOS_RELATORIO_WPP[rel.tipoRelatorio] || rel.tipoRelatorio)} — ${esc(rel.nomeAgendamento)}${rel.copia ? ' (cópia)' : ''}
+            </span>`).join('')}
+      </td>
+    </tr>`).join('');
+}
+
+function filtrarRelatoriosUsuario() { renderRelatoriosPorUsuario(); }
 
 </script>
 <script src="js/agro-chat-widget.js" defer>

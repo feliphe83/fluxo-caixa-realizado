@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alerta de Estoque Parado</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --ink: #0f2460; --ink-2: #52514e; --ink-3: #898781; --grade: #e9edf6;
+    --pos: #14603f; --neg: #b23b3b;
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f4f6fb; color: #1a1a2e; }
+
+  .header { background: linear-gradient(135deg, #0f2460 0%, #1a3a7c 100%); color: white; padding: 16px 28px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+  .header-left { display: flex; align-items: center; gap: 14px; min-width: 0; }
+  .header-logo { width: 44px; height: 44px; border-radius: 8px; background: white; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 5px; flex-shrink: 0; }
+  .header-logo img { width: 100%; height: 100%; object-fit: contain; }
+  .header-title { font-size: 19px; font-weight: 800; }
+  .header-sub { font-size: 12.5px; opacity: .9; margin-top: 3px; font-weight: 600; }
+  .header-periodo { font-size: 11.5px; opacity: .72; margin-top: 3px; }
+  .header-right { display: flex; align-items: center; gap: 18px; flex-shrink: 0; }
+  .header-emitido { font-size: 10.5px; opacity: .85; text-align: right; line-height: 1.5; white-space: nowrap; }
+  .header-emitido b { font-size: 13px; display: block; }
+  .btn-voltar { display: flex; align-items: center; gap: 7px; padding: 8px 16px; border-radius: 8px; border: 1.5px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.9); font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .btn-voltar:hover { background: rgba(255,255,255,0.18); }
+
+  .conteudo { max-width: 1400px; margin: 0 auto; padding: 22px; }
+
+  .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
+  .card { background: white; border: 1.5px solid #e3e8f5; border-radius: 14px; padding: 16px 18px; }
+  .card .rot { font-size: 11px; font-weight: 700; color: var(--ink-3); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 6px; }
+  .card .val { font-size: 22px; font-weight: 800; color: var(--ink); }
+  .card .sub { font-size: 12px; color: var(--ink-2); margin-top: 4px; }
+  .card .sub.pos { color: var(--pos); font-weight: 700; }
+  .card .sub.neg { color: var(--neg); font-weight: 700; }
+
+  .barra-acoes { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+  .barra-acoes .esp { flex: 1; }
+  .btn-acao { display: flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 8px; border: 1.5px solid #d6ddec; background: white; color: var(--ink-2); font-size: 13px; font-weight: 600; cursor: pointer; }
+  .btn-acao:hover { border-color: #1a3a7c; color: #1a3a7c; }
+
+  .secao-titulo { font-size: 14px; font-weight: 800; color: var(--ink); margin: 22px 0 10px; }
+
+  .mini-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 8px; }
+
+  .tabela-wrap { background: white; border: 1.5px solid #e3e8f5; border-radius: 14px; overflow: auto; }
+  table.ep { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+  table.ep thead th { background: #0f2460; color: #fff; font-weight: 700; font-size: 11px; padding: 8px; position: sticky; top: 0; z-index: 2; text-align: right; }
+  table.ep th.esq, table.ep td.esq { text-align: left; }
+  table.ep td { padding: 6px 8px; border-bottom: 1px solid var(--grade); text-align: right; color: var(--ink-2); }
+  table.ep tbody tr:hover td { filter: brightness(0.97); }
+  table.ep tfoot td { padding: 9px 8px; border-top: 2px solid #1a3a7c; background: #eef1f7; font-weight: 800; color: var(--ink); text-align: right; }
+  table.ep tfoot td.esq { text-align: left; }
+  .faixa-tag { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 10.5px; font-weight: 700; }
+  .faixa-91-180 { background: #fdf3d9; color: #8a6d1a; }
+  .faixa-181-365 { background: #fbe4d0; color: #a04e14; }
+  .faixa-acima-365 { background: #fbe0e0; color: #a02020; }
+  .neg { color: var(--neg); }
+  .pos { color: var(--pos); }
+
+  .estado { padding: 60px 20px; text-align: center; color: var(--ink-3); }
+  .spinner { width: 34px; height: 34px; border: 3px solid #e3e8f5; border-top-color: #1a3a7c; border-radius: 50%; animation: girar .8s linear infinite; margin: 0 auto 14px; }
+  @keyframes girar { to { transform: rotate(360deg); } }
+  .erro-box { background: #fdecec; border: 1.5px solid #f5c2c2; color: #b23b3b; border-radius: 10px; padding: 14px 18px; font-size: 13px; }
+
+  @media print {
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    .barra-acoes, .btn-voltar, .snav-sidebar, .snav-toggle, .snav-backdrop { display: none !important; }
+    body { background: #fff; }
+    .conteudo { max-width: none; padding: 0; }
+    .header { background: #fff !important; color: #0f2460 !important; padding: 0 0 8px; border-bottom: 2px solid #0f2460; margin-bottom: 10px; }
+    .header-logo { background: #0f2460 !important; }
+    .header-title, .header-sub, .header-periodo, .header-emitido, .header-emitido b { color: #0f2460 !important; opacity: 1 !important; }
+    .card { border: 1px solid #cdd7ea; }
+    .tabela-wrap { border: none; overflow: visible; }
+    table.ep { font-size: 8px; width: 100%; }
+    table.ep thead th { position: static; background: #e8eef7 !important; color: #0f2460 !important; border: 1px solid #cdd7ea; padding: 3px; }
+    table.ep td { padding: 2px 3px; border: 1px solid #e3e8f5; color: #1a1a2e; }
+    table.ep tfoot td { background: #e8eef7 !important; color: #0f2460 !important; border: 1px solid #cdd7ea; }
+    @page { size: landscape; margin: 6mm; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="header-logo"><img src="img/logo.png" alt="USC"></div>
+    <div>
+      <div class="header-title">Usina Santa Clotilde S/A</div>
+      <div class="header-sub">Alerta de Estoque Parado — materiais sem entrada há mais de 90 dias</div>
+      <div class="header-periodo" id="headerPeriodo">&nbsp;</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="header-emitido">Emitido em<b id="headerEmitido">—</b></div>
+    <button class="btn-voltar" onclick="window.location.href='hub.html'">
+      <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Voltar
+    </button>
+  </div>
+</div>
+
+<div class="conteudo" id="conteudo">
+  <div class="estado"><div class="spinner"></div>Consultando o estoque… (pode levar alguns minutos)</div>
+</div>
+
+<script>
+"use strict";
+
+const nf = (n, d = 2) => (isFinite(+n) ? +n : 0).toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
+const moeda = n => "R$ " + nf(n, 2);
+function escapar(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
+const NOME_FAIXA = { "91-180": "91 a 180 dias", "181-365": "181 a 365 dias", "acima-365": "Acima de 365 dias" };
+
+async function carregar() {
+  const params = new URLSearchParams(window.location.search);
+  const diasLimite = params.get("diasLimite") || "90";
+  const conteudo = document.getElementById("conteudo");
+  try {
+    const r = await fetch("api/estoque-parado?diasLimite=" + encodeURIComponent(diasLimite), { headers: { "Accept": "application/json" } });
+    const j = await r.json();
+    if (!j.ok) { conteudo.innerHTML = '<div class="erro-box">' + escapar(j.erro || "Falha ao consultar.") + '</div>'; return; }
+    render(j);
+  } catch (e) {
+    conteudo.innerHTML = '<div class="erro-box">Erro de conexão: ' + escapar(e.message) + '</div>';
+  }
+}
+
+function render(j) {
+  const itens = j.itens || [];
+  const cmp = j.comparacao || {};
+  document.getElementById("headerPeriodo").textContent = "Execução de " + fmtBR(j.dataExecucao) + " · limite de " + j.diasLimite + " dias sem entrada";
+  document.getElementById("headerEmitido").textContent = new Date().toLocaleString("pt-BR");
+
+  const totalAtual = +cmp.totalAtual || 0;
+  const variacao = +cmp.variacaoValor || 0;
+  const variacaoPct = +cmp.variacaoPercentual || 0;
+  const temAnterior = !!cmp.temAnterior;
+  const entraram = cmp.entraram || [];
+  const sairam = cmp.sairam || [];
+
+  let html = '<div class="cards">' +
+    card("Valor parado", moeda(totalAtual), itens.length + " item(ns)") +
+    card("Variação vs. semana anterior", temAnterior ? moeda(variacao) : "—",
+         temAnterior ? (variacao >= 0 ? "+" : "") + nf(variacaoPct, 1) + "%" : "sem execução anterior",
+         temAnterior ? (variacao > 0 ? "neg" : variacao < 0 ? "pos" : "") : "") +
+    card("Itens novos na lista", entraram.length, "não estavam parados na semana anterior") +
+    card("Itens que saíram", sairam.length, "voltaram a movimentar ou zeraram o estoque") +
+    '</div>';
+
+  html += '<div class="barra-acoes"><span class="esp"></span><button class="btn-acao" onclick="window.print()">🖨️ Imprimir / PDF</button></div>';
+
+  html += '<div class="mini-grid">' + tabelaTotais("Por faixa de idade", totaisPorChave(itens, "faixa", NOME_FAIXA))
+        + tabelaTotais("Por almoxarifado", totaisPorChave(itens, "codAlmoxarifado")) + '</div>';
+
+  if (temAnterior && (entraram.length || sairam.length)) {
+    html += '<div class="secao-titulo">Itens que entraram na lista</div>' + tabelaVariacao(entraram, true);
+    html += '<div class="secao-titulo">Itens que saíram da lista</div>' + tabelaVariacao(sairam, false);
+  }
+
+  html += '<div class="secao-titulo">Todos os itens parados (' + itens.length + ')</div>' + tabelaCompleta(itens);
+
+  document.getElementById("conteudo").innerHTML = html;
+}
+
+function card(rot, val, sub, subCls) {
+  return '<div class="card"><div class="rot">' + escapar(rot) + '</div><div class="val">' + val + '</div>'
+       + (sub != null ? '<div class="sub' + (subCls ? ' ' + subCls : '') + '">' + escapar(String(sub)) + '</div>' : '') + '</div>';
+}
+
+function totaisPorChave(itens, chave, nomes) {
+  const mapa = new Map();
+  itens.forEach(it => {
+    const k = it[chave];
+    const acc = mapa.get(k) || { qtde: 0, valor: 0 };
+    acc.qtde++; acc.valor += (+it.valorTotal || 0);
+    mapa.set(k, acc);
+  });
+  return { mapa, nomes };
+}
+
+function tabelaTotais(titulo, dados) {
+  let linhas = "";
+  let totQtde = 0, totValor = 0;
+  dados.mapa.forEach((v, k) => {
+    linhas += '<tr><td class="esq">' + escapar(dados.nomes ? (dados.nomes[k] || k) : k) + '</td><td>' + v.qtde + '</td><td>' + moeda(v.valor) + '</td></tr>';
+    totQtde += v.qtde; totValor += v.valor;
+  });
+  return '<div class="tabela-wrap"><table class="ep"><thead><tr><th class="esq">' + escapar(titulo) + '</th><th>Itens</th><th>Valor</th></tr></thead>'
+       + '<tbody>' + linhas + '</tbody>'
+       + '<tfoot><tr><td class="esq">TOTAL</td><td>' + totQtde + '</td><td>' + moeda(totValor) + '</td></tr></tfoot></table></div>';
+}
+
+function tabelaVariacao(itens, novo) {
+  if (!itens.length) return '<div class="tabela-wrap"><div class="estado" style="padding:20px">Nenhum item.</div></div>';
+  let linhas = "";
+  let total = 0;
+  itens.forEach(it => {
+    total += (+it.valorTotal || 0);
+    linhas += '<tr><td class="esq">' + escapar(it.codMaterial) + ' — ' + escapar(it.descricao) + '</td>'
+      + '<td class="esq">' + escapar(it.codAlmoxarifado) + '</td>'
+      + '<td><span class="faixa-tag faixa-' + it.faixa + '">' + escapar(NOME_FAIXA[it.faixa] || it.faixa) + '</span></td>'
+      + '<td>' + it.diasParado + '</td>'
+      + '<td>' + moeda(it.valorTotal) + '</td></tr>';
+  });
+  return '<div class="tabela-wrap"><table class="ep"><thead><tr><th class="esq">Material</th><th class="esq">Almox.</th><th>Faixa</th><th>Dias parado</th><th>Valor</th></tr></thead>'
+       + '<tbody>' + linhas + '</tbody>'
+       + '<tfoot><tr><td class="esq" colspan="4">TOTAL (' + itens.length + ')</td><td>' + moeda(total) + '</td></tr></tfoot></table></div>';
+}
+
+function tabelaCompleta(itens) {
+  if (!itens.length) return '<div class="tabela-wrap"><div class="estado">Nenhum material parado há mais do limite configurado — nada a reportar.</div></div>';
+  let linhas = "";
+  let totalValor = 0, totalQtde = 0;
+  itens.forEach(it => {
+    totalValor += (+it.valorTotal || 0);
+    totalQtde += (+it.qtdeEstoque || 0);
+    linhas += '<tr>'
+      + '<td class="esq">' + escapar(it.codMaterial) + '</td>'
+      + '<td class="esq">' + escapar(it.descricao) + '</td>'
+      + '<td class="esq">' + escapar(it.descGrupoMaterial || it.descFamilia || "") + '</td>'
+      + '<td class="esq">' + escapar(it.codAlmoxarifado) + '</td>'
+      + '<td class="esq">' + escapar(it.localizacao || "") + '</td>'
+      + '<td><span class="faixa-tag faixa-' + it.faixa + '">' + escapar(NOME_FAIXA[it.faixa] || it.faixa) + '</span></td>'
+      + '<td>' + it.diasParado + '</td>'
+      + '<td>' + nf(it.qtdeEstoque, 2) + '</td>'
+      + '<td>' + moeda(it.valorTotal) + '</td></tr>';
+  });
+  return '<div class="tabela-wrap"><table class="ep"><thead><tr>'
+       + '<th class="esq">Cód.</th><th class="esq">Descrição</th><th class="esq">Grupo</th><th class="esq">Almox.</th><th class="esq">Localização</th>'
+       + '<th>Faixa</th><th>Dias parado</th><th>Qtde</th><th>Valor</th></tr></thead>'
+       + '<tbody>' + linhas + '</tbody>'
+       + '<tfoot><tr><td class="esq" colspan="7">TOTAL (' + itens.length + ' itens)</td><td>' + nf(totalQtde, 2) + '</td><td>' + moeda(totalValor) + '</td></tr></tfoot></table></div>';
+}
+
+function fmtBR(iso) { if (!iso) return "—"; const [a, m, d] = iso.split("-"); return d + "/" + m + "/" + a; }
+
+carregar();
+</script>
+
+<script src="js/icones-modulos.js?v=20260828a"></script>
+<script src="js/sidebar-nav.js?v=20260828a" defer></script>
+</body>
+</html>

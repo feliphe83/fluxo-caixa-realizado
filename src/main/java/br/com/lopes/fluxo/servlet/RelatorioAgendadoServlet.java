@@ -30,6 +30,7 @@ import java.util.logging.Logger;
  *
  * GET    /api/admin/relatorio-agendado             -> lista todos
  * GET    /api/admin/relatorio-agendado/usuarios     -> usuários ativos (pra montar o multi-select de destinatários)
+ * GET    /api/admin/relatorio-agendado/por-usuario  -> por usuário ativo, quais relatórios ele recebe (tela "Relatórios por Usuário")
  * GET    /api/admin/relatorio-agendado/{id}         -> detalhe (com destinatários)
  * POST   /api/admin/relatorio-agendado              -> cria
  * PUT    /api/admin/relatorio-agendado/{id}         -> atualiza
@@ -89,6 +90,8 @@ public class RelatorioAgendadoServlet extends HttpServlet {
                 json(resp, "{\"ok\":true,\"data\":" + arr + "}");
             } else if ("/usuarios".equals(path)) {
                 json(resp, "{\"ok\":true,\"data\":" + gson.toJson(dao.listarUsuariosAtivos()) + "}");
+            } else if ("/por-usuario".equals(path)) {
+                json(resp, "{\"ok\":true,\"data\":" + gson.toJson(dao.listarPorUsuario()) + "}");
             } else {
                 int id = Integer.parseInt(path.substring(1));
                 Map<String, Object> m = dao.buscarPorId(id);

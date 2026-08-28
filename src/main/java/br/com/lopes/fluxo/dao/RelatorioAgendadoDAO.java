@@ -464,6 +464,59 @@ public class RelatorioAgendadoDAO {
         }
     }
 
+    /**
+     * Visão invertida da tela de agendamentos: por usuário ativo, quais
+     * relatórios ele está marcado para receber — pra responder "esse usuário
+     * recebe o quê?" sem precisar abrir agendamento por agendamento.
+     *
+     * LEFT JOIN de propósito: usuário ativo sem nenhum agendamento aparece
+     * mesmo assim (com os campos de agendamento nulos), pra a tela mostrar
+     * "nenhum relatório" em vez de simplesmente omitir a pessoa — é útil
+     * justamente para notar quem deveria estar recebendo algo e não está.
+     */
+    public List<Map<String, Object>> listarPorUsuario() throws SQLException {
+        String sql = """
+            SELECT u.id id_usuario, u.nome nome_usuario, u.telefone,
+                   a.id id_agendamento, a.nome nome_agendamento, a.tipo_relatorio,
+                   a.ativo ativo_agendamento, a.dia_semana, a.hora_envio, a.intervalo_minutos,
+                   d.copia
+            FROM fc_usuario u
+            LEFT JOIN fc_relatorio_agendado_destinatario d ON d.id_usuario = u.id
+            LEFT JOIN fc_relatorio_agendado a ON a.id = d.id_agendamento
+            WHERE u.ativo = 'S'
+            ORDER BY u.nome, a.dia_semana, a.hora_envio, a.nome
+            """;
+        List<Map<String, Object>> lista = new ArrayList<>();
+        try (Connection c = conn();
+             PreparedStatement ps = c.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("idUsuario", rs.getInt("id_usuario"));
+                m.put("nomeUsuario", rs.getString("nome_usuario"));
+                m.put("telefone", rs.getString("telefone"));
+
+                int idAgendamento = rs.getInt("id_agendamento");
+                if (rs.wasNull()) {
+                    m.put("idAgendamento", null);
+                } else {
+                    m.put("idAgendamento", idAgendamento);
+                    m.put("nomeAgendamento", rs.getString("nome_agendamento"));
+                    m.put("tipoRelatorio", rs.getString("tipo_relatorio"));
+                    m.put("ativoAgendamento", "S".equals(rs.getString("ativo_agendamento")));
+                    Integer diaSemana = rs.getInt("dia_semana");
+                    m.put("diaSemana", rs.wasNull() ? null : diaSemana);
+                    m.put("horaEnvio", rs.getString("hora_envio"));
+                    Integer intervaloMinutos = rs.getInt("intervalo_minutos");
+                    m.put("intervaloMinutos", rs.wasNull() ? null : intervaloMinutos);
+                    m.put("copia", "S".equals(rs.getString("copia")));
+                }
+                lista.add(m);
+            }
+        }
+        return lista;
+    }
+
     // ── Usuários (pra montar o multi-select de destinatários no admin) ────
 
     public List<Map<String, Object>> listarUsuariosAtivos() throws SQLException {
