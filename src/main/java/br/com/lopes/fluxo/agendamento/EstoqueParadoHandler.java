@@ -110,8 +110,9 @@ public class EstoqueParadoHandler implements RelatorioAgendadoHandler {
                 + " — enviado para " + destinatarios.size() + " destinatário(s).";
     }
 
+    /** Também usado por {@link br.com.lopes.fluxo.servlet.EstoqueParadoServlet} no download sob demanda. */
     @SuppressWarnings("unchecked")
-    private static byte[] montarExcel(List<Map<String, Object>> itens, Map<String, Object> comparacao) {
+    public static byte[] montarExcel(List<Map<String, Object>> itens, Map<String, Object> comparacao) {
         List<String> cabItens = List.of("Cód. Material", "Descrição", "Grupo", "Almoxarifado", "Localização",
                 "Faixa", "Dias Parado", "Qtde Estoque", "Valor Total (R$)");
         List<List<Object>> linhasItens = new ArrayList<>();

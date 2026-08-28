@@ -50,9 +50,37 @@ WHERE  (UPPER(c.nome) LIKE '%AGRICOLA%' OR UPPER(c.nome) LIKE '%AGRÍCOLA%')
   AND  NOT EXISTS (SELECT 1 FROM intranet_modulo m2 WHERE m2.url_destino = '/fluxo-caixa/ir-mapa-gerencial')
 LIMIT 1;
 
+-- 4) Estoque Parado -> categoria de Suprimentos/Compras/Almoxarifado, com
+--    fallback pra Administração e, na falta de tudo isso, qualquer categoria
+--    (pega a de menor id) — não há como conferir o nome exato das categorias
+--    já cadastradas nesta base a partir daqui. Se cair na categoria errada,
+--    é só mover em Administração → Módulos (Hub).
+INSERT INTO intranet_modulo (id_categoria, nome, descricao, icone, url_destino, ordem, ativo)
+SELECT c.id,
+       'Estoque Parado',
+       'Materiais com estoque sem entrada há mais de 90 dias — gera e baixa PDF/Excel na hora',
+       'package',
+       '/fluxo-caixa/estoque-parado-relatorio.html',
+       COALESCE((SELECT MAX(m.ordem) + 1 FROM intranet_modulo m WHERE m.id_categoria = c.id), 1),
+       1
+FROM   intranet_categoria c
+WHERE  NOT EXISTS (SELECT 1 FROM intranet_modulo m2 WHERE m2.url_destino = '/fluxo-caixa/estoque-parado-relatorio.html')
+ORDER BY
+       CASE
+         WHEN UPPER(c.nome) LIKE '%SUPRIMENTO%'   THEN 0
+         WHEN UPPER(c.nome) LIKE '%COMPRA%'       THEN 1
+         WHEN UPPER(c.nome) LIKE '%ALMOXARIFADO%' THEN 2
+         WHEN UPPER(c.nome) LIKE '%MATERIAL%'     THEN 3
+         WHEN UPPER(c.nome) LIKE '%ESTOQUE%'      THEN 4
+         WHEN UPPER(c.nome) LIKE '%ADMINISTRA%'   THEN 5
+         ELSE 9
+       END,
+       c.id
+LIMIT 1;
+
 -- Conferir:
 -- SELECT id, id_categoria, nome, url_destino, ordem, ativo
--- FROM intranet_modulo WHERE url_destino IN ('/fluxo-caixa/pagamento-cana.html','/fluxo-caixa/fechamento-frete.html');
+-- FROM intranet_modulo WHERE url_destino IN ('/fluxo-caixa/pagamento-cana.html','/fluxo-caixa/fechamento-frete.html','/fluxo-caixa/estoque-parado-relatorio.html');
 
 -- (Opcional) Liberar para um usuário NÃO-admin: repita por usuário/módulo.
 -- INSERT INTO intranet_permissao_modulo (id_usuario, id_modulo)

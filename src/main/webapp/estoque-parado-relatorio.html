@@ -39,6 +39,9 @@
   .barra-acoes .esp { flex: 1; }
   .btn-acao { display: flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 8px; border: 1.5px solid #d6ddec; background: white; color: var(--ink-2); font-size: 13px; font-weight: 600; cursor: pointer; }
   .btn-acao:hover { border-color: #1a3a7c; color: #1a3a7c; }
+  .btn-acao:disabled { opacity: .6; cursor: wait; }
+  .btn-acao.destaque { background: #1baf7a; border-color: #1baf7a; color: white; }
+  .btn-acao.destaque:hover { background: #159066; color: white; }
 
   .secao-titulo { font-size: 14px; font-weight: 800; color: var(--ink); margin: 22px 0 10px; }
 
@@ -151,7 +154,11 @@ function render(j) {
     card("Itens que saíram", sairam.length, "voltaram a movimentar ou zeraram o estoque") +
     '</div>';
 
-  html += '<div class="barra-acoes"><span class="esp"></span><button class="btn-acao" onclick="window.print()">🖨️ Imprimir / PDF</button></div>';
+  html += '<div class="barra-acoes"><span class="esp"></span>'
+        + '<button class="btn-acao" onclick="window.print()">🖨️ Imprimir</button>'
+        + '<button class="btn-acao" id="btnBaixarPdf" onclick="baixarArquivo(\'pdf\', this)">⬇️ Baixar PDF</button>'
+        + '<button class="btn-acao destaque" id="btnBaixarExcel" onclick="baixarArquivo(\'excel\', this)">⬇️ Baixar Excel</button>'
+        + '</div>';
 
   html += '<div class="mini-grid">' + tabelaTotais("Por faixa de idade", totaisPorChave(itens, "faixa", NOME_FAIXA))
         + tabelaTotais("Por almoxarifado", totaisPorChave(itens, "codAlmoxarifado")) + '</div>';
@@ -237,6 +244,40 @@ function tabelaCompleta(itens) {
 }
 
 function fmtBR(iso) { if (!iso) return "—"; const [a, m, d] = iso.split("-"); return d + "/" + m + "/" + a; }
+
+// Baixa o PDF (gerado na hora pelo Chromium — pode levar minutos) ou o Excel
+// (na hora, mais rápido). Usa fetch + blob em vez de um <a href> direto pra
+// poder desabilitar o botão e mostrar "Gerando…" enquanto espera, e pra
+// tratar o erro (ex.: falha do Oracle) sem abrir uma aba em branco.
+async function baixarArquivo(tipo, botao) {
+  const params = new URLSearchParams(window.location.search);
+  const diasLimite = params.get("diasLimite") || "90";
+  const textoOriginal = botao.textContent;
+  botao.disabled = true;
+  botao.textContent = tipo === "pdf" ? "⏳ Gerando PDF… (pode levar minutos)" : "⏳ Gerando planilha…";
+  try {
+    const r = await fetch("api/estoque-parado/" + tipo + "?diasLimite=" + encodeURIComponent(diasLimite));
+    if (!r.ok) {
+      let msg = "Falha ao gerar (" + r.status + ")";
+      try { const j = await r.json(); if (j.erro) msg = j.erro; } catch (e) {}
+      throw new Error(msg);
+    }
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "estoque-parado." + (tipo === "pdf" ? "pdf" : "xls");
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    alert("Erro ao baixar: " + e.message);
+  } finally {
+    botao.disabled = false;
+    botao.textContent = textoOriginal;
+  }
+}
 
 carregar();
 </script>
