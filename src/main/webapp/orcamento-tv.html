@@ -39,7 +39,7 @@
   #palco-wrap { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
   #palco { position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px;
            transform-origin: center center; padding: 18px 24px 16px;
-           display: grid; grid-template-rows: auto auto auto auto 1fr 300px; gap: 10px; }
+           display: grid; grid-template-rows: auto auto auto 1fr 300px; gap: 10px; }
 
   /* ── Topo ── */
   .topo { display: flex; align-items: center; gap: 16px; }
@@ -50,6 +50,12 @@
   .topo .sub { font-size: 12.5px; font-weight: 700; color: var(--ink-3);
                text-transform: uppercase; letter-spacing: .8px; margin-top: 1px; }
   .cartoes { display: flex; gap: 11px; margin-left: 22px; }
+  .cartao-tipo { display: flex; flex-direction: column; justify-content: center; gap: 5px; min-width: 168px; }
+  .cartao-tipo .rot { margin-bottom: 2px; }
+  .mini-tog { font-size: 13.5px; font-weight: 800; color: var(--ink-2); padding: 5px 12px;
+              border-radius: 8px; border: 1.5px solid var(--borda); background: var(--papel-2);
+              font-family: inherit; cursor: pointer; text-align: left; }
+  .mini-tog.on { background: var(--ink); color: #fff; border-color: var(--ink); }
   .cartao { background: var(--papel); border: 1px solid var(--borda); border-radius: 12px;
             padding: 9px 20px; position: relative; overflow: hidden; min-width: 210px; }
   .cartao::before { content:''; position:absolute; left:0; top:0; bottom:0; width:4px;
@@ -225,6 +231,7 @@
         <div class="rot">Execução %</div><div class="cifra" id="cExec">—</div>
         <div class="base" id="cExecBase"></div>
       </div>
+      <div class="cartao cartao-tipo" id="tipos"></div>
     </div>
     <div class="direita">
       <div class="periodo" id="periodo">—</div>
@@ -234,7 +241,6 @@
   </div>
 
   <div class="meses" id="meses"></div>
-  <div class="negocios" id="tipos"></div>
   <div class="negocios" id="negocios" style="display:none"></div>
 
   <div class="bloco"><div id="quadro"><div class="carregando">Consultando o orçamento…</div></div></div>
@@ -295,7 +301,7 @@ const VOLTA_MS = 3 * 60 * 1000;
 let MANUAL = false;          // alguém mexeu?
 let ABERTOS = {};            // grupos abertos
 let NEGOCIO = '';            // '' = todos
-let TIPO = '';                // '' = Compra + Investimento
+let TIPO_COMPRA = true, TIPO_INVEST = true;   // os dois ligados por padrão
 let relogioVolta = null;     // conta o tempo até voltar ao automático
 
 function mexeu() {
@@ -309,7 +315,7 @@ function voltarAoAutomatico() {
   MANUAL = false;
   ABERTOS = {};
   NEGOCIO = '';
-  TIPO = '';
+  TIPO_COMPRA = true; TIPO_INVEST = true;
   clearTimeout(relogioVolta);
   document.getElementById('manual').classList.remove('on');
   SEL = new Set([ mesAutomatico() ]);
@@ -388,10 +394,14 @@ function trocarNegocio(n) {
   desenhar();
 }
 
-function trocarTipo(t) {
-  if (t === TIPO) return;
-  TIPO = t;
-  ABERTOS = {};
+function alternarTipo(qual) {
+  if (qual === 'Compra') {
+    if (TIPO_COMPRA && !TIPO_INVEST) return;   // não deixa ficar sem nenhum ligado
+    TIPO_COMPRA = !TIPO_COMPRA;
+  } else {
+    if (TIPO_INVEST && !TIPO_COMPRA) return;
+    TIPO_INVEST = !TIPO_INVEST;
+  }
   mexeu();
   desenhar();
 }
@@ -454,7 +464,8 @@ function agregar() {
   const grupos = new Map();
   for (const l of DADOS.linhas) {
     if (NEGOCIO && l.negocio !== NEGOCIO) continue;
-    if (TIPO && l.tipo !== TIPO) continue;
+    if (l.tipo === 'Compra' && !TIPO_COMPRA) continue;
+    if (l.tipo === 'Investimento' && !TIPO_INVEST) continue;
     const noMes = SEL.has(l.anomes), noAcum = l.anomes <= limite;
     if (!noMes && !noAcum) continue;
     const k = l.codGrupo + '|' + l.grupo;
@@ -488,7 +499,8 @@ function serie() {
   const porMes = new Map(DADOS.meses.map(m => [m.anomes, {label:m.label, p:0, r:0}]));
   for (const l of DADOS.linhas) {
     if (NEGOCIO && l.negocio !== NEGOCIO) continue;
-    if (TIPO && l.tipo !== TIPO) continue;
+    if (l.tipo === 'Compra' && !TIPO_COMPRA) continue;
+    if (l.tipo === 'Investimento' && !TIPO_INVEST) continue;
     const m = porMes.get(l.anomes);
     if (m) { m.p += +l.orcado; m.r += +l.realizado; }
   }
@@ -517,12 +529,12 @@ function desenhar() {
     `<button class="${SEL.has(m.anomes)?'on':''} ${comDado.has(m.anomes)?'':'futuro'}"
              onclick="trocarMes(${m.anomes}, event)">${esc(m.nome)}</button>`).join('');
 
-  // A tira de Compra/Investimento fica sempre visível — a distinção sempre
-  // existe, ao contrário do negócio, que depende de a base ter a coluna.
-  document.getElementById('tipos').innerHTML = '<span class="rot">Tipo</span>'
-    + `<button class="${TIPO===''?'on':''}" onclick="trocarTipo('')">Compra + Investimento</button>`
-    + `<button class="${TIPO==='Compra'?'on':''}" onclick="trocarTipo('Compra')">Compra</button>`
-    + `<button class="${TIPO==='Investimento'?'on':''}" onclick="trocarTipo('Investimento')">Investimento</button>`;
+  // Compra/Investimento ao lado do card de Execução — os dois ligados por
+  // padrão, cada um alternável de forma independente (não deixa desligar os
+  // dois ao mesmo tempo, senão o painel fica sem nada para mostrar).
+  document.getElementById('tipos').innerHTML = '<div class="rot">Tipo</div>'
+    + `<button class="mini-tog ${TIPO_COMPRA?'on':''}" onclick="alternarTipo('Compra')">Compra</button>`
+    + `<button class="mini-tog ${TIPO_INVEST?'on':''}" onclick="alternarTipo('Investimento')">Investimento</button>`;
 
   // A tira de negócios só existe quando há negócio: filtro que não filtra é
   // pior do que filtro nenhum.

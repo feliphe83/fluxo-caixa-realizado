@@ -48,8 +48,11 @@
   .conteudo { max-width: 1560px; margin: 0 auto; padding: 20px 22px 60px; }
 
   /* ── Topo: cartões + controles ── */
-  .topo { display: grid; grid-template-columns: repeat(3, 200px) 1fr; gap: 14px;
+  .topo { display: grid; grid-template-columns: 200px 200px auto 1fr; gap: 14px;
           align-items: stretch; margin-bottom: 14px; }
+  .cartao-exec { display: flex; gap: 10px; align-items: stretch; }
+  .cartao-tipo { min-width: 148px; display: flex; flex-direction: column; justify-content: center; gap: 6px; }
+  .cartao-tipo .marca:first-of-type { margin-top: 7px; }
   .cartao { background: var(--papel); border: 1px solid var(--borda); border-radius: 13px;
             padding: 13px 18px; position: relative; overflow: hidden; }
   .cartao::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0;
@@ -205,7 +208,8 @@
   .erro { color: var(--estouro); }
 
   @media (max-width: 1100px) {
-    .topo { grid-template-columns: repeat(3, 1fr); }
+    .topo { grid-template-columns: repeat(2, 1fr) auto; }
+    .cartao-exec { grid-column: 1 / -1; }
     .controles { grid-column: 1 / -1; }
     .grid-2 { grid-template-columns: 1fr; }
   }
@@ -250,10 +254,17 @@
       <div class="cifra" id="cReal">—</div>
       <div class="base" id="cRealBase"></div>
     </div>
-    <div class="cartao" style="--cor:var(--sem-laranja)">
-      <div class="rot">Execução %</div>
-      <div class="cifra" id="cExec">—</div>
-      <div class="base" id="cExecBase"></div>
+    <div class="cartao-exec">
+      <div class="cartao" style="--cor:var(--sem-laranja)">
+        <div class="rot">Execução %</div>
+        <div class="cifra" id="cExec">—</div>
+        <div class="base" id="cExecBase"></div>
+      </div>
+      <div class="cartao cartao-tipo">
+        <div class="rot">Tipo</div>
+        <label class="marca"><input type="checkbox" id="ckCompra" checked onchange="desenhar()">Compra</label>
+        <label class="marca"><input type="checkbox" id="ckInvestimento" checked onchange="desenhar()">Investimento</label>
+      </div>
     </div>
     <div class="controles">
       <div class="campo">
@@ -263,10 +274,6 @@
       <div class="campo" id="campoNegocio" style="display:none">
         <label for="selNegocio">Negócio</label>
         <select id="selNegocio" onchange="desenhar()"></select>
-      </div>
-      <div class="marcas">
-        <label class="marca"><input type="checkbox" id="ckCompra" checked onchange="desenhar()">Compra</label>
-        <label class="marca"><input type="checkbox" id="ckInvestimento" checked onchange="desenhar()">Investimento</label>
       </div>
       <div class="marcas">
         <label class="marca"><input type="checkbox" id="ckMensal" checked onchange="desenhar()">Mensal</label>
