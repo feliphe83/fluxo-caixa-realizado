@@ -50,9 +50,9 @@ public class EstoqueParadoHandler implements RelatorioAgendadoHandler {
         return (v == null || v.isBlank()) ? "http://127.0.0.1:8080/fluxo-caixa" : v;
     }
 
-    /** Orçamento generoso pro Chromium: a extração roda MATERIAL.PR_POPULAR_MOVIMENTOMATERIAL
-     *  numa janela de 2 anos para todos os materiais — pode levar minutos, como no
-     *  relatório de combustível. Fica abaixo do timeout de 8min do ChromiumPdfUtil. */
+    /** Orçamento generoso pro Chromium: a consulta varre todo o cadastro de materiais
+     *  com estoque, o que pode levar algum tempo numa base grande. Fica abaixo do
+     *  timeout de 8min do ChromiumPdfUtil. */
     private static final int TEMPO_VIRTUAL_MS = 6 * 60 * 1000;
 
     @Override
