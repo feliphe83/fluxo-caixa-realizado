@@ -227,6 +227,10 @@
       <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
       Relatórios por Usuário
     </div>
+    <div class="sb-item" id="nav-admissao" onclick="setSec('admissao')">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+      Admissão de Funcionários
+    </div>
   </nav>
   <div class="sb-foot">
     <div class="sb-user">
@@ -272,6 +276,7 @@
       <button class="tab"    id="tab-classeoperativa" onclick="setSec('classeoperativa')">🚜 De-Para Classe Operativa</button>
       <button class="tab"    id="tab-whatsapp"    onclick="setSec('whatsapp')">📱 Relatórios WhatsApp</button>
       <button class="tab"    id="tab-relatoriosusuario" onclick="setSec('relatoriosusuario')">👤 Relatórios por Usuário</button>
+      <button class="tab"    id="tab-admissao" onclick="setSec('admissao')">🗂️ Admissão de Funcionários</button>
       <button class="tab"    id="tab-reenvio"     onclick="setSec('reenvio')">🔁 Reenviar Alerta</button>
       <button class="tab"    id="tab-externo"     onclick="setSec('externo')">🚛 Empresas Externas</button>
       <button class="tab"    id="tab-paradas"     onclick="setSec('paradas')">🛑 Paradas da Moagem</button>
@@ -637,6 +642,29 @@
       </div>
     </div>
 
+    <div class="sec" id="sec-admissao">
+      <div class="panel">
+        <div class="ph">
+          <div class="ph-title">Documentos exigidos na Admissão</div>
+          <button class="btn-primary" style="padding:7px 14px;font-size:13px" onclick="abrirTipoAdmissao()">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Novo Tipo de Documento
+          </button>
+        </div>
+        <div style="padding:14px 18px 0;font-size:12.5px;color:var(--text2);line-height:1.6">
+          Esta lista é o que aparece pro candidato em <b>admissao.html</b> (o link público do site da usina)
+          e é o que a tela <b>Admissão de Funcionários</b> (Hub) cobra pra dizer se está completo. Desativar
+          um tipo tira ele da tela do candidato sem apagar documentos já enviados daquele tipo.
+        </div>
+        <table>
+          <thead><tr><th>Ordem</th><th>Documento</th><th>Obrigatório</th><th>Situação</th><th>Ações</th></tr></thead>
+          <tbody id="tbAdmissaoTipo">
+            <tr><td colspan="5" style="text-align:center;padding:28px;color:var(--text3)">Carregando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <div class="sec" id="sec-externo">
       <div class="panel">
         <div class="ph">
@@ -861,6 +889,37 @@
       </div>
     </div>
 
+  </div>
+</div>
+
+<!-- MODAL TIPO DE DOCUMENTO DE ADMISSÃO -->
+<div class="ov" id="ovAdmissaoTipo">
+  <div class="modal">
+    <div class="modal-title" id="mAdmTipoTitle">Novo Tipo de Documento</div>
+    <div class="modal-sub">Aparece pro candidato na tela pública de admissão</div>
+    <input type="hidden" id="mAdmTipoId">
+    <div class="mf">
+      <label>Nome do documento</label>
+      <input type="text" id="mAdmTipoNome" maxlength="120" placeholder="Ex: RG (frente e verso)">
+    </div>
+    <div class="mf-grid">
+      <div class="mf">
+        <label>Ordem de exibição</label>
+        <input type="number" id="mAdmTipoOrdem" min="0" step="1" value="0">
+      </div>
+      <div class="mf">
+        <label>Situação</label>
+        <select id="mAdmTipoAtivo"><option value="S">Ativo</option><option value="N">Inativo</option></select>
+      </div>
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;margin-top:6px;font-size:13px;color:var(--text2)">
+      <input type="checkbox" id="mAdmTipoObrigatorio" checked style="width:16px;height:16px">
+      Obrigatório (entra na contagem de "faltando" da tela do candidato)
+    </label>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="fecharModalAdmissaoTipo()">Cancelar</button>
+      <button class="btn-ok" onclick="salvarTipoAdmissao()">Salvar</button>
+    </div>
   </div>
 </div>
 
@@ -1376,6 +1435,11 @@ function setSec(s) {
     document.getElementById('tsub').textContent='Acompanhe quais relatórios cada usuário está configurado para receber';
     document.getElementById('btnAcao').style.display='none';
     carregarRelatoriosPorUsuario();
+  } else if(s==='admissao'){
+    document.getElementById('ttitle').textContent='Admissão de Funcionários';
+    document.getElementById('tsub').textContent='Quais documentos o link público de admissão vai pedir';
+    document.getElementById('btnAcao').style.display='none';
+    carregarTiposAdmissao();
   } else if(s==='externo'){
     document.getElementById('ttitle').textContent='Empresas Externas';
     document.getElementById('tsub').textContent='Acesso das empresas contratadas ao portal de manobra';
@@ -3115,6 +3179,91 @@ function renderRelatoriosPorUsuario() {
 }
 
 function filtrarRelatoriosUsuario() { renderRelatoriosPorUsuario(); }
+
+// ── Admissão de Funcionários (tipos de documento) ────────────────────
+let TIPOS_ADMISSAO = [];
+
+async function carregarTiposAdmissao() {
+  try {
+    const r = await fetch('api/admin/admissao/tipos');
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro);
+    TIPOS_ADMISSAO = j.data;
+    renderTiposAdmissao();
+  } catch(e) {
+    document.getElementById('tbAdmissaoTipo').innerHTML =
+      `<tr><td colspan="5" style="text-align:center;padding:28px;color:var(--red)">Erro: ${esc(e.message)}</td></tr>`;
+  }
+}
+
+function renderTiposAdmissao() {
+  if (TIPOS_ADMISSAO.length === 0) {
+    document.getElementById('tbAdmissaoTipo').innerHTML =
+      '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text3)">Nenhum tipo de documento cadastrado.</td></tr>';
+    return;
+  }
+  document.getElementById('tbAdmissaoTipo').innerHTML = TIPOS_ADMISSAO.map(t => `
+    <tr>
+      <td>${t.ordem}</td>
+      <td><strong>${esc(t.nome)}</strong></td>
+      <td>${t.obrigatorio ? '<span class="badge badge-blue">Obrigatório</span>' : '<span class="muted">Opcional</span>'}</td>
+      <td><span class="badge ${t.ativo ? 'badge-green' : 'badge-red'}">${t.ativo ? 'Ativo' : 'Inativo'}</span></td>
+      <td><div class="acts">
+        <button class="bico" onclick="abrirTipoAdmissao(${t.id})" title="Editar">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/></svg>
+        </button>
+        <button class="bico" onclick="excluirTipoAdmissao(${t.id})" title="Excluir">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+        </button>
+      </div></td>
+    </tr>`).join('');
+}
+
+function abrirTipoAdmissao(id) {
+  const t = TIPOS_ADMISSAO.find(x => x.id === id) || {};
+  document.getElementById('mAdmTipoTitle').textContent = id ? 'Editar Tipo de Documento' : 'Novo Tipo de Documento';
+  document.getElementById('mAdmTipoId').value = id || '';
+  document.getElementById('mAdmTipoNome').value = t.nome || '';
+  document.getElementById('mAdmTipoOrdem').value = t.ordem != null ? t.ordem : (TIPOS_ADMISSAO.length + 1);
+  document.getElementById('mAdmTipoAtivo').value = (t.ativo === false) ? 'N' : 'S';
+  document.getElementById('mAdmTipoObrigatorio').checked = t.obrigatorio !== false;
+  document.getElementById('ovAdmissaoTipo').classList.add('open');
+}
+
+function fecharModalAdmissaoTipo() { document.getElementById('ovAdmissaoTipo').classList.remove('open'); }
+
+async function salvarTipoAdmissao() {
+  const id = document.getElementById('mAdmTipoId').value;
+  const nome = document.getElementById('mAdmTipoNome').value.trim();
+  if (!nome) { toast('Informe o nome do documento', 'red'); return; }
+  const payload = {
+    nome,
+    obrigatorio: document.getElementById('mAdmTipoObrigatorio').checked,
+    ordem: parseInt(document.getElementById('mAdmTipoOrdem').value) || 0,
+    ativo: document.getElementById('mAdmTipoAtivo').value === 'S'
+  };
+  try {
+    const url = id ? 'api/admin/admissao/tipos/' + id : 'api/admin/admissao/tipos';
+    const method = id ? 'PUT' : 'POST';
+    const r = await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro);
+    toast(id ? 'Tipo de documento atualizado' : 'Tipo de documento criado', 'green');
+    fecharModalAdmissaoTipo();
+    carregarTiposAdmissao();
+  } catch(e) { toast('Erro: ' + e.message, 'red'); }
+}
+
+async function excluirTipoAdmissao(id) {
+  if (!confirm('Excluir este tipo de documento? Se algum candidato já enviou esse documento, será preciso desativar em vez de excluir.')) return;
+  try {
+    const r = await fetch('api/admin/admissao/tipos/' + id, { method: 'DELETE' });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro);
+    toast('Tipo de documento excluído', 'yellow');
+    carregarTiposAdmissao();
+  } catch(e) { toast('Erro: ' + e.message, 'red'); }
+}
 
 </script>
 <script src="js/agro-chat-widget.js" defer>

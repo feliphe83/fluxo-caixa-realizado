@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Admissão de Documentos · Usina Santa Clotilde</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --ink: #0f2460; --ink-2: #52514e; --ink-3: #898781; --borda: #e3e8f5;
+    --fundo: #f4f6fb; --papel: #fff; --ok: #14603f; --alerta: #a0641a; --erro: #b23b3b;
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+         background: var(--fundo); color: var(--ink-2); min-height: 100vh; }
+  .topo { background: linear-gradient(135deg, #0f2460 0%, #1a3a7c 100%); color: #fff;
+          padding: 20px 18px; text-align: center; }
+  .topo .logo { width: 56px; height: 56px; border-radius: 12px; background: #fff;
+                display: flex; align-items: center; justify-content: center; margin: 0 auto 10px;
+                padding: 6px; overflow: hidden; }
+  .topo .logo img { width: 100%; height: 100%; object-fit: contain; }
+  .topo h1 { font-size: 18px; font-weight: 800; }
+  .topo .sub { font-size: 12.5px; opacity: .85; margin-top: 3px; }
+
+  .conteudo { max-width: 560px; margin: 0 auto; padding: 18px 16px 60px; }
+  .cartao { background: var(--papel); border: 1px solid var(--borda); border-radius: 14px;
+            padding: 20px 18px; margin-bottom: 16px; }
+  .cartao h2 { font-size: 15.5px; font-weight: 800; color: var(--ink); margin-bottom: 10px; }
+
+  .lgpd-box { max-height: 220px; overflow-y: auto; background: #f8faff; border: 1px solid var(--borda);
+              border-radius: 10px; padding: 12px 14px; font-size: 12px; line-height: 1.6; color: var(--ink-2); }
+  .lgpd-box p { margin-bottom: 8px; }
+  .lgpd-box strong { color: var(--ink); }
+
+  .campo { margin-top: 14px; }
+  .campo label { display: block; font-size: 12px; font-weight: 700; color: var(--ink-3);
+                 text-transform: uppercase; letter-spacing: .4px; margin-bottom: 6px; }
+  .campo input[type=text] { width: 100%; padding: 12px 14px; border: 1.5px solid #d6ddec;
+                             border-radius: 10px; font-size: 16px; color: var(--ink); }
+  .campo input[type=text]:focus { outline: none; border-color: var(--ink); }
+
+  .marca-lgpd { display: flex; align-items: flex-start; gap: 9px; margin-top: 14px; font-size: 13px; }
+  .marca-lgpd input { width: 19px; height: 19px; margin-top: 1px; flex-shrink: 0; accent-color: var(--ink); }
+
+  .btn-primario { width: 100%; margin-top: 16px; padding: 13px; border: none; border-radius: 10px;
+                  background: #1a3a7c; color: #fff; font-size: 15px; font-weight: 700; cursor: pointer;
+                  font-family: inherit; }
+  .btn-primario:hover:not(:disabled) { background: #14306a; }
+  .btn-primario:disabled { opacity: .45; cursor: not-allowed; }
+
+  .msg-erro { margin-top: 12px; background: #fdecec; border: 1.5px solid #f5c2c2; color: var(--erro);
+              border-radius: 9px; padding: 10px 13px; font-size: 13px; font-weight: 600; display: none; }
+  .msg-erro.on { display: block; }
+
+  .saudacao { font-size: 15.5px; font-weight: 700; color: var(--ink); }
+  .cargo-info { margin-top: 6px; font-size: 13px; color: var(--ink-3); }
+  .cargo-info b { color: var(--ink-2); }
+
+  .banner { border-radius: 12px; padding: 14px 16px; font-size: 13.5px; font-weight: 600; margin-bottom: 16px; }
+  .banner.ok { background: #eaf7f0; border: 1.5px solid #b6e3cc; color: var(--ok); }
+  .banner.alerta { background: #fdf3e2; border: 1.5px solid #f2d49a; color: var(--alerta); }
+  .banner ul { margin: 8px 0 0 18px; }
+
+  .secao-titulo { font-size: 12.5px; font-weight: 800; color: var(--ink-3); text-transform: uppercase;
+                  letter-spacing: .5px; margin: 18px 0 8px; }
+  .secao-titulo:first-child { margin-top: 0; }
+
+  .doc-item { border: 1.5px solid var(--borda); border-radius: 12px; padding: 13px 14px; margin-bottom: 10px; }
+  .doc-item.pendente { border-color: #f2d49a; background: #fffaf1; }
+  .doc-item.enviado { background: #f8faff; }
+  .doc-nome { font-size: 14px; font-weight: 700; color: var(--ink); display: flex; align-items: center; gap: 7px; }
+  .doc-nome .obr { font-size: 10.5px; font-weight: 700; color: var(--erro); background: #fdecec;
+                    border-radius: 5px; padding: 1px 6px; }
+  .doc-status { font-size: 12px; color: var(--ink-3); margin-top: 3px; }
+  .doc-status.ok { color: var(--ok); font-weight: 600; }
+  .doc-input-wrap { margin-top: 10px; }
+  .doc-input-wrap input[type=file] { display: none; }
+  .btn-arquivo { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px;
+                 border: 1.5px dashed #b8c2da; border-radius: 9px; background: #fff; color: var(--ink);
+                 font-size: 13px; font-weight: 700; cursor: pointer; width: 100%; justify-content: center; }
+  .btn-arquivo:hover { border-color: var(--ink); background: #f4f7fd; }
+  .arquivo-escolhido { margin-top: 8px; font-size: 12.5px; color: var(--ok); font-weight: 600;
+                       display: flex; align-items: center; gap: 6px; }
+  .btn-trocar { background: none; border: none; color: var(--ink); font-size: 12.5px; font-weight: 700;
+                text-decoration: underline; cursor: pointer; margin-top: 6px; padding: 4px 0; }
+
+  .estado { text-align: center; padding: 40px 16px; color: var(--ink-3); }
+  .spinner { width: 28px; height: 28px; border: 3px solid var(--borda); border-top-color: #1a3a7c;
+             border-radius: 50%; animation: girar .8s linear infinite; margin: 0 auto 12px; }
+  @keyframes girar { to { transform: rotate(360deg); } }
+
+  .rodape { text-align: center; font-size: 11px; color: var(--ink-3); margin-top: 20px; }
+</style>
+</head>
+<body>
+
+<div class="topo">
+  <div class="logo"><img src="img/logo.png" alt="USC"></div>
+  <h1>Usina Santa Clotilde</h1>
+  <div class="sub">Envio de Documentos para Admissão</div>
+</div>
+
+<div class="conteudo" id="conteudo">
+  <div class="estado"><div class="spinner"></div>Carregando…</div>
+</div>
+
+<script>
+"use strict";
+
+let ETAPA = "cpf";      // "cpf" -> "documentos"
+let STATUS = null;      // resposta de /api/publico/admissao/status
+let ARQUIVOS = {};      // idTipo -> File escolhido nesta visita (só os novos)
+
+function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
+function soDigitos(v) { return (v || "").replace(/\D/g, ""); }
+
+function formatarCpf(v) {
+  const d = soDigitos(v).slice(0, 11);
+  let s = d;
+  if (d.length > 9) s = d.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, "$1.$2.$3-$4");
+  else if (d.length > 6) s = d.replace(/(\d{3})(\d{3})(\d{1,3})/, "$1.$2.$3");
+  else if (d.length > 3) s = d.replace(/(\d{3})(\d{1,3})/, "$1.$2");
+  return s;
+}
+
+// ── Etapa 1: CPF + LGPD ────────────────────────────────────────────────
+function renderCpf(mensagemErro) {
+  ETAPA = "cpf";
+  document.getElementById("conteudo").innerHTML = `
+    <div class="cartao">
+      <h2>Antes de começar</h2>
+      <div class="lgpd-box">
+        <p><strong>Aviso de Privacidade — Lei Geral de Proteção de Dados (LGPD, Lei nº 13.709/2018)</strong></p>
+        <p>A Usina Santa Clotilde S/A vai coletar, nesta tela, cópias de documentos pessoais (como RG, CPF,
+        CTPS, comprovante de residência e outros que a área de Recursos Humanos indicar) com a finalidade
+        exclusiva de dar andamento ao seu processo de admissão e cumprir obrigações legais, trabalhistas e
+        previdenciárias (registro de empregado, eSocial, folha de pagamento e órgãos de fiscalização).</p>
+        <p>Esses dados serão tratados apenas pela equipe de Recursos Humanos, armazenados de forma segura, e
+        mantidos pelo prazo exigido pela legislação trabalhista e previdenciária aplicável. Não serão usados
+        para nenhuma outra finalidade nem compartilhados com terceiros fora do necessário para o cumprimento
+        de obrigações legais.</p>
+        <p>Você pode, a qualquer momento, solicitar à empresa a confirmação de que seus dados estão sendo
+        tratados, o acesso a eles, a correção de dados incompletos ou desatualizados, e esclarecimentos sobre
+        este tratamento — basta procurar o setor de Recursos Humanos. Documentos exigidos por lei (como os de
+        admissão) não podem ser excluídos enquanto o vínculo empregatício ou a obrigação legal persistir.</p>
+        <p>Ao marcar a caixa abaixo e continuar, você declara que leu este aviso e concorda com o tratamento
+        dos seus dados pessoais para a finalidade aqui descrita.</p>
+      </div>
+
+      <div class="campo">
+        <label for="inCpf">Seu CPF</label>
+        <input type="text" id="inCpf" inputmode="numeric" placeholder="000.000.000-00" maxlength="14"
+               oninput="this.value = formatarCpf(this.value); atualizarBotaoCpf();">
+      </div>
+
+      <label class="marca-lgpd">
+        <input type="checkbox" id="ckLgpd" onchange="atualizarBotaoCpf()">
+        <span>Li e concordo com o tratamento dos meus dados pessoais para fins de admissão, conforme descrito acima.</span>
+      </label>
+
+      <div class="msg-erro ${mensagemErro ? "on" : ""}" id="msgErroCpf">${esc(mensagemErro || "")}</div>
+
+      <button class="btn-primario" id="btnContinuar" disabled onclick="continuar()">Continuar</button>
+    </div>
+    <div class="rodape">Dúvidas? Procure o setor de Recursos Humanos da usina.</div>
+  `;
+}
+
+function atualizarBotaoCpf() {
+  const cpfOk = soDigitos(document.getElementById("inCpf").value).length === 11;
+  const lgpdOk = document.getElementById("ckLgpd").checked;
+  document.getElementById("btnContinuar").disabled = !(cpfOk && lgpdOk);
+}
+
+async function continuar() {
+  const cpf = soDigitos(document.getElementById("inCpf").value);
+  const btn = document.getElementById("btnContinuar");
+  btn.disabled = true;
+  btn.textContent = "Verificando…";
+  try {
+    const r = await fetch("api/publico/admissao/status?cpf=" + encodeURIComponent(cpf));
+    const j = await r.json();
+    if (!j.ok) {
+      renderCpf(j.erro || "CPF inválido. Confira os números e tente novamente.");
+      document.getElementById("inCpf").value = formatarCpf(cpf);
+      atualizarBotaoCpf();
+      return;
+    }
+    STATUS = j;
+    ARQUIVOS = {};
+    renderDocumentos();
+  } catch (e) {
+    renderCpf("Não foi possível conectar. Verifique sua internet e tente de novo.");
+    document.getElementById("inCpf").value = formatarCpf(cpf);
+    atualizarBotaoCpf();
+  }
+}
+
+// ── Etapa 2: documentos ──────────────────────────────────────────────
+function renderDocumentos(banner) {
+  ETAPA = "documentos";
+  const precisaNome = !STATUS.nome;
+  const pendentes = STATUS.tipos.filter(t => t.obrigatorio && !t.enviado);
+  const demais = STATUS.tipos.filter(t => !(t.obrigatorio && !t.enviado));
+
+  let html = "";
+  if (banner) html += banner;
+
+  html += '<div class="cartao">';
+  if (precisaNome) {
+    html += `
+      <div class="campo" style="margin-top:0">
+        <label for="inNome">Seu nome completo</label>
+        <input type="text" id="inNome" placeholder="Digite seu nome completo">
+      </div>`;
+  } else {
+    html += `<div class="saudacao">Olá, ${esc(STATUS.nome)}</div>`;
+  }
+  if (STATUS.cargoPretendido) {
+    html += `<div class="cargo-info">Cargo pretendido: <b>${esc(STATUS.cargoPretendido)}</b></div>`;
+  }
+  html += "</div>";
+
+  html += '<div class="cartao">';
+  if (pendentes.length) {
+    html += '<div class="secao-titulo">Documentos pendentes</div>';
+    html += pendentes.map(t => itemDocumento(t, true)).join("");
+  } else {
+    html += '<div class="secao-titulo">Tudo certo por aqui</div>'
+          + '<div class="doc-status ok">Todos os documentos obrigatórios já foram recebidos. Obrigado!</div>';
+  }
+  if (demais.length) {
+    html += '<div class="secao-titulo">Documentos já enviados / opcionais</div>';
+    html += demais.map(t => itemDocumento(t, false)).join("");
+  }
+  html += '<button class="btn-primario" onclick="salvar()">Salvar</button>';
+  html += "</div>";
+
+  document.getElementById("conteudo").innerHTML = html;
+}
+
+function itemDocumento(t, aberto) {
+  const classe = t.enviado ? "enviado" : "pendente";
+  const statusTxt = t.enviado
+    ? `Enviado${t.enviadoEm ? " em " + fmtData(t.enviadoEm) : ""}${t.nomeArquivoOriginal ? " · " + esc(t.nomeArquivoOriginal) : ""}`
+    : "Ainda não enviado";
+  const mostrarInput = aberto || !t.enviado;
+  return `
+    <div class="doc-item ${classe}" id="docItem${t.id}">
+      <div class="doc-nome">${esc(t.nome)} ${t.obrigatorio ? '<span class="obr">obrigatório</span>' : ""}</div>
+      <div class="doc-status ${t.enviado ? "ok" : ""}">${statusTxt}</div>
+      <div class="doc-input-wrap" id="docInputWrap${t.id}" style="${mostrarInput ? "" : "display:none"}">
+        ${campoArquivo(t.id)}
+      </div>
+      ${t.enviado ? `<button class="btn-trocar" id="docTrocarBtn${t.id}" style="${mostrarInput ? "display:none" : ""}"
+                             onclick="mostrarInputArquivo(${t.id})">Alterar arquivo</button>` : ""}
+    </div>`;
+}
+
+function campoArquivo(idTipo) {
+  return `
+    <input type="file" id="arquivo${idTipo}" accept="image/*,application/pdf" capture="environment"
+           onchange="arquivoEscolhido(${idTipo})">
+    <button type="button" class="btn-arquivo" onclick="document.getElementById('arquivo${idTipo}').click()">
+      📷 Tirar foto ou escolher arquivo
+    </button>
+    <div class="arquivo-escolhido" id="arquivoNome${idTipo}" style="display:none"></div>`;
+}
+
+function mostrarInputArquivo(idTipo) {
+  document.getElementById("docInputWrap" + idTipo).style.display = "";
+  const btn = document.getElementById("docTrocarBtn" + idTipo);
+  if (btn) btn.style.display = "none";
+}
+
+function arquivoEscolhido(idTipo) {
+  const input = document.getElementById("arquivo" + idTipo);
+  const f = input.files && input.files[0];
+  const nomeCx = document.getElementById("arquivoNome" + idTipo);
+  if (!f) { ARQUIVOS[idTipo] = null; nomeCx.style.display = "none"; return; }
+  ARQUIVOS[idTipo] = f;
+  nomeCx.style.display = "flex";
+  nomeCx.textContent = "✓ " + f.name;
+}
+
+function fmtData(iso) {
+  try {
+    const d = new Date(iso.replace(" ", "T"));
+    return d.toLocaleDateString("pt-BR");
+  } catch (e) { return ""; }
+}
+
+async function salvar() {
+  const nomeInput = document.getElementById("inNome");
+  if (nomeInput && !nomeInput.value.trim()) { alert("Informe seu nome completo."); return; }
+
+  const fd = new FormData();
+  fd.append("cpf", STATUS.cpf);
+  if (nomeInput) fd.append("nome", nomeInput.value.trim());
+  let temArquivo = false;
+  Object.keys(ARQUIVOS).forEach(idTipo => {
+    if (ARQUIVOS[idTipo]) { fd.append("arquivo_" + idTipo, ARQUIVOS[idTipo]); temArquivo = true; }
+  });
+
+  if (!temArquivo && !nomeInput) { alert("Escolha ao menos um documento para enviar."); return; }
+
+  const btn = document.querySelector(".btn-primario");
+  btn.disabled = true;
+  btn.textContent = "Enviando…";
+  try {
+    const r = await fetch("api/publico/admissao/salvar", { method: "POST", body: fd });
+    const j = await r.json();
+    if (!j.ok) { alert("Erro ao salvar: " + (j.erro || "tente novamente")); btn.disabled = false; btn.textContent = "Salvar"; return; }
+
+    STATUS = j;
+    ARQUIVOS = {};
+    let banner;
+    if (j.completo) {
+      banner = '<div class="banner ok">✓ Recebemos todos os documentos obrigatórios. Obrigado! A equipe de RH vai dar continuidade ao seu processo de admissão.</div>';
+    } else {
+      banner = '<div class="banner alerta">Documentos salvos! Ainda está faltando:<ul>'
+             + j.faltando.map(n => "<li>" + esc(n) + "</li>").join("") + "</ul>"
+             + "Você pode voltar a este link a qualquer momento para completar o envio.</div>";
+    }
+    renderDocumentos(banner);
+  } catch (e) {
+    alert("Não foi possível salvar. Verifique sua internet e tente novamente.");
+    btn.disabled = false;
+    btn.textContent = "Salvar";
+  }
+}
+
+renderCpf();
+</script>
+</body>
+</html>

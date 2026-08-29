@@ -78,9 +78,34 @@ ORDER BY
        c.id
 LIMIT 1;
 
+-- 5) Admissão de Funcionários (tela de controle do RH) -> categoria de RH/
+--    Pessoal/Administração, com o mesmo fallback do item 4. O link PÚBLICO
+--    (admissao.html, sem login) não entra aqui — não é módulo do Hub, é o
+--    endereço que vai pro site da usina.
+INSERT INTO intranet_modulo (id_categoria, nome, descricao, icone, url_destino, ordem, ativo)
+SELECT c.id,
+       'Admissão de Funcionários',
+       'Documentos enviados pelo candidato no link público de admissão — acompanhar e baixar',
+       'file-text',
+       '/fluxo-caixa/admissao-controle.html',
+       COALESCE((SELECT MAX(m.ordem) + 1 FROM intranet_modulo m WHERE m.id_categoria = c.id), 1),
+       1
+FROM   intranet_categoria c
+WHERE  NOT EXISTS (SELECT 1 FROM intranet_modulo m2 WHERE m2.url_destino = '/fluxo-caixa/admissao-controle.html')
+ORDER BY
+       CASE
+         WHEN UPPER(c.nome) LIKE '%RH%'            THEN 0
+         WHEN UPPER(c.nome) LIKE '%PESSOAL%'        THEN 1
+         WHEN UPPER(c.nome) LIKE '%RECURSOS HUMAN%' THEN 2
+         WHEN UPPER(c.nome) LIKE '%ADMINISTRA%'     THEN 3
+         ELSE 9
+       END,
+       c.id
+LIMIT 1;
+
 -- Conferir:
 -- SELECT id, id_categoria, nome, url_destino, ordem, ativo
--- FROM intranet_modulo WHERE url_destino IN ('/fluxo-caixa/pagamento-cana.html','/fluxo-caixa/fechamento-frete.html','/fluxo-caixa/estoque-parado-relatorio.html');
+-- FROM intranet_modulo WHERE url_destino IN ('/fluxo-caixa/pagamento-cana.html','/fluxo-caixa/fechamento-frete.html','/fluxo-caixa/estoque-parado-relatorio.html','/fluxo-caixa/admissao-controle.html');
 
 -- (Opcional) Liberar para um usuário NÃO-admin: repita por usuário/módulo.
 -- INSERT INTO intranet_permissao_modulo (id_usuario, id_modulo)

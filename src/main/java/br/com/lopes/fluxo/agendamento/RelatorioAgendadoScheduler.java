@@ -95,6 +95,8 @@ public class RelatorioAgendadoScheduler implements ServletContextListener {
             new br.com.lopes.fluxo.dao.PrecoCanaDAO().garantirEstrutura();
             // Alerta de estoque parado: tabelas do histórico semanal (snapshot/comparação).
             new br.com.lopes.fluxo.dao.EstoqueParadoSnapshotDAO().garantirEstrutura();
+            // Admissão de funcionários: tabelas de tipos de documento, candidato e envios.
+            new br.com.lopes.fluxo.dao.AdmissaoDocumentoDAO().garantirEstrutura();
         } catch (Exception e) {
             LOG.log(Level.SEVERE, "Não foi possível preparar as tabelas dos agendamentos", e);
         }

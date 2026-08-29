@@ -75,6 +75,9 @@ public class AuthFilter implements Filter {
             // /api/publico/status-envios, que já é liberado abaixo e devolve os
             // telefones mascarados.
             uri.equals(ctx + "/status-envios.html")       ||
+            // Link de admissão de funcionários, no site da usina: sem login,
+            // só o CPF (validado na própria API /api/publico/admissao/*).
+            uri.equals(ctx + "/admissao.html")             ||
             // Service worker e manifest do mapa de talhões: são arquivos
             // estáticos, sem dado nenhum, e precisam responder mesmo com a
             // sessão expirada — é o que mantém a tela funcionando no campo.
