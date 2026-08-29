@@ -248,14 +248,63 @@ function mostrarInputArquivo(idTipo) {
   if (btn) btn.style.display = "none";
 }
 
-function arquivoEscolhido(idTipo) {
+const TAMANHO_MAX_ARQUIVO = 25 * 1024 * 1024;   // folga em relação ao limite de 30MB do servidor
+const LADO_MAX_FOTO = 1600;                     // px — de sobra pra ler o documento, bem mais leve que a foto original
+
+/**
+ * Redesenha a foto num canvas menor e reexporta em JPEG — a foto de um
+ * celular moderno costuma vir com vários MB (às vezes dezenas), e ninguém
+ * precisa disso pra ler um documento. PDF não passa por aqui (não tem como
+ * "redesenhar" um PDF num canvas); some some se o navegador não conseguir
+ * decodificar a imagem.
+ */
+function comprimirImagem(file) {
+  return new Promise(resolve => {
+    if (!file.type.startsWith("image/")) { resolve(file); return; }
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > LADO_MAX_FOTO || height > LADO_MAX_FOTO) {
+        const escala = LADO_MAX_FOTO / Math.max(width, height);
+        width = Math.round(width * escala);
+        height = Math.round(height * escala);
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width; canvas.height = height;
+      canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+      canvas.toBlob(blob => {
+        URL.revokeObjectURL(url);
+        if (!blob) { resolve(file); return; }
+        const nome = file.name.replace(/\.\w+$/, "") + ".jpg";
+        resolve(new File([blob], nome, { type: "image/jpeg" }));
+      }, "image/jpeg", 0.82);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+}
+
+async function arquivoEscolhido(idTipo) {
   const input = document.getElementById("arquivo" + idTipo);
-  const f = input.files && input.files[0];
+  const original = input.files && input.files[0];
   const nomeCx = document.getElementById("arquivoNome" + idTipo);
-  if (!f) { ARQUIVOS[idTipo] = null; nomeCx.style.display = "none"; return; }
+  if (!original) { ARQUIVOS[idTipo] = null; nomeCx.style.display = "none"; return; }
+
+  nomeCx.style.display = "flex";
+  nomeCx.textContent = "Preparando arquivo…";
+  const f = await comprimirImagem(original);
+
+  if (f.size > TAMANHO_MAX_ARQUIVO) {
+    alert("Esse arquivo tem " + (f.size / 1024 / 1024).toFixed(1) + " MB — muito grande mesmo depois de reduzido. Tente outra foto.");
+    input.value = "";
+    ARQUIVOS[idTipo] = null;
+    nomeCx.style.display = "none";
+    return;
+  }
   ARQUIVOS[idTipo] = f;
   nomeCx.style.display = "flex";
-  nomeCx.textContent = "✓ " + f.name;
+  nomeCx.textContent = "✓ " + original.name + (f.size < original.size ? " (reduzida para envio)" : "");
 }
 
 function fmtData(iso) {
@@ -284,7 +333,19 @@ async function salvar() {
   btn.textContent = "Enviando…";
   try {
     const r = await fetch("api/publico/admissao/salvar", { method: "POST", body: fd });
-    const j = await r.json();
+    const texto = await r.text();
+    let j;
+    try { j = JSON.parse(texto); }
+    catch (e) {
+      // Resposta não é JSON: o próprio servidor recusou o envio antes de
+      // chegar no código (ex.: limite de tamanho do Tomcat) — o texto ajuda
+      // a diagnosticar, "tente novamente" sozinho não diz nada.
+      alert("O servidor não conseguiu processar o envio (HTTP " + r.status + "). "
+          + "Se escolheu vários documentos de uma vez, tente enviar menos por vez, "
+          + "ou fotos com menor resolução. Detalhe técnico: " + texto.slice(0, 200));
+      btn.disabled = false; btn.textContent = "Salvar";
+      return;
+    }
     if (!j.ok) { alert("Erro ao salvar: " + (j.erro || "tente novamente")); btn.disabled = false; btn.textContent = "Salvar"; return; }
 
     STATUS = j;
@@ -299,7 +360,7 @@ async function salvar() {
     }
     renderDocumentos(banner);
   } catch (e) {
-    alert("Não foi possível salvar. Verifique sua internet e tente novamente.");
+    alert("Não foi possível conectar ao servidor. Verifique sua internet e tente novamente.");
     btn.disabled = false;
     btn.textContent = "Salvar";
   }

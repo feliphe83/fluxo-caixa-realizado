@@ -79,7 +79,8 @@ public class AdmissaoDocumentoDAO {
                   (5, 'Título de Eleitor', 'N', 5),
                   (6, 'Certificado de Reservista', 'N', 6),
                   (7, 'Certidão de Nascimento/Casamento', 'N', 7),
-                  (8, 'PIS/PASEP', 'N', 8)
+                  (8, 'PIS/PASEP', 'N', 8),
+                  (9, 'CNH (Carteira Nacional de Habilitação)', 'N', 9)
                 """);
         }
         return c;

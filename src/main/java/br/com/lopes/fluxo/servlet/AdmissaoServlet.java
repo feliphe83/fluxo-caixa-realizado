@@ -40,8 +40,8 @@ import java.util.logging.Logger;
  */
 @WebServlet("/api/publico/admissao/*")
 @MultipartConfig(fileSizeThreshold = 1 << 20,
-                 maxFileSize = 15L * 1024 * 1024,      // uma foto de celular passa disso raramente
-                 maxRequestSize = 60L * 1024 * 1024)   // vários documentos no mesmo envio
+                 maxFileSize = 30L * 1024 * 1024,       // foto de celular em alta resolução passa fácil de 15MB
+                 maxRequestSize = 250L * 1024 * 1024)   // vários documentos grandes no mesmo envio
 public class AdmissaoServlet extends HttpServlet {
 
     private static final Logger LOG = Logger.getLogger(AdmissaoServlet.class.getName());
