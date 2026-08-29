@@ -194,9 +194,6 @@ function renderDocumentos(banner) {
   } else {
     html += `<div class="saudacao">Olá, ${esc(STATUS.nome)}</div>`;
   }
-  if (STATUS.cargoPretendido) {
-    html += `<div class="cargo-info">Cargo pretendido: <b>${esc(STATUS.cargoPretendido)}</b></div>`;
-  }
   html += "</div>";
 
   html += '<div class="cartao">';
@@ -237,7 +234,7 @@ function itemDocumento(t, aberto) {
 
 function campoArquivo(idTipo) {
   return `
-    <input type="file" id="arquivo${idTipo}" accept="image/*,application/pdf" capture="environment"
+    <input type="file" id="arquivo${idTipo}" accept="image/*,application/pdf"
            onchange="arquivoEscolhido(${idTipo})">
     <button type="button" class="btn-arquivo" onclick="document.getElementById('arquivo${idTipo}').click()">
       📷 Tirar foto ou escolher arquivo
