@@ -129,34 +129,13 @@ function renderCpf(mensagemErro) {
   document.getElementById("conteudo").innerHTML = `
     <div class="cartao">
       <h2>Antes de começar</h2>
-      <div class="lgpd-box">
-        <p><strong>Aviso de Privacidade — Lei Geral de Proteção de Dados (LGPD, Lei nº 13.709/2018)</strong></p>
-        <p>A Usina Santa Clotilde S/A vai coletar, nesta tela, cópias de documentos pessoais (como RG, CPF,
-        CTPS, comprovante de residência e outros que a área de Recursos Humanos indicar) com a finalidade
-        exclusiva de dar andamento ao seu processo de admissão e cumprir obrigações legais, trabalhistas e
-        previdenciárias (registro de empregado, eSocial, folha de pagamento e órgãos de fiscalização).</p>
-        <p>Esses dados serão tratados apenas pela equipe de Recursos Humanos, armazenados de forma segura, e
-        mantidos pelo prazo exigido pela legislação trabalhista e previdenciária aplicável. Não serão usados
-        para nenhuma outra finalidade nem compartilhados com terceiros fora do necessário para o cumprimento
-        de obrigações legais.</p>
-        <p>Você pode, a qualquer momento, solicitar à empresa a confirmação de que seus dados estão sendo
-        tratados, o acesso a eles, a correção de dados incompletos ou desatualizados, e esclarecimentos sobre
-        este tratamento — basta procurar o setor de Recursos Humanos. Documentos exigidos por lei (como os de
-        admissão) não podem ser excluídos enquanto o vínculo empregatício ou a obrigação legal persistir.</p>
-        <p>Ao marcar a caixa abaixo e continuar, você declara que leu este aviso e concorda com o tratamento
-        dos seus dados pessoais para a finalidade aqui descrita.</p>
-      </div>
+      <!-- TODO: texto de LGPD entra aqui — pendente de revisão jurídica/RH. -->
 
-      <div class="campo">
+      <div class="campo" style="margin-top:0">
         <label for="inCpf">Seu CPF</label>
         <input type="text" id="inCpf" inputmode="numeric" placeholder="000.000.000-00" maxlength="14"
                oninput="this.value = formatarCpf(this.value); atualizarBotaoCpf();">
       </div>
-
-      <label class="marca-lgpd">
-        <input type="checkbox" id="ckLgpd" onchange="atualizarBotaoCpf()">
-        <span>Li e concordo com o tratamento dos meus dados pessoais para fins de admissão, conforme descrito acima.</span>
-      </label>
 
       <div class="msg-erro ${mensagemErro ? "on" : ""}" id="msgErroCpf">${esc(mensagemErro || "")}</div>
 
@@ -168,8 +147,7 @@ function renderCpf(mensagemErro) {
 
 function atualizarBotaoCpf() {
   const cpfOk = soDigitos(document.getElementById("inCpf").value).length === 11;
-  const lgpdOk = document.getElementById("ckLgpd").checked;
-  document.getElementById("btnContinuar").disabled = !(cpfOk && lgpdOk);
+  document.getElementById("btnContinuar").disabled = !cpfOk;
 }
 
 async function continuar() {
