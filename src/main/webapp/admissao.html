@@ -249,7 +249,44 @@ function mostrarInputArquivo(idTipo) {
 }
 
 const TAMANHO_MAX_ARQUIVO = 25 * 1024 * 1024;   // folga em relação ao limite de 30MB do servidor
-const LADO_MAX_FOTO = 1600;                     // px — de sobra pra ler o documento, bem mais leve que a foto original
+const LADO_MAX_FOTO = 2000;                     // px — ainda dá pra ler letra miúda de documento
+const QUALIDADE_JPEG = 0.92;
+
+/**
+ * Nível de nitidez de um canvas: variância do Laplaciano (detector de bordas
+ * clássico) sobre uma amostra em tons de cinza. Foto desfocada tem bordas
+ * fracas em toda parte, então a resposta do Laplaciano varia pouco — a
+ * variância fica baixa. É uma estimativa, não uma medição exata; por isso o
+ * aviso deixa a pessoa continuar mesmo assim.
+ */
+function calcularNitidez(canvas) {
+  const w = Math.min(canvas.width, 500);
+  const h = Math.max(1, Math.round(canvas.height * (w / canvas.width)));
+  const amostra = document.createElement("canvas");
+  amostra.width = w; amostra.height = h;
+  const ctx = amostra.getContext("2d");
+  ctx.drawImage(canvas, 0, 0, w, h);
+  const dados = ctx.getImageData(0, 0, w, h).data;
+
+  const cinza = new Float32Array(w * h);
+  for (let i = 0; i < w * h; i++) {
+    cinza[i] = 0.299 * dados[i * 4] + 0.587 * dados[i * 4 + 1] + 0.114 * dados[i * 4 + 2];
+  }
+
+  let soma = 0, soma2 = 0, n = 0;
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const i = y * w + x;
+      const lap = cinza[i - 1] + cinza[i + 1] + cinza[i - w] + cinza[i + w] - 4 * cinza[i];
+      soma += lap; soma2 += lap * lap; n++;
+    }
+  }
+  const media = soma / n;
+  return soma2 / n - media * media;
+}
+
+/** Abaixo disso a foto costuma estar mesmo desfocada — calibrado meio conservador de propósito. */
+const LIMIAR_NITIDEZ = 45;
 
 /**
  * Redesenha a foto num canvas menor e reexporta em JPEG — a foto de um
@@ -257,10 +294,12 @@ const LADO_MAX_FOTO = 1600;                     // px — de sobra pra ler o doc
  * precisa disso pra ler um documento. PDF não passa por aqui (não tem como
  * "redesenhar" um PDF num canvas); some some se o navegador não conseguir
  * decodificar a imagem.
+ *
+ * @return { file, nitidez } — nitidez é null pra arquivo que não é imagem.
  */
 function comprimirImagem(file) {
   return new Promise(resolve => {
-    if (!file.type.startsWith("image/")) { resolve(file); return; }
+    if (!file.type.startsWith("image/")) { resolve({ file, nitidez: null }); return; }
     const url = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => {
@@ -273,14 +312,15 @@ function comprimirImagem(file) {
       const canvas = document.createElement("canvas");
       canvas.width = width; canvas.height = height;
       canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+      const nitidez = calcularNitidez(canvas);
       canvas.toBlob(blob => {
         URL.revokeObjectURL(url);
-        if (!blob) { resolve(file); return; }
+        if (!blob) { resolve({ file, nitidez }); return; }
         const nome = file.name.replace(/\.\w+$/, "") + ".jpg";
-        resolve(new File([blob], nome, { type: "image/jpeg" }));
-      }, "image/jpeg", 0.82);
+        resolve({ file: new File([blob], nome, { type: "image/jpeg" }), nitidez });
+      }, "image/jpeg", QUALIDADE_JPEG);
     };
-    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve({ file, nitidez: null }); };
     img.src = url;
   });
 }
@@ -293,7 +333,7 @@ async function arquivoEscolhido(idTipo) {
 
   nomeCx.style.display = "flex";
   nomeCx.textContent = "Preparando arquivo…";
-  const f = await comprimirImagem(original);
+  const { file: f, nitidez } = await comprimirImagem(original);
 
   if (f.size > TAMANHO_MAX_ARQUIVO) {
     alert("Esse arquivo tem " + (f.size / 1024 / 1024).toFixed(1) + " MB — muito grande mesmo depois de reduzido. Tente outra foto.");
@@ -302,6 +342,18 @@ async function arquivoEscolhido(idTipo) {
     nomeCx.style.display = "none";
     return;
   }
+
+  if (nitidez !== null && nitidez < LIMIAR_NITIDEZ) {
+    const continuar = confirm("Essa foto parece desfocada — pode ficar difícil de ler o documento. "
+      + "Quer usar mesmo assim? Toque em Cancelar para tirar outra foto.");
+    if (!continuar) {
+      input.value = "";
+      ARQUIVOS[idTipo] = null;
+      nomeCx.style.display = "none";
+      return;
+    }
+  }
+
   ARQUIVOS[idTipo] = f;
   nomeCx.style.display = "flex";
   nomeCx.textContent = "✓ " + original.name + (f.size < original.size ? " (reduzida para envio)" : "");
