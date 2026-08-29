@@ -31,7 +31,8 @@ import java.util.logging.Logger;
  *      que falta.
  *
  * POST /api/publico/admissao/salvar  (multipart/form-data)
- *   campos: cpf, nome (opcional — só usado se ainda não há nome gravado)
+ *   campos: cpf, nome (opcional — só usado se ainda não há nome gravado),
+ *           telefone (opcional, sempre editável)
  *   arquivos: um Part por tipo de documento enviado, nomeado "arquivo_{id}"
  *   -> grava os arquivos enviados e devolve o que ainda falta.
  *
@@ -102,6 +103,13 @@ public class AdmissaoServlet extends HttpServlet {
                 dao.atualizarNome(idCandidato, nome.trim());
             }
 
+            // Telefone é sempre opcional e sempre editável (não vem do ERP) —
+            // atualiza sempre que vier no envio, mesmo que já tivesse um valor.
+            String telefone = campo(req, "telefone");
+            if (telefone != null) {
+                dao.atualizarTelefone(idCandidato, telefone.trim().isBlank() ? null : telefone.trim());
+            }
+
             for (Part parte : req.getParts()) {
                 String nomeCampo = parte.getName();
                 if (nomeCampo == null || !nomeCampo.startsWith("arquivo_") || parte.getSize() == 0) continue;
@@ -155,6 +163,7 @@ public class AdmissaoServlet extends HttpServlet {
         r.addProperty("ok", true);
         r.addProperty("cpf", (String) candidato.get("cpf"));
         r.addProperty("nome", (String) candidato.get("nome"));
+        r.addProperty("telefone", (String) candidato.get("telefone"));
         r.addProperty("cargoPretendido", (String) candidato.get("cargoPretendido"));
         r.addProperty("ligadoAoErp", Boolean.TRUE.equals(candidato.get("ligadoAoErp")));
         r.add("tipos", tiposArr);

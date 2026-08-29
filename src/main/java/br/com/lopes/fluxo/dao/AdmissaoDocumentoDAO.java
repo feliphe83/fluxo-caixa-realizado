@@ -51,12 +51,21 @@ public class AdmissaoDocumentoDAO {
                   id INT AUTO_INCREMENT PRIMARY KEY,
                   cpf VARCHAR(11) NOT NULL UNIQUE,
                   nome VARCHAR(150),
+                  telefone VARCHAR(20),
                   cargo_pretendido VARCHAR(150),
                   ligado_ao_erp CHAR(1) NOT NULL DEFAULT 'N',
                   criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                   atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
                 )
                 """);
+            // Coluna acrescentada depois: base já existente não recebe o
+            // CREATE de novo, então o ALTER roda solto — 42S21 (coluna
+            // duplicada) é esperado a partir da 2ª vez.
+            try {
+                st.execute("ALTER TABLE fc_admissao_candidato ADD COLUMN telefone VARCHAR(20)");
+            } catch (SQLException e) {
+                if (!"42S21".equals(e.getSQLState())) throw e;
+            }
             st.execute("""
                 CREATE TABLE IF NOT EXISTS fc_admissao_documento (
                   id_candidato INT NOT NULL,
@@ -180,7 +189,7 @@ public class AdmissaoDocumentoDAO {
 
     private Map<String, Object> buscarCandidato(Connection c, String cpf) throws SQLException {
         try (PreparedStatement ps = c.prepareStatement(
-                "SELECT id, cpf, nome, cargo_pretendido, ligado_ao_erp FROM fc_admissao_candidato WHERE cpf = ?")) {
+                "SELECT id, cpf, nome, telefone, cargo_pretendido, ligado_ao_erp FROM fc_admissao_candidato WHERE cpf = ?")) {
             ps.setString(1, cpf);
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) return null;
@@ -188,6 +197,7 @@ public class AdmissaoDocumentoDAO {
                 m.put("id", rs.getInt("id"));
                 m.put("cpf", rs.getString("cpf"));
                 m.put("nome", rs.getString("nome"));
+                m.put("telefone", rs.getString("telefone"));
                 m.put("cargoPretendido", rs.getString("cargo_pretendido"));
                 m.put("ligadoAoErp", "S".equals(rs.getString("ligado_ao_erp")));
                 return m;
@@ -217,6 +227,16 @@ public class AdmissaoDocumentoDAO {
         try (Connection c = conn();
              PreparedStatement ps = c.prepareStatement("UPDATE fc_admissao_candidato SET nome = ? WHERE id = ?")) {
             ps.setString(1, nome);
+            ps.setInt(2, idCandidato);
+            ps.executeUpdate();
+        }
+    }
+
+    /** Telefone é sempre opcional e sempre editável — não vem do ERP, é só o que a pessoa quiser deixar. */
+    public void atualizarTelefone(int idCandidato, String telefone) throws SQLException {
+        try (Connection c = conn();
+             PreparedStatement ps = c.prepareStatement("UPDATE fc_admissao_candidato SET telefone = ? WHERE id = ?")) {
+            ps.setString(1, telefone);
             ps.setInt(2, idCandidato);
             ps.executeUpdate();
         }
@@ -289,7 +309,7 @@ public class AdmissaoDocumentoDAO {
     /** Um candidato por linha, com quantos documentos obrigatórios já mandou. */
     public List<Map<String, Object>> listarCandidatos() throws SQLException {
         String sql = """
-            SELECT cand.id, cand.cpf, cand.nome, cand.cargo_pretendido, cand.ligado_ao_erp,
+            SELECT cand.id, cand.cpf, cand.nome, cand.telefone, cand.cargo_pretendido, cand.ligado_ao_erp,
                    cand.criado_em, cand.atualizado_em,
                    (SELECT COUNT(*) FROM fc_admissao_tipo_documento t WHERE t.ativo = 'S' AND t.obrigatorio = 'S') total_obrigatorios,
                    (SELECT COUNT(*) FROM fc_admissao_documento d
@@ -307,6 +327,7 @@ public class AdmissaoDocumentoDAO {
                 m.put("id", rs.getInt("id"));
                 m.put("cpf", rs.getString("cpf"));
                 m.put("nome", rs.getString("nome"));
+                m.put("telefone", rs.getString("telefone"));
                 m.put("cargoPretendido", rs.getString("cargo_pretendido"));
                 m.put("ligadoAoErp", "S".equals(rs.getString("ligado_ao_erp")));
                 m.put("criadoEm", rs.getTimestamp("criado_em").toString());
@@ -323,7 +344,7 @@ public class AdmissaoDocumentoDAO {
     public Map<String, Object> buscarCandidatoPorId(int id) throws SQLException {
         try (Connection c = conn();
              PreparedStatement ps = c.prepareStatement(
-                 "SELECT id, cpf, nome, cargo_pretendido, ligado_ao_erp FROM fc_admissao_candidato WHERE id = ?")) {
+                 "SELECT id, cpf, nome, telefone, cargo_pretendido, ligado_ao_erp FROM fc_admissao_candidato WHERE id = ?")) {
             ps.setInt(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) return null;
@@ -331,6 +352,7 @@ public class AdmissaoDocumentoDAO {
                 m.put("id", rs.getInt("id"));
                 m.put("cpf", rs.getString("cpf"));
                 m.put("nome", rs.getString("nome"));
+                m.put("telefone", rs.getString("telefone"));
                 m.put("cargoPretendido", rs.getString("cargo_pretendido"));
                 m.put("ligadoAoErp", "S".equals(rs.getString("ligado_ao_erp")));
                 return m;

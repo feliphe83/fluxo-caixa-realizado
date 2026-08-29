@@ -123,6 +123,15 @@ function formatarCpf(v) {
   return s;
 }
 
+/** (00) 00000-0000 (celular) ou (00) 0000-0000 (fixo), conforme a quantidade de dígitos. */
+function formatarTelefone(v) {
+  const d = soDigitos(v).slice(0, 11);
+  if (d.length > 10) return d.replace(/(\d{2})(\d{5})(\d{1,4})/, "($1) $2-$3");
+  if (d.length > 6) return d.replace(/(\d{2})(\d{4})(\d{1,4})/, "($1) $2-$3");
+  if (d.length > 2) return d.replace(/(\d{2})(\d{1,4})/, "($1) $2");
+  return d;
+}
+
 // ── Etapa 1: CPF + LGPD ────────────────────────────────────────────────
 function renderCpf(mensagemErro) {
   ETAPA = "cpf";
@@ -194,6 +203,13 @@ function renderDocumentos(banner) {
   } else {
     html += `<div class="saudacao">Olá, ${esc(STATUS.nome)}</div>`;
   }
+  html += `
+    <div class="campo">
+      <label for="inTelefone">Telefone para contato (opcional)</label>
+      <input type="text" id="inTelefone" inputmode="numeric" placeholder="(00) 00000-0000" maxlength="15"
+             value="${esc(formatarTelefone(STATUS.telefone || ""))}"
+             oninput="this.value = formatarTelefone(this.value)">
+    </div>`;
   html += "</div>";
 
   html += '<div class="cartao">';
@@ -373,12 +389,10 @@ async function salvar() {
   const fd = new FormData();
   fd.append("cpf", STATUS.cpf);
   if (nomeInput) fd.append("nome", nomeInput.value.trim());
-  let temArquivo = false;
+  fd.append("telefone", soDigitos(document.getElementById("inTelefone").value));
   Object.keys(ARQUIVOS).forEach(idTipo => {
-    if (ARQUIVOS[idTipo]) { fd.append("arquivo_" + idTipo, ARQUIVOS[idTipo]); temArquivo = true; }
+    if (ARQUIVOS[idTipo]) fd.append("arquivo_" + idTipo, ARQUIVOS[idTipo]);
   });
-
-  if (!temArquivo && !nomeInput) { alert("Escolha ao menos um documento para enviar."); return; }
 
   const btn = document.querySelector(".btn-primario");
   btn.disabled = true;
