@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-:root{--p:#350099;--pc:#EDE7FA;--tinta:#1C1633;--papel:#F7F6FB;--linha:#E3DFEE;--cinza:#6B6480;--cinza2:#9B95AD;--verde:#1F4E9C;--verdec:#E8F0FB;--rubro:#B3261E;--rubroc:#FBE9E7;
+:root{--p:#1a3a7c;--pc:#E3EAF7;--tinta:#1C1633;--papel:#F7F6FB;--linha:#E3DFEE;--cinza:#6B6480;--cinza2:#9B95AD;--verde:#1F4E9C;--verdec:#E8F0FB;--rubro:#B3261E;--rubroc:#FBE9E7;
 --sans:'IBM Plex Sans',system-ui,sans-serif;--serif:'IBM Plex Serif',Georgia,serif;--mono:'IBM Plex Mono',ui-monospace,monospace}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden}
@@ -17,7 +17,7 @@ button{font-family:var(--sans);cursor:pointer}
 button:focus-visible{outline:2px solid #fff;outline-offset:-2px}
 
 /* Cabeçalho: uma faixa só */
-header{background:var(--p);color:#fff;padding:0 28px;height:96px;display:flex;align-items:center;gap:26px;flex:none}
+header{background:linear-gradient(135deg,#0f2460 0%,#1a3a7c 100%);color:#fff;padding:0 28px;height:96px;display:flex;align-items:center;gap:26px;flex:none}
 .marca{display:flex;align-items:center;gap:16px}
 .marca .selo{height:72px;width:72px;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;padding:6px;overflow:hidden;flex:none}
 .marca .selo img{max-height:100%;max-width:100%;width:auto;height:auto;object-fit:contain;display:block}
@@ -27,9 +27,14 @@ header{background:var(--p);color:#fff;padding:0 28px;height:96px;display:flex;al
 .emissao b{display:block;font-family:var(--mono);font-size:14px;font-weight:500;opacity:1}
 .btn-voltar{display:flex;align-items:center;gap:7px;padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.08);color:rgba(255,255,255,.9);font-size:12.5px;font-weight:600;text-decoration:none;margin-left:18px}
 .btn-voltar:hover{background:rgba(255,255,255,.18)}
+.seletor-safra{display:flex;flex-direction:column;gap:4px;margin-left:22px}
+.seletor-safra .rot{font-size:10px;letter-spacing:.12em;text-transform:uppercase;opacity:.7;font-weight:600}
+.seletor-safra select{appearance:none;-webkit-appearance:none;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.35);color:#fff;padding:6px 30px 6px 10px;border-radius:7px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2'><polyline points='6 9 12 15 18 9'/></svg>");background-repeat:no-repeat;background-position:right 8px center;background-size:14px}
+.seletor-safra select option{color:#1C1633}
 
 /* Segunda faixa: Resumo, áreas e meses */
-.faixa{background:#1E1259;color:#fff;padding:0 28px;height:46px;display:flex;align-items:center;gap:6px;flex:none}
+.faixa{background:#0f2460;color:#fff;padding:0 28px;height:46px;display:flex;align-items:center;gap:6px;flex:none}
 .faixa .areas{display:flex;gap:4px;align-items:center;overflow-x:auto}
 .faixa .areas button{background:none;border:0;color:#fff;opacity:.7;padding:6px 13px;border-radius:6px;font-size:14.5px;white-space:nowrap}
 .faixa .areas button:hover{opacity:1;background:rgba(255,255,255,.08)}
@@ -69,7 +74,7 @@ main{flex:1;min-height:0;padding:18px 28px 16px;display:flex;flex-direction:colu
 .visao{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .visao .rot{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--cinza);font-weight:600;margin-right:4px}
 .visao{flex:none}
-.visao button{white-space:nowrap;background:#EDE7FA;border:1px solid #DDD2F3;color:#3C3552;padding:6px 10px;border-radius:6px;font-size:12px}
+.visao button{white-space:nowrap;background:#E3EAF7;border:1px solid #C6D6EF;color:#1a3a7c;padding:6px 10px;border-radius:6px;font-size:12px}
 .visao button.ativa{background:var(--p);border-color:var(--p);color:#fff;font-weight:600}
 .card .per{font-family:var(--serif);font-size:15px;font-weight:600;color:var(--p);margin-top:1px}
 .card .grande{font-family:var(--serif);font-size:26px;font-weight:600;letter-spacing:-.3px;margin-top:8px;line-height:1.1}
@@ -115,7 +120,7 @@ tfoot td:first-child{padding-left:16px;font-family:var(--serif)}
 .graficos{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;gap:14px}
 
 /* Cores de fundo da tela Resumo */
-.card.c1{background:#F1ECFB;border-color:#DDD2F3}
+.card.c1{background:#E3EAF7;border-color:#C6D6EF}
 .card.c2{background:#E9F5EE;border-color:#CFE7D8}
 .card.c3{background:#FBF4E4;border-color:#EEDFB9}
 .card.c4{background:#EDF2FA;border-color:#D4DEF0}
@@ -136,6 +141,7 @@ footer{flex:none;font-size:10.5px;color:var(--cinza2);padding:0 28px 8px;display
     <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
     Voltar ao Hub
   </a>
+  <div class="seletor-safra"><span class="rot">Safra</span><select id="selSafra" onchange="trocarSafra()"></select></div>
   <div class="emissao"><b id="relogio"></b></div>
 </header>
 <div class="faixa">
@@ -216,14 +222,24 @@ const tit = s => String(s || '').toLowerCase().replace(/(^|\s)\S/g, t => t.toUpp
 const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const NOME = { g: 'Grupo de despesa', e: 'Empenho', a: 'Área de negócio' };
 
-async function carregar() {
+let ANO_PADRAO = null;   // a safra que o servidor escolhe sozinho (a "atual") — descoberta na 1ª carga
+
+async function carregar(anoEscolhido) {
+  const primeiraCarga = ANO_PADRAO === null;
+  if (!primeiraCarga) {
+    document.getElementById('carregando').style.display = 'flex';
+    document.getElementById('carregando').innerHTML = '<div class="spinner"></div>Consultando o orçamento no Oracle…';
+    document.querySelectorAll('.tela').forEach(s => s.classList.remove('ativa'));
+  }
   try {
-    const r = await fetch('api/orcamento-safra', { headers: { 'Accept': 'application/json' } });
+    const url = 'api/orcamento-safra' + (anoEscolhido ? '?anoInicio=' + anoEscolhido : '');
+    const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
     const j = await r.json();
     if (!j.ok) throw new Error(j.erro || 'Falha ao consultar');
     DADOS = j.dados || [];
     MESES = j.meses || [];
     ANO_INICIO = j.anoInicio;
+    if (primeiraCarga) { ANO_PADRAO = j.anoInicio; montarSeletorSafra(); }
     AREAS = [...new Set(DADOS.map(d => d[2]))]
       .filter(a => a !== 'MATÉRIA-PRIMA DE TERCEIROS' && a !== 'OBRAS EM ANDAMENTO / INVESTIMENTOS/PERDA')
       .sort((a, b) => ORDEM_A.indexOf(a) - ORDEM_A.indexOf(b));
@@ -231,13 +247,29 @@ async function carregar() {
     if (!j.temNegocio) {
       document.getElementById('rodape-fonte').textContent += ' Obs.: esta base não tem a coluna de área de negócio configurada — tudo aparece como "Não disponível".';
     }
+    tela = 'resumo'; pilha = []; area = null;
     document.getElementById('carregando').style.display = 'none';
     document.getElementById('t-resumo').classList.add('ativa');
     render();
   } catch (e) {
+    document.getElementById('carregando').style.display = 'flex';
     document.getElementById('carregando').innerHTML =
       '<div class="erro"><b>Não foi possível carregar o orçamento.</b></div><div style="font-size:12.5px">' + esc(e.message) + '</div>';
   }
+}
+
+/** As últimas 5 safras (a atual + 4 anteriores), igual ao seletor de período do painel de compras. */
+function montarSeletorSafra() {
+  const sel = document.getElementById('selSafra');
+  const opcoes = [];
+  for (let a = ANO_PADRAO; a > ANO_PADRAO - 5; a--) opcoes.push(a);
+  sel.innerHTML = opcoes.map(a => `<option value="${a}">Safra ${rotSafra(a)}${a === ANO_PADRAO ? ' (atual)' : ''}</option>`).join('');
+  sel.value = ANO_INICIO;
+}
+function trocarSafra() {
+  const ano = parseInt(document.getElementById('selSafra').value);
+  if (ano === ANO_INICIO) return;
+  carregar(ano);
 }
 
 function agg(keys, filtro) {
@@ -385,9 +417,9 @@ function renderGraficos() {
     cM = new Chart($('#g-mensal'), {
       type: 'bar', data: {
         labels: MESES.map(x => x.m), datasets: [
-          { label: OS, data: o, backgroundColor: o.map((_, i) => i === mes ? '#350099' : i < mes ? '#6A47C8' : '#C7B8EC'), borderRadius: 3, order: 2 },
+          { label: OS, data: o, backgroundColor: o.map((_, i) => i === mes ? '#1a3a7c' : i < mes ? '#4d6fa8' : '#c6d6ef'), borderRadius: 3, order: 2 },
           { label: 'Realizado ' + RS, data: r, backgroundColor: r.map((_, i) => i === mes ? '#9B95AD' : '#D9D5E6'), borderRadius: 3, order: 2 },
-          { label: 'Acum. ' + vr.main.toLowerCase() + ' ' + vr.rotMain(), data: acO, type: 'line', borderColor: '#350099', borderWidth: 2, pointRadius: 2.5, yAxisID: 'y2', order: 1, tension: .25 },
+          { label: 'Acum. ' + vr.main.toLowerCase() + ' ' + vr.rotMain(), data: acO, type: 'line', borderColor: '#1a3a7c', borderWidth: 2, pointRadius: 2.5, yAxisID: 'y2', order: 1, tension: .25 },
           { label: 'Acum. realizado ' + RS, data: acR, type: 'line', borderColor: '#6B6480', borderDash: [4, 3], borderWidth: 2, pointRadius: 2.5, yAxisID: 'y2', order: 1, tension: .25 }
         ]
       },
@@ -403,7 +435,7 @@ function renderGraficos() {
     $('#gg-sub').textContent = $('#ga-sub').textContent = `Acumulado set a ${M.m.toLowerCase()}: ${vr.main.toLowerCase()} ${vr.rotMain()} x realizado ${RS}`;
     $('#ga-tit').textContent = area ? 'Acumulado por empenho (12 maiores)' : 'Acumulado por área de negócio';
     const hb = (labels, d) => ({
-      type: 'bar', data: { labels, datasets: [{ label: OS, data: d.map(x => x.oA), backgroundColor: '#350099', borderRadius: 3 }, { label: 'Realizado ' + RS, data: d.map(x => x.rA), backgroundColor: '#C7B8EC', borderRadius: 3 }] },
+      type: 'bar', data: { labels, datasets: [{ label: OS, data: d.map(x => x.oA), backgroundColor: '#1a3a7c', borderRadius: 3 }, { label: 'Realizado ' + RS, data: d.map(x => x.rA), backgroundColor: '#c6d6ef', borderRadius: 3 }] },
       options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: leg, tooltip: tt }, scales: { x: { ticks: { callback: fmtM }, grid: { color: '#EEEBF5' } }, y: { grid: { display: false }, ticks: { autoSkip: false } } } }
     });
     if (cG) cG.destroy();
