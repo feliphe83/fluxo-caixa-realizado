@@ -23,20 +23,22 @@ import java.util.logging.Logger;
  * Dados do painel "Acompanhamento do Orçamento de Compras — Safra" (a versão
  * com layout de dashboard, drill-down grupo/área/empenho e gráficos —
  * orcamento-safra.html). Reaproveita a mesma consulta de
- * {@link OrcamentoComprasDAO} (a de orcamento-compras.html), só que chamada
- * DUAS vezes — uma pela safra corrente (orçado) e outra pela safra anterior
- * (realizado, como referência, já que a safra corrente ainda não aconteceu
- * na maior parte dos meses) — e o resultado é combinado em memória num
- * formato compacto: uma linha por (grupo, empenho, negócio, mês), com o
- * orçado da safra corrente e o realizado da safra anterior lado a lado.
+ * {@link OrcamentoComprasDAO} (a de orcamento-compras.html), chamada duas
+ * vezes — pelo PERÍODO escolhido (safra OU entressafra, sempre 6 meses) e
+ * pelo MESMO período um ano antes (safra 2026 compara com safra 2025;
+ * entressafra 2026 compara com entressafra 2025 — nunca safra com
+ * entressafra). Das duas chamadas saem tanto orçado quanto realizado, porque
+ * um período passado já tem os dois — só o período CORRENTE, no ano em
+ * curso, costuma ter o realizado incompleto ou zerado.
  *
- * GET /api/orcamento-safra[?anoInicio=2026]
- *   -> { ok, anoInicio, meses:[...], dados:[[grupo,empenho,negocio,mesIdx,orcado,realizadoAnterior,tipoOC], ...] }
+ * GET /api/orcamento-safra[?ini=202609&fim=202702]
+ *   -> { ok, periodoAtual:{ini,fim,rotulo}, periodoAnterior:{ini,fim,rotulo},
+ *        meses:[...], temNegocio,
+ *        dados:[[grupo,empenho,negocio,mesIdx,orcadoAtual,realizadoAnterior,tipoOC,realizadoAtual], ...] }
  *
- * anoInicio ausente = calculado a partir de hoje: setembro a dezembro abre a
- * safra do próprio ano; janeiro/fevereiro ainda são o fim da safra do ano
- * anterior; março a agosto (entressafra) mostra a PRÓXIMA safra, que começa
- * em setembro deste ano.
+ * ini/fim ausentes = calculado a partir de hoje, mesma regra de
+ * {@link OrcamentoComprasServlet#periodo}: março a agosto é a entressafra
+ * corrente; setembro a fevereiro é a safra corrente.
  */
 @WebServlet("/api/orcamento-safra")
 public class OrcamentoSafraServlet extends HttpServlet {
@@ -45,37 +47,42 @@ public class OrcamentoSafraServlet extends HttpServlet {
     private static final Gson GSON = new Gson();
     private final OrcamentoComprasDAO dao = new OrcamentoComprasDAO();
 
-    private static final String[] NOMES_MES = { "Setembro", "Outubro", "Novembro", "Dezembro", "Janeiro", "Fevereiro" };
-    private static final String[] ABREV_MES = { "Set", "Out", "Nov", "Dez", "Jan", "Fev" };
+    private static final String[] NOMES_MES = {
+        "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+        "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+    };
+    private static final String[] ABREV_MES = { "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez" };
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         resp.setContentType("application/json;charset=UTF-8");
         resp.setHeader("Cache-Control", "no-store");
         try {
-            int anoInicio = anoInicio(req);
-            int atualIni = anoInicio * 100 + 9, atualFim = (anoInicio + 1) * 100 + 2;
-            int anteriorIni = (anoInicio - 1) * 100 + 9, anteriorFim = anoInicio * 100 + 2;
+            int[] p = OrcamentoComprasServlet.periodo(req);
+            int atualIni = p[0], atualFim = p[1];
+            int anteriorIni = atualIni - 100, anteriorFim = atualFim - 100;
 
             List<Map<String, Object>> atual = dao.buscar(atualIni, atualFim, null);
             List<Map<String, Object>> anterior = dao.buscar(anteriorIni, anteriorFim, null);
 
             JsonObject r = new JsonObject();
             r.addProperty("ok", true);
-            r.addProperty("anoInicio", anoInicio);
+            r.add("periodoAtual", periodoJson(atualIni, atualFim));
+            r.add("periodoAnterior", periodoJson(anteriorIni, anteriorFim));
             r.addProperty("temNegocio", !dao.colunaDeNegocio().isEmpty());
 
             JsonArray meses = new JsonArray();
             for (int i = 0; i < 6; i++) {
+                int anomes = somar(atualIni, i);
                 JsonObject m = new JsonObject();
-                m.addProperty("m", ABREV_MES[i]);
-                m.addProperty("l", NOMES_MES[i]);
+                m.addProperty("m", ABREV_MES[anomes % 100 - 1]);
+                m.addProperty("l", NOMES_MES[anomes % 100 - 1]);
                 m.addProperty("orc", rotuloMes(atualIni, i));
                 m.addProperty("rea", rotuloMes(anteriorIni, i));
                 meses.add(m);
             }
             r.add("meses", meses);
-            r.add("dados", montarDados(atual, anterior, anoInicio));
+            r.add("dados", montarDados(atual, anterior, atualIni, anteriorIni));
 
             resp.getWriter().print(GSON.toJson(r));
         } catch (Exception e) {
@@ -86,20 +93,27 @@ public class OrcamentoSafraServlet extends HttpServlet {
         }
     }
 
-    private static int anoInicio(HttpServletRequest req) {
-        String p = req.getParameter("anoInicio");
-        if (p != null && p.matches("\\d{4}")) return Integer.parseInt(p);
-        LocalDate h = LocalDate.now();
-        int ano = h.getYear(), mes = h.getMonthValue();
-        if (mes >= 9) return ano;
-        if (mes <= 2) return ano - 1;
-        return ano;   // entressafra (mar-ago): mostra a próxima safra, que abre em setembro deste ano
+    /** {ini, fim, rotulo} — "Safra 2026/27" (começa em setembro) ou "EntreSafra 2026" (começa em março). */
+    private static JsonObject periodoJson(int ini, int fim) {
+        int ano = ini / 100, mesIni = ini % 100;
+        JsonObject o = new JsonObject();
+        o.addProperty("ini", ini);
+        o.addProperty("fim", fim);
+        if (mesIni == 9) {
+            o.addProperty("rotulo", "Safra " + ano + "/" + String.format("%02d", (ano + 1) % 100));
+            o.addProperty("chave", "S" + ano);
+        } else {
+            o.addProperty("rotulo", "EntreSafra " + ano);
+            o.addProperty("chave", "E" + ano);
+        }
+        return o;
     }
 
     /** 202609 -> "set/26". */
     private static String rotuloMes(int anomesIni, int idx) {
-        int ano = somar(anomesIni, idx) / 100;
-        return ABREV_MES[idx].toLowerCase() + "/" + String.format("%02d", ano % 100);
+        int anomes = somar(anomesIni, idx);
+        int mes = anomes % 100, ano = anomes / 100;
+        return ABREV_MES[mes - 1].toLowerCase() + "/" + String.format("%02d", ano % 100);
     }
 
     private static int somar(int anomes, int meses) {
@@ -109,30 +123,33 @@ public class OrcamentoSafraServlet extends HttpServlet {
         return ano * 100 + mes;
     }
 
-    /** anomes -> índice 0(set)..5(fev) dentro da safra que começa em anoInicio; -1 se fora do esperado. */
-    private static int indiceMes(int anomes, int anoInicio) {
-        int ano = anomes / 100, mes = anomes % 100;
-        if (ano == anoInicio && mes >= 9) return mes - 9;
-        if (ano == anoInicio + 1 && mes <= 2) return mes + 3;
-        return -1;
+    /** Quantos meses após anomesBase o anomes está — 0..5 dentro do período de 6 meses, -1 se fora. */
+    private static int indiceMes(int anomes, int anomesBase) {
+        int anoA = anomes / 100, mesA = anomes % 100;
+        int anoB = anomesBase / 100, mesB = anomesBase % 100;
+        int dif = (anoA - anoB) * 12 + (mesA - mesB);
+        return (dif >= 0 && dif < 6) ? dif : -1;
     }
 
-    private JsonArray montarDados(List<Map<String, Object>> atual, List<Map<String, Object>> anterior, int anoInicio) {
+    private JsonArray montarDados(List<Map<String, Object>> atual, List<Map<String, Object>> anterior,
+                                   int atualIni, int anteriorIni) {
         Map<String, double[]> oAtual = new LinkedHashMap<>();
+        Map<String, double[]> rAtual = new LinkedHashMap<>();
         Map<String, double[]> rAnterior = new LinkedHashMap<>();
         Map<String, String> tipo = new LinkedHashMap<>();
         Map<String, String[]> partes = new LinkedHashMap<>();
 
         for (Map<String, Object> l : atual) {
-            int idx = indiceMes(inteiro(l.get("anomes")), anoInicio);
+            int idx = indiceMes(inteiro(l.get("anomes")), atualIni);
             if (idx < 0) continue;
             String chave = chave(l);
             oAtual.computeIfAbsent(chave, k -> new double[6])[idx] += numero(l.get("orcado"));
+            rAtual.computeIfAbsent(chave, k -> new double[6])[idx] += numero(l.get("realizado"));
             tipo.putIfAbsent(chave, texto(l.get("tipo_oc"), "OC"));
             partes.putIfAbsent(chave, new String[]{ texto(l.get("grupo"), ""), texto(l.get("empenho"), ""), texto(l.get("negocio"), "") });
         }
         for (Map<String, Object> l : anterior) {
-            int idx = indiceMes(inteiro(l.get("anomes")), anoInicio - 1);
+            int idx = indiceMes(inteiro(l.get("anomes")), anteriorIni);
             if (idx < 0) continue;
             String chave = chave(l);
             rAnterior.computeIfAbsent(chave, k -> new double[6])[idx] += numero(l.get("realizado"));
@@ -147,13 +164,14 @@ public class OrcamentoSafraServlet extends HttpServlet {
         for (String chave : chaves) {
             String[] p = partes.get(chave);
             double[] o = oAtual.getOrDefault(chave, new double[6]);
-            double[] r = rAnterior.getOrDefault(chave, new double[6]);
+            double[] rAtu = rAtual.getOrDefault(chave, new double[6]);
+            double[] rAnt = rAnterior.getOrDefault(chave, new double[6]);
             String tp = tipo.getOrDefault(chave, "OC");
             for (int i = 0; i < 6; i++) {
-                if (o[i] == 0 && r[i] == 0) continue;
+                if (o[i] == 0 && rAnt[i] == 0 && rAtu[i] == 0) continue;
                 JsonArray linha = new JsonArray();
                 linha.add(p[0]); linha.add(p[1]); linha.add(p[2]); linha.add(i);
-                linha.add(arredondar(o[i])); linha.add(arredondar(r[i])); linha.add(tp);
+                linha.add(arredondar(o[i])); linha.add(arredondar(rAnt[i])); linha.add(tp); linha.add(arredondar(rAtu[i]));
                 dados.add(linha);
             }
         }
@@ -161,7 +179,7 @@ public class OrcamentoSafraServlet extends HttpServlet {
     }
 
     private static String chave(Map<String, Object> l) {
-        return texto(l.get("grupo"), "") + "" + texto(l.get("empenho"), "") + "" + texto(l.get("negocio"), "");
+        return texto(l.get("grupo"), "") + "" + texto(l.get("empenho"), "") + "" + texto(l.get("negocio"), "");
     }
 
     private static double arredondar(double v) { return Math.round(v * 100.0) / 100.0; }
