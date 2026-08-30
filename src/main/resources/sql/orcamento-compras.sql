@@ -20,6 +20,10 @@
 -- (1, 2, 6, 8, 9, 11, 14) são compra — a mesma distinção em todas as quatro
 -- pernas. Antes só entravam os tipos de compra; agora as duas categorias
 -- vêm juntas, com a coluna TIPO dizendo qual é qual, e a tela filtra.
+--
+-- OC x CT (coluna TIPO_OC, painel "Acompanhamento do Orçamento de Compras —
+-- Safra"): outra forma de olhar o mesmo cod_tipoempenho — 2 é contrato (CT),
+-- todo o resto (1, 5, 6, 8, 9, 11, 14) entra como ordem de compra (OC).
 select tmp.anomes
      , tmp.cod_negocio
      , tmp.negocio
@@ -30,6 +34,7 @@ select tmp.anomes
      , tmp.cod_objeto
      , tmp.objeto
      , tmp.tipo
+     , tmp.tipo_oc
      , sum(tmp.vlr_orcado)                        orcado
      , sum(tmp.vlr_realizado)                     realizado
      , sum(tmp.vlr_orcado - tmp.vlr_realizado)    diferenca
@@ -43,6 +48,7 @@ from ( select lc.anomes
             , %OBJ_COD%                           cod_objeto
             , %OBJ_DESC%                          objeto
             , case when empenho.cod_tipoempenho = 5 then 'Investimento' else 'Compra' end tipo
+            , case when empenho.cod_tipoempenho = 2 then 'CT' else 'OC' end tipo_oc
             , nvl(lc.valor,0)                     vlr_orcado
             , 0                                   vlr_realizado
        from   custo.lancamento_custo lc
@@ -78,6 +84,7 @@ from ( select lc.anomes
             , %OBJ_COD%                           cod_objeto
             , %OBJ_DESC%                          objeto
             , case when empenho.cod_tipoempenho = 5 then 'Investimento' else 'Compra' end tipo
+            , case when empenho.cod_tipoempenho = 2 then 'CT' else 'OC' end tipo_oc
             , nvl(lc.valor,0)                     vlr_orcado
             , 0                                   vlr_realizado
        from   geral.atualizacaoinicioproducao
@@ -113,6 +120,7 @@ from ( select lc.anomes
             , %OBJ_COD%                           cod_objeto
             , %OBJ_DESC%                          objeto
             , case when empenho.cod_tipoempenho = 5 then 'Investimento' else 'Compra' end tipo
+            , case when empenho.cod_tipoempenho = 2 then 'CT' else 'OC' end tipo_oc
             , nvl(lc.valor,0)                     vlr_orcado
             , 0                                   vlr_realizado
        from   material.realizado lc
@@ -142,6 +150,7 @@ from ( select lc.anomes
             , %OBJ_COD%                           cod_objeto
             , %OBJ_DESC%                          objeto
             , case when empenho.cod_tipoempenho = 5 then 'Investimento' else 'Compra' end tipo
+            , case when empenho.cod_tipoempenho = 2 then 'CT' else 'OC' end tipo_oc
             , 0                                   vlr_orcado
             , nvl(lc.valor,0)                     vlr_realizado
        from   material.realizado lc
@@ -161,5 +170,5 @@ from ( select lc.anomes
 where 1 = 1
 %FILTRO_NEGOCIO%
 group by tmp.anomes, tmp.cod_negocio, tmp.negocio, tmp.cod_grupoempenho, tmp.grupo
-       , tmp.cod_empenho, tmp.empenho, tmp.cod_objeto, tmp.objeto, tmp.tipo
+       , tmp.cod_empenho, tmp.empenho, tmp.cod_objeto, tmp.objeto, tmp.tipo, tmp.tipo_oc
 order by tmp.grupo, tmp.empenho, tmp.objeto, tmp.anomes

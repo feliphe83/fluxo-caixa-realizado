@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SGO | Compras | Acompanhamento por Safra</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--p:#350099;--pc:#EDE7FA;--tinta:#1C1633;--papel:#F7F6FB;--linha:#E3DFEE;--cinza:#6B6480;--cinza2:#9B95AD;--verde:#1F4E9C;--verdec:#E8F0FB;--rubro:#B3261E;--rubroc:#FBE9E7;
+--sans:'IBM Plex Sans',system-ui,sans-serif;--serif:'IBM Plex Serif',Georgia,serif;--mono:'IBM Plex Mono',ui-monospace,monospace}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:var(--sans);background:var(--papel);color:var(--tinta);font-size:13px;line-height:1.4;display:flex;flex-direction:column}
+.num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+button{font-family:var(--sans);cursor:pointer}
+button:focus-visible{outline:2px solid #fff;outline-offset:-2px}
+
+/* Cabeçalho: uma faixa só */
+header{background:var(--p);color:#fff;padding:0 28px;height:96px;display:flex;align-items:center;gap:26px;flex:none}
+.marca{display:flex;align-items:center;gap:16px}
+.marca .selo{height:72px;width:72px;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;padding:6px;overflow:hidden;flex:none}
+.marca .selo img{max-height:100%;max-width:100%;width:auto;height:auto;object-fit:contain;display:block}
+.marca h1{font-family:var(--serif);font-size:22px;font-weight:700;line-height:1.15;letter-spacing:.01em}
+.marca h1 small{display:block;font-family:var(--sans);font-size:13.5px;opacity:.9;font-weight:400;margin-top:9px;letter-spacing:0;text-transform:none}
+.emissao{margin-left:auto;text-align:right;font-size:12px;opacity:.85;line-height:1.5}
+.emissao b{display:block;font-family:var(--mono);font-size:14px;font-weight:500;opacity:1}
+.btn-voltar{display:flex;align-items:center;gap:7px;padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.08);color:rgba(255,255,255,.9);font-size:12.5px;font-weight:600;text-decoration:none;margin-left:18px}
+.btn-voltar:hover{background:rgba(255,255,255,.18)}
+
+/* Segunda faixa: Resumo, áreas e meses */
+.faixa{background:#1E1259;color:#fff;padding:0 28px;height:46px;display:flex;align-items:center;gap:6px;flex:none}
+.faixa .areas{display:flex;gap:4px;align-items:center;overflow-x:auto}
+.faixa .areas button{background:none;border:0;color:#fff;opacity:.7;padding:6px 13px;border-radius:6px;font-size:14.5px;white-space:nowrap}
+.faixa .areas button:hover{opacity:1;background:rgba(255,255,255,.08)}
+.faixa .areas button.ativa{opacity:1;background:rgba(255,255,255,.18);font-weight:600}
+.faixa .areas .divisor{width:1px;height:20px;background:rgba(255,255,255,.25);margin:0 6px;flex:none}
+.faixa .regua{margin-left:0}
+.faixa .areas,.faixa .regua{flex:1 1 0}
+.faixa .regua{justify-content:flex-end}
+.faixa .tipos{flex:none;display:flex;gap:8px;justify-content:center}
+.faixa .tipos button{display:flex;align-items:center;gap:7px;background:transparent;border:1px solid rgba(255,255,255,.35);color:rgba(255,255,255,.55);padding:4px 12px 4px 8px;border-radius:6px;font-size:13px;font-weight:700;letter-spacing:.04em}
+.faixa .tipos button.on{background:var(--p);color:#fff;border-color:var(--p)}
+.faixa .tipos .cx{width:13px;height:13px;border:1.5px solid currentColor;border-radius:3px;display:inline-block;position:relative}
+.faixa .tipos button.on .cx::after{content:"";position:absolute;left:3px;top:0;width:4px;height:8px;border:solid currentColor;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.regua .rot{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;opacity:.7;margin-right:4px}
+.regua button{background:none;border:1px solid rgba(255,255,255,.3);color:#fff;width:40px;height:28px;border-radius:6px;font-size:12px;font-weight:500;opacity:.75}
+.regua button.ativo{background:#fff;color:var(--p);opacity:1;font-weight:700;border-color:#fff}
+.regua button:not(.ativo).futuro{opacity:.35}
+
+/* Área de tela: ocupa o restante, sem rolar */
+main{flex:1;min-height:0;padding:18px 28px 16px;display:flex;flex-direction:column}
+.tela{display:none;flex:1;min-height:0;flex-direction:column;gap:14px}
+.tela.ativa{display:flex}
+.titulo{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex:none}
+.titulo h2{font-family:var(--serif);font-size:20px;font-weight:600}
+.titulo .sub{color:var(--cinza);font-size:12px;text-align:right;white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.titulo .volta{background:none;border:1px solid var(--linha);border-radius:6px;padding:5px 10px;font-size:12px;color:var(--p);margin-right:10px}
+.card{background:#fff;border:1px solid var(--linha);border-radius:12px;padding:16px 18px;min-height:0}
+
+/* Tela Resumo */
+.resumo{flex:1;min-height:0;display:grid;grid-template-rows:auto 1fr;gap:14px}
+#resumo-grupo tbody td{padding:5px 10px}
+#resumo-grupo thead th{font-weight:700;color:var(--tinta)}
+#resumo-grupo thead tr.super th{font-weight:700}
+#resumo-grupo thead th.mesclada{text-align:center;vertical-align:middle;font-family:var(--sans);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--tinta);border-bottom:1px solid var(--linha);padding:8px 10px}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.card .rot{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--tinta);font-weight:700}
+.visao{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.visao .rot{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--cinza);font-weight:600;margin-right:4px}
+.visao{flex:none}
+.visao button{white-space:nowrap;background:#EDE7FA;border:1px solid #DDD2F3;color:#3C3552;padding:6px 10px;border-radius:6px;font-size:12px}
+.visao button.ativa{background:var(--p);border-color:var(--p);color:#fff;font-weight:600}
+.card .per{font-family:var(--serif);font-size:15px;font-weight:600;color:var(--p);margin-top:1px}
+.card .grande{font-family:var(--serif);font-size:26px;font-weight:600;letter-spacing:-.3px;margin-top:8px;line-height:1.1}
+.card .grande small{font-family:var(--sans);font-size:11px;color:var(--cinza);font-weight:500;margin-left:6px}
+.card .comp{margin-top:8px;display:flex;justify-content:space-between;font-size:12.5px;color:var(--cinza)}
+.card .comp .val{color:var(--tinta);font-weight:500}
+.delta{display:inline-flex;align-items:center;gap:6px;margin-top:9px;padding:4px 9px;border-radius:6px;font-weight:600;font-size:12.5px}
+.delta.up{background:var(--rubroc);color:var(--rubro)}.delta.down{background:var(--verdec);color:var(--verde)}.delta.flat{background:var(--pc);color:var(--p)}
+.delta .pct{font-family:var(--mono);font-weight:500;opacity:.85;font-size:11.5px}
+.baixo{display:grid;grid-template-columns:3fr 2fr;gap:14px;min-height:0}
+.card h3{font-family:var(--serif);font-size:15px;font-weight:600}
+.card .sub{font-size:11.5px;color:var(--cinza);margin-bottom:6px}
+.cv{position:relative;flex:1;min-height:0}
+.card.flex{display:flex;flex-direction:column}
+.lista{list-style:none;flex:1;min-height:0;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;font-size:clamp(11px,1.5vh,13px)}
+.lista li{display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:center;padding:0;flex:1;min-height:0;border-bottom:1px solid var(--linha);cursor:pointer}
+.lista li:last-child{border-bottom:0}
+.lista li:hover .nome{color:var(--p)}
+.lista .nome{font-weight:500}
+.lista .base{font-size:clamp(10px,1.25vh,11.5px);color:var(--cinza)}
+.lista .d{font-weight:600;text-align:right}
+.lista .pct{font-family:var(--mono);font-size:clamp(10px,1.3vh,11.5px);font-weight:700;text-align:right;min-width:64px}
+.d-pos{color:var(--rubro)}.d-neg{color:var(--verde)}.d-nulo{color:var(--cinza2)}
+
+/* Tabelas: cabem na tela, linhas compactas */
+.tab{flex:1;min-height:0;overflow:auto;background:#fff;border:1px solid var(--linha);border-radius:12px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+thead th{position:sticky;top:0;background:var(--papel);color:var(--cinza);font-weight:600;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;padding:8px 10px;border-bottom:1px solid var(--linha);text-align:right;white-space:nowrap;z-index:1}
+thead th:first-child{text-align:left;padding-left:16px}
+thead tr.super th{font-family:var(--serif);text-transform:none;letter-spacing:0;font-size:12.5px;color:var(--p);padding:8px 10px 2px;border-bottom:0;text-align:center;top:0}
+thead tr:nth-child(2) th{top:29px}
+tbody td{padding:6px 10px;border-bottom:1px solid var(--linha)}
+tbody td:first-child{padding-left:16px}
+tbody tr.link{cursor:pointer}
+tbody tr.link:hover td{background:#FBFAFE}
+tbody tr.link td:first-child::after{content:"›";color:var(--cinza2);margin-left:8px}
+.sep{border-left:1px solid var(--linha)}
+tfoot td{padding:8px 10px;font-weight:700;background:var(--pc);border-top:2px solid var(--p);position:sticky;bottom:0}
+tfoot td:first-child{padding-left:16px;font-family:var(--serif)}
+.pct{font-family:var(--mono);font-size:11.5px}
+.share{font-size:10.5px;color:var(--cinza2);margin-left:6px}
+.bar{display:inline-block;height:5px;border-radius:3px;vertical-align:middle;margin-right:5px}
+.graficos{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+
+/* Cores de fundo da tela Resumo */
+.card.c1{background:#F1ECFB;border-color:#DDD2F3}
+.card.c2{background:#E9F5EE;border-color:#CFE7D8}
+.card.c3{background:#FBF4E4;border-color:#EEDFB9}
+.card.c4{background:#EDF2FA;border-color:#D4DEF0}
+.card.c5{background:#FCEFEA;border-color:#F1D6CC}
+.card.c1 .grande,.card.c2 .grande,.card.c3 .grande{color:var(--tinta)}
+footer{flex:none;font-size:10.5px;color:var(--cinza2);padding:0 28px 8px;display:flex;justify-content:space-between}
+.estado{flex:1;display:flex;align-items:center;justify-content:center;color:var(--cinza);font-size:14px;flex-direction:column;gap:12px}
+.spinner{width:28px;height:28px;border:3px solid var(--linha);border-top-color:var(--p);border-radius:50%;animation:girar .8s linear infinite}
+@keyframes girar{to{transform:rotate(360deg)}}
+.erro{color:var(--rubro)}
+@media(max-width:1100px){.cards{grid-template-columns:1fr 1fr 1fr}.baixo{grid-template-columns:1fr}.graficos{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div class="marca"><div class="selo" id="logo"><img src="img/logo.png" alt="Usina Santa Clotilde"></div><h1>Usina Santa Clotilde S/A<small id="subtitulo">Acompanhamento do Orçamento de Compras</small></h1></div>
+  <a class="btn-voltar" href="hub.html">
+    <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    Voltar ao Hub
+  </a>
+  <div class="emissao"><b id="relogio"></b></div>
+</header>
+<div class="faixa">
+  <div class="areas" id="areas"></div>
+  <div class="tipos" id="tipos">
+    <button class="on" data-t="OC" title="Ordens de compra"><span class="cx"></span>OC</button>
+    <button class="on" data-t="CT" title="Contratos"><span class="cx"></span>CT</button>
+  </div>
+  <div class="regua" id="regua"><span class="rot">Mês</span></div>
+</div>
+
+<main id="main">
+  <div class="estado" id="carregando"><div class="spinner"></div>Consultando o orçamento no Oracle… (pode levar alguns segundos)</div>
+
+  <!-- RESUMO -->
+  <section class="tela" id="t-resumo">
+    <div class="titulo"><div class="visao"><button class="ativa" data-v="corrente">Orçado safra atual x Realizado safra atual</button><button data-v="anterior">Orçado safra atual x Realizado safra anterior</button><button data-v="real">Realizado safra atual x Realizado safra anterior</button><span class="rot" style="margin-left:14px">Visão</span><button class="ativa" data-m="geral">Geral</button><button data-m="grupo">Grupo de empenho</button><button data-m="graficos">Gráficos</button></div><span class="sub" id="r-sub"></span></div>
+    <div class="resumo" id="resumo-geral">
+      <div class="cards" id="cards"></div>
+      <div class="baixo">
+        <div class="card flex c4"><h3>Evolução da safra</h3><div class="sub">Mês a mês, com o acumulado em linha</div><div class="cv"><canvas id="g-mensal"></canvas></div></div>
+        <div class="card flex c5"><h3>Maiores variações do acumulado</h3><div class="sub" id="var-sub"></div><ul class="lista" id="lista-var"></ul></div>
+      </div>
+    </div>
+    <div class="graficos" id="resumo-graf" style="display:none">
+      <div class="card flex c4"><h3>Acumulado por grupo de despesa</h3><div class="sub" id="gg-sub"></div><div class="cv"><canvas id="g-grupo"></canvas></div></div>
+      <div class="card flex c5"><h3 id="ga-tit">Acumulado por área de negócio</h3><div class="sub" id="ga-sub"></div><div class="cv"><canvas id="g-area"></canvas></div></div>
+    </div>
+    <div class="tab" id="resumo-grupo" style="display:none"><table>
+      <thead>
+        <tr class="super"><th rowspan="2" class="mesclada">Grupo de empenho</th><th colspan="4" class="sep" id="rg-mes"></th><th colspan="4" class="sep" id="rg-acum"></th></tr>
+        <tr><th class="sep" id="rg-o1">Orçado</th><th id="rg-r1">Realizado</th><th>Diferença R$</th><th>Dif. %</th><th class="sep" id="rg-o2">Orçado</th><th id="rg-r2">Realizado</th><th>Diferença R$</th><th>Dif. %</th></tr>
+      </thead>
+      <tbody id="rg-corpo"></tbody><tfoot id="rg-rodape"></tfoot>
+    </table></div>
+  </section>
+
+  <!-- GRUPOS / ÁREAS / DETALHE -->
+  <section class="tela" id="t-tabela">
+    <div class="titulo"><h2 id="tb-tit"></h2><span class="sub" id="tb-sub"></span></div>
+    <div class="tab"><table>
+      <thead>
+        <tr class="super"><th></th><th colspan="4" class="sep" id="th-mes"></th><th colspan="4" class="sep" id="th-acum"></th></tr>
+        <tr><th id="th-n1"></th><th class="sep" id="th-o1">Orçado</th><th id="th-r1">Realizado</th><th>Diferença R$</th><th>Dif. %</th><th class="sep" id="th-o2">Orçado</th><th id="th-r2">Realizado</th><th>Diferença R$</th><th>Dif. %</th></tr>
+      </thead>
+      <tbody id="corpo"></tbody><tfoot id="rodape"></tfoot>
+    </table></div>
+  </section>
+</main>
+<footer><span id="rodape-fonte">Fonte: ERP (Oracle), consultado ao vivo. OC = ordens de compra (tipo de empenho 1, 5 e demais); CT = contratos (tipo 2); o orçado herda o tipo pelo empenho.</span><span>Usina Santa Clotilde · SGO · Módulo Compras</span></footer>
+
+<script>
+"use strict";
+let DADOS = [], MESES = [], ANO_INICIO = null;
+let mes = 0, tela = 'resumo', pilha = [], area = null, visao = 'corrente', modo = 'geral', tipos = { OC: true, CT: true };
+
+// Visões: main = coluna da esquerda, comp = coluna de comparação.
+const VIS = {
+  anterior:{main:'Orçado',mainM:M=>M.orc,comp:'Realizado',compM:M=>M.rea,semMain:false,semComp:false,rotMain:()=>'safra '+rotSafra(ANO_INICIO),rotComp:()=>'safra '+rotSafra(ANO_INICIO-1),nota:'Diferença = Realizado menos Orçado · R$'},
+  corrente:{main:'Orçado',mainM:M=>M.orc,comp:'Realizado',compM:M=>M.orc,semMain:false,semComp:true,rotMain:()=>'safra '+rotSafra(ANO_INICIO),rotComp:()=>'safra '+rotSafra(ANO_INICIO),nota:'Realizado da safra atual ainda não aconteceu (ou não foi lançado) nesses meses'},
+  real:{main:'Realizado',mainM:M=>M.orc,comp:'Realizado',compM:M=>M.rea,semMain:true,semComp:false,rotMain:()=>'safra '+rotSafra(ANO_INICIO),rotComp:()=>'safra '+rotSafra(ANO_INICIO-1),nota:'Realizado da safra atual ainda não aconteceu (ou não foi lançado) nesses meses'}
+};
+const V = () => VIS[visao];
+const rotSafra = a => a + '/' + String(a + 1).slice(-2);
+const SD = '<span class="d-nulo">—</span>';
+const ORDEM_A = ['ÁREA AGRÍCOLA','ÁREA INDUSTRIAL','ÁREA ADMINISTRATIVA','LOGÍSTICA E COMERCIALIZAÇÃO','MATÉRIA-PRIMA DE TERCEIROS','OBRAS EM ANDAMENTO / INVESTIMENTOS/PERDA'];
+let AREAS = [];
+const ROTULO = a => tit(a).replace('Área ','').replace('Obras Em Andamento / Investimentos/perda','Imobilizado').replace('Logística e Comercialização','Comercial');
+const fArea = () => area ? [{ k: 'a', v: area }] : [];
+const $ = s => document.querySelector(s);
+const fmt = n => Math.round(n).toLocaleString('pt-BR');
+const fmtS = n => n < 0 ? '(' + fmt(-n) + ')' : fmt(n);
+const fmtM = n => Math.abs(n) < 1e6 && n !== 0 ? Math.round(n / 1e3).toLocaleString('pt-BR') + ' mil' : (n / 1e6).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' mi';
+const pct = (o, r) => o === 0 ? null : (r - o) / Math.abs(o) * 100;
+const fmtP = p => p === null ? '<span class="d-nulo">n/a</span>' : (p <= -0.05 ? '(' + (-p).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%)' : (p >= 0.05 ? '+' : '') + Math.abs(p).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%');
+const cls = d => Math.abs(d) < .5 ? 'd-nulo' : (d > 0 ? 'd-pos' : 'd-neg');
+const tit = s => String(s || '').toLowerCase().replace(/(^|\s)\S/g, t => t.toUpperCase()).replace(/\bE\b/g, 'e').replace(/\bCom\b/g, 'com').replace(/\bDe\b/g, 'de').replace(/Ped\b/, 'P&D');
+const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const NOME = { g: 'Grupo de despesa', e: 'Empenho', a: 'Área de negócio' };
+
+async function carregar() {
+  try {
+    const r = await fetch('api/orcamento-safra', { headers: { 'Accept': 'application/json' } });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro || 'Falha ao consultar');
+    DADOS = j.dados || [];
+    MESES = j.meses || [];
+    ANO_INICIO = j.anoInicio;
+    AREAS = [...new Set(DADOS.map(d => d[2]))]
+      .filter(a => a !== 'MATÉRIA-PRIMA DE TERCEIROS' && a !== 'OBRAS EM ANDAMENTO / INVESTIMENTOS/PERDA')
+      .sort((a, b) => ORDEM_A.indexOf(a) - ORDEM_A.indexOf(b));
+    document.getElementById('subtitulo').textContent = 'Acompanhamento do Orçamento de Compras — Safra ' + rotSafra(ANO_INICIO);
+    if (!j.temNegocio) {
+      document.getElementById('rodape-fonte').textContent += ' Obs.: esta base não tem a coluna de área de negócio configurada — tudo aparece como "Não disponível".';
+    }
+    document.getElementById('carregando').style.display = 'none';
+    document.getElementById('t-resumo').classList.add('ativa');
+    render();
+  } catch (e) {
+    document.getElementById('carregando').innerHTML =
+      '<div class="erro"><b>Não foi possível carregar o orçamento.</b></div><div style="font-size:12.5px">' + esc(e.message) + '</div>';
+  }
+}
+
+function agg(keys, filtro) {
+  const map = new Map();
+  for (const [g, e, a, mi, o, r, tp] of DADOS) {
+    if (!tipos[tp]) continue;
+    const row = { g, e, a };
+    if (filtro.some(f => row[f.k] !== f.v)) continue;
+    const k = keys.map(kk => row[kk]).join('||');
+    if (!map.has(k)) map.set(k, { parts: keys.map(kk => row[kk]), oM: 0, rM: 0, oA: 0, rA: 0, oS: 0, rS: 0 });
+    const x = map.get(k);
+    if (mi === mes) { x.oM += o; x.rM += r; }
+    if (mi <= mes) { x.oA += o; x.rA += r; }
+    x.oS += o; x.rS += r;
+  }
+  return [...map.values()];
+}
+function tot(filtro = []) {
+  const t = { oM: 0, rM: 0, oA: 0, rA: 0, oS: 0, rS: 0 };
+  for (const [g, e, a, mi, o, r, tp] of DADOS) {
+    if (!tipos[tp]) continue;
+    const row = { g, e, a };
+    if (filtro.some(f => row[f.k] !== f.v)) continue;
+    if (mi === mes) { t.oM += o; t.rM += r; }
+    if (mi <= mes) { t.oA += o; t.rA += r; }
+    t.oS += o; t.rS += r;
+  }
+  return t;
+}
+function mensal(filtro = []) {
+  const o = Array(6).fill(0), r = Array(6).fill(0);
+  for (const [g, e, a, mi, oo, rr, tp] of DADOS) {
+    if (!tipos[tp]) continue;
+    const row = { g, e, a };
+    if (filtro.some(f => row[f.k] !== f.v)) continue;
+    o[mi] += oo; r[mi] += rr;
+  }
+  return { o, r };
+}
+
+function renderAreas() {
+  const el = $('#areas');
+  el.innerHTML = `<button class="${area === null ? 'ativa' : ''}" data-a="">Empresa</button><span class="divisor"></span>` +
+    AREAS.map(a => `<button class="${area === a ? 'ativa' : ''}" data-a="${esc(a)}">${esc(ROTULO(a))}</button>`).join('');
+  el.querySelectorAll('button').forEach(b => b.onclick = () => { area = b.dataset.a || null; tela = 'resumo'; pilha = []; render(); });
+}
+function renderRegua() {
+  const el = $('#regua');
+  el.querySelectorAll('button').forEach(b => b.remove());
+  MESES.forEach((M, i) => {
+    const b = document.createElement('button');
+    b.textContent = M.m;
+    b.className = i === mes ? 'ativo' : '';
+    b.title = `${M.l}: orçado ${M.orc} x realizado ${M.rea}`;
+    b.onclick = () => { mes = i; render(); };
+    el.appendChild(b);
+  });
+}
+function deltaHTML(o, r) {
+  const d = r - o, p = pct(o, r), c = Math.abs(d) < .5 ? 'flat' : (d > 0 ? 'up' : 'down');
+  return `<div class="delta ${c}">${c === 'up' ? '▲' : c === 'down' ? '▼' : '●'} ${fmtS(d)} <span class="pct">${fmtP(p)}</span></div>`;
+}
+
+function renderResumoGrupo() {
+  const M = MESES[mes], v = V(), f = fArea();
+  $('#rg-mes').textContent = `${M.l}: ${v.main.toLowerCase()} ${v.mainM(M)} x ${v.comp.toLowerCase()} ${v.compM(M)}`;
+  $('#rg-acum').textContent = `Acumulado set a ${M.m.toLowerCase()}: ${v.rotMain()} x ${v.rotComp()}`;
+  $('#rg-o1').textContent = $('#rg-o2').textContent = `${v.main} ${rotSafra(ANO_INICIO)}`;
+  $('#rg-r1').textContent = $('#rg-r2').textContent = `${v.comp} ${v.rotComp()}`;
+  const L = agg(['g'], f).sort((a, b) => (v.semMain ? b.rA - a.rA : b.oA - a.oA)), t = tot(f), maxA = Math.max(...L.map(x => Math.abs(x.oA - x.rA)), 1), bs = v.semMain ? 'rA' : 'oA';
+  $('#rg-corpo').innerHTML = L.map(x => `<tr class="link" onclick="abrir('g','${esc(x.parts[0]).replace(/'/g, "\\'")}')"><td>${esc(tit(x.parts[0]))}${t[bs] ? `<span class="share">${(x[bs] / t[bs] * 100).toFixed(1).replace('.', ',')}%</span>` : ''}</td>${celulas(x, maxA, v)}</tr>`).join('');
+  $('#rg-rodape').innerHTML = `<tr><td>Total</td>${celulas(t, 0, v)}</tr>`;
+}
+function renderResumo() {
+  const t = tot(fArea()), M = MESES[mes], v = V(), cor = v.semComp, sem = v.semMain || v.semComp;
+  document.querySelectorAll('.visao button[data-m]').forEach(b => b.classList.toggle('ativa', b.dataset.m === modo));
+  $('#resumo-geral').style.display = modo === 'geral' ? '' : 'none';
+  $('#resumo-grupo').style.display = modo === 'grupo' ? '' : 'none';
+  $('#resumo-graf').style.display = modo === 'graficos' ? '' : 'none';
+  if (modo === 'grupo') renderResumoGrupo();
+  document.querySelectorAll('.visao button[data-v]').forEach(b => b.classList.toggle('ativa', b.dataset.v === visao));
+  $('#r-sub').textContent = v.nota;
+  const c = [
+    { rot: 'Mês selecionado', per: M.l, o: t.oM, r: t.rM, lo: `${v.main} ${v.mainM(M)}`, lr: `${v.comp} ${v.compM(M)}` },
+    { rot: 'Acumulado até o mês', per: `Setembro a ${M.l.toLowerCase()}`, o: t.oA, r: t.rA, lo: `${v.main} ${v.rotMain()}`, lr: `${v.comp} ${v.rotComp()}` },
+    { rot: 'Safra completa', per: 'Setembro a fevereiro', o: t.oS, r: t.rS, lo: `${v.main} ${v.rotMain()}`, lr: `${v.comp} ${v.rotComp()}` }
+  ];
+  $('#cards').innerHTML = c.map((x, i) => `<div class="card c${i + 1}"><div class="rot">${esc(x.rot)}</div><div class="per">${esc(x.per)}</div><div class="grande">${v.semMain ? '<span style="font-size:18px;color:var(--cinza)">sem dado</span>' : 'R$ ' + fmt(x.o)}<small>${esc(x.lo)}</small></div><div class="comp"><span>${esc(x.lr)}</span><span class="val num">${cor ? 'sem dado' : 'R$ ' + fmt(x.r)}</span></div>${sem ? '<div class="delta flat">— diferença a apurar</div>' : deltaHTML(x.o, x.r)}</div>`).join('');
+  $('#var-sub').textContent = v.semMain
+    ? `Maiores grupos do realizado da safra anterior, acumulado set a ${M.m.toLowerCase()}. Clique para detalhar.`
+    : cor
+      ? `Maiores grupos do orçado acumulado set a ${M.m.toLowerCase()}. Clique para detalhar.`
+      : `Grupos${area ? ' da área' : ''} com maior diferença no acumulado set a ${M.m.toLowerCase()}. Clique para detalhar.`;
+  const G = agg(['g'], fArea()).map(x => v.semMain ? { ...x, d: x.rA } : cor ? { ...x, rA: 0, d: x.oA } : { ...x, d: x.rA - x.oA }).sort((a, b) => Math.abs(b.d) - Math.abs(a.d)).slice(0, 6);
+  $('#lista-var').innerHTML = G.map(x => `<li onclick="abrir('g','${esc(x.parts[0]).replace(/'/g, "\\'")}')"><div><div class="nome">${esc(tit(x.parts[0]))}</div><div class="base">${v.semMain ? 'Realizado ant. ' + fmt(x.rA) : 'Orçado ' + fmt(x.oA) + (cor ? '' : ' · Realizado ' + fmt(x.rA))}</div></div><div class="d ${sem ? '' : cls(x.d)}">${sem ? fmt(x.d) : fmtS(x.d)}</div><div class="pct ${sem ? 'd-nulo' : cls(x.d)}">${sem ? 'n/a' : fmtP(pct(x.oA, x.rA))}</div></li>`).join('');
+}
+
+function celulas(x, maxA, v) {
+  v = v || { semMain: false, semComp: false };
+  const dM = x.rM - x.oM, dA = x.rA - x.oA, w = maxA ? Math.min(50, Math.round(Math.abs(dA) / maxA * 50)) : 0, sem = v.semMain || v.semComp;
+  if (sem) {
+    const m = n => v.semMain ? SD : fmt(n), c = n => v.semComp ? SD : fmt(n), na = '<span class="d-nulo">n/a</span>';
+    return `<td class="num sep">${m(x.oM)}</td><td class="num">${c(x.rM)}</td><td class="num">${na}</td><td class="num pct">${na}</td><td class="num sep">${m(x.oA)}</td><td class="num">${c(x.rA)}</td><td class="num">${na}</td><td class="num pct">${na}</td>`;
+  }
+  return `<td class="num sep">${fmt(x.oM)}</td><td class="num">${fmt(x.rM)}</td><td class="num ${cls(dM)}">${fmtS(dM)}</td><td class="num pct ${cls(dM)}">${fmtP(pct(x.oM, x.rM))}</td>
+  <td class="num sep">${fmt(x.oA)}</td><td class="num">${fmt(x.rA)}</td><td class="num ${cls(dA)}">${w ? `<span class="bar" style="width:${w}px;background:${dA > 0 ? 'var(--rubro)' : 'var(--verde)'}"></span>` : ''}${fmtS(dA)}</td><td class="num pct ${cls(dA)}">${fmtP(pct(x.oA, x.rA))}</td>`;
+}
+function renderTabela() {
+  const M = MESES[mes];
+  const ordem = tela === 'grupos' ? ['g', 'e', 'a'] : ['a', 'g', 'e'];
+  const nivel = ordem[pilha.length], filtro = pilha;
+  const crumbs = pilha.map(p => tit(p.v));
+  $('#tb-tit').innerHTML = `<button class="volta" onclick="voltar()">‹ Voltar</button>` + (crumbs.length ? crumbs.map(esc).join(' › ') + ' · ' : '') + (nivel === 'g' ? 'Grupos de despesa' : nivel === 'a' ? 'Áreas de negócio' : 'Empenhos');
+  $('#tb-sub').textContent = pilha.length ? `Detalhamento por ${NOME[nivel].toLowerCase()}` : 'Clique numa linha para detalhar';
+  $('#th-mes').textContent = `${M.l}: orçado ${M.orc} x realizado ${M.rea}`;
+  $('#th-acum').textContent = `Acumulado set a ${M.m.toLowerCase()}: ${rotSafra(ANO_INICIO)} x ${rotSafra(ANO_INICIO - 1)}`;
+  $('#th-n1').textContent = NOME[nivel];
+  const L = agg([nivel], filtro).sort((a, b) => b.oA - a.oA), t = tot(filtro), maxA = Math.max(...L.map(x => Math.abs(x.oA - x.rA)), 1);
+  const ultimo = pilha.length === 2;
+  $('#corpo').innerHTML = L.map(x => `<tr class="${ultimo ? '' : 'link'}" ${ultimo ? '' : `onclick="abrir('${nivel}','${esc(x.parts[0]).replace(/'/g, "\\'")}')"`}><td>${nivel === 'e' ? esc(x.parts[0]) : esc(tit(x.parts[0]))}${t.oA ? `<span class="share">${(x.oA / t.oA * 100).toFixed(1).replace('.', ',')}%</span>` : ''}</td>${celulas(x, maxA)}</tr>`).join('');
+  $('#rodape').innerHTML = `<tr><td>Total</td>${celulas(t, 0)}</tr>`;
+}
+let base = 0;
+function abrir(k, v) {
+  if (tela === 'resumo') { tela = area ? 'areas' : 'grupos'; pilha = area ? [{ k: 'a', v: area }] : []; base = pilha.length; }
+  pilha.push({ k, v });
+  render();
+}
+function voltar() { pilha.pop(); if (pilha.length <= base) { tela = 'resumo'; pilha = []; } render(); }
+
+let cM, cG, cA;
+const TEM = typeof Chart !== 'undefined';
+if (TEM) { Chart.defaults.font.family = "'IBM Plex Sans',system-ui,sans-serif"; Chart.defaults.font.size = 11; Chart.defaults.color = '#6B6480'; }
+const leg = { position: 'bottom', labels: { boxWidth: 8, usePointStyle: true, padding: 12 } };
+const tt = { callbacks: { label: c => ` ${c.dataset.label}: R$ ${fmt(c.chart.config.options.indexAxis === 'y' ? c.parsed.x : c.parsed.y)}` } };
+function renderGraficos() {
+  if (!TEM) return;
+  const mm = mensal(tela === 'resumo' ? fArea() : []), vr = tela === 'resumo' ? V() : VIS.anterior, o = vr.semMain ? Array(6).fill(0) : mm.o, r = vr.semComp ? Array(6).fill(0) : mm.r, M = MESES[mes], RS = vr.rotComp(), OS = `${vr.main} ${vr.rotMain()}`;
+  if (tela === 'resumo') $('#resumo-graf').style.display = modo === 'graficos' ? '' : 'none';
+  if (tela === 'resumo' && modo === 'geral') {
+    const acO = [], acR = [];
+    o.reduce((s, v, i) => (acO[i] = s + v, s + v), 0);
+    r.reduce((s, v, i) => (acR[i] = s + v, s + v), 0);
+    if (cM) cM.destroy();
+    cM = new Chart($('#g-mensal'), {
+      type: 'bar', data: {
+        labels: MESES.map(x => x.m), datasets: [
+          { label: OS, data: o, backgroundColor: o.map((_, i) => i === mes ? '#350099' : i < mes ? '#6A47C8' : '#C7B8EC'), borderRadius: 3, order: 2 },
+          { label: 'Realizado ' + RS, data: r, backgroundColor: r.map((_, i) => i === mes ? '#9B95AD' : '#D9D5E6'), borderRadius: 3, order: 2 },
+          { label: 'Acum. ' + vr.main.toLowerCase() + ' ' + vr.rotMain(), data: acO, type: 'line', borderColor: '#350099', borderWidth: 2, pointRadius: 2.5, yAxisID: 'y2', order: 1, tension: .25 },
+          { label: 'Acum. realizado ' + RS, data: acR, type: 'line', borderColor: '#6B6480', borderDash: [4, 3], borderWidth: 2, pointRadius: 2.5, yAxisID: 'y2', order: 1, tension: .25 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: leg, tooltip: tt },
+        scales: { y: { ticks: { callback: fmtM }, grid: { color: '#EEEBF5' } }, y2: { position: 'right', ticks: { callback: fmtM }, grid: { drawOnChartArea: false } }, x: { grid: { display: false } } }
+      }
+    });
+  }
+  if (tela === 'resumo' && modo === 'graficos') {
+    const z = x => ({ ...x, oA: vr.semMain ? 0 : x.oA, rA: vr.semComp ? 0 : x.rA }), f = fArea(), bs = vr.semMain ? 'rA' : 'oA';
+    const G = agg(['g'], f).map(z).sort((a, b) => b[bs] - a[bs]), A = (area ? agg(['e'], f).map(z).sort((a, b) => b[bs] - a[bs]).slice(0, 12) : agg(['a'], f).map(z).sort((a, b) => b[bs] - a[bs]));
+    $('#gg-sub').textContent = $('#ga-sub').textContent = `Acumulado set a ${M.m.toLowerCase()}: ${vr.main.toLowerCase()} ${vr.rotMain()} x realizado ${RS}`;
+    $('#ga-tit').textContent = area ? 'Acumulado por empenho (12 maiores)' : 'Acumulado por área de negócio';
+    const hb = (labels, d) => ({
+      type: 'bar', data: { labels, datasets: [{ label: OS, data: d.map(x => x.oA), backgroundColor: '#350099', borderRadius: 3 }, { label: 'Realizado ' + RS, data: d.map(x => x.rA), backgroundColor: '#C7B8EC', borderRadius: 3 }] },
+      options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: leg, tooltip: tt }, scales: { x: { ticks: { callback: fmtM }, grid: { color: '#EEEBF5' } }, y: { grid: { display: false }, ticks: { autoSkip: false } } } }
+    });
+    if (cG) cG.destroy();
+    cG = new Chart($('#g-grupo'), hb(G.map(x => tit(x.parts[0]).replace(/Despesas (com |de )?/, '')), G));
+    if (cA) cA.destroy();
+    cA = new Chart($('#g-area'), hb(A.map(x => area ? x.parts[0] : ROTULO(x.parts[0])), A));
+  }
+}
+function render() {
+  renderAreas(); renderRegua();
+  document.querySelectorAll('.tela').forEach(s => s.classList.remove('ativa'));
+  $(tela === 'resumo' ? '#t-resumo' : '#t-tabela').classList.add('ativa');
+  if (tela === 'resumo') renderResumo(); else renderTabela();
+  renderGraficos();
+}
+document.querySelectorAll('.visao button[data-v]').forEach(b => b.onclick = () => { visao = b.dataset.v; render(); });
+document.querySelectorAll('#tipos button').forEach(b => b.onclick = () => { tipos[b.dataset.t] = !tipos[b.dataset.t]; b.classList.toggle('on', tipos[b.dataset.t]); render(); });
+document.querySelectorAll('.visao button[data-m]').forEach(b => b.onclick = () => { modo = b.dataset.m; render(); });
+
+carregar();
+(function relogio(){const d=new Date();$('#relogio').textContent=d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR');setTimeout(relogio,1000)})();
+</script>
+
+<script src="js/icones-modulos.js?v=20260830a"></script>
+<script src="js/sidebar-nav.js?v=20260830a" defer></script>
+</body>
+</html>

@@ -103,9 +103,35 @@ ORDER BY
        c.id
 LIMIT 1;
 
+-- 6) Acompanhamento do Orçamento de Compras por Safra (dashboard com
+--    drill-down, gráficos e comparação com a safra anterior) -> mesma
+--    categoria de Suprimentos/Compras do item 4, com o mesmo fallback.
+INSERT INTO intranet_modulo (id_categoria, nome, descricao, icone, url_destino, ordem, ativo)
+SELECT c.id,
+       'Orçamento de Compras — Safra',
+       'Acompanhamento do orçado x realizado por safra, com drill-down por área, grupo e empenho',
+       'trending-up',
+       '/fluxo-caixa/orcamento-safra.html',
+       COALESCE((SELECT MAX(m.ordem) + 1 FROM intranet_modulo m WHERE m.id_categoria = c.id), 1),
+       1
+FROM   intranet_categoria c
+WHERE  NOT EXISTS (SELECT 1 FROM intranet_modulo m2 WHERE m2.url_destino = '/fluxo-caixa/orcamento-safra.html')
+ORDER BY
+       CASE
+         WHEN UPPER(c.nome) LIKE '%SUPRIMENTO%'   THEN 0
+         WHEN UPPER(c.nome) LIKE '%COMPRA%'       THEN 1
+         WHEN UPPER(c.nome) LIKE '%ALMOXARIFADO%' THEN 2
+         WHEN UPPER(c.nome) LIKE '%MATERIAL%'     THEN 3
+         WHEN UPPER(c.nome) LIKE '%FINANCEIR%'    THEN 4
+         WHEN UPPER(c.nome) LIKE '%ADMINISTRA%'   THEN 5
+         ELSE 9
+       END,
+       c.id
+LIMIT 1;
+
 -- Conferir:
 -- SELECT id, id_categoria, nome, url_destino, ordem, ativo
--- FROM intranet_modulo WHERE url_destino IN ('/fluxo-caixa/pagamento-cana.html','/fluxo-caixa/fechamento-frete.html','/fluxo-caixa/estoque-parado-relatorio.html','/fluxo-caixa/admissao-controle.html');
+-- FROM intranet_modulo WHERE url_destino IN ('/fluxo-caixa/pagamento-cana.html','/fluxo-caixa/fechamento-frete.html','/fluxo-caixa/estoque-parado-relatorio.html','/fluxo-caixa/admissao-controle.html','/fluxo-caixa/orcamento-safra.html');
 
 -- (Opcional) Liberar para um usuário NÃO-admin: repita por usuário/módulo.
 -- INSERT INTO intranet_permissao_modulo (id_usuario, id_modulo)
