@@ -128,17 +128,22 @@ tfoot td:first-child{padding-left:16px;font-family:var(--serif)}
 .mi-sub{font-size:12px;font-weight:600;color:var(--cinza);margin-top:2px}
 .mi-fechar{margin-left:auto;border:none;background:none;font-size:26px;line-height:1;color:var(--cinza2);cursor:pointer;padding:0 2px}
 .mi-fechar:hover{color:var(--tinta)}
-.mi-corpo{overflow:auto}
-.mi-item{display:flex;gap:14px;align-items:baseline;padding:11px 20px;border-bottom:1px solid var(--linha)}
+.mi-corpo{overflow:auto;background:var(--papel)}
+.mi-item{display:flex;gap:14px;align-items:center;justify-content:space-between;padding:12px 20px;background:#fff;border-bottom:1px solid var(--linha)}
 .mi-item:last-child{border-bottom:0}
-.mi-desc{flex:1;min-width:0;font-size:13px;color:var(--tinta);line-height:1.35}
-.mi-desc .forn{color:var(--cinza);font-weight:700}
-.mi-desc .refs{color:var(--p);font-weight:700}
-.mi-desc .semdet{color:var(--cinza);font-style:italic}
-.mi-desc .mes{color:var(--cinza2);font-size:11px;margin-right:6px}
-.mi-val{font-weight:700;color:var(--tinta);white-space:nowrap}
+.mi-desc{flex:1;min-width:0}
+.mi-mat{font-size:13px;font-weight:600;color:var(--tinta);line-height:1.35}
+.mi-forn{font-size:11.5px;color:var(--cinza);margin-top:3px;display:flex;align-items:center;gap:8px}
+.mi-oc{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--p);background:var(--pc);padding:2px 8px;border-radius:20px;white-space:nowrap}
+.mi-mat .semdet{color:var(--cinza);font-style:italic;font-weight:400}
+.mi-mat .mes{display:inline-block;color:var(--cinza2);font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-right:8px;vertical-align:middle}
+.mi-val{font-weight:700;color:var(--tinta);white-space:nowrap;font-variant-numeric:tabular-nums}
 .mi-vazio{padding:26px 20px;color:var(--cinza);font-size:13px}
-.mi-rodape{display:flex;justify-content:space-between;padding:12px 20px;border-top:1px solid var(--linha);font-size:12.5px;color:var(--cinza)}
+.mi-rodape{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--linha);border-top:1px solid var(--linha)}
+.mi-comp{background:var(--papel);padding:12px 20px;display:flex;flex-direction:column;gap:2px}
+.mi-comp-l{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--cinza)}
+.mi-comp-v{font-family:var(--serif);font-size:17px;font-weight:600;color:var(--p)}
+.mi-comp-n{font-size:11px;color:var(--cinza2)}
 .bar{display:inline-block;height:5px;border-radius:3px;vertical-align:middle;margin-right:5px}
 .graficos{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;gap:14px}
 
@@ -468,10 +473,20 @@ function seisAnomeses(ini) {
   return lista;
 }
 
+async function buscarItens(codEmpenho, ini) {
+  const meses = seisAnomeses(ini).join(',');
+  const url = 'api/orcamento-compras/itens?meses=' + encodeURIComponent(meses)
+            + '&empenho=' + encodeURIComponent(codEmpenho);
+  const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.erro || 'Falha ao detalhar');
+  return { lista: j.itens || [], soma: j.soma || 0 };
+}
+
 async function abrirDetalheItens(codEmpenho, tituloEmpenho) {
   const modal = $('#modalItens');
   $('#miTitulo').textContent = tituloEmpenho;
-  $('#miSub').textContent = `Realizado de ${PERIODO_ATUAL.rotulo} · material e fornecedor (ou contrato)`;
+  $('#miSub').textContent = `Material e fornecedor do realizado — ${PERIODO_ATUAL.rotulo}`;
   modal.classList.add('on');
 
   const ck = codEmpenho;
@@ -479,13 +494,11 @@ async function abrirDetalheItens(codEmpenho, tituloEmpenho) {
     ITENS_DETALHE[ck] = { carregando: true };
     pintarDetalheItens(ck);
     try {
-      const meses = seisAnomeses(PERIODO_ATUAL.ini).join(',');
-      const url = 'api/orcamento-compras/itens?meses=' + encodeURIComponent(meses)
-                + '&empenho=' + encodeURIComponent(codEmpenho);
-      const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
-      const j = await r.json();
-      if (!j.ok) throw new Error(j.erro || 'Falha ao detalhar');
-      ITENS_DETALHE[ck] = { lista: j.itens || [], soma: j.soma || 0 };
+      const [atual, anterior] = await Promise.all([
+        buscarItens(codEmpenho, PERIODO_ATUAL.ini),
+        buscarItens(codEmpenho, PERIODO_ANTERIOR.ini).catch(() => ({ lista: [], soma: 0 }))
+      ]);
+      ITENS_DETALHE[ck] = { atual, anterior };
     } catch (e) {
       ITENS_DETALHE[ck] = { erro: e.message || String(e) };
     }
@@ -498,31 +511,32 @@ function pintarDetalheItens(ck) {
   const corpo = $('#miCorpo'), rodape = $('#miRodape');
   if (!it || it.carregando) { corpo.innerHTML = '<div class="mi-vazio">Carregando itens…</div>'; rodape.innerHTML = ''; return; }
   if (it.erro) { corpo.innerHTML = `<div class="mi-vazio" style="color:var(--rubro)">${esc(it.erro)}</div>`; rodape.innerHTML = ''; return; }
-  if (!it.lista.length) { corpo.innerHTML = '<div class="mi-vazio">Sem itens detalhados no período.</div>'; rodape.innerHTML = ''; return; }
-  corpo.innerHTML = it.lista.map(x =>
-    `<div class="mi-item"><div class="mi-desc">${rotuloItemDetalhe(x)}</div>` +
-    `<div class="mi-val">${x.valor ? fmt(x.valor) : ''}</div></div>`).join('');
-  rodape.innerHTML = `<span>${it.lista.length} item(ns)</span><span>Soma dos itens: <b>${fmt(it.soma || 0)}</b></span>`;
+  const lista = it.atual.lista;
+  corpo.innerHTML = lista.length
+    ? lista.map(x => `<div class="mi-item">${rotuloItemDetalhe(x)}<div class="mi-val">${x.valor ? fmt(x.valor) : ''}</div></div>`).join('')
+    : '<div class="mi-vazio">Sem itens detalhados no período.</div>';
+  rodape.innerHTML = `
+    <div class="mi-comp"><span class="mi-comp-l">${esc(PERIODO_ATUAL.rotulo)}</span><span class="mi-comp-v">${fmt(it.atual.soma || 0)}</span><span class="mi-comp-n">${it.atual.lista.length} item(ns)</span></div>
+    <div class="mi-comp"><span class="mi-comp-l">${esc(PERIODO_ANTERIOR.rotulo)}</span><span class="mi-comp-v">${fmt(it.anterior.soma || 0)}</span><span class="mi-comp-n">${it.anterior.lista.length} item(ns)</span></div>`;
 }
 
 function fecharDetalheItens() { $('#modalItens').classList.remove('on'); }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharDetalheItens(); });
 
-/** O rótulo do item: mês + material/fornecedor (compra), ou o contrato, ou "sem detalhe". */
+/** Material (negrito) + fornecedor e OC (linha menor), ou o contrato, ou "sem detalhe" — sem os nomes de campo (Cot/Sol não interessam aqui, só a OC). */
 function rotuloItemDetalhe(x) {
   const mesLbl = x.anomes ? `<span class="mes">${esc(rotuloAnomes(x.anomes))}</span>` : '';
-  if (x.origem === 'contrato' && x.contrato) return `${mesLbl}📄 Contrato ${esc(x.contrato)}`;
-  if (x.material || x.fornecedor) {
-    let s = mesLbl + esc(x.material || '(material sem descrição)');
-    if (x.fornecedor) s += ` · <span class="forn">${esc(x.fornecedor)}</span>`;
-    const refs = [];
-    if (x.cotacao) refs.push('Cot ' + esc(x.cotacao));
-    if (x.nroc) refs.push('OC ' + esc(x.nroc));
-    if (x.solicitacao) refs.push('Sol ' + esc(x.solicitacao));
-    if (refs.length) s += ` <span class="refs">${refs.join(' · ')}</span>`;
-    return s;
+  if (x.origem === 'contrato' && x.contrato) {
+    return `<div class="mi-desc"><div class="mi-mat">${mesLbl}📄 Contrato ${esc(x.contrato)}</div></div>`;
   }
-  return mesLbl + '<span class="semdet">sem detalhe de compra</span>';
+  if (x.material || x.fornecedor) {
+    const oc = x.nroc ? `<span class="mi-oc">OC ${esc(x.nroc)}</span>` : '';
+    return `<div class="mi-desc">
+      <div class="mi-mat">${mesLbl}${esc(x.material || '(material sem descrição)')}</div>
+      ${x.fornecedor || oc ? `<div class="mi-forn">${esc(x.fornecedor || '')}${oc}</div>` : ''}
+    </div>`;
+  }
+  return `<div class="mi-desc"><div class="mi-mat">${mesLbl}<span class="semdet">sem detalhe de compra</span></div></div>`;
 }
 
 /** 202609 -> "set/26" — só pra rotular o mês de cada item do detalhe. */
