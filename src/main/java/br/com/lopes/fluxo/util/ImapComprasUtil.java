@@ -210,18 +210,29 @@ public final class ImapComprasUtil {
                 bytes = in.readAllBytes();
             }
 
+            String motivoInvalido = null;
             if (!pareceInicioDePdf(bytes)) {
                 // Os primeiros bytes de um PDF de verdade são sempre "%PDF-"
-                // (é a assinatura do formato). Se não vieram assim, a captura
-                // saiu errada — registra tudo que ajuda a achar o motivo
-                // (tipo de codificação, tamanho) e NÃO oferece esse anexo
-                // pra download: melhor não ter o PDF do que oferecer um que
-                // não abre.
-                LOG.warning("Anexo " + nomeArquivo + " (msg " + messageId + ") não começa com a assinatura %PDF-. "
+                // (é a assinatura do formato).
+                motivoInvalido = "não começa com a assinatura %PDF-";
+            } else if (!pareceFimDePdf(bytes)) {
+                // O fim de um PDF bem formado sempre tem o marcador %%EOF
+                // (pode repetir mais de uma vez no arquivo, mas a última
+                // ocorrência fica sempre perto do final). Sem ele, o arquivo
+                // foi cortado no meio da transferência — é o padrão mais
+                // provável do que já vimos: cabeçalho intacto, corpo incompleto.
+                motivoInvalido = "não termina com o marcador %%EOF (arquivo truncado?)";
+            }
+            if (motivoInvalido != null) {
+                // Registra tudo que ajuda a achar o motivo e NÃO oferece esse
+                // anexo pra download: melhor não ter o PDF do que oferecer
+                // um que não abre.
+                LOG.warning("Anexo " + nomeArquivo + " (msg " + messageId + ") inválido: " + motivoInvalido + ". "
                         + "Content-Type=" + tentarHeader(parte, "Content-Type")
                         + " Content-Transfer-Encoding=" + tentarHeader(parte, "Content-Transfer-Encoding")
                         + " tamanho=" + bytes.length + " bytes"
-                        + " primeirosBytes=" + previaHex(bytes));
+                        + " primeirosBytes=" + previaHex(bytes, 0, 24)
+                        + " ultimosBytes=" + previaHex(bytes, Math.max(0, bytes.length - 24), bytes.length));
                 bytes = null;
             }
 
@@ -247,6 +258,9 @@ public final class ImapComprasUtil {
     }
 
     private static final byte[] ASSINATURA_PDF = "%PDF-".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+    private static final byte[] MARCADOR_FIM_PDF = "%%EOF".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+    /** Quanto do final do arquivo é vasculhado atrás do %%EOF — sobra espaço pra espaço em branco/nova linha depois dele. */
+    private static final int JANELA_FIM_PDF = 64;
 
     private static boolean pareceInicioDePdf(byte[] bytes) {
         if (bytes == null || bytes.length < ASSINATURA_PDF.length) return false;
@@ -254,6 +268,20 @@ public final class ImapComprasUtil {
             if (bytes[i] != ASSINATURA_PDF[i]) return false;
         }
         return true;
+    }
+
+    /** Procura "%%EOF" nos últimos {@link #JANELA_FIM_PDF} bytes do arquivo. */
+    private static boolean pareceFimDePdf(byte[] bytes) {
+        if (bytes == null || bytes.length < MARCADOR_FIM_PDF.length) return false;
+        int inicioJanela = Math.max(0, bytes.length - JANELA_FIM_PDF);
+        for (int i = bytes.length - MARCADOR_FIM_PDF.length; i >= inicioJanela; i--) {
+            boolean bate = true;
+            for (int j = 0; j < MARCADOR_FIM_PDF.length && bate; j++) {
+                if (bytes[i + j] != MARCADOR_FIM_PDF[j]) bate = false;
+            }
+            if (bate) return true;
+        }
+        return false;
     }
 
     private static String tentarHeader(BodyPart parte, String nome) {
@@ -265,11 +293,10 @@ public final class ImapComprasUtil {
         }
     }
 
-    /** Os primeiros bytes em hexadecimal, pra ver no log se é lixo binário, HTML de erro, base64 cru etc. */
-    private static String previaHex(byte[] bytes) {
-        int n = Math.min(bytes.length, 24);
+    /** Os bytes entre [de, ate) em hexadecimal, pra ver no log se é lixo binário, HTML de erro, base64 cru etc. */
+    private static String previaHex(byte[] bytes, int de, int ate) {
         StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < n; i++) sb.append(String.format("%02x ", bytes[i]));
+        for (int i = Math.max(0, de); i < Math.min(bytes.length, ate); i++) sb.append(String.format("%02x ", bytes[i]));
         return sb.toString().trim();
     }
 
