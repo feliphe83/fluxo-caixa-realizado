@@ -91,6 +91,12 @@ public final class ImapComprasUtil {
         props.put("mail.imaps.ssl.enable", "true");
         props.put("mail.imaps.connectiontimeout", "15000");
         props.put("mail.imaps.timeout", "20000");
+        // A caixa de Compras continua em uso normal por quem trabalha nela —
+        // ler os e-mails aqui não pode marcá-los como lidos. FOLDER.READ_ONLY
+        // já faz o provider IMAP da Jakarta Mail usar BODY.PEEK ao buscar o
+        // conteúdo, mas "peek" é reforçado aqui explicitamente como segunda
+        // trava, para não depender só do modo da pasta.
+        props.put("mail.imaps.peek", "true");
 
         Session session = Session.getInstance(props);
         List<AnexoPdf> encontrados = new ArrayList<>();
