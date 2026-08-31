@@ -28,10 +28,21 @@ public final class NfeChaveUtil {
 
     private NfeChaveUtil() {}
 
-    /** A chave como um bloco só de 44 dígitos (comum na legenda do código de barras). */
-    private static final Pattern CHAVE_COMPACTA = Pattern.compile("\\d{44}");
+    /**
+     * A chave como um bloco só de 44 dígitos (comum na legenda do código de
+     * barras). O (?&lt;!\d) / (?!\d) nas pontas é essencial: sem eles, uma
+     * chave de OUTRO tipo de documento com mais de 44 dígitos — a NFS-e
+     * (nota de SERVIÇO) usa uma chave de 50 dígitos — bateria uma fatia de
+     * 44 dígitos dela por dentro, e essa fatia eventualmente passa no dígito
+     * verificador por coincidência (~1 em 11 chance por fatia tentada, e uma
+     * sequência de 50 dígitos oferece 7 fatias de 44 pra tentar). Foi
+     * exatamente isso que aconteceu: duas NFS-e de serviço viraram "nota
+     * pendente" com número e série sem sentido nenhum, decodificados de
+     * dentro da chave de 50 dígitos delas.
+     */
+    private static final Pattern CHAVE_COMPACTA = Pattern.compile("(?<!\\d)\\d{44}(?!\\d)");
     /** A chave impressa em 11 blocos de 4 dígitos, separados por espaço/ponto/quebra de linha. */
-    private static final Pattern CHAVE_EM_BLOCOS = Pattern.compile("(?:\\d{4}[ \\t.\\r\\n]{1,3}){10}\\d{4}");
+    private static final Pattern CHAVE_EM_BLOCOS = Pattern.compile("(?<!\\d)(?:\\d{4}[ \\t.\\r\\n]{1,3}){10}\\d{4}(?!\\d)");
 
     public static final class Chave {
         public final String chave44;
@@ -94,5 +105,22 @@ public final class NfeChaveUtil {
         if (t.contains("DANFE") || t.contains("NOTA FISCAL ELETR") || t.contains("CHAVE DE ACESSO")) return true;
         String nome = nomeArquivo == null ? "" : nomeArquivo.toUpperCase();
         return t.isBlank() && (nome.contains("NF") || nome.contains("DANFE") || nome.contains("NOTA"));
+    }
+
+    /**
+     * NFS-e — nota fiscal de SERVIÇO, emitida pela prefeitura do município
+     * (ISSQN), não pela Receita/Sefaz (ICMS). É um padrão totalmente
+     * diferente da NF-e de mercadoria: chave de 50 dígitos (não 44, cálculo
+     * de dígito verificador diferente) e, principalmente, não passa por
+     * "entrada no almoxarifado" nenhuma — serviço não tem material.itensentrada.
+     * Por isso este alerta (pensado pra mercadoria) não se aplica a ela: nem
+     * vale a pena tentar decodificar chave, nem faz sentido esperar uma
+     * "entrada" que nunca vai existir no ERP.
+     */
+    public static boolean pareceNotaDeServico(String texto) {
+        if (texto == null) return false;
+        String t = texto.toUpperCase();
+        return t.contains("NFS-E") || t.contains("NFSE") || t.contains("DANFSE")
+            || t.contains("NOTA FISCAL DE SERVI");
     }
 }

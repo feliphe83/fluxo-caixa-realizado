@@ -128,6 +128,11 @@ public class AlertaNfSemEntradaHandler implements RelatorioAgendadoHandler {
                     r.serie = chave.serie;
                     r.cnpjEmitente = chave.cnpjEmitente;
                     r.status = "PENDENTE";
+                } else if (NfeChaveUtil.pareceNotaDeServico(anexo.texto)) {
+                    // NFS-e (serviço, ISSQN) — não passa por entrada de
+                    // material, esse alerta não se aplica. Fica visível na
+                    // tela, mas nunca é checada no Oracle nem alertada.
+                    r.status = "SERVICO";
                 } else if (NfeChaveUtil.pareceDanfe(anexo.texto, anexo.nomeArquivo)) {
                     r.status = "SEM_CHAVE";
                 } else {

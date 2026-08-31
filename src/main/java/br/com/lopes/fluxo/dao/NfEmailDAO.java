@@ -27,6 +27,8 @@ import java.util.logging.Logger;
  *   ENTRADA_CONFIRMADA  — o Oracle já mostrou o item dando entrada; para de alertar
  *   SEM_CHAVE           — o anexo parece nota fiscal, mas não foi possível ler a chave de acesso
  *                         (ex.: PDF escaneado, sem camada de texto) — fica visível para conferência manual
+ *   SERVICO             — NFS-e (nota de serviço, ISSQN): não tem "entrada de material" nenhuma pra
+ *                         conferir no Oracle, esse alerta não se aplica — fica só visível na tela
  */
 public class NfEmailDAO {
 
