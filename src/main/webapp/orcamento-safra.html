@@ -129,26 +129,27 @@ tfoot td:first-child{padding-left:16px;font-family:var(--serif)}
 .mi-fechar{margin-left:auto;border:none;background:none;font-size:26px;line-height:1;color:var(--cinza2);cursor:pointer;padding:0 2px}
 .mi-fechar:hover{color:var(--tinta)}
 
-/* Duas colunas independentes — uma por safra — cada uma com seu título/total fixo no topo e lista própria. */
-.mi-colunas{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--linha);overflow:hidden}
-.mi-coluna{display:flex;flex-direction:column;min-height:0;background:#fff}
-.mi-col-head{flex:none;padding:12px 20px;background:var(--papel);border-bottom:1px solid var(--linha);display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
-.mi-col-tit{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--cinza);flex:1 1 100%}
-.mi-col-val{font-family:var(--serif);font-size:18px;font-weight:600;color:var(--p)}
-.mi-col-n{font-size:11px;color:var(--cinza2)}
-.mi-col-lista{overflow:auto;flex:1;min-height:0}
-.mi-item{display:flex;gap:14px;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--linha)}
-.mi-item:last-child{border-bottom:0}
-.mi-desc{flex:1;min-width:0}
+/* Uma tabela só — uma linha por material (ou contrato), comparando as duas safras lado a lado. */
+.mi-corpo{flex:1;min-height:0;overflow:auto}
+.mi-tabela{width:100%;border-collapse:collapse;font-size:12px}
+.mi-tabela thead th{position:sticky;top:0;background:var(--papel);color:var(--cinza);font-weight:700;font-size:10px;letter-spacing:.05em;text-transform:uppercase;padding:8px 12px;border-bottom:1px solid var(--linha);text-align:right;white-space:nowrap;z-index:1}
+.mi-tabela thead th:first-child{text-align:left}
+.mi-tabela thead tr.mi-super th{font-family:var(--serif);text-transform:none;letter-spacing:0;font-size:11.5px;color:var(--p);padding:8px 12px 2px;border-bottom:0;text-align:center;top:0}
+.mi-tabela thead tr.mi-super th:first-child{text-align:left}
+.mi-tabela thead tr:nth-child(2) th{top:27px}
+.mi-tabela .sep{border-left:1px solid var(--linha)}
+.mi-tabela tbody td{padding:9px 12px;border-bottom:1px solid var(--linha);vertical-align:top}
+.mi-tabela tbody tr:last-child td{border-bottom:0}
+.mi-tabela tbody tr:hover td{background:var(--papel)}
+.mi-tabela .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .mi-mat{font-size:12.5px;font-weight:600;color:var(--tinta);line-height:1.35}
-.mi-forn{font-size:11px;color:var(--cinza);margin-top:3px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.mi-oc{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--p);background:var(--pc);padding:2px 8px;border-radius:20px;white-space:nowrap}
-.mi-unit{font-family:var(--mono);font-size:10.5px;color:var(--cinza);white-space:nowrap}
+.mi-forn{font-size:11px;color:var(--cinza);margin-top:2px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.mi-oc{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--p);background:var(--pc);padding:1px 7px;border-radius:20px;white-space:nowrap}
 .mi-mat .semdet{color:var(--cinza);font-style:italic;font-weight:400}
-.mi-mat .mes{display:inline-block;color:var(--cinza2);font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-right:8px;vertical-align:middle}
-.mi-val{font-weight:700;color:var(--tinta);white-space:nowrap;font-variant-numeric:tabular-nums;font-size:12.5px}
+.mi-unit{display:block;font-family:var(--mono);font-size:10.5px;color:var(--cinza2);margin-top:1px}
+.mi-dif{font-weight:700}
+.mi-dif.pos{color:var(--rubro)}.mi-dif.neg{color:var(--verde)}.mi-dif.nulo{color:var(--cinza2);font-weight:400}
 .mi-vazio{padding:26px 20px;color:var(--cinza);font-size:13px}
-@media(max-width:760px){.mi-colunas{grid-template-columns:1fr}}
 .bar{display:inline-block;height:5px;border-radius:3px;vertical-align:middle;margin-right:5px}
 .graficos{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;gap:14px}
 
@@ -233,7 +234,7 @@ footer{flex:none;font-size:10.5px;color:var(--cinza2);padding:0 28px 8px;display
       </div>
       <button class="mi-fechar" onclick="fecharDetalheItens()" title="Fechar (Esc)">×</button>
     </div>
-    <div class="mi-colunas" id="miCorpo"></div>
+    <div class="mi-corpo" id="miCorpo"></div>
   </div>
 </div>
 <footer><span id="rodape-fonte">Fonte: ERP (Oracle), consultado ao vivo. OC = ordens de compra (tipo de empenho 1, 5 e demais); CT = contratos (tipo 2); o orçado herda o tipo pelo empenho.</span><span>Usina Santa Clotilde · SGO · Módulo Compras</span></footer>
@@ -490,7 +491,7 @@ async function buscarItens(codEmpenho, ini) {
 async function abrirDetalheItens(codEmpenho, tituloEmpenho) {
   const modal = $('#modalItens');
   $('#miTitulo').textContent = tituloEmpenho;
-  $('#miSub').textContent = `Material e fornecedor do realizado — ${PERIODO_ATUAL.rotulo}`;
+  $('#miSub').textContent = `Comparativo por item: ${PERIODO_ATUAL.rotulo} x ${PERIODO_ANTERIOR.rotulo}`;
   modal.classList.add('on');
 
   const ck = codEmpenho;
@@ -515,57 +516,76 @@ function pintarDetalheItens(ck) {
   const corpo = $('#miCorpo');
   if (!it || it.carregando) { corpo.innerHTML = '<div class="mi-vazio">Carregando itens…</div>'; return; }
   if (it.erro) { corpo.innerHTML = `<div class="mi-vazio" style="color:var(--rubro)">${esc(it.erro)}</div>`; return; }
-  corpo.innerHTML = colunaItens(PERIODO_ATUAL.rotulo, it.atual) + colunaItens(PERIODO_ANTERIOR.rotulo, it.anterior);
-}
-
-/** Uma coluna do modal: título do período + total no topo, lista de itens rolando embaixo. */
-function colunaItens(titulo, dados) {
-  const lista = dados.lista.length
-    ? dados.lista.map(x => `<div class="mi-item">${rotuloItemDetalhe(x)}<div class="mi-val">${x.valor ? fmt(x.valor) : ''}</div></div>`).join('')
-    : '<div class="mi-vazio">Sem itens detalhados no período.</div>';
-  return `<div class="mi-coluna">
-    <div class="mi-col-head">
-      <span class="mi-col-tit">${esc(titulo)}</span>
-      <span class="mi-col-val">${fmt(dados.soma || 0)}</span>
-      <span class="mi-col-n">${dados.lista.length} item(ns)</span>
-    </div>
-    <div class="mi-col-lista">${lista}</div>
-  </div>`;
+  const linhas = montarComparativo(it.atual.lista, it.anterior.lista);
+  if (!linhas.length) { corpo.innerHTML = '<div class="mi-vazio">Sem itens detalhados no período.</div>'; return; }
+  corpo.innerHTML = `<table class="mi-tabela">
+    <thead>
+      <tr class="mi-super"><th></th><th colspan="2" class="sep">${esc(PERIODO_ATUAL.rotulo)}</th><th colspan="2" class="sep">${esc(PERIODO_ANTERIOR.rotulo)}</th><th class="sep"></th></tr>
+      <tr><th>Material / Contrato</th><th class="sep">Valor</th><th>Preço un.</th><th class="sep">Valor</th><th>Preço un.</th><th class="sep">Dif. preço un.</th></tr>
+    </thead>
+    <tbody>${linhas.map(linhaComparativoHtml).join('')}</tbody>
+  </table>`;
 }
 
 function fecharDetalheItens() { $('#modalItens').classList.remove('on'); }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharDetalheItens(); });
 
-/** Material (negrito) + fornecedor e OC (linha menor), ou o contrato, ou "sem detalhe" — sem os nomes de campo (Cot/Sol não interessam aqui, só a OC). */
 /** Quantidade com 1-2 casas só quando fracionária (litro/kg) — inteira fica sem casas. */
 function fmtQtd(n) {
   return Number.isInteger(n) ? String(n) : n.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
 }
 
-function rotuloItemDetalhe(x) {
-  const mesLbl = x.anomes ? `<span class="mes">${esc(rotuloAnomes(x.anomes))}</span>` : '';
-  if (x.origem === 'contrato' && x.contrato) {
-    return `<div class="mi-desc"><div class="mi-mat">${mesLbl}📄 Contrato ${esc(x.contrato)}</div></div>`;
+/** Agrupa os itens de UM período por material (ou por contrato) — soma valor e quantidade, junta as OCs. */
+function agruparPorItem(lista) {
+  const map = new Map();
+  for (const x of lista) {
+    let chave, rotulo, contrato = false;
+    if (x.origem === 'contrato' && x.contrato) { chave = 'c:' + x.contrato; rotulo = '📄 Contrato ' + esc(x.contrato); contrato = true; }
+    else if (x.material || x.fornecedor) { chave = 'm:' + (x.codMaterial || x.material || '?'); rotulo = x.material || '(material sem descrição)'; }
+    else { chave = 's:semdetalhe'; rotulo = 'Sem detalhe de compra'; }
+    if (!map.has(chave)) map.set(chave, { rotulo, contrato, fornecedor: '', ocs: new Set(), valor: 0, qtde: 0 });
+    const g = map.get(chave);
+    g.valor += x.valor || 0;
+    if (x.quantidade) g.qtde += x.quantidade;
+    if (x.nroc) g.ocs.add(x.nroc);
+    if (!g.fornecedor && x.fornecedor) g.fornecedor = x.fornecedor;
   }
-  if (x.material || x.fornecedor) {
-    const oc = x.nroc ? `<span class="mi-oc">OC ${esc(x.nroc)}</span>` : '';
-    // Valor unitário só some se for igual ao total (quantidade 1): repetir o
-    // mesmo número duas vezes não ajuda a comparar preço nenhum.
-    const unit = x.valorUnitario && x.quantidade && x.quantidade !== 1
-      ? `<span class="mi-unit">${fmtQtd(x.quantidade)} un · ${fmt(x.valorUnitario)}/un</span>` : '';
-    return `<div class="mi-desc">
-      <div class="mi-mat">${mesLbl}${esc(x.material || '(material sem descrição)')}</div>
-      ${x.fornecedor || oc || unit ? `<div class="mi-forn">${esc(x.fornecedor || '')}${oc}${unit}</div>` : ''}
-    </div>`;
-  }
-  return `<div class="mi-desc"><div class="mi-mat">${mesLbl}<span class="semdet">sem detalhe de compra</span></div></div>`;
+  return map;
 }
 
-/** 202609 -> "set/26" — só pra rotular o mês de cada item do detalhe. */
-function rotuloAnomes(anomes) {
-  const ABREV = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-  const ano = Math.floor(anomes / 100), m = anomes % 100;
-  return ABREV[m - 1] + '/' + String(ano % 100).padStart(2, '0');
+/** Uma linha por material (ou contrato) que apareceu em QUALQUER um dos dois períodos, já com o preço unitário dos dois lados. */
+function montarComparativo(listaAtual, listaAnterior) {
+  const ma = agruparPorItem(listaAtual), mb = agruparPorItem(listaAnterior);
+  const chaves = new Set([...ma.keys(), ...mb.keys()]);
+  const linhas = [];
+  for (const k of chaves) {
+    const a = ma.get(k), b = mb.get(k), base = a || b;
+    linhas.push({
+      rotulo: base.rotulo, contrato: base.contrato,
+      fornecedor: (a && a.fornecedor) || (b && b.fornecedor) || '',
+      ocs: [...new Set([...(a ? a.ocs : []), ...(b ? b.ocs : [])])],
+      valorA: a ? a.valor : 0, qtdeA: a && a.qtde ? a.qtde : 0,
+      valorB: b ? b.valor : 0, qtdeB: b && b.qtde ? b.qtde : 0
+    });
+  }
+  return linhas.sort((x, y) => Math.max(y.valorA, y.valorB) - Math.max(x.valorA, x.valorB));
+}
+
+function linhaComparativoHtml(l) {
+  const puA = l.qtdeA ? l.valorA / l.qtdeA : null, puB = l.qtdeB ? l.valorB / l.qtdeB : null;
+  const dif = puA !== null && puB !== null ? (puA / puB - 1) * 100 : null;
+  const difCls = dif === null ? 'nulo' : Math.abs(dif) < 0.5 ? 'nulo' : dif > 0 ? 'pos' : 'neg';
+  const difTxt = dif === null ? '—' : (dif > 0 ? '+' : '') + dif.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
+  const sub = l.contrato ? '' : (l.fornecedor || l.ocs.length)
+    ? `<div class="mi-forn">${esc(l.fornecedor)}${l.ocs.length ? `<span class="mi-oc">OC ${l.ocs.map(esc).join(', ')}</span>` : ''}</div>` : '';
+  return `<tr>
+    <td><div class="mi-mat">${l.contrato ? l.rotulo : esc(l.rotulo)}</div>${sub}</td>
+    <td class="num sep">${l.valorA ? fmt(l.valorA) : '—'}</td>
+    <td class="num">${puA !== null ? fmt(puA) + `<span class="mi-unit">${fmtQtd(l.qtdeA)} un</span>` : '—'}</td>
+    <td class="num sep">${l.valorB ? fmt(l.valorB) : '—'}</td>
+    <td class="num">${puB !== null ? fmt(puB) + `<span class="mi-unit">${fmtQtd(l.qtdeB)} un</span>` : '—'}</td>
+    <td class="num sep mi-dif ${difCls}">${difTxt}</td>
+  </tr>`;
 }
 
 let cM, cG, cA;
