@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NF sem Entrada · USC</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --ink: #0f2460; --ink-2: #52514e; --ink-3: #898781; --borda: #e3e8f5;
+    --ok: #14603f; --okc: #eaf7f0; --alerta: #a0641a; --alertac: #fdf3e2; --erro: #b23b3b; --erroc: #fbe9e7;
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+         background: #f4f6fb; color: #1a1a2e; }
+
+  .header { background: linear-gradient(135deg, #0f2460 0%, #1a3a7c 100%); color: white; padding: 16px 28px;
+            display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+  .header-left { display: flex; align-items: center; gap: 14px; min-width: 0; }
+  .header-logo { width: 44px; height: 44px; border-radius: 8px; background: white; display: flex;
+                 align-items: center; justify-content: center; overflow: hidden; padding: 5px; flex-shrink: 0; }
+  .header-logo img { width: 100%; height: 100%; object-fit: contain; }
+  .header-title { font-size: 19px; font-weight: 800; }
+  .header-sub { font-size: 12.5px; opacity: .9; margin-top: 3px; font-weight: 600; }
+  .btn-voltar { display: flex; align-items: center; gap: 7px; padding: 8px 16px; border-radius: 8px;
+                border: 1.5px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.08);
+                color: rgba(255,255,255,0.9); font-size: 13px; font-weight: 600; cursor: pointer; }
+  .btn-voltar:hover { background: rgba(255,255,255,0.18); }
+
+  .conteudo { max-width: 1280px; margin: 0 auto; padding: 22px; }
+
+  .resumo { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 18px; }
+  .rcard { background: white; border: 1.5px solid var(--borda); border-radius: 14px; padding: 14px 18px; cursor: pointer; }
+  .rcard.ativo { border-color: var(--ink); box-shadow: 0 0 0 2px rgba(15,36,96,.12) inset; }
+  .rcard .n { font-size: 26px; font-weight: 800; color: var(--ink); line-height: 1.1; }
+  .rcard .l { font-size: 12px; color: var(--ink-3); font-weight: 600; margin-top: 4px; }
+  .rcard.atrasada .n { color: var(--erro); }
+  .rcard.semchave .n { color: var(--alerta); }
+  .rcard.confirmada .n { color: var(--ok); }
+
+  .obs { font-size: 12px; color: var(--ink-3); margin-bottom: 14px; line-height: 1.5; }
+
+  .tab { background: white; border: 1.5px solid var(--borda); border-radius: 14px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  thead th { text-align: left; padding: 10px 14px; background: #f8faff; color: var(--ink-3);
+             font-weight: 700; font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase;
+             border-bottom: 1px solid var(--borda); white-space: nowrap; }
+  tbody td { padding: 10px 14px; border-bottom: 1px solid #f2f5fb; vertical-align: top; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: #fbfaff; }
+  .nf { font-weight: 700; color: var(--ink); }
+  .mono { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11.5px; color: var(--ink-2); }
+  .assunto { color: var(--ink-2); max-width: 320px; }
+  .dias { font-weight: 700; }
+  .dias.atrasada { color: var(--erro); }
+  .pill { font-size: 10.5px; font-weight: 700; padding: 3px 10px; border-radius: 20px; white-space: nowrap; display: inline-block; }
+  .pill.atrasada { background: var(--erroc); color: var(--erro); }
+  .pill.pendente { background: var(--alertac); color: var(--alerta); }
+  .pill.semchave { background: #f2f0ec; color: var(--ink-3); }
+  .pill.confirmada { background: var(--okc); color: var(--ok); }
+
+  .estado { text-align: center; padding: 50px 20px; color: var(--ink-3); }
+  .spinner { width: 30px; height: 30px; border: 3px solid var(--borda); border-top-color: #1a3a7c;
+             border-radius: 50%; animation: girar .8s linear infinite; margin: 0 auto 12px; }
+  @keyframes girar { to { transform: rotate(360deg); } }
+  @media(max-width:900px){ .resumo{grid-template-columns:1fr 1fr} .assunto{max-width:180px} }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="header-logo"><img src="img/logo.png" alt="USC"></div>
+    <div>
+      <div class="header-title">Notas Fiscais sem Entrada</div>
+      <div class="header-sub">Notas detectadas no e-mail de Compras, comparadas com a entrada no ERP</div>
+    </div>
+  </div>
+  <button class="btn-voltar" onclick="window.location.href='hub.html'">
+    <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    Voltar
+  </button>
+</div>
+
+<div class="conteudo">
+  <div class="resumo" id="resumo"></div>
+  <div class="obs" id="obs"></div>
+  <div class="tab"><table>
+    <thead><tr>
+      <th>Status</th><th>NF / Série</th><th>CNPJ emitente</th><th>Data do e-mail</th><th>Dias</th>
+      <th>Remetente</th><th>Assunto</th><th>Anexo</th>
+    </tr></thead>
+    <tbody id="corpo"><tr><td colspan="8"><div class="estado"><div class="spinner"></div>Carregando…</div></td></tr></tbody>
+  </table></div>
+</div>
+
+<script>
+"use strict";
+
+let ITENS = [];
+let PRAZO = 5;
+let filtro = 'atrasada';
+
+function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+function formatarCnpj(v) {
+  const d = String(v || "").replace(/\D/g, "");
+  return d.length === 14 ? d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5") : (v || "—");
+}
+function fmtData(iso) {
+  if (!iso) return "—";
+  const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : iso;
+}
+const LABEL = { PENDENTE: 'pendente', SEM_CHAVE: 'semchave', ENTRADA_CONFIRMADA: 'confirmada' };
+const LABEL_TXT = { pendente: 'Dentro do prazo', semchave: 'Sem chave lida', confirmada: 'Entrada confirmada', atrasada: 'Atrasada' };
+
+function classificar(item) {
+  if (item.atrasada) return 'atrasada';
+  return LABEL[item.status] || 'pendente';
+}
+
+async function carregar() {
+  try {
+    const r = await fetch("api/nf-sem-entrada");
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro || "Falha ao consultar");
+    ITENS = j.itens || [];
+    PRAZO = j.prazoDias || 5;
+    document.getElementById("obs").textContent =
+      `Uma nota entra nesta lista quando um PDF de NF-e chega anexado no e-mail de Compras; o CNPJ, número e série vêm da chave de acesso decodificada do próprio PDF. Prazo considerado: ${PRAZO} dias corridos a partir da data do e-mail sem entrada registrada no ERP.`;
+    render();
+  } catch (e) {
+    document.getElementById("corpo").innerHTML =
+      `<tr><td colspan="8"><div class="estado" style="color:#b23b3b">Erro: ${esc(e.message)}</div></td></tr>`;
+  }
+}
+
+function render() {
+  const cont = { todas: ITENS.length, atrasada: 0, pendente: 0, semchave: 0, confirmada: 0 };
+  ITENS.forEach(i => cont[classificar(i)]++);
+
+  document.getElementById("resumo").innerHTML = [
+    { k: 'todas', l: 'Total acompanhado', cls: '' },
+    { k: 'atrasada', l: `Atrasadas (> ${PRAZO} dias)`, cls: 'atrasada' },
+    { k: 'semchave', l: 'Sem chave lida', cls: 'semchave' },
+    { k: 'confirmada', l: 'Confirmadas recentemente', cls: 'confirmada' }
+  ].map(c => `<div class="rcard ${c.cls} ${filtro === c.k ? 'ativo' : ''}" onclick="mudarFiltro('${c.k}')">
+      <div class="n">${cont[c.k]}</div><div class="l">${esc(c.l)}</div></div>`).join('');
+
+  const filtrados = ITENS
+    .filter(i => filtro === 'todas' || classificar(i) === filtro)
+    .sort((a, b) => b.diasDesdeEmail - a.diasDesdeEmail);
+
+  if (!filtrados.length) {
+    document.getElementById("corpo").innerHTML = '<tr><td colspan="8"><div class="estado">Nenhuma nota nesta categoria.</div></td></tr>';
+    return;
+  }
+
+  document.getElementById("corpo").innerHTML = filtrados.map(i => {
+    const cls = classificar(i);
+    return `<tr>
+      <td><span class="pill ${cls}">${esc(LABEL_TXT[cls] || cls)}</span></td>
+      <td class="nf">${i.nrnf ? esc(i.nrnf) + ' / ' + esc(i.serie) : '<span class="mono">—</span>'}</td>
+      <td class="mono">${esc(formatarCnpj(i.cnpjEmitente))}</td>
+      <td>${fmtData(i.dataEmail)}</td>
+      <td class="dias ${cls === 'atrasada' ? 'atrasada' : ''}">${i.diasDesdeEmail >= 0 ? i.diasDesdeEmail : '—'}</td>
+      <td>${esc(i.remetente)}</td>
+      <td class="assunto">${esc(i.assunto)}</td>
+      <td class="mono">${esc(i.nomeAnexo)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function mudarFiltro(f) { filtro = f; render(); }
+
+carregar();
+</script>
+
+<script src="js/icones-modulos.js?v=20260830a"></script>
+<script src="js/sidebar-nav.js?v=20260830a" defer></script>
+</body>
+</html>

@@ -55,7 +55,8 @@ public class RelatorioAgendadoScheduler implements ServletContextListener {
             Map.entry("parcela_contrato_aprovacao", new AlertaParcelaContratoHandler()),
             Map.entry("orcamento_estourado", new AlertaOrcamentoEstouradoHandler()),
             Map.entry("solicitacao_estourada", new AlertaSolicitacaoEstouradaHandler()),
-            Map.entry("estoque_parado", new EstoqueParadoHandler())
+            Map.entry("estoque_parado", new EstoqueParadoHandler()),
+            Map.entry("nf_sem_entrada", new AlertaNfSemEntradaHandler())
     );
 
     /** Execuções mais antigas que isso são descartadas — os recorrentes geram um registro por ciclo. */
@@ -97,6 +98,8 @@ public class RelatorioAgendadoScheduler implements ServletContextListener {
             new br.com.lopes.fluxo.dao.EstoqueParadoSnapshotDAO().garantirEstrutura();
             // Admissão de funcionários: tabelas de tipos de documento, candidato e envios.
             new br.com.lopes.fluxo.dao.AdmissaoDocumentoDAO().garantirEstrutura();
+            // NF sem entrada: tabela de controle das notas detectadas no e-mail de Compras.
+            new br.com.lopes.fluxo.dao.NfEmailDAO().garantirEstrutura();
         } catch (Exception e) {
             LOG.log(Level.SEVERE, "Não foi possível preparar as tabelas dos agendamentos", e);
         }
