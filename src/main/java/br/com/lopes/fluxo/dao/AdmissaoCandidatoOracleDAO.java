@@ -64,4 +64,42 @@ public class AdmissaoCandidatoOracleDAO {
             return null;
         }
     }
+
+    /**
+     * A partir de quando o link público de admissão libera o envio de
+     * documentos: só quem tem ficha de candidato no ERP preenchida NESTA
+     * data ou depois. Quem não tem ficha nenhuma (contratação direta,
+     * indicação) também fica de fora — decisão de negócio, não é o "segue
+     * sem" de {@link #buscarPorCpf}.
+     */
+    private static final String DATA_MINIMA_FICHA = "01/07/2026";
+
+    private static final String SQL_FICHA_LIBERADA = """
+        SELECT COUNT(*) qt
+        FROM   RH.FICHACANDIDATO
+        WHERE  CPF              = ?
+        AND    COD_GRUPOEMPRESA = 1
+        AND    DATA             >= TO_DATE(?, 'DD/MM/YYYY')
+        """;
+
+    /**
+     * True só se existir ficha de candidato para este CPF preenchida em ou
+     * após {@link #DATA_MINIMA_FICHA}. Uma falha na consulta NÃO libera por
+     * padrão — diferente de {@link #buscarPorCpf} (que é só enriquecimento de
+     * dado), aqui é controle de acesso: sem conseguir confirmar, bloqueia.
+     */
+    public boolean fichaLiberada(String cpfSoDigitos) {
+        try (Connection conn = OracleConnectionUtil.getConnection();
+             PreparedStatement ps = conn.prepareStatement(SQL_FICHA_LIBERADA)) {
+            ps.setString(1, cpfSoDigitos);
+            ps.setString(2, DATA_MINIMA_FICHA);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() && rs.getInt("qt") > 0;
+            }
+        } catch (SQLException e) {
+            LOG.log(Level.SEVERE, "Falha ao checar a data da ficha de candidato (bloqueando por segurança): "
+                    + e.getMessage(), e);
+            return false;
+        }
+    }
 }

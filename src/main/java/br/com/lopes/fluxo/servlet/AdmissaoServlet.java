@@ -38,6 +38,12 @@ import java.util.logging.Logger;
  *
  * Sem sessão/login de propósito — o pedido do usuário foi "validar apenas se
  * o CPF é válido". Já cai no prefixo /api/publico/ que o AuthFilter libera.
+ *
+ * Além do CPF ser válido, as duas rotas exigem
+ * {@link AdmissaoCandidatoOracleDAO#fichaLiberada} — só libera quem tem
+ * ficha de candidato no ERP preenchida a partir de 01/07/2026. Quem não
+ * tem ficha nenhuma (contratação direta, indicação) também fica de fora
+ * dessa liberação — decisão de negócio, veio de pedido explícito.
  */
 @WebServlet("/api/publico/admissao/*")
 @MultipartConfig(fileSizeThreshold = 1 << 20,
@@ -46,6 +52,9 @@ import java.util.logging.Logger;
 public class AdmissaoServlet extends HttpServlet {
 
     private static final Logger LOG = Logger.getLogger(AdmissaoServlet.class.getName());
+    /** Mensagem genérica de propósito: não revela a regra da data pra quem está de fora. */
+    private static final String MSG_ACESSO_NAO_LIBERADO =
+            "Não foi possível liberar o envio de documentos para este CPF. Procure o RH.";
     private final Gson gson = new Gson();
     private final AdmissaoDocumentoDAO dao = new AdmissaoDocumentoDAO();
     private final AdmissaoCandidatoOracleDAO erpDao = new AdmissaoCandidatoOracleDAO();
@@ -62,6 +71,7 @@ public class AdmissaoServlet extends HttpServlet {
             }
             String cpf = CpfUtil.soDigitos(req.getParameter("cpf"));
             if (!CpfUtil.valido(cpf)) { erro(resp, 400, "CPF inválido"); return; }
+            if (!erpDao.fichaLiberada(cpf)) { erro(resp, 403, MSG_ACESSO_NAO_LIBERADO); return; }
 
             dao.garantirEstrutura();
             Map<String, Object> candidato = dao.buscarOuCriarCandidato(cpf);
@@ -92,6 +102,7 @@ public class AdmissaoServlet extends HttpServlet {
 
             String cpf = CpfUtil.soDigitos(campo(req, "cpf"));
             if (!CpfUtil.valido(cpf)) { erro(resp, 400, "CPF inválido"); return; }
+            if (!erpDao.fichaLiberada(cpf)) { erro(resp, 403, MSG_ACESSO_NAO_LIBERADO); return; }
 
             dao.garantirEstrutura();
             Map<String, Object> candidato = dao.buscarOuCriarCandidato(cpf);
