@@ -111,8 +111,11 @@ public class NfSemEntradaServlet extends HttpServlet {
                 resp.sendError(404, "Arquivo não encontrado no disco");
                 return;
             }
+            // "attachment", não "inline": abre no leitor de PDF padrão do sistema em
+            // vez do visualizador embutido do navegador — alguns PDFs de DANFE
+            // renderizam em branco no visualizador embutido, mas abrem normal fora dele.
             resp.setContentType("application/pdf");
-            resp.setHeader("Content-Disposition", "inline; filename*=UTF-8''"
+            resp.setHeader("Content-Disposition", "attachment; filename*=UTF-8''"
                     + URLEncoder.encode("nota-fiscal-" + id + ".pdf", StandardCharsets.UTF_8).replace("+", "%20"));
             resp.setContentLengthLong(Files.size(arquivo));
             Files.copy(arquivo, resp.getOutputStream());
