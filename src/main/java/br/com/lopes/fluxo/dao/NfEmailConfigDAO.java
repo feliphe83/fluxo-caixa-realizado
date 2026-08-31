@@ -30,26 +30,25 @@ public class NfEmailConfigDAO {
     private static final int PRAZO_DIAS_PADRAO = 5;
     private static final int DIAS_VARREDURA_PADRAO = 20;
 
+    /** %s/%d preenchidos por .formatted() — evita a cilada de misturar aspas simples/duplas concatenando texto na mão. */
+    private static final String CREATE_TABLE_SQL = """
+        CREATE TABLE IF NOT EXISTS fc_config_nf_email (
+          id INT PRIMARY KEY,
+          imap_host VARCHAR(120) NOT NULL DEFAULT '%s',
+          imap_pasta VARCHAR(60) NOT NULL DEFAULT '%s',
+          imap_usuario VARCHAR(180) NOT NULL DEFAULT '',
+          imap_senha VARCHAR(255) NOT NULL DEFAULT '',
+          prazo_dias INT NOT NULL DEFAULT %d,
+          dias_varredura INT NOT NULL DEFAULT %d,
+          atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          atualizado_por VARCHAR(120)
+        )
+        """;
+
     private Connection conn() throws SQLException {
         Connection c = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS);
         try (Statement st = c.createStatement()) {
-            st.execute("""
-                CREATE TABLE IF NOT EXISTS fc_config_nf_email (
-                  id INT PRIMARY KEY,
-                  imap_host VARCHAR(120) NOT NULL DEFAULT '""" + HOST_PADRAO + """
-",
-                  imap_pasta VARCHAR(60) NOT NULL DEFAULT '""" + PASTA_PADRAO + """
-",
-                  imap_usuario VARCHAR(180) NOT NULL DEFAULT '',
-                  imap_senha VARCHAR(255) NOT NULL DEFAULT '',
-                  prazo_dias INT NOT NULL DEFAULT """ + PRAZO_DIAS_PADRAO + """
-,
-                  dias_varredura INT NOT NULL DEFAULT """ + DIAS_VARREDURA_PADRAO + """
-,
-                  atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                  atualizado_por VARCHAR(120)
-                )
-                """);
+            st.execute(CREATE_TABLE_SQL.formatted(HOST_PADRAO, PASTA_PADRAO, PRAZO_DIAS_PADRAO, DIAS_VARREDURA_PADRAO));
             st.execute("INSERT IGNORE INTO fc_config_nf_email (id) VALUES (1)");
         }
         return c;
