@@ -494,15 +494,15 @@ function voltar() { pilha.pop(); if (pilha.length <= base) { tela = 'resumo'; pi
 // esta tela não navega por objeto de custo — só por área/grupo/empenho.
 const ITENS_DETALHE = {};
 
-function seisAnomeses(ini) {
-  const lista = []; let ano = Math.floor(ini / 100), m = ini % 100;
-  for (let i = 0; i < 6; i++) { lista.push(ano * 100 + m); m++; if (m > 12) { m = 1; ano++; } }
-  return lista;
+/** O anomes do índice (0-5) dentro do período que começa em "ini" — mesma conta de indiceMes()/somar() do servidor, só que do lado do cliente. */
+function anomesDoMes(ini, indice) {
+  let ano = Math.floor(ini / 100), m = (ini % 100) + indice;
+  while (m > 12) { m -= 12; ano++; }
+  return ano * 100 + m;
 }
 
-async function buscarItens(codEmpenho, ini) {
-  const meses = seisAnomeses(ini).join(',');
-  const url = 'api/orcamento-compras/itens?meses=' + encodeURIComponent(meses)
+async function buscarItens(codEmpenho, anomes) {
+  const url = 'api/orcamento-compras/itens?meses=' + encodeURIComponent(anomes)
             + '&empenho=' + encodeURIComponent(codEmpenho);
   const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
   const j = await r.json();
@@ -510,20 +510,26 @@ async function buscarItens(codEmpenho, ini) {
   return { lista: j.itens || [], soma: j.soma || 0 };
 }
 
+/**
+ * Escopo do comparativo: só o mês selecionado na régua (não o período
+ * inteiro) — comparado com o MESMO mês na safra anterior. A chave do cache
+ * leva o mês pra trocar de mês na régua não mostrar dado do mês errado.
+ */
 async function abrirDetalheItens(codEmpenho, tituloEmpenho) {
   const modal = $('#modalItens');
+  const M = MESES[mes];
   $('#miTitulo').textContent = tituloEmpenho;
-  $('#miSub').textContent = `Comparativo por item: ${PERIODO_ATUAL.rotulo} x ${PERIODO_ANTERIOR.rotulo}`;
+  $('#miSub').textContent = `Comparativo por item — ${M.l}: ${PERIODO_ATUAL.rotulo} x ${PERIODO_ANTERIOR.rotulo}`;
   modal.classList.add('on');
 
-  const ck = codEmpenho;
+  const ck = codEmpenho + '|' + mes;
   if (!ITENS_DETALHE[ck]) {
     ITENS_DETALHE[ck] = { carregando: true };
     pintarDetalheItens(ck);
     try {
       const [atual, anterior] = await Promise.all([
-        buscarItens(codEmpenho, PERIODO_ATUAL.ini),
-        buscarItens(codEmpenho, PERIODO_ANTERIOR.ini).catch(() => ({ lista: [], soma: 0 }))
+        buscarItens(codEmpenho, anomesDoMes(PERIODO_ATUAL.ini, mes)),
+        buscarItens(codEmpenho, anomesDoMes(PERIODO_ANTERIOR.ini, mes)).catch(() => ({ lista: [], soma: 0 }))
       ]);
       ITENS_DETALHE[ck] = { atual, anterior };
     } catch (e) {
