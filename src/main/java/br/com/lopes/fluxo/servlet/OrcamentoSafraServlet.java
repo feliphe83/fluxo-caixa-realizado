@@ -34,7 +34,12 @@ import java.util.logging.Logger;
  * GET /api/orcamento-safra[?ini=202609&fim=202702]
  *   -> { ok, periodoAtual:{ini,fim,rotulo}, periodoAnterior:{ini,fim,rotulo},
  *        meses:[...], temNegocio,
- *        dados:[[grupo,empenho,negocio,mesIdx,orcadoAtual,realizadoAnterior,tipoOC,realizadoAtual], ...] }
+ *        dados:[[grupo,empenho,negocio,mesIdx,orcadoAtual,realizadoAnterior,tipoOC,realizadoAtual,codEmpenho], ...] }
+ *
+ * codEmpenho (9º campo) é só pra abrir o detalhe de material/fornecedor do
+ * realizado, em GET /api/orcamento-compras/itens?meses=...&empenho=codEmpenho
+ * (sem "objeto": pega todos os objetos de custo daquele empenho — a tela de
+ * safra não navega por objeto de custo, só por área/grupo/empenho).
  *
  * ini/fim ausentes = calculado a partir de hoje, mesma regra de
  * {@link OrcamentoComprasServlet#periodo}: março a agosto é a entressafra
@@ -138,6 +143,7 @@ public class OrcamentoSafraServlet extends HttpServlet {
         Map<String, double[]> rAnterior = new LinkedHashMap<>();
         Map<String, String> tipo = new LinkedHashMap<>();
         Map<String, String[]> partes = new LinkedHashMap<>();
+        Map<String, String> codEmpenho = new LinkedHashMap<>();
 
         for (Map<String, Object> l : atual) {
             int idx = indiceMes(inteiro(l.get("anomes")), atualIni);
@@ -147,6 +153,7 @@ public class OrcamentoSafraServlet extends HttpServlet {
             rAtual.computeIfAbsent(chave, k -> new double[6])[idx] += numero(l.get("realizado"));
             tipo.putIfAbsent(chave, texto(l.get("tipo_oc"), "OC"));
             partes.putIfAbsent(chave, new String[]{ texto(l.get("grupo"), ""), texto(l.get("empenho"), ""), texto(l.get("negocio"), "") });
+            codEmpenho.putIfAbsent(chave, texto(l.get("cod_empenho"), ""));
         }
         for (Map<String, Object> l : anterior) {
             int idx = indiceMes(inteiro(l.get("anomes")), anteriorIni);
@@ -155,6 +162,7 @@ public class OrcamentoSafraServlet extends HttpServlet {
             rAnterior.computeIfAbsent(chave, k -> new double[6])[idx] += numero(l.get("realizado"));
             tipo.putIfAbsent(chave, texto(l.get("tipo_oc"), "OC"));
             partes.putIfAbsent(chave, new String[]{ texto(l.get("grupo"), ""), texto(l.get("empenho"), ""), texto(l.get("negocio"), "") });
+            codEmpenho.putIfAbsent(chave, texto(l.get("cod_empenho"), ""));
         }
 
         List<String> chaves = new ArrayList<>(oAtual.keySet());
@@ -167,11 +175,13 @@ public class OrcamentoSafraServlet extends HttpServlet {
             double[] rAtu = rAtual.getOrDefault(chave, new double[6]);
             double[] rAnt = rAnterior.getOrDefault(chave, new double[6]);
             String tp = tipo.getOrDefault(chave, "OC");
+            String ce = codEmpenho.getOrDefault(chave, "");
             for (int i = 0; i < 6; i++) {
                 if (o[i] == 0 && rAnt[i] == 0 && rAtu[i] == 0) continue;
                 JsonArray linha = new JsonArray();
                 linha.add(p[0]); linha.add(p[1]); linha.add(p[2]); linha.add(i);
                 linha.add(arredondar(o[i])); linha.add(arredondar(rAnt[i])); linha.add(tp); linha.add(arredondar(rAtu[i]));
+                linha.add(ce);
                 dados.add(linha);
             }
         }

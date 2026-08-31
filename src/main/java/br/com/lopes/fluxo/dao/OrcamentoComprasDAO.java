@@ -205,7 +205,12 @@ public class OrcamentoComprasDAO {
      *
      * @param meses   os anomes selecionados (ex.: {202509, 202510})
      * @param empenho o código do empenho aberto
-     * @param objeto  o código do objeto de custo clicado; vazio = "sem objeto"
+     * @param objeto  o código do objeto de custo clicado; "" (vazio, mas não
+     *                nulo — é o que orcamento-compras.html sempre manda) =
+     *                "sem objeto"; {@code null} = todos os objetos do empenho
+     *                (usado por orcamento-safra.html, que não navega por
+     *                objeto de custo — só quer o realizado do empenho
+     *                inteiro, não importa em qual objeto ele caiu)
      */
     public List<Map<String, Object>> itens(int[] meses, int empenho, String objeto) {
         try (Connection conn = OracleConnectionUtil.getConnection()) {
@@ -214,12 +219,14 @@ public class OrcamentoComprasDAO {
                 throw new IllegalStateException("Sem coluna de objeto de custo nesta base — "
                         + "não dá para detalhar o item.");
             }
-            boolean temObjeto = objeto != null && !objeto.isBlank();
+            boolean semFiltroObjeto = objeto == null;
+            boolean temObjeto = !semFiltroObjeto && !objeto.isBlank();
+            String filtroObjeto = semFiltroObjeto ? ""
+                    : temObjeto ? "and r." + coluna + " = ?"
+                    : "and r." + coluna + " is null";
             String sql = baseItens()
                     .replace("%FILTRO_ANOMES%", "and r.anomes in (" + inMeses(meses) + ")")
-                    .replace("%FILTRO_OBJETO%", temObjeto
-                            ? "and r." + coluna + " = ?"
-                            : "and r." + coluna + " is null");
+                    .replace("%FILTRO_OBJETO%", filtroObjeto);
 
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setInt(1, empenho);

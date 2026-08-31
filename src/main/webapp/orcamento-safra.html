@@ -116,6 +116,29 @@ tfoot td{padding:8px 10px;font-weight:700;background:var(--pc);border-top:2px so
 tfoot td:first-child{padding-left:16px;font-family:var(--serif)}
 .pct{font-family:var(--mono);font-size:11.5px}
 .share{font-size:10.5px;color:var(--cinza2);margin-left:6px}
+.btn-detalhe{background:none;border:0;font-size:12px;cursor:pointer;margin-left:7px;opacity:.6;vertical-align:middle;padding:0}
+.btn-detalhe:hover{opacity:1}
+
+/* Modal de detalhe (material + fornecedor / contrato) — 5º nível, só pra empenho */
+.modal-itens{position:fixed;inset:0;z-index:2000;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(28,22,51,.45)}
+.modal-itens.on{display:flex}
+.mi-caixa{background:#fff;border-radius:16px;width:min(760px,94vw);max-height:86vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 70px rgba(28,22,51,.4)}
+.mi-topo{display:flex;align-items:flex-start;gap:12px;padding:16px 20px;border-bottom:1px solid var(--linha)}
+.mi-titulo{font-family:var(--serif);font-size:16px;font-weight:700;color:var(--tinta)}
+.mi-sub{font-size:12px;font-weight:600;color:var(--cinza);margin-top:2px}
+.mi-fechar{margin-left:auto;border:none;background:none;font-size:26px;line-height:1;color:var(--cinza2);cursor:pointer;padding:0 2px}
+.mi-fechar:hover{color:var(--tinta)}
+.mi-corpo{overflow:auto}
+.mi-item{display:flex;gap:14px;align-items:baseline;padding:11px 20px;border-bottom:1px solid var(--linha)}
+.mi-item:last-child{border-bottom:0}
+.mi-desc{flex:1;min-width:0;font-size:13px;color:var(--tinta);line-height:1.35}
+.mi-desc .forn{color:var(--cinza);font-weight:700}
+.mi-desc .refs{color:var(--p);font-weight:700}
+.mi-desc .semdet{color:var(--cinza);font-style:italic}
+.mi-desc .mes{color:var(--cinza2);font-size:11px;margin-right:6px}
+.mi-val{font-weight:700;color:var(--tinta);white-space:nowrap}
+.mi-vazio{padding:26px 20px;color:var(--cinza);font-size:13px}
+.mi-rodape{display:flex;justify-content:space-between;padding:12px 20px;border-top:1px solid var(--linha);font-size:12.5px;color:var(--cinza)}
 .bar{display:inline-block;height:5px;border-radius:3px;vertical-align:middle;margin-right:5px}
 .graficos{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;gap:14px}
 
@@ -191,6 +214,19 @@ footer{flex:none;font-size:10.5px;color:var(--cinza2);padding:0 28px 8px;display
     </table></div>
   </section>
 </main>
+<div class="modal-itens" id="modalItens" onclick="if(event.target===this)fecharDetalheItens()">
+  <div class="mi-caixa">
+    <div class="mi-topo">
+      <div>
+        <div class="mi-titulo" id="miTitulo">Itens do realizado</div>
+        <div class="mi-sub" id="miSub"></div>
+      </div>
+      <button class="mi-fechar" onclick="fecharDetalheItens()" title="Fechar (Esc)">×</button>
+    </div>
+    <div class="mi-corpo" id="miCorpo"></div>
+    <div class="mi-rodape" id="miRodape"></div>
+  </div>
+</div>
 <footer><span id="rodape-fonte">Fonte: ERP (Oracle), consultado ao vivo. OC = ordens de compra (tipo de empenho 1, 5 e demais); CT = contratos (tipo 2); o orçado herda o tipo pelo empenho.</span><span>Usina Santa Clotilde · SGO · Módulo Compras</span></footer>
 
 <script>
@@ -291,13 +327,13 @@ function trocarPeriodo() {
 
 function agg(keys, filtro, usarAtual) {
   const map = new Map();
-  for (const [g, e, a, mi, o, rAnt, tp, rAtu] of DADOS) {
+  for (const [g, e, a, mi, o, rAnt, tp, rAtu, ce] of DADOS) {
     if (!tipos[tp]) continue;
     const row = { g, e, a };
     if (filtro.some(f => row[f.k] !== f.v)) continue;
     const r = usarAtual ? rAtu : rAnt;
     const k = keys.map(kk => row[kk]).join('||');
-    if (!map.has(k)) map.set(k, { parts: keys.map(kk => row[kk]), oM: 0, rM: 0, oA: 0, rA: 0, oS: 0, rS: 0 });
+    if (!map.has(k)) map.set(k, { parts: keys.map(kk => row[kk]), codEmpenho: ce, oM: 0, rM: 0, oA: 0, rA: 0, oS: 0, rS: 0 });
     const x = map.get(k);
     if (mi === mes) { x.oM += o; x.rM += r; }
     if (mi <= mes) { x.oA += o; x.rA += r; }
@@ -409,7 +445,7 @@ function renderTabela() {
   $('#th-n1').textContent = NOME[nivel];
   const L = agg([nivel], filtro).sort((a, b) => b.oA - a.oA), t = tot(filtro), maxA = Math.max(...L.map(x => Math.abs(x.oA - x.rA)), 1);
   const ultimo = pilha.length === 2;
-  $('#corpo').innerHTML = L.map(x => `<tr class="${ultimo ? '' : 'link'}" ${ultimo ? '' : `onclick="abrir('${nivel}','${esc(x.parts[0]).replace(/'/g, "\\'")}')"`}><td>${nivel === 'e' ? esc(x.parts[0]) : esc(tit(x.parts[0]))}${t.oA ? `<span class="share">${(x.oA / t.oA * 100).toFixed(1).replace('.', ',')}%</span>` : ''}</td>${celulas(x, maxA)}</tr>`).join('');
+  $('#corpo').innerHTML = L.map(x => `<tr class="${ultimo ? '' : 'link'}" ${ultimo ? '' : `onclick="abrir('${nivel}','${esc(x.parts[0]).replace(/'/g, "\\'")}')"`}><td>${nivel === 'e' ? esc(x.parts[0]) : esc(tit(x.parts[0]))}${nivel === 'e' && x.codEmpenho ? `<button class="btn-detalhe" title="Ver material e fornecedor do realizado" onclick="event.stopPropagation();abrirDetalheItens('${esc(x.codEmpenho)}','${esc(x.parts[0]).replace(/'/g, "\\'")}')">🔎</button>` : ''}${t.oA ? `<span class="share">${(x.oA / t.oA * 100).toFixed(1).replace('.', ',')}%</span>` : ''}</td>${celulas(x, maxA)}</tr>`).join('');
   $('#rodape').innerHTML = `<tr><td>Total</td>${celulas(t, 0)}</tr>`;
 }
 let base = 0;
@@ -419,6 +455,82 @@ function abrir(k, v) {
   render();
 }
 function voltar() { pilha.pop(); if (pilha.length <= base) { tela = 'resumo'; pilha = []; } render(); }
+
+// ── Detalhe do realizado por material/fornecedor (5º nível, só empenho) ──
+// Reaproveita o mesmo endpoint do BI de Compras (api/orcamento-compras/itens);
+// sem "objeto" na URL ele traz TODOS os objetos de custo do empenho, porque
+// esta tela não navega por objeto de custo — só por área/grupo/empenho.
+const ITENS_DETALHE = {};
+
+function seisAnomeses(ini) {
+  const lista = []; let ano = Math.floor(ini / 100), m = ini % 100;
+  for (let i = 0; i < 6; i++) { lista.push(ano * 100 + m); m++; if (m > 12) { m = 1; ano++; } }
+  return lista;
+}
+
+async function abrirDetalheItens(codEmpenho, tituloEmpenho) {
+  const modal = $('#modalItens');
+  $('#miTitulo').textContent = tituloEmpenho;
+  $('#miSub').textContent = `Realizado de ${PERIODO_ATUAL.rotulo} · material e fornecedor (ou contrato)`;
+  modal.classList.add('on');
+
+  const ck = codEmpenho;
+  if (!ITENS_DETALHE[ck]) {
+    ITENS_DETALHE[ck] = { carregando: true };
+    pintarDetalheItens(ck);
+    try {
+      const meses = seisAnomeses(PERIODO_ATUAL.ini).join(',');
+      const url = 'api/orcamento-compras/itens?meses=' + encodeURIComponent(meses)
+                + '&empenho=' + encodeURIComponent(codEmpenho);
+      const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.erro || 'Falha ao detalhar');
+      ITENS_DETALHE[ck] = { lista: j.itens || [], soma: j.soma || 0 };
+    } catch (e) {
+      ITENS_DETALHE[ck] = { erro: e.message || String(e) };
+    }
+  }
+  pintarDetalheItens(ck);
+}
+
+function pintarDetalheItens(ck) {
+  const it = ITENS_DETALHE[ck];
+  const corpo = $('#miCorpo'), rodape = $('#miRodape');
+  if (!it || it.carregando) { corpo.innerHTML = '<div class="mi-vazio">Carregando itens…</div>'; rodape.innerHTML = ''; return; }
+  if (it.erro) { corpo.innerHTML = `<div class="mi-vazio" style="color:var(--rubro)">${esc(it.erro)}</div>`; rodape.innerHTML = ''; return; }
+  if (!it.lista.length) { corpo.innerHTML = '<div class="mi-vazio">Sem itens detalhados no período.</div>'; rodape.innerHTML = ''; return; }
+  corpo.innerHTML = it.lista.map(x =>
+    `<div class="mi-item"><div class="mi-desc">${rotuloItemDetalhe(x)}</div>` +
+    `<div class="mi-val">${x.valor ? fmt(x.valor) : ''}</div></div>`).join('');
+  rodape.innerHTML = `<span>${it.lista.length} item(ns)</span><span>Soma dos itens: <b>${fmt(it.soma || 0)}</b></span>`;
+}
+
+function fecharDetalheItens() { $('#modalItens').classList.remove('on'); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharDetalheItens(); });
+
+/** O rótulo do item: mês + material/fornecedor (compra), ou o contrato, ou "sem detalhe". */
+function rotuloItemDetalhe(x) {
+  const mesLbl = x.anomes ? `<span class="mes">${esc(rotuloAnomes(x.anomes))}</span>` : '';
+  if (x.origem === 'contrato' && x.contrato) return `${mesLbl}📄 Contrato ${esc(x.contrato)}`;
+  if (x.material || x.fornecedor) {
+    let s = mesLbl + esc(x.material || '(material sem descrição)');
+    if (x.fornecedor) s += ` · <span class="forn">${esc(x.fornecedor)}</span>`;
+    const refs = [];
+    if (x.cotacao) refs.push('Cot ' + esc(x.cotacao));
+    if (x.nroc) refs.push('OC ' + esc(x.nroc));
+    if (x.solicitacao) refs.push('Sol ' + esc(x.solicitacao));
+    if (refs.length) s += ` <span class="refs">${refs.join(' · ')}</span>`;
+    return s;
+  }
+  return mesLbl + '<span class="semdet">sem detalhe de compra</span>';
+}
+
+/** 202609 -> "set/26" — só pra rotular o mês de cada item do detalhe. */
+function rotuloAnomes(anomes) {
+  const ABREV = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  const ano = Math.floor(anomes / 100), m = anomes % 100;
+  return ABREV[m - 1] + '/' + String(ano % 100).padStart(2, '0');
+}
 
 let cM, cG, cA;
 const TEM = typeof Chart !== 'undefined';
