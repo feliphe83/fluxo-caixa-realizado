@@ -122,28 +122,32 @@ tfoot td:first-child{padding-left:16px;font-family:var(--serif)}
 /* Modal de detalhe (material + fornecedor / contrato) — 5º nível, só pra empenho */
 .modal-itens{position:fixed;inset:0;z-index:2000;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(28,22,51,.45)}
 .modal-itens.on{display:flex}
-.mi-caixa{background:#fff;border-radius:16px;width:min(760px,94vw);max-height:86vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 70px rgba(28,22,51,.4)}
-.mi-topo{display:flex;align-items:flex-start;gap:12px;padding:16px 20px;border-bottom:1px solid var(--linha)}
+.mi-caixa{background:#fff;border-radius:16px;width:min(1120px,96vw);max-height:86vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 70px rgba(28,22,51,.4)}
+.mi-topo{display:flex;align-items:flex-start;gap:12px;padding:16px 20px;border-bottom:1px solid var(--linha);flex:none}
 .mi-titulo{font-family:var(--serif);font-size:16px;font-weight:700;color:var(--tinta)}
 .mi-sub{font-size:12px;font-weight:600;color:var(--cinza);margin-top:2px}
 .mi-fechar{margin-left:auto;border:none;background:none;font-size:26px;line-height:1;color:var(--cinza2);cursor:pointer;padding:0 2px}
 .mi-fechar:hover{color:var(--tinta)}
-.mi-corpo{overflow:auto;background:var(--papel)}
-.mi-item{display:flex;gap:14px;align-items:center;justify-content:space-between;padding:12px 20px;background:#fff;border-bottom:1px solid var(--linha)}
+
+/* Duas colunas independentes — uma por safra — cada uma com seu título/total fixo no topo e lista própria. */
+.mi-colunas{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--linha);overflow:hidden}
+.mi-coluna{display:flex;flex-direction:column;min-height:0;background:#fff}
+.mi-col-head{flex:none;padding:12px 20px;background:var(--papel);border-bottom:1px solid var(--linha);display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.mi-col-tit{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--cinza);flex:1 1 100%}
+.mi-col-val{font-family:var(--serif);font-size:18px;font-weight:600;color:var(--p)}
+.mi-col-n{font-size:11px;color:var(--cinza2)}
+.mi-col-lista{overflow:auto;flex:1;min-height:0}
+.mi-item{display:flex;gap:14px;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--linha)}
 .mi-item:last-child{border-bottom:0}
 .mi-desc{flex:1;min-width:0}
-.mi-mat{font-size:13px;font-weight:600;color:var(--tinta);line-height:1.35}
-.mi-forn{font-size:11.5px;color:var(--cinza);margin-top:3px;display:flex;align-items:center;gap:8px}
+.mi-mat{font-size:12.5px;font-weight:600;color:var(--tinta);line-height:1.35}
+.mi-forn{font-size:11px;color:var(--cinza);margin-top:3px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .mi-oc{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--p);background:var(--pc);padding:2px 8px;border-radius:20px;white-space:nowrap}
 .mi-mat .semdet{color:var(--cinza);font-style:italic;font-weight:400}
 .mi-mat .mes{display:inline-block;color:var(--cinza2);font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-right:8px;vertical-align:middle}
-.mi-val{font-weight:700;color:var(--tinta);white-space:nowrap;font-variant-numeric:tabular-nums}
+.mi-val{font-weight:700;color:var(--tinta);white-space:nowrap;font-variant-numeric:tabular-nums;font-size:12.5px}
 .mi-vazio{padding:26px 20px;color:var(--cinza);font-size:13px}
-.mi-rodape{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--linha);border-top:1px solid var(--linha)}
-.mi-comp{background:var(--papel);padding:12px 20px;display:flex;flex-direction:column;gap:2px}
-.mi-comp-l{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--cinza)}
-.mi-comp-v{font-family:var(--serif);font-size:17px;font-weight:600;color:var(--p)}
-.mi-comp-n{font-size:11px;color:var(--cinza2)}
+@media(max-width:760px){.mi-colunas{grid-template-columns:1fr}}
 .bar{display:inline-block;height:5px;border-radius:3px;vertical-align:middle;margin-right:5px}
 .graficos{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;gap:14px}
 
@@ -228,8 +232,7 @@ footer{flex:none;font-size:10.5px;color:var(--cinza2);padding:0 28px 8px;display
       </div>
       <button class="mi-fechar" onclick="fecharDetalheItens()" title="Fechar (Esc)">×</button>
     </div>
-    <div class="mi-corpo" id="miCorpo"></div>
-    <div class="mi-rodape" id="miRodape"></div>
+    <div class="mi-colunas" id="miCorpo"></div>
   </div>
 </div>
 <footer><span id="rodape-fonte">Fonte: ERP (Oracle), consultado ao vivo. OC = ordens de compra (tipo de empenho 1, 5 e demais); CT = contratos (tipo 2); o orçado herda o tipo pelo empenho.</span><span>Usina Santa Clotilde · SGO · Módulo Compras</span></footer>
@@ -508,16 +511,25 @@ async function abrirDetalheItens(codEmpenho, tituloEmpenho) {
 
 function pintarDetalheItens(ck) {
   const it = ITENS_DETALHE[ck];
-  const corpo = $('#miCorpo'), rodape = $('#miRodape');
-  if (!it || it.carregando) { corpo.innerHTML = '<div class="mi-vazio">Carregando itens…</div>'; rodape.innerHTML = ''; return; }
-  if (it.erro) { corpo.innerHTML = `<div class="mi-vazio" style="color:var(--rubro)">${esc(it.erro)}</div>`; rodape.innerHTML = ''; return; }
-  const lista = it.atual.lista;
-  corpo.innerHTML = lista.length
-    ? lista.map(x => `<div class="mi-item">${rotuloItemDetalhe(x)}<div class="mi-val">${x.valor ? fmt(x.valor) : ''}</div></div>`).join('')
+  const corpo = $('#miCorpo');
+  if (!it || it.carregando) { corpo.innerHTML = '<div class="mi-vazio">Carregando itens…</div>'; return; }
+  if (it.erro) { corpo.innerHTML = `<div class="mi-vazio" style="color:var(--rubro)">${esc(it.erro)}</div>`; return; }
+  corpo.innerHTML = colunaItens(PERIODO_ATUAL.rotulo, it.atual) + colunaItens(PERIODO_ANTERIOR.rotulo, it.anterior);
+}
+
+/** Uma coluna do modal: título do período + total no topo, lista de itens rolando embaixo. */
+function colunaItens(titulo, dados) {
+  const lista = dados.lista.length
+    ? dados.lista.map(x => `<div class="mi-item">${rotuloItemDetalhe(x)}<div class="mi-val">${x.valor ? fmt(x.valor) : ''}</div></div>`).join('')
     : '<div class="mi-vazio">Sem itens detalhados no período.</div>';
-  rodape.innerHTML = `
-    <div class="mi-comp"><span class="mi-comp-l">${esc(PERIODO_ATUAL.rotulo)}</span><span class="mi-comp-v">${fmt(it.atual.soma || 0)}</span><span class="mi-comp-n">${it.atual.lista.length} item(ns)</span></div>
-    <div class="mi-comp"><span class="mi-comp-l">${esc(PERIODO_ANTERIOR.rotulo)}</span><span class="mi-comp-v">${fmt(it.anterior.soma || 0)}</span><span class="mi-comp-n">${it.anterior.lista.length} item(ns)</span></div>`;
+  return `<div class="mi-coluna">
+    <div class="mi-col-head">
+      <span class="mi-col-tit">${esc(titulo)}</span>
+      <span class="mi-col-val">${fmt(dados.soma || 0)}</span>
+      <span class="mi-col-n">${dados.lista.length} item(ns)</span>
+    </div>
+    <div class="mi-col-lista">${lista}</div>
+  </div>`;
 }
 
 function fecharDetalheItens() { $('#modalItens').classList.remove('on'); }
