@@ -1910,7 +1910,8 @@ async function carregarConfigNfSemEntrada() {
   }
 }
 
-async function salvarConfigNfSemEntrada() {
+/** Grava o que está nos campos da tela. Lança erro (com a mensagem do backend) se a gravação for recusada. */
+async function enviarConfigNfSemEntrada() {
   const corpo = {
     usuario: document.getElementById('nfeUsuario').value.trim(),
     host: document.getElementById('nfeHost').value.trim(),
@@ -1921,15 +1922,19 @@ async function salvarConfigNfSemEntrada() {
   const senha = document.getElementById('nfeSenha').value;
   if (senha) corpo.senha = senha;   // vazio = mantém a senha já gravada (o backend ignora o campo ausente)
 
+  const r = await fetch('api/admin/nf-sem-entrada-config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify(corpo)
+  });
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.erro || 'Gravação recusada');
+}
+
+async function salvarConfigNfSemEntrada() {
   avisoNfSemEntrada('Salvando…');
   try {
-    const r = await fetch('api/admin/nf-sem-entrada-config', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify(corpo)
-    });
-    const j = await r.json();
-    if (!j.ok) throw new Error(j.erro || 'Gravação recusada');
+    await enviarConfigNfSemEntrada();
     avisoNfSemEntrada('Salvo.', 'var(--green,#0ca30c)');
     carregarConfigNfSemEntrada();
   } catch (e) {
@@ -1937,13 +1942,17 @@ async function salvarConfigNfSemEntrada() {
   }
 }
 
+/** "Testar conexão" salva o que está na tela antes de testar — senão o teste checaria a configuração
+ *  antiga (a gravada), não a que a pessoa acabou de digitar, e "salvei e não testei nada" confunde. */
 async function testarConexaoNfSemEntrada() {
-  avisoNfSemEntrada('Conectando na caixa de Compras… (pode levar alguns segundos)');
+  avisoNfSemEntrada('Salvando e conectando na caixa de Compras… (pode levar alguns segundos)');
   try {
+    await enviarConfigNfSemEntrada();
     const r = await fetch('api/admin/nf-sem-entrada-config/testar', { method: 'POST' });
     const j = await r.json();
     if (!j.ok) throw new Error(j.erro || 'Falha no teste');
     avisoNfSemEntrada(j.mensagem, 'var(--green,#0ca30c)');
+    carregarConfigNfSemEntrada();
   } catch (e) {
     avisoNfSemEntrada(e.message, 'var(--red,#d03b3b)');
   }
