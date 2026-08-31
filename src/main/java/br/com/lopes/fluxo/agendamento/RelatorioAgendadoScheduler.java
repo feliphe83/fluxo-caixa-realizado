@@ -98,8 +98,10 @@ public class RelatorioAgendadoScheduler implements ServletContextListener {
             new br.com.lopes.fluxo.dao.EstoqueParadoSnapshotDAO().garantirEstrutura();
             // Admissão de funcionários: tabelas de tipos de documento, candidato e envios.
             new br.com.lopes.fluxo.dao.AdmissaoDocumentoDAO().garantirEstrutura();
-            // NF sem entrada: tabela de controle das notas detectadas no e-mail de Compras.
+            // NF sem entrada: tabela de controle das notas detectadas no e-mail de Compras
+            // e a tabela de configuração (caixa de e-mail, prazo, janela de varredura).
             new br.com.lopes.fluxo.dao.NfEmailDAO().garantirEstrutura();
+            new br.com.lopes.fluxo.dao.NfEmailConfigDAO().garantirEstrutura();
         } catch (Exception e) {
             LOG.log(Level.SEVERE, "Não foi possível preparar as tabelas dos agendamentos", e);
         }

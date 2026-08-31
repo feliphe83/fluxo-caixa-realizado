@@ -231,6 +231,10 @@
       <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
       Admissão de Funcionários
     </div>
+    <div class="sb-item" id="nav-nfsementrada" onclick="setSec('nfsementrada')">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>
+      NF sem Entrada
+    </div>
   </nav>
   <div class="sb-foot">
     <div class="sb-user">
@@ -277,6 +281,7 @@
       <button class="tab"    id="tab-whatsapp"    onclick="setSec('whatsapp')">📱 Relatórios WhatsApp</button>
       <button class="tab"    id="tab-relatoriosusuario" onclick="setSec('relatoriosusuario')">👤 Relatórios por Usuário</button>
       <button class="tab"    id="tab-admissao" onclick="setSec('admissao')">🗂️ Admissão de Funcionários</button>
+      <button class="tab"    id="tab-nfsementrada" onclick="setSec('nfsementrada')">📨 NF sem Entrada</button>
       <button class="tab"    id="tab-reenvio"     onclick="setSec('reenvio')">🔁 Reenviar Alerta</button>
       <button class="tab"    id="tab-externo"     onclick="setSec('externo')">🚛 Empresas Externas</button>
       <button class="tab"    id="tab-paradas"     onclick="setSec('paradas')">🛑 Paradas da Moagem</button>
@@ -889,6 +894,59 @@
       </div>
     </div>
 
+    <div class="sec" id="sec-nfsementrada">
+      <div class="panel">
+        <div class="ph">
+          <div class="ph-title">NF sem Entrada — Caixa de e-mail de Compras</div>
+        </div>
+        <div style="padding:14px 18px 0;font-size:12.5px;color:var(--text2);line-height:1.6">
+          A caixa configurada aqui é lida (só leitura — nenhum e-mail é marcado como lido nem movido)
+          pelo alerta agendado <b>"Alerta de NF sem Entrada"</b> (Relatórios WhatsApp), que decodifica a
+          chave de acesso das notas fiscais anexadas em PDF e compara com a entrada no ERP.
+        </div>
+        <div style="padding:16px 18px 6px;max-width:620px">
+          <div class="mf-grid">
+            <div class="mf">
+              <label>Caixa de e-mail (usuário)</label>
+              <input type="text" id="nfeUsuario" placeholder="compras@usinasantaclotilde.com.br">
+            </div>
+            <div class="mf">
+              <label>Senha</label>
+              <input type="password" id="nfeSenha" placeholder="•••••• (deixe em branco para manter a atual)">
+              <div class="hint" id="nfeSenhaStatus"></div>
+            </div>
+            <div class="mf">
+              <label>Servidor IMAP (host)</label>
+              <input type="text" id="nfeHost" placeholder="email-ssl.com.br">
+            </div>
+            <div class="mf">
+              <label>Pasta</label>
+              <input type="text" id="nfeFolder" placeholder="INBOX">
+            </div>
+            <div class="mf">
+              <label>Prazo (dias)</label>
+              <input type="number" id="nfePrazo" min="1" max="60" step="1" placeholder="5">
+              <div class="hint">Nota sem entrada no ERP depois desse tanto de dias — contados da data do e-mail — vira alerta.</div>
+            </div>
+            <div class="mf">
+              <label>Janela de varredura (dias)</label>
+              <input type="number" id="nfeVarredura" min="1" max="120" step="1" placeholder="20">
+              <div class="hint">Até quantos dias atrás cada ciclo relê a caixa — maior que o prazo, para um agendamento
+                parado alguns dias não perder nota.</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:4px;flex-wrap:wrap">
+            <button class="btn-primary" style="padding:9px 18px;font-size:13px" onclick="salvarConfigNfSemEntrada()">Salvar</button>
+            <button class="tab" style="padding:9px 18px;font-size:13px" onclick="testarConexaoNfSemEntrada()">🔌 Testar conexão</button>
+            <span id="nfeAviso" style="font-size:12.5px"></span>
+          </div>
+          <div style="font-size:11.5px;color:var(--text3);margin-top:10px">
+            Última alteração: <span id="nfeAtualizado">—</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -1456,6 +1514,11 @@ function setSec(s) {
     document.getElementById('tsub').textContent='Configuração que vale para toda a intranet';
     document.getElementById('btnAcao').style.display='none';
     carregarParametros();
+  } else if(s==='nfsementrada'){
+    document.getElementById('ttitle').textContent='NF sem Entrada';
+    document.getElementById('tsub').textContent='Caixa de e-mail de Compras lida pelo alerta de nota fiscal sem entrada';
+    document.getElementById('btnAcao').style.display='none';
+    carregarConfigNfSemEntrada();
   } else {
     document.getElementById('ttitle').textContent='Permissões';
     document.getElementById('tsub').textContent='Defina quais módulos cada usuário pode acessar';
@@ -1811,6 +1874,78 @@ async function salvarParametros() {
     avisoParametros('Salvo. As telas passam a usar na próxima vez que forem abertas.', 'var(--green,#0ca30c)');
   } catch(e) {
     avisoParametros(e.message, 'var(--red,#d03b3b)');
+  }
+}
+
+// ── NF sem Entrada (caixa de e-mail de Compras) ────────────────────
+function avisoNfSemEntrada(texto, cor) {
+  const el = document.getElementById('nfeAviso');
+  el.textContent = texto || '';
+  el.style.color = cor || 'var(--text3)';
+}
+
+async function carregarConfigNfSemEntrada() {
+  avisoNfSemEntrada('Carregando…');
+  try {
+    const r = await fetch('api/admin/nf-sem-entrada-config', { headers: { 'Accept': 'application/json' } });
+    if (r.status === 401) { location.href = 'login.html'; return; }
+    if (r.status === 403) throw new Error('Apenas administradores podem ver esta configuração');
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro || 'Consulta recusada');
+    document.getElementById('nfeUsuario').value = j.usuario || '';
+    document.getElementById('nfeSenha').value = '';
+    document.getElementById('nfeHost').value = j.host || '';
+    document.getElementById('nfeFolder').value = j.pasta || '';
+    document.getElementById('nfePrazo').value = j.prazoDias || 5;
+    document.getElementById('nfeVarredura').value = j.diasVarredura || 20;
+    document.getElementById('nfeSenhaStatus').textContent = j.senhaConfigurada
+      ? 'Senha já configurada — deixe em branco para manter.'
+      : 'Nenhuma senha configurada ainda.';
+    document.getElementById('nfeAtualizado').textContent = j.atualizadoEm
+      ? fmtDataHoraWpp(j.atualizadoEm) + (j.atualizadoPor ? ' por ' + j.atualizadoPor : '')
+      : '—';
+    avisoNfSemEntrada('');
+  } catch (e) {
+    avisoNfSemEntrada('Não foi possível carregar: ' + e.message, 'var(--red,#d03b3b)');
+  }
+}
+
+async function salvarConfigNfSemEntrada() {
+  const corpo = {
+    usuario: document.getElementById('nfeUsuario').value.trim(),
+    host: document.getElementById('nfeHost').value.trim(),
+    pasta: document.getElementById('nfeFolder').value.trim(),
+    prazoDias: parseInt(document.getElementById('nfePrazo').value, 10) || 5,
+    diasVarredura: parseInt(document.getElementById('nfeVarredura').value, 10) || 20
+  };
+  const senha = document.getElementById('nfeSenha').value;
+  if (senha) corpo.senha = senha;   // vazio = mantém a senha já gravada (o backend ignora o campo ausente)
+
+  avisoNfSemEntrada('Salvando…');
+  try {
+    const r = await fetch('api/admin/nf-sem-entrada-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify(corpo)
+    });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro || 'Gravação recusada');
+    avisoNfSemEntrada('Salvo.', 'var(--green,#0ca30c)');
+    carregarConfigNfSemEntrada();
+  } catch (e) {
+    avisoNfSemEntrada(e.message, 'var(--red,#d03b3b)');
+  }
+}
+
+async function testarConexaoNfSemEntrada() {
+  avisoNfSemEntrada('Conectando na caixa de Compras… (pode levar alguns segundos)');
+  try {
+    const r = await fetch('api/admin/nf-sem-entrada-config/testar', { method: 'POST' });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro || 'Falha no teste');
+    avisoNfSemEntrada(j.mensagem, 'var(--green,#0ca30c)');
+  } catch (e) {
+    avisoNfSemEntrada(e.message, 'var(--red,#d03b3b)');
   }
 }
 

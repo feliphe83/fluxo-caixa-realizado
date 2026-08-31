@@ -1,5 +1,6 @@
 package br.com.lopes.fluxo.util;
 
+import br.com.lopes.fluxo.dao.NfEmailConfigDAO;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
@@ -10,6 +11,7 @@ import javax.mail.search.ComparisonTerm;
 import javax.mail.search.ReceivedDateTerm;
 import java.io.IOException;
 import java.io.InputStream;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -23,44 +25,63 @@ import java.util.logging.Logger;
  * lido nem movido) da caixa de e-mail de Compras via IMAP, para achar anexos
  * em PDF e extrair o texto deles.
  *
- * Configuração (variáveis de ambiente, no setenv.sh do Tomcat — mesmo padrão
- * do {@link EvolutionApiUtil}):
- *   - IMAP_COMPRAS_USER:   caixa completa (ex.: compras@usinasantaclotilde.com.br)
- *   - IMAP_COMPRAS_SENHA:  senha da caixa
- *   - IMAP_COMPRAS_HOST:   opcional, default "email-ssl.com.br" (mesmo host do
- *                          SMTP em {@link EmailUtil} — servidor Locaweb costuma
- *                          atender IMAP/SMTP/POP3 no mesmo endereço; se não for
- *                          o caso aqui, ajuste por esta variável sem precisar
- *                          recompilar)
- *   - IMAP_COMPRAS_PASTA:  opcional, default "INBOX"
+ * Configuração: tela Administração → NF sem Entrada (guardada em
+ * {@link NfEmailConfigDAO}, MySQL) é a fonte principal. Quando o usuário e a
+ * senha não estiverem preenchidos ali (base recém-criada, ainda sem ninguém
+ * ter passado pela tela), cai para as variáveis de ambiente
+ * IMAP_COMPRAS_USER/IMAP_COMPRAS_SENHA/IMAP_COMPRAS_HOST/IMAP_COMPRAS_PASTA
+ * no setenv.sh do Tomcat (mesmo padrão do {@link EvolutionApiUtil}) — assim
+ * quem já tinha configurado por variável de ambiente antes da tela existir
+ * continua funcionando sem precisar refazer nada.
  *
  * Não testado contra uma caixa real (sem acesso de rede a partir daqui) —
- * validar depois do deploy, com as variáveis configuradas.
+ * validar pela própria tela de administração ("Testar conexão"), depois do
+ * deploy.
  */
 public final class ImapComprasUtil {
 
     private static final Logger LOG = Logger.getLogger(ImapComprasUtil.class.getName());
+    private static final NfEmailConfigDAO CONFIG_DAO = new NfEmailConfigDAO();
 
     private ImapComprasUtil() {}
 
-    private static String host()   { return valorOuPadrao("IMAP_COMPRAS_HOST", "email-ssl.com.br"); }
-    private static String pasta()  { return valorOuPadrao("IMAP_COMPRAS_PASTA", "INBOX"); }
-    private static String usuario() { return exigir("IMAP_COMPRAS_USER"); }
-    private static String senha()   { return exigir("IMAP_COMPRAS_SENHA"); }
-
-    private static String exigir(String var) {
-        String v = System.getenv(var);
-        if (v == null || v.isBlank()) {
-            throw new IllegalStateException(
-                "Variável de ambiente " + var + " não configurada. "
-                + "Configure no setenv.sh do Tomcat (ver ImapComprasUtil).");
+    /** A configuração efetiva desta chamada: banco, com variável de ambiente como reserva. */
+    private static final class Efetiva {
+        final String host, pasta, usuario, senha;
+        Efetiva(NfEmailConfigDAO.ConfigComSenha db) {
+            host = valor(db == null ? null : db.host, "IMAP_COMPRAS_HOST", "email-ssl.com.br");
+            pasta = valor(db == null ? null : db.pasta, "IMAP_COMPRAS_PASTA", "INBOX");
+            usuario = exigirComReserva(db == null ? null : db.usuario, "IMAP_COMPRAS_USER");
+            senha = exigirComReserva(db == null ? null : db.senha, "IMAP_COMPRAS_SENHA");
         }
-        return v;
     }
 
-    private static String valorOuPadrao(String var, String padrao) {
-        String v = System.getenv(var);
+    private static Efetiva configEfetiva() {
+        NfEmailConfigDAO.ConfigComSenha db;
+        try {
+            db = CONFIG_DAO.obterComSenha();
+        } catch (SQLException e) {
+            LOG.log(Level.WARNING, "Não foi possível ler a configuração de NF sem entrada, usando variáveis de ambiente", e);
+            db = null;
+        }
+        return new Efetiva(db);
+    }
+
+    private static String valor(String doBanco, String varAmbiente, String padrao) {
+        if (doBanco != null && !doBanco.isBlank()) return doBanco.trim();
+        String v = System.getenv(varAmbiente);
         return (v == null || v.isBlank()) ? padrao : v;
+    }
+
+    private static String exigirComReserva(String doBanco, String varAmbiente) {
+        if (doBanco != null && !doBanco.isBlank()) return doBanco.trim();
+        String v = System.getenv(varAmbiente);
+        if (v == null || v.isBlank()) {
+            throw new IllegalStateException(
+                "Caixa de e-mail de Compras não configurada — preencha em Administração → NF sem Entrada, "
+                + "ou configure " + varAmbiente + " no setenv.sh do Tomcat.");
+        }
+        return v;
     }
 
     /** Um PDF encontrado anexado a um e-mail da caixa de Compras. */
@@ -84,9 +105,11 @@ public final class ImapComprasUtil {
      * volume de e-mail de Compras é dezenas por dia, não milhares.
      */
     public static List<AnexoPdf> buscarAnexosPdf(int diasParaTras) throws MessagingException {
+        Efetiva cfg = configEfetiva();
+
         Properties props = new Properties();
         props.put("mail.store.protocol", "imaps");
-        props.put("mail.imaps.host", host());
+        props.put("mail.imaps.host", cfg.host);
         props.put("mail.imaps.port", "993");
         props.put("mail.imaps.ssl.enable", "true");
         props.put("mail.imaps.connectiontimeout", "15000");
@@ -102,8 +125,8 @@ public final class ImapComprasUtil {
         List<AnexoPdf> encontrados = new ArrayList<>();
 
         try (Store store = session.getStore("imaps")) {
-            store.connect(host(), usuario(), senha());
-            Folder folder = store.getFolder(pasta());
+            store.connect(cfg.host, cfg.usuario, cfg.senha);
+            Folder folder = store.getFolder(cfg.pasta);
             folder.open(Folder.READ_ONLY);
             try {
                 Calendar corte = Calendar.getInstance();

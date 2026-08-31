@@ -1,6 +1,7 @@
 package br.com.lopes.fluxo.agendamento;
 
 import br.com.lopes.fluxo.dao.AlertaOcPendenteDAO;
+import br.com.lopes.fluxo.dao.NfEmailConfigDAO;
 import br.com.lopes.fluxo.dao.NfEmailDAO;
 import br.com.lopes.fluxo.dao.NfEntradaOracleDAO;
 import br.com.lopes.fluxo.util.EvolutionApiUtil;
@@ -50,22 +51,31 @@ public class AlertaNfSemEntradaHandler implements RelatorioAgendadoHandler {
     /** Distingue este alerta dos demais na tabela de controle de envio. */
     public static final String TIPO = "NF SEM ENTRADA";
 
-    /** O prazo pedido: nota sem entrada por mais que isso vira alerta. */
-    private static final int PRAZO_DIAS = 5;
-    /** Janela de varredura do e-mail — maior que o prazo, pra um agendamento parado alguns dias não perder nota. */
-    private static final int DIAS_VARREDURA_EMAIL = 20;
+    /** Prazo e janela padrão — usados só se a configuração (Administração → NF sem Entrada) não puder ser lida. */
+    private static final int PRAZO_DIAS_PADRAO = 5;
+    private static final int DIAS_VARREDURA_PADRAO = 20;
     /** Teto de mensagens por destinatário em um ciclo, pra uma enxurrada não virar spam. */
     private static final int MAX_MENSAGENS_POR_CICLO = 15;
 
     private final NfEmailDAO controle = new NfEmailDAO();
     private final NfEntradaOracleDAO erp = new NfEntradaOracleDAO();
     private final AlertaOcPendenteDAO enviados = new AlertaOcPendenteDAO();
+    private final NfEmailConfigDAO configDao = new NfEmailConfigDAO();
 
     @Override
     public String executar(JsonObject parametros, List<Map<String, Object>> destinatarios, long idUsuarioCriacao) throws Exception {
-        int novas = escanearEmail();
+        int prazoDias = PRAZO_DIAS_PADRAO, diasVarredura = DIAS_VARREDURA_PADRAO;
+        try {
+            NfEmailConfigDAO.Config cfg = configDao.obter();
+            if (cfg.prazoDias > 0) prazoDias = cfg.prazoDias;
+            if (cfg.diasVarredura > 0) diasVarredura = cfg.diasVarredura;
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "Não foi possível ler prazo/janela configurados, usando padrão", e);
+        }
+
+        int novas = escanearEmail(diasVarredura);
         int confirmadas = conferirEntradasNoErp();
-        List<Map<String, Object>> atrasadas = controle.listarPendentesAtrasados(PRAZO_DIAS);
+        List<Map<String, Object>> atrasadas = controle.listarPendentesAtrasados(prazoDias);
 
         int totalAvisadas = 0;
         List<String> falhas = new ArrayList<>();
@@ -87,10 +97,10 @@ public class AlertaNfSemEntradaHandler implements RelatorioAgendadoHandler {
     }
 
     /** Lê a caixa de Compras e registra os anexos de PDF ainda não vistos. @return quantos anexos novos foram gravados. */
-    private int escanearEmail() {
+    private int escanearEmail(int diasVarredura) {
         List<ImapComprasUtil.AnexoPdf> anexos;
         try {
-            anexos = ImapComprasUtil.buscarAnexosPdf(DIAS_VARREDURA_EMAIL);
+            anexos = ImapComprasUtil.buscarAnexosPdf(diasVarredura);
         } catch (Exception e) {
             // Sem acesso à caixa de e-mail neste ciclo não é motivo pra travar
             // a checagem de entrada do que já tinha sido detectado antes.
