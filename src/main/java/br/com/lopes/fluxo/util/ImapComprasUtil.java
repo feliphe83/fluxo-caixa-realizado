@@ -157,8 +157,10 @@ public final class ImapComprasUtil {
     }
 
     private static void coletarAnexos(Message msg, List<AnexoPdf> saida) throws Exception {
+        if (!msg.isMimeType("multipart/*")) return;   // e-mail sem anexo (só texto/html) não interessa
+
         Object content = msg.getContent();
-        if (!(content instanceof Multipart)) return;   // e-mail sem anexo (só texto/html) não interessa
+        if (!(content instanceof Multipart)) return;
 
         String messageId = primeiroHeader(msg, "Message-ID");
         if (messageId == null || messageId.isBlank()) {
@@ -175,13 +177,28 @@ public final class ImapComprasUtil {
         percorrerPartes((Multipart) content, messageId, remetente, assunto, dataEmail, saida);
     }
 
+    /**
+     * Cada parte é lida no máximo UMA VEZ (um único {@code getInputStream()}).
+     * Antes disso, {@code getContent()} era chamado só para descobrir se a
+     * parte era um multipart aninhado — e para um anexo de PDF (sem
+     * DataContentHandler registrado no JavaMail para "application/pdf"),
+     * {@code getContent()} já materializa o conteúdo por baixo dos panos.
+     * Chamar {@code getInputStream()} de novo em seguida buscava a MESMA
+     * parte pela segunda vez no IMAP — e essa segunda busca, em pelo menos um
+     * caso real, veio truncada (PDF que o PDFBox ainda conseguiu ler o
+     * suficiente pra achar a chave de acesso, mas chegou corrompido no
+     * disco). Descobrir "é multipart?" só pelo Content-Type evita o
+     * getContent() inteiramente para uma parte que é o próprio anexo.
+     */
     private static void percorrerPartes(Multipart mp, String messageId, String remetente, String assunto,
                                          Date dataEmail, List<AnexoPdf> saida) throws Exception {
         for (int i = 0; i < mp.getCount(); i++) {
             BodyPart parte = mp.getBodyPart(i);
-            Object conteudoParte = parte.getContent();
-            if (conteudoParte instanceof Multipart) {
-                percorrerPartes((Multipart) conteudoParte, messageId, remetente, assunto, dataEmail, saida);
+            if (parte.isMimeType("multipart/*")) {
+                Object conteudoParte = parte.getContent();
+                if (conteudoParte instanceof Multipart nested) {
+                    percorrerPartes(nested, messageId, remetente, assunto, dataEmail, saida);
+                }
                 continue;
             }
             String nomeArquivo = parte.getFileName();
