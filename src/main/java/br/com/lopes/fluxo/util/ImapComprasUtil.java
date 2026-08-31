@@ -210,6 +210,21 @@ public final class ImapComprasUtil {
                 bytes = in.readAllBytes();
             }
 
+            if (!pareceInicioDePdf(bytes)) {
+                // Os primeiros bytes de um PDF de verdade são sempre "%PDF-"
+                // (é a assinatura do formato). Se não vieram assim, a captura
+                // saiu errada — registra tudo que ajuda a achar o motivo
+                // (tipo de codificação, tamanho) e NÃO oferece esse anexo
+                // pra download: melhor não ter o PDF do que oferecer um que
+                // não abre.
+                LOG.warning("Anexo " + nomeArquivo + " (msg " + messageId + ") não começa com a assinatura %PDF-. "
+                        + "Content-Type=" + tentarHeader(parte, "Content-Type")
+                        + " Content-Transfer-Encoding=" + tentarHeader(parte, "Content-Transfer-Encoding")
+                        + " tamanho=" + bytes.length + " bytes"
+                        + " primeirosBytes=" + previaHex(bytes));
+                bytes = null;
+            }
+
             AnexoPdf anexo = new AnexoPdf();
             anexo.messageId = messageId;
             anexo.remetente = remetente;
@@ -217,7 +232,7 @@ public final class ImapComprasUtil {
             anexo.nomeArquivo = nomeArquivo != null ? decodificarNome(nomeArquivo) : "anexo.pdf";
             anexo.dataEmail = dataEmail;
             anexo.bytes = bytes;
-            anexo.texto = extrairTexto(bytes);
+            anexo.texto = bytes != null ? extrairTexto(bytes) : "";
             saida.add(anexo);
         }
     }
@@ -229,6 +244,33 @@ public final class ImapComprasUtil {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    private static final byte[] ASSINATURA_PDF = "%PDF-".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+
+    private static boolean pareceInicioDePdf(byte[] bytes) {
+        if (bytes == null || bytes.length < ASSINATURA_PDF.length) return false;
+        for (int i = 0; i < ASSINATURA_PDF.length; i++) {
+            if (bytes[i] != ASSINATURA_PDF[i]) return false;
+        }
+        return true;
+    }
+
+    private static String tentarHeader(BodyPart parte, String nome) {
+        try {
+            String[] v = parte.getHeader(nome);
+            return v != null && v.length > 0 ? v[0] : "(ausente)";
+        } catch (Exception e) {
+            return "(erro ao ler)";
+        }
+    }
+
+    /** Os primeiros bytes em hexadecimal, pra ver no log se é lixo binário, HTML de erro, base64 cru etc. */
+    private static String previaHex(byte[] bytes) {
+        int n = Math.min(bytes.length, 24);
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < n; i++) sb.append(String.format("%02x ", bytes[i]));
+        return sb.toString().trim();
     }
 
     private static String decodificarNome(String nome) {
