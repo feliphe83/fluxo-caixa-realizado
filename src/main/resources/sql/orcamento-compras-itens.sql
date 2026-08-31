@@ -18,6 +18,15 @@
 -- O valor de cada item é o valorintegracao da integração (a parte que entrou
 -- naquele realizado), então a soma dos itens bate com o realizado do objeto.
 --
+-- QUANTIDADE/VALOR UNITÁRIO: vem de material.cotacaoitem (mesma tabela e
+-- mesmo par de junção — nr_cotacao + cod_material — já usados por
+-- VariacaoPrecoDAO para achar preço unitário de item de cotação). Traz as
+-- duas colunas candidatas (quantidade pedida e qtde_aprovada, a que
+-- efetivamente virou compra) porque não há como confirmar contra o Oracle
+-- daqui qual delas está preenchida nesta base; quem decide é o servlet,
+-- preferindo qtde_aprovada. O valor unitário em si (valor ÷ quantidade) é
+-- calculado em Java, não aqui, para não arriscar divisão por zero no SQL.
+--
 -- Marcadores: %COLUNA_OBJETO% (a coluna de objeto de custo, a mesma do
 -- dashboard), %FILTRO_ANOMES% (os meses escolhidos) e %FILTRO_OBJETO% (o objeto
 -- clicado, ou "is null"). Bind: o código do empenho.
@@ -34,6 +43,8 @@ select r.anomes
      , ac.nr_cotacao
      , ac.nr_solicitacao
      , pc.numerocontrato
+     , ci.quantidade
+     , ci.qtde_aprovada
 from        material.realizado         r
        join ctb.tabelaintegracao       ti  on ti.numero_integracao_destino = r.numero_integracao
        join ctb.tabela                 tb  on tb.obj# = ti.obj#
@@ -41,6 +52,8 @@ from        material.realizado         r
                                             and upper(tb.nome) = 'MATERIAL.APROVACAOPARACOMPRA'
   left join material.material          mt  on mt.cod_material = ac.cod_material
   left join material.cotacao           ct  on ct.nr_cotacao   = ac.nr_cotacao
+  left join material.cotacaoitem       ci  on ci.nr_cotacao   = ac.nr_cotacao
+                                          and ci.cod_material  = ac.cod_material
   left join material.ordemcompra       oc  on oc.nr_cotacao   = ac.nr_cotacao
                                           and oc.cod_plano     = ac.cod_plano
   left join material.fornecedor        forn on forn.cod_fornecedor = ct.cod_fornecedor

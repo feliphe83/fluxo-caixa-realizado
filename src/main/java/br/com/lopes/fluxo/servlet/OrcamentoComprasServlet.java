@@ -144,6 +144,16 @@ public class OrcamentoComprasServlet extends HttpServlet {
         for (Map<String, Object> l : linhas) {
             double v = decimal(l.get("valor")).doubleValue();
             soma += v;
+            // qtde_aprovada é a que efetivamente virou compra; "quantidade" (a
+            // pedida) só entra se aquela não vier preenchida. Sem nenhuma das
+            // duas, não dá pra saber o valor unitário — fica null, não zero,
+            // pra tela não mostrar um "R$ 0,00" que não existe de verdade.
+            double qtdeAprovada = decimal(l.get("qtde_aprovada")).doubleValue();
+            double qtdePedida = decimal(l.get("quantidade")).doubleValue();
+            double qtde = qtdeAprovada > 0 ? qtdeAprovada : qtdePedida;
+            Double quantidade = qtde > 0 ? Double.valueOf(qtde) : null;
+            Double valorUnitario = qtde > 0 ? Double.valueOf(v / qtde) : null;
+
             JsonObject o = new JsonObject();
             o.addProperty("anomes", decimal(l.get("anomes")).intValue());
             o.addProperty("valor", v);
@@ -156,6 +166,8 @@ public class OrcamentoComprasServlet extends HttpServlet {
             o.addProperty("cotacao", texto(l.get("nr_cotacao")));
             o.addProperty("solicitacao", texto(l.get("nr_solicitacao")));
             o.addProperty("contrato", texto(l.get("numerocontrato")));
+            o.addProperty("quantidade", quantidade);
+            o.addProperty("valorUnitario", valorUnitario);
             arr.add(o);
         }
         r.addProperty("ok", true);

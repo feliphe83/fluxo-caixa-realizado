@@ -143,6 +143,7 @@ tfoot td:first-child{padding-left:16px;font-family:var(--serif)}
 .mi-mat{font-size:12.5px;font-weight:600;color:var(--tinta);line-height:1.35}
 .mi-forn{font-size:11px;color:var(--cinza);margin-top:3px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .mi-oc{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--p);background:var(--pc);padding:2px 8px;border-radius:20px;white-space:nowrap}
+.mi-unit{font-family:var(--mono);font-size:10.5px;color:var(--cinza);white-space:nowrap}
 .mi-mat .semdet{color:var(--cinza);font-style:italic;font-weight:400}
 .mi-mat .mes{display:inline-block;color:var(--cinza2);font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-right:8px;vertical-align:middle}
 .mi-val{font-weight:700;color:var(--tinta);white-space:nowrap;font-variant-numeric:tabular-nums;font-size:12.5px}
@@ -536,6 +537,11 @@ function fecharDetalheItens() { $('#modalItens').classList.remove('on'); }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharDetalheItens(); });
 
 /** Material (negrito) + fornecedor e OC (linha menor), ou o contrato, ou "sem detalhe" — sem os nomes de campo (Cot/Sol não interessam aqui, só a OC). */
+/** Quantidade com 1-2 casas só quando fracionária (litro/kg) — inteira fica sem casas. */
+function fmtQtd(n) {
+  return Number.isInteger(n) ? String(n) : n.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
+}
+
 function rotuloItemDetalhe(x) {
   const mesLbl = x.anomes ? `<span class="mes">${esc(rotuloAnomes(x.anomes))}</span>` : '';
   if (x.origem === 'contrato' && x.contrato) {
@@ -543,9 +549,13 @@ function rotuloItemDetalhe(x) {
   }
   if (x.material || x.fornecedor) {
     const oc = x.nroc ? `<span class="mi-oc">OC ${esc(x.nroc)}</span>` : '';
+    // Valor unitário só some se for igual ao total (quantidade 1): repetir o
+    // mesmo número duas vezes não ajuda a comparar preço nenhum.
+    const unit = x.valorUnitario && x.quantidade && x.quantidade !== 1
+      ? `<span class="mi-unit">${fmtQtd(x.quantidade)} un · ${fmt(x.valorUnitario)}/un</span>` : '';
     return `<div class="mi-desc">
       <div class="mi-mat">${mesLbl}${esc(x.material || '(material sem descrição)')}</div>
-      ${x.fornecedor || oc ? `<div class="mi-forn">${esc(x.fornecedor || '')}${oc}</div>` : ''}
+      ${x.fornecedor || oc || unit ? `<div class="mi-forn">${esc(x.fornecedor || '')}${oc}${unit}</div>` : ''}
     </div>`;
   }
   return `<div class="mi-desc"><div class="mi-mat">${mesLbl}<span class="semdet">sem detalhe de compra</span></div></div>`;
