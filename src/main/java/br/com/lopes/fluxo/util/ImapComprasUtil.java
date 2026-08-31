@@ -92,6 +92,7 @@ public final class ImapComprasUtil {
         public String nomeArquivo;
         public Date dataEmail;
         public String texto;   // texto extraído do PDF (pode vir vazio, se for PDF escaneado sem camada de texto)
+        public byte[] bytes;   // o PDF inteiro, para guardar em disco e/ou reenviar por WhatsApp
     }
 
     /**
@@ -187,13 +188,19 @@ public final class ImapComprasUtil {
             boolean ehPdf = ehPdf(parte, nomeArquivo);
             if (!ehPdf) continue;
 
+            byte[] bytes;
+            try (InputStream in = parte.getInputStream()) {
+                bytes = in.readAllBytes();
+            }
+
             AnexoPdf anexo = new AnexoPdf();
             anexo.messageId = messageId;
             anexo.remetente = remetente;
             anexo.assunto = assunto;
             anexo.nomeArquivo = nomeArquivo != null ? decodificarNome(nomeArquivo) : "anexo.pdf";
             anexo.dataEmail = dataEmail;
-            anexo.texto = extrairTexto(parte);
+            anexo.bytes = bytes;
+            anexo.texto = extrairTexto(bytes);
             saida.add(anexo);
         }
     }
@@ -221,11 +228,10 @@ public final class ImapComprasUtil {
     }
 
     /** Texto puro do PDF (PDFBox) — string vazia se o PDF for escaneado (sem camada de texto) ou vier corrompido. */
-    private static String extrairTexto(BodyPart parte) {
-        try (InputStream in = parte.getInputStream();
-             PDDocument doc = Loader.loadPDF(in.readAllBytes())) {
+    private static String extrairTexto(byte[] pdf) {
+        try (PDDocument doc = Loader.loadPDF(pdf)) {
             return new PDFTextStripper().getText(doc);
-        } catch (IOException | MessagingException e) {
+        } catch (IOException e) {
             LOG.log(Level.WARNING, "Não foi possível ler o texto de um PDF anexado", e);
             return "";
         }

@@ -12,6 +12,8 @@ import java.sql.Timestamp;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Controle (MySQL) das notas fiscais detectadas em anexo de e-mail na caixa
@@ -27,6 +29,8 @@ import java.util.Map;
  *                         (ex.: PDF escaneado, sem camada de texto) — fica visível para conferência manual
  */
 public class NfEmailDAO {
+
+    private static final Logger LOG = Logger.getLogger(NfEmailDAO.class.getName());
 
     private static final String DB_URL  = "jdbc:mysql://localhost:3306/intranet?useSSL=false&serverTimezone=America/Recife&allowPublicKeyRetrieval=true";
     private static final String DB_USER = "lopes_app";
@@ -56,16 +60,26 @@ public class NfEmailDAO {
                   status VARCHAR(20) NOT NULL DEFAULT 'PENDENTE',
                   data_deteccao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                   data_confirmacao DATETIME NULL,
+                  caminho_pdf VARCHAR(255) NULL,
                   UNIQUE KEY uk_msg_anexo (message_id, nome_anexo),
                   INDEX idx_status (status)
                 )
                 """);
+            // Coluna acrescentada depois da 1ª versão — ALTER solto, ignorando
+            // "coluna duplicada" (42S21), mesmo padrão de AlertaOcPendenteDAO.
+            try {
+                st.execute("ALTER TABLE fc_nf_email ADD COLUMN caminho_pdf VARCHAR(255) NULL");
+            } catch (SQLException e) {
+                if (!"42S21".equals(e.getSQLState())) {
+                    LOG.log(Level.WARNING, "Falha ao adicionar coluna caminho_pdf em fc_nf_email", e);
+                }
+            }
         }
     }
 
     /** Uma linha nova a registrar — ver os campos de {@link #inserirSeNovo}. */
     public static final class Registro {
-        public String messageId, nomeAnexo, remetente, assunto, chaveAcesso, nrnf, serie, cnpjEmitente, status;
+        public String messageId, nomeAnexo, remetente, assunto, chaveAcesso, nrnf, serie, cnpjEmitente, status, caminhoPdf;
         public Date dataEmail;
     }
 
@@ -73,8 +87,8 @@ public class NfEmailDAO {
     public boolean inserirSeNovo(Registro r) throws SQLException {
         String sql = """
             INSERT IGNORE INTO fc_nf_email
-                (message_id, nome_anexo, data_email, remetente, assunto, chave_acesso, nrnf, serie, cnpj_emitente, status)
-            VALUES (?,?,?,?,?,?,?,?,?,?)
+                (message_id, nome_anexo, data_email, remetente, assunto, chave_acesso, nrnf, serie, cnpj_emitente, status, caminho_pdf)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?)
             """;
         try (Connection c = conn(); PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, limitar(r.messageId, 191));
@@ -87,7 +101,19 @@ public class NfEmailDAO {
             ps.setString(8, r.serie);
             ps.setString(9, r.cnpjEmitente);
             ps.setString(10, r.status);
+            ps.setString(11, r.caminhoPdf);
             return ps.executeUpdate() > 0;
+        }
+    }
+
+    /** O caminho do PDF salvo em disco para este id, ou null se não houver (nunca gravado, ou falha ao salvar). */
+    public String caminhoPdf(int id) throws SQLException {
+        try (Connection c = conn(); PreparedStatement ps = c.prepareStatement(
+                "SELECT caminho_pdf FROM fc_nf_email WHERE id = ?")) {
+            ps.setInt(1, id);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getString(1) : null;
+            }
         }
     }
 

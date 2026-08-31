@@ -1,6 +1,7 @@
 package br.com.lopes.fluxo.servlet;
 
 import br.com.lopes.fluxo.dao.NfEmailDAO;
+import br.com.lopes.fluxo.util.ArmazenamentoNfEmailUtil;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -11,6 +12,10 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -23,16 +28,16 @@ import java.util.logging.Logger;
  * Dados da tela "Notas fiscais sem entrada" (painel de acompanhamento do
  * alerta gerado por {@link br.com.lopes.fluxo.agendamento.AlertaNfSemEntradaHandler}).
  *
- * GET /api/nf-sem-entrada -> { ok, prazoDias, itens:[{id, nrnf, serie,
+ * GET /api/nf-sem-entrada          -> { ok, prazoDias, itens:[{id, nrnf, serie,
  *   cnpjEmitente, remetente, assunto, nomeAnexo, dataEmail, status,
- *   diasDesdeEmail, atrasada}, ...] }
+ *   diasDesdeEmail, atrasada, temPdf}, ...] }
+ * GET /api/nf-sem-entrada/download?id=123 -> baixa o PDF daquele anexo
  *
- * Só leitura: quem gera e atualiza os registros é o agendamento (Administração
- * → Relatórios WhatsApp → "NF sem entrada"), inclusive manualmente pelo botão
- * "Executar agora" de lá — esta tela não tem ação própria de disparar a
- * varredura.
+ * Geração e atualização dos registros é o agendamento (Administração →
+ * Relatórios WhatsApp → "NF sem entrada"), inclusive manualmente pelo botão
+ * "Executar agora" de lá — esta tela só lê e baixa.
  */
-@WebServlet({"/api/nf-sem-entrada"})
+@WebServlet({"/api/nf-sem-entrada", "/api/nf-sem-entrada/*"})
 public class NfSemEntradaServlet extends HttpServlet {
 
     private static final Logger LOG = Logger.getLogger(NfSemEntradaServlet.class.getName());
@@ -43,6 +48,15 @@ public class NfSemEntradaServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        String pathInfo = req.getPathInfo();
+        if (pathInfo != null && pathInfo.equals("/download")) {
+            baixar(req, resp);
+            return;
+        }
+        listar(resp);
+    }
+
+    private void listar(HttpServletResponse resp) throws IOException {
         resp.setContentType("application/json;charset=UTF-8");
         resp.setHeader("Cache-Control", "no-store");
         try {
@@ -56,6 +70,7 @@ public class NfSemEntradaServlet extends HttpServlet {
             for (Map<String, Object> l : linhas) {
                 long dias = diasDesde(l.get("data_email"));
                 String status = String.valueOf(l.get("status"));
+                String caminhoPdf = texto(l.get("caminho_pdf"));
 
                 JsonObject o = new JsonObject();
                 o.addProperty("id", ((Number) l.get("id")).intValue());
@@ -69,6 +84,7 @@ public class NfSemEntradaServlet extends HttpServlet {
                 o.addProperty("status", status);
                 o.addProperty("diasDesdeEmail", dias);
                 o.addProperty("atrasada", "PENDENTE".equals(status) && dias >= PRAZO_DIAS);
+                o.addProperty("temPdf", !caminhoPdf.isEmpty());
                 itens.add(o);
             }
             r.add("itens", itens);
@@ -79,6 +95,33 @@ public class NfSemEntradaServlet extends HttpServlet {
             resp.setStatus(500);
             String msg = e.getMessage() == null ? e.getClass().getName() : e.getMessage();
             resp.getWriter().print("{\"ok\":false,\"erro\":" + GSON.toJson(msg) + "}");
+        }
+    }
+
+    private void baixar(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        try {
+            int id = Integer.parseInt(req.getParameter("id"));
+            String caminho = dao.caminhoPdf(id);
+            if (caminho == null || caminho.isBlank()) {
+                resp.sendError(404, "PDF não disponível para esta nota");
+                return;
+            }
+            Path arquivo = ArmazenamentoNfEmailUtil.resolver(caminho);
+            if (!ArmazenamentoNfEmailUtil.dentroDaBase(arquivo) || !Files.exists(arquivo)) {
+                resp.sendError(404, "Arquivo não encontrado no disco");
+                return;
+            }
+            resp.setContentType("application/pdf");
+            resp.setHeader("Content-Disposition", "inline; filename*=UTF-8''"
+                    + URLEncoder.encode("nota-fiscal-" + id + ".pdf", StandardCharsets.UTF_8).replace("+", "%20"));
+            resp.setContentLengthLong(Files.size(arquivo));
+            Files.copy(arquivo, resp.getOutputStream());
+            resp.getOutputStream().flush();
+        } catch (NumberFormatException e) {
+            resp.sendError(400, "id inválido");
+        } catch (Exception e) {
+            LOG.log(Level.SEVERE, "Erro ao baixar PDF de NF sem entrada", e);
+            resp.sendError(500, "Erro ao baixar arquivo");
         }
     }
 

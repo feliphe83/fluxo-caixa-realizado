@@ -57,6 +57,9 @@
   .pill.pendente { background: var(--alertac); color: var(--alerta); }
   .pill.semchave { background: #f2f0ec; color: var(--ink-3); }
   .pill.confirmada { background: var(--okc); color: var(--ok); }
+  .btn-pdf { font-size: 11.5px; font-weight: 700; padding: 5px 10px; border-radius: 7px; border: 1.5px solid var(--borda);
+             background: white; color: var(--ink); text-decoration: none; white-space: nowrap; display: inline-block; }
+  .btn-pdf:hover { border-color: var(--ink); }
 
   .estado { text-align: center; padding: 50px 20px; color: var(--ink-3); }
   .spinner { width: 30px; height: 30px; border: 3px solid var(--borda); border-top-color: #1a3a7c;
@@ -87,9 +90,9 @@
   <div class="tab"><table>
     <thead><tr>
       <th>Status</th><th>NF / Série</th><th>CNPJ emitente</th><th>Data do e-mail</th><th>Dias</th>
-      <th>Remetente</th><th>Assunto</th><th>Anexo</th>
+      <th>Remetente</th><th>Assunto</th><th>Anexo</th><th>PDF</th>
     </tr></thead>
-    <tbody id="corpo"><tr><td colspan="8"><div class="estado"><div class="spinner"></div>Carregando…</div></td></tr></tbody>
+    <tbody id="corpo"><tr><td colspan="9"><div class="estado"><div class="spinner"></div>Carregando…</div></td></tr></tbody>
   </table></div>
 </div>
 
@@ -126,7 +129,7 @@ async function carregar() {
     ITENS = j.itens || [];
     PRAZO = j.prazoDias || 5;
     document.getElementById("obs").textContent =
-      `Uma nota entra nesta lista quando um PDF de NF-e chega anexado no e-mail de Compras; o CNPJ, número e série vêm da chave de acesso decodificada do próprio PDF. Prazo considerado: ${PRAZO} dias corridos a partir da data do e-mail sem entrada registrada no ERP.`;
+      `Uma nota entra nesta lista quando um PDF de NF-e chega anexado no e-mail de Compras; o CNPJ, número e série vêm da chave de acesso decodificada do próprio PDF. Prazo considerado: ${PRAZO} dias corridos a partir da data do e-mail sem entrada registrada no ERP. O PDF pode ser baixado aqui e também vai anexado no aviso de WhatsApp.`;
     render();
   } catch (e) {
     document.getElementById("corpo").innerHTML =
@@ -151,7 +154,7 @@ function render() {
     .sort((a, b) => b.diasDesdeEmail - a.diasDesdeEmail);
 
   if (!filtrados.length) {
-    document.getElementById("corpo").innerHTML = '<tr><td colspan="8"><div class="estado">Nenhuma nota nesta categoria.</div></td></tr>';
+    document.getElementById("corpo").innerHTML = '<tr><td colspan="9"><div class="estado">Nenhuma nota nesta categoria.</div></td></tr>';
     return;
   }
 
@@ -166,6 +169,7 @@ function render() {
       <td>${esc(i.remetente)}</td>
       <td class="assunto">${esc(i.assunto)}</td>
       <td class="mono">${esc(i.nomeAnexo)}</td>
+      <td>${i.temPdf ? `<a class="btn-pdf" href="api/nf-sem-entrada/download?id=${i.id}" target="_blank">⬇️ Baixar</a>` : '<span class="mono">—</span>'}</td>
     </tr>`;
   }).join('');
 }

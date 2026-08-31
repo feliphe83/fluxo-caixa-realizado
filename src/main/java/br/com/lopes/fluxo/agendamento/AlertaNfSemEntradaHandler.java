@@ -4,11 +4,13 @@ import br.com.lopes.fluxo.dao.AlertaOcPendenteDAO;
 import br.com.lopes.fluxo.dao.NfEmailConfigDAO;
 import br.com.lopes.fluxo.dao.NfEmailDAO;
 import br.com.lopes.fluxo.dao.NfEntradaOracleDAO;
+import br.com.lopes.fluxo.util.ArmazenamentoNfEmailUtil;
 import br.com.lopes.fluxo.util.EvolutionApiUtil;
 import br.com.lopes.fluxo.util.ImapComprasUtil;
 import br.com.lopes.fluxo.util.NfeChaveUtil;
 import com.google.gson.JsonObject;
 
+import java.nio.file.Files;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -26,9 +28,10 @@ import java.util.logging.Logger;
  * ERP se já deram entrada e avisa por WhatsApp as que passaram do prazo.
  *
  * A cada ciclo, em três passos:
- *   1. {@link #escanearEmail()} — lê os PDFs recentes da caixa de Compras
- *      ({@link ImapComprasUtil}) e registra (em MySQL, {@link NfEmailDAO}) os
- *      que ainda não tinham sido vistos;
+ *   1. {@link #escanearEmail(int)} — lê os PDFs recentes da caixa de Compras
+ *      ({@link ImapComprasUtil}), salva cada PDF em disco
+ *      ({@link ArmazenamentoNfEmailUtil}) e registra (em MySQL,
+ *      {@link NfEmailDAO}) os que ainda não tinham sido vistos;
  *   2. {@link #conferirEntradasNoErp()} — para os pendentes com número/série
  *      conhecidos, pergunta ao Oracle ({@link NfEntradaOracleDAO}) se já
  *      existe entrada; se sim, marca como resolvido e para de alertar;
@@ -36,6 +39,8 @@ import java.util.logging.Logger;
  *      DO E-MAIL, não da detecção) vira aviso — um por destinatário do
  *      agendamento, sem repetir (mesmo controle de
  *      {@link AlertaOcPendenteDAO} dos demais alertas, TIPO = {@link #TIPO}).
+ *      O aviso vai com o PDF da nota anexado (ver {@link #enviarAlerta}),
+ *      caindo para texto puro só se o PDF não estiver disponível em disco.
  *
  * Uma nota "SEM_CHAVE" (PDF que parece nota mas não deu pra ler a chave —
  * comum em PDF escaneado) fica visível na tela, mas nunca gera alerta
@@ -128,7 +133,24 @@ public class AlertaNfSemEntradaHandler implements RelatorioAgendadoHandler {
                 } else {
                     continue;   // PDF anexado que não parece nota fiscal (boleto, catálogo etc.) — nem registra
                 }
-                if (controle.inserirSeNovo(r)) novas++;
+                if (anexo.bytes != null && anexo.bytes.length > 0) {
+                    try {
+                        r.caminhoPdf = ArmazenamentoNfEmailUtil.salvar(anexo.bytes);
+                    } catch (Exception e) {
+                        // Sem o PDF em disco a nota ainda vale — só fica sem
+                        // download/anexo no WhatsApp depois.
+                        LOG.log(Level.WARNING, "Falha ao salvar o PDF de " + anexo.nomeArquivo + " em disco", e);
+                    }
+                }
+                boolean inseriu = controle.inserirSeNovo(r);
+                if (inseriu) {
+                    novas++;
+                } else if (r.caminhoPdf != null) {
+                    // Já existia (mesmo Message-ID + anexo de um ciclo anterior)
+                    // — o PDF que acabamos de salvar agora é órfão, sem registro
+                    // nenhum apontando pra ele.
+                    ArmazenamentoNfEmailUtil.apagar(r.caminhoPdf);
+                }
             } catch (Exception e) {
                 LOG.log(Level.WARNING, "Falha ao registrar anexo " + anexo.nomeArquivo + " do e-mail de Compras", e);
             }
@@ -169,7 +191,7 @@ public class AlertaNfSemEntradaHandler implements RelatorioAgendadoHandler {
                         + MAX_MENSAGENS_POR_CICLO + " mensagens por ciclo atingido, o resto vai no próximo.");
                 break;
             }
-            EvolutionApiUtil.enviarTexto(telefone, montarMensagem(nf));
+            enviarAlerta(telefone, nf);
             // Só marca depois do envio dar certo: se a Evolution API falhar, a
             // nota continua "não avisada" e entra de novo no próximo ciclo.
             enviados.registrarEnviado(idUsuario, TIPO, idNf, "");
@@ -179,6 +201,31 @@ public class AlertaNfSemEntradaHandler implements RelatorioAgendadoHandler {
             LOG.info("Alerta de NF sem entrada: " + enviadas + " nota(s) avisada(s) para " + nome);
         }
         return enviadas;
+    }
+
+    /**
+     * Manda o PDF da nota anexado, com a mensagem como legenda — só cai para
+     * texto puro se o PDF não tiver sido salvo (falha antiga, antes desta
+     * versão) ou não existir mais em disco.
+     */
+    private static void enviarAlerta(String telefone, Map<String, Object> nf) throws Exception {
+        String caminho = String.valueOf(nf.get("caminho_pdf"));
+        String mensagem = montarMensagem(nf);
+        if (caminho != null && !caminho.isBlank() && !"null".equals(caminho)) {
+            try {
+                java.nio.file.Path arquivo = ArmazenamentoNfEmailUtil.resolver(caminho);
+                if (ArmazenamentoNfEmailUtil.dentroDaBase(arquivo) && Files.exists(arquivo)) {
+                    byte[] pdf = Files.readAllBytes(arquivo);
+                    String nomeArquivo = txt(nf.get("nome_anexo"));
+                    EvolutionApiUtil.enviarDocumento(telefone, pdf,
+                            nomeArquivo.isEmpty() ? "nota-fiscal.pdf" : nomeArquivo, mensagem);
+                    return;
+                }
+            } catch (Exception e) {
+                LOG.log(Level.WARNING, "Falha ao anexar o PDF no alerta (caminho: " + caminho + "), enviando só o texto", e);
+            }
+        }
+        EvolutionApiUtil.enviarTexto(telefone, mensagem);
     }
 
     private static String montarMensagem(Map<String, Object> nf) {
