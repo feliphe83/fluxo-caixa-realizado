@@ -1,6 +1,7 @@
 package br.com.lopes.fluxo.servlet;
 
 import br.com.lopes.fluxo.dao.OrcamentoComprasDAO;
+import br.com.lopes.fluxo.util.AreaOrcamentoPermissaoUtil;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -10,12 +11,14 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -70,6 +73,12 @@ public class OrcamentoSafraServlet extends HttpServlet {
             List<Map<String, Object>> atual = dao.buscar(atualIni, atualFim, null);
             List<Map<String, Object>> anterior = dao.buscar(anteriorIni, anteriorFim, null);
 
+            Set<String> areasPermitidas = areasPermitidas(req);
+            if (areasPermitidas != null) {
+                atual = filtrarPorArea(atual, areasPermitidas);
+                anterior = filtrarPorArea(anterior, areasPermitidas);
+            }
+
             JsonObject r = new JsonObject();
             r.addProperty("ok", true);
             r.add("periodoAtual", periodoJson(atualIni, atualFim));
@@ -96,6 +105,29 @@ public class OrcamentoSafraServlet extends HttpServlet {
             String msg = e.getMessage() == null ? e.getClass().getName() : e.getMessage();
             resp.getWriter().print("{\"ok\":false,\"erro\":" + GSON.toJson(msg) + "}");
         }
+    }
+
+    /**
+     * Áreas que o usuário logado pode ver (null = sem restrição). Vazio no
+     * sentido de "nenhum usuário na sessão" também não restringe — essa rota
+     * só é chamada autenticada, mas uma sessão ausente não pode virar erro
+     * 500 aqui.
+     */
+    private static Set<String> areasPermitidas(HttpServletRequest req) {
+        HttpSession sessao = req.getSession(false);
+        if (sessao == null) return null;
+        Object idAttr = sessao.getAttribute("idUsuario");
+        if (idAttr == null) return null;
+        boolean administrador = Boolean.TRUE.equals(sessao.getAttribute("administrador"));
+        return AreaOrcamentoPermissaoUtil.areasPermitidas(((Number) idAttr).longValue(), administrador);
+    }
+
+    private static List<Map<String, Object>> filtrarPorArea(List<Map<String, Object>> linhas, Set<String> areas) {
+        List<Map<String, Object>> filtradas = new ArrayList<>();
+        for (Map<String, Object> l : linhas) {
+            if (areas.contains(texto(l.get("negocio"), ""))) filtradas.add(l);
+        }
+        return filtradas;
     }
 
     /** {ini, fim, rotulo} — "Safra 2026/27" (começa em setembro) ou "EntreSafra 2026" (começa em março). */
