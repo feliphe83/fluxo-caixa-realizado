@@ -40,8 +40,10 @@ public final class PrecoCanaConsecanaParser {
     private static final String[] ABREV =
             { "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez" };
 
-    private static final Pattern MES = Pattern.compile(
-            "M[eê]s:\\s*([A-Z\\u00c0-\\u00dc]+)\\s*/\\s*(\\d{4})", Pattern.CASE_INSENSITIVE);
+    // Achado no texto COMPACTADO (ver compactar/Compacto) — maiúsculas, sem
+    // acento, sem espaço nenhum — pelo mesmo motivo das duas âncoras abaixo:
+    // "Mês:" também pode sair com espaço entre letra e letra na extração.
+    private static final Pattern MES = Pattern.compile("MES:([A-Z]+)/([0-9]{4})");
     // Um número: 1-3 dígitos, vírgula, 3-4 dígitos — tolerando até 2 espaços
     // em CADA junção entre caracteres. Mesmo motivo da âncora compactada: a
     // linha de "líquido após deduções" sai em negrito, mais espaçada, e essa
@@ -64,16 +66,18 @@ public final class PrecoCanaConsecanaParser {
     /** Lê um PDF já convertido em texto. Lança se faltar algo essencial. */
     public static Registro ler(String texto) {
         String t = texto.replace('\u00a0', ' ');
+        Compacto c = compactar(t);
 
-        Matcher mMes = MES.matcher(t);
+        Matcher mMes = MES.matcher(c.texto());
         if (!mMes.find()) throw new IllegalArgumentException(
-                "não achei o mês da publicação (linha \"Mês: .../ANO\") — este PDF é do CONSECANA-AL?");
-        Integer mes = MESES.get(semAcento(mMes.group(1)));
+                "não achei o mês da publicação (linha \"Mês: .../ANO\") — este PDF é do CONSECANA-AL? Início do texto extraído: "
+                + trechoVisivel(t, 0, 0));
+        Integer mes = MESES.get(mMes.group(1));
         if (mes == null) throw new IllegalArgumentException("mês não reconhecido: " + mMes.group(1));
         int ano = Integer.parseInt(mMes.group(2));
 
-        double[] participacao = numerosApos(t, ANCORA_PARTICIPACAO);
-        double[] liquido = numerosApos(t, ANCORA_LIQUIDO);
+        double[] participacao = numerosApos(t, c, ANCORA_PARTICIPACAO);
+        double[] liquido = numerosApos(t, c, ANCORA_LIQUIDO);
 
         int anomes = ano * 100 + mes;
         String rotulo = ABREV[mes - 1] + "/" + ano;
@@ -126,8 +130,7 @@ public final class PrecoCanaConsecanaParser {
      * em si não sofrem esse espaçamento extra, então continuam sendo lidos
      * do jeito de sempre.
      */
-    private static double[] numerosApos(String texto, String ancoraSemEspaco) {
-        Compacto c = compactar(texto);
+    private static double[] numerosApos(String texto, Compacto c, String ancoraSemEspaco) {
         int pos = c.texto().indexOf(ancoraSemEspaco);
         if (pos < 0) throw new IllegalArgumentException(
                 "não achei a linha esperada (" + ancoraSemEspaco + ") no PDF");
@@ -183,10 +186,5 @@ public final class PrecoCanaConsecanaParser {
         // dígitos ("1 , 2 9 2 2"), e Double.parseDouble não aceita.
         String semEspaco = s.replaceAll("\\s+", "");
         return Double.parseDouble(semEspaco.replace(".", "").replace(',', '.'));
-    }
-
-    private static String semAcento(String s) {
-        return java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD)
-                .replaceAll("\\p{M}", "").toUpperCase().trim();
     }
 }
