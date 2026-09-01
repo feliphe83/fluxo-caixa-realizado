@@ -77,7 +77,7 @@ public final class PrecoCanaConsecanaParser {
         int ano = Integer.parseInt(mMes.group(2));
 
         double[] participacao = numerosApos(t, c, ANCORA_PARTICIPACAO);
-        double[] liquido = numerosApos(t, c, ANCORA_LIQUIDO);
+        double[] liquido = liquidoComFallback(t, c, participacao);
 
         int anomes = ano * 100 + mes;
         String rotulo = ABREV[mes - 1] + "/" + ano;
@@ -148,6 +148,55 @@ public final class PrecoCanaConsecanaParser {
                     + trechoVisivel(texto, inicioNoOriginal, fimNoOriginal));
         }
         return new double[]{ numero(n.group(1)), numero(n.group(2)) };
+    }
+
+    /**
+     * O líquido (no mês, acumulado): tenta a âncora normal primeiro; se ela
+     * não levar a um par de números plausível, cai para procurar pelo
+     * VALOR em vez do RÓTULO.
+     *
+     * Aconteceu num PDF real: a extração embaralhou tanto a ordem do texto
+     * que, depois de "APÓS DEDUÇÕES LEGAIS...", o próximo trecho já era a
+     * assinatura no rodapé do documento — os números daquela linha não
+     * estavam ali perto, em nenhum sentido. Nesse caso não tem âncora de
+     * texto que resolva.
+     *
+     * O que não muda de PDF para PDF é a RELAÇÃO: o líquido é o bruto menos
+     * as deduções legais (por volta de 1,5%), então líquido/bruto sempre
+     * fica entre 0,96 e 1,00 — a mesma regra que {@link #conferir} já usa
+     * pra REJEITAR uma leitura errada serve aqui pra ACHAR a certa: varre o
+     * documento inteiro atrás de QUALQUER par de números adjacentes (mesmo
+     * formato de {@link #DOIS_NUMEROS}) cuja proporção bata com o bruto já
+     * lido — tanto no mês quanto no acumulado ao mesmo tempo, o que torna a
+     * chance de casar com um par errado (o documento tem muitos números)
+     * bem pequena.
+     */
+    private static double[] liquidoComFallback(String texto, Compacto c, double[] bruto) {
+        try {
+            return numerosApos(texto, c, ANCORA_LIQUIDO);
+        } catch (IllegalArgumentException porAncora) {
+            double[] porRazao = procurarParPorRazao(texto, bruto[0], bruto[1]);
+            if (porRazao != null) return porRazao;
+            throw porAncora;
+        }
+    }
+
+    /** True se "liquido" for entre 96% e 100% de "bruto" — a faixa da dedução legal (~1,5%). */
+    private static boolean proporcaoDeDeducao(double liquido, double bruto) {
+        if (bruto <= 0) return false;
+        double razao = liquido / bruto;
+        return razao >= 0.96 && razao < 1.0;
+    }
+
+    private static double[] procurarParPorRazao(String texto, double brutoNoMes, double brutoAcumulado) {
+        Matcher n = DOIS_NUMEROS.matcher(texto);
+        while (n.find()) {
+            double v1 = numero(n.group(1)), v2 = numero(n.group(2));
+            if (proporcaoDeDeducao(v1, brutoNoMes) && proporcaoDeDeducao(v2, brutoAcumulado)) {
+                return new double[]{ v1, v2 };
+            }
+        }
+        return null;
     }
 
     /** Um trecho do texto original em volta de [inicio, fim), com quebra de linha e espaço tornados visíveis, pra caber numa mensagem de erro. */
