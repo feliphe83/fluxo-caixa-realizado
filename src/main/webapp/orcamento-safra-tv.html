@@ -1,276 +1,254 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Orçamento de Compras — Safra — Usina Santa Clotilde</title>
-<link rel="icon" href="img/logo.png">
+<title>SGO | Compras | Acompanhamento por Safra — Modo TV</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-/* ────────────────────────────────────────────────────────────────────────
-   Painel de televisão do orçamento de compras por SAFRA, uma área por vez.
+:root{--p:#1a3a7c;--pc:#E3EAF7;--tinta:#1C1633;--papel:#F7F6FB;--linha:#E3DFEE;--cinza:#6B6480;--cinza2:#9B95AD;--verde:#1F4E9C;--verdec:#E8F0FB;--rubro:#B3261E;--rubroc:#FBE9E7;
+--sans:'IBM Plex Sans',system-ui,sans-serif;--serif:'IBM Plex Serif',Georgia,serif;--mono:'IBM Plex Mono',ui-monospace,monospace}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:var(--sans);background:var(--papel);color:var(--tinta);font-size:13px;line-height:1.4;display:flex;flex-direction:column}
+.num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+button{font-family:var(--sans);cursor:pointer}
+button:focus-visible{outline:2px solid #fff;outline-offset:-2px}
 
-   Mesmo molde de orcamento-tv.html: palco 1920×1080 escalado, aceita
-   clique (trocar mês/área), volta sozinho ao estado automático (a área da
-   URL, ?area=agricola|industrial|administrativa|comercial — vazio ou
-   ausente é a Empresa inteira) depois de 3 minutos sem ninguém mexer.
+/* Cabeçalho: uma faixa só */
+header{background:linear-gradient(135deg,#0f2460 0%,#1a3a7c 100%);color:#fff;padding:0 28px;height:96px;display:flex;align-items:center;justify-content:flex-start;gap:14px;flex:none}
+.marca{display:flex;align-items:center;gap:16px}
+.marca .selo{height:72px;width:72px;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;padding:6px;overflow:hidden;flex:none}
+.marca .selo img{max-height:100%;max-width:100%;width:auto;height:auto;object-fit:contain;display:block}
+.marca h1{font-family:var(--serif);font-size:22px;font-weight:700;line-height:1.15;letter-spacing:.01em}
+.marca h1 small{display:block;font-family:var(--sans);font-size:13.5px;opacity:.9;font-weight:400;margin-top:9px;letter-spacing:0;text-transform:none}
+.cabecalho-direita{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.emissao{text-align:right;font-size:12px;opacity:.85;line-height:1.5}
+.emissao b{display:block;font-family:var(--mono);font-size:14px;font-weight:500;opacity:1}
+.btn-voltar{display:flex;align-items:center;gap:7px;padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.08);color:rgba(255,255,255,.9);font-size:12.5px;font-weight:600;text-decoration:none}
+.btn-voltar:hover{background:rgba(255,255,255,.18)}
+.seletor-safra{display:flex;flex-direction:column;gap:4px}
+.seletor-safra .rot{font-size:10px;letter-spacing:.12em;text-transform:uppercase;opacity:.7;font-weight:600}
+.seletor-safra select{appearance:none;-webkit-appearance:none;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.35);color:#fff;padding:6px 30px 6px 10px;border-radius:7px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2'><polyline points='6 9 12 15 18 9'/></svg>");background-repeat:no-repeat;background-position:right 8px center;background-size:14px}
+.seletor-safra select option{color:#1C1633}
 
-   Cada TV mostra só a SUA área: a mesma tela, um ?area= por parede.
-   ──────────────────────────────────────────────────────────────────────── */
-  :root {
-    --orcado: #5b6675; --realizado: #2a78d6;
-    --acum-prev: #0ca30c; --acum-real: #1e3a8a;
-    --sobra: #0ca30c; --estouro: #d03b3b;
-    --sem-vermelho: #e03127; --sem-laranja: #f0921f; --sem-amarelo: #ffe14d;
-    --ink: #0f2460; --ink-2: #52514e; --ink-3: #898781; --rotulo: #64748b;
-    --borda: #e3e8f5; --papel: #fff; --papel-2: #f8faff; --fundo: #f4f6fb;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { height: 100%; background: var(--fundo); color: var(--ink-2);
-               font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-               overflow: hidden; font-variant-numeric: tabular-nums; }
+/* Segunda faixa: Resumo, áreas e meses */
+.faixa{background:#0f2460;color:#fff;padding:0 28px;height:46px;display:flex;align-items:center;gap:22px;flex:none}
+.faixa .areas{display:flex;gap:4px;align-items:center;overflow-x:auto;flex:none}
+.faixa .areas button{background:none;border:0;color:#fff;opacity:.7;padding:6px 13px;border-radius:6px;font-size:14.5px;white-space:nowrap}
+.faixa .areas button:hover{opacity:1;background:rgba(255,255,255,.08)}
+.faixa .areas button.ativa{opacity:1;background:rgba(255,255,255,.18);font-weight:600}
+.faixa .areas .divisor{width:1px;height:20px;background:rgba(255,255,255,.25);margin:0 6px;flex:none}
+.faixa .tipos{flex:none;display:flex;gap:8px;justify-content:center}
+.faixa .tipos button{display:flex;align-items:center;gap:7px;background:transparent;border:1px solid rgba(255,255,255,.35);color:rgba(255,255,255,.55);padding:4px 12px 4px 8px;border-radius:6px;font-size:13px;font-weight:700;letter-spacing:.04em}
+.faixa .tipos button.on{background:var(--p);color:#fff;border-color:var(--p)}
+.faixa .tipos .cx{width:13px;height:13px;border:1.5px solid currentColor;border-radius:3px;display:inline-block;position:relative}
+.faixa .tipos button.on .cx::after{content:"";position:absolute;left:3px;top:0;width:4px;height:8px;border:solid currentColor;border-width:0 2px 2px 0;transform:rotate(45deg)}
+/* margin-left:auto empurra a régua pro lado direito da faixa, separada de áreas/tipos que ficam à esquerda. */
+.regua{display:flex;align-items:center;margin-left:auto}
+.regua .rot{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;opacity:.7;margin-right:4px}
+.regua button{background:none;border:1px solid rgba(255,255,255,.3);color:#fff;width:40px;height:28px;border-radius:6px;font-size:12px;font-weight:500;opacity:.75}
+.regua button.ativo{background:#fff;color:var(--p);opacity:1;font-weight:700;border-color:#fff}
+.regua button:not(.ativo).futuro{opacity:.35}
 
-  #palco-wrap { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
-  #palco { position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px;
-           transform-origin: center center; padding: 18px 24px 16px;
-           display: grid; grid-template-rows: auto auto auto 1fr 300px; gap: 10px; }
+/* Área de tela: ocupa o restante, sem rolar */
+main{flex:1;min-height:0;padding:18px 28px 16px;display:flex;flex-direction:column}
+.tela{display:none;flex:1;min-height:0;flex-direction:column;gap:14px}
+.tela.ativa{display:flex}
+.titulo{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex:none}
+.titulo h2{font-family:var(--serif);font-size:20px;font-weight:600}
+.titulo .sub{color:var(--cinza);font-size:12px;text-align:right;white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.titulo .volta{background:none;border:1px solid var(--linha);border-radius:6px;padding:5px 10px;font-size:12px;color:var(--p);margin-right:10px}
+.card{background:#fff;border:1px solid var(--linha);border-radius:12px;padding:16px 18px;min-height:0}
 
-  /* ── Topo ── */
-  .topo { display: flex; align-items: center; gap: 16px; }
-  .marca { width: 44px; height: 44px; border-radius: 11px; background: var(--ink);
-           display: flex; align-items: center; justify-content: center; padding: 6px; flex: none; }
-  .marca img { width: 100%; height: 100%; object-fit: contain; }
-  .topo h1 { font-size: 27px; font-weight: 800; color: var(--ink); letter-spacing: -.5px; }
-  .topo .sub { font-size: 12.5px; font-weight: 700; color: var(--ink-3);
-               text-transform: uppercase; letter-spacing: .8px; margin-top: 1px; }
-  .cartoes { display: flex; gap: 11px; margin-left: 22px; }
-  .cartao-tipo { display: flex; flex-direction: column; justify-content: center; gap: 5px; min-width: 168px; }
-  .cartao-tipo .rot { margin-bottom: 2px; }
-  .mini-tog { font-size: 13.5px; font-weight: 800; color: var(--ink-2); padding: 5px 12px;
-              border-radius: 8px; border: 1.5px solid var(--borda); background: var(--papel-2);
-              font-family: inherit; cursor: pointer; text-align: left; }
-  .mini-tog.on { background: var(--ink); color: #fff; border-color: var(--ink); }
-  .cartao { background: var(--papel); border: 1px solid var(--borda); border-radius: 12px;
-            padding: 9px 20px; position: relative; overflow: hidden; min-width: 210px; }
-  .cartao::before { content:''; position:absolute; left:0; top:0; bottom:0; width:4px;
-                    background: var(--cor, var(--ink)); }
-  .cartao .rot { font-size: 11.5px; font-weight: 800; color: var(--rotulo);
-                 text-transform: uppercase; letter-spacing: .7px; }
-  .cartao .cifra { font-size: 30px; font-weight: 800; color: var(--ink); line-height: 1.1;
-                   margin-top: 2px; letter-spacing: -.8px; }
-  .cartao .cifra.mal { color: var(--estouro); }
-  .cartao .base { font-size: 11.5px; font-weight: 700; color: var(--ink-3); margin-top: 1px; }
-  .direita { margin-left: auto; text-align: right; }
-  .periodo { font-size: 19px; font-weight: 800; color: var(--ink); background: var(--papel);
-             border: 1px solid var(--borda); border-radius: 11px; padding: 7px 16px;
-             display: inline-block; }
-  .relogio { font-size: 12.5px; font-weight: 700; color: var(--ink-3); margin-top: 5px; }
+/* Tela Resumo */
+.resumo{flex:1;min-height:0;display:grid;grid-template-rows:auto 1fr;gap:14px}
+#resumo-grupo tbody td{padding:5px 10px}
+#resumo-grupo thead th{font-weight:700;color:var(--tinta)}
+#resumo-grupo thead tr.super th{font-weight:700}
+#resumo-grupo thead th.mesclada{text-align:center;vertical-align:middle;font-family:var(--sans);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--tinta);border-bottom:1px solid var(--linha);padding:8px 10px}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.card .rot{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--tinta);font-weight:700}
+.visao{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.visao .rot{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--cinza);font-weight:600;margin-right:4px}
+.visao{flex:none}
+.visao button{white-space:nowrap;background:#E3EAF7;border:1px solid #C6D6EF;color:#1a3a7c;padding:6px 10px;border-radius:6px;font-size:12px}
+.visao button.ativa{background:var(--p);border-color:var(--p);color:#fff;font-weight:600}
+.card .per{font-family:var(--serif);font-size:15px;font-weight:600;color:var(--p);margin-top:1px}
+.card .grande{font-family:var(--serif);font-size:26px;font-weight:600;letter-spacing:-.3px;margin-top:8px;line-height:1.1}
+.card .grande small{font-family:var(--sans);font-size:11px;color:var(--cinza);font-weight:500;margin-left:6px}
+.card .comp{margin-top:8px;display:flex;justify-content:space-between;font-size:12.5px;color:var(--cinza)}
+.card .comp .val{color:var(--tinta);font-weight:500}
+.delta{display:inline-flex;align-items:center;gap:6px;margin-top:9px;padding:4px 9px;border-radius:6px;font-weight:600;font-size:12.5px}
+.delta.up{background:var(--rubroc);color:var(--rubro)}.delta.down{background:var(--verdec);color:var(--verde)}.delta.flat{background:var(--pc);color:var(--p)}
+.delta .pct{font-family:var(--mono);font-weight:500;opacity:.85;font-size:11.5px}
+.baixo{display:grid;grid-template-columns:3fr 2fr;gap:14px;min-height:0}
+.card h3{font-family:var(--serif);font-size:15px;font-weight:600}
+.card .sub{font-size:11.5px;color:var(--cinza);margin-bottom:6px}
+.cv{position:relative;flex:1;min-height:0}
+.card.flex{display:flex;flex-direction:column}
+.lista{list-style:none;flex:1;min-height:0;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;font-size:clamp(11px,1.5vh,13px)}
+.lista li{display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:center;padding:0;flex:1;min-height:0;border-bottom:1px solid var(--linha);cursor:pointer}
+.lista li:last-child{border-bottom:0}
+.lista li:hover .nome{color:var(--p)}
+.lista .nome{font-weight:500}
+.lista .base{font-size:clamp(10px,1.25vh,11.5px);color:var(--cinza)}
+.lista .d{font-weight:600;text-align:right}
+.lista .pct{font-family:var(--mono);font-size:clamp(10px,1.3vh,11.5px);font-weight:700;text-align:right;min-width:64px}
+.d-pos{color:var(--rubro)}.d-neg{color:var(--verde)}.d-nulo{color:var(--cinza2)}
 
-  /* ── Tira de meses ── */
-  .meses { display: flex; gap: 6px; background: var(--papel); border: 1px solid var(--borda);
-           border-radius: 12px; padding: 5px; }
-  .meses button { flex: 1; text-align: center; font-size: 17px; font-weight: 800;
-                  color: var(--ink-3); padding: 8px 6px; border-radius: 9px;
-                  border: none; background: transparent; font-family: inherit;
-                  cursor: pointer; }
-  .meses button.on { background: var(--realizado); color: #fff; }
-  .meses button.futuro { opacity: .4; }
-  .meses button:not(.on):hover { background: var(--papel-2); color: var(--ink); }
+/* Tabelas: cabem na tela, linhas compactas */
+.tab{flex:1;min-height:0;overflow:auto;background:#fff;border:1px solid var(--linha);border-radius:12px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+thead th{position:sticky;top:0;background:var(--papel);color:var(--cinza);font-weight:600;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;padding:8px 10px;border-bottom:1px solid var(--linha);text-align:right;white-space:nowrap;z-index:1}
+thead th:first-child{text-align:left;padding-left:16px}
+thead tr.super th{font-family:var(--serif);text-transform:none;letter-spacing:0;font-size:12.5px;color:var(--p);padding:8px 10px 2px;border-bottom:0;text-align:center;top:0}
+thead tr:nth-child(2) th{top:29px}
+tbody td{padding:6px 10px;border-bottom:1px solid var(--linha)}
+tbody td:first-child{padding-left:16px}
+tbody tr.link{cursor:pointer}
+tbody tr.link:hover td{background:#FBFAFE}
+tbody tr.link td:first-child::after{content:"›";color:var(--cinza2);margin-left:8px}
+.sep{border-left:1px solid var(--linha)}
+tfoot td{padding:8px 10px;font-weight:700;background:var(--pc);border-top:2px solid var(--p);position:sticky;bottom:0}
+tfoot td:first-child{padding-left:16px;font-family:var(--serif)}
+.pct{font-family:var(--mono);font-size:11.5px}
+.share{font-size:10.5px;color:var(--cinza2);margin-left:6px}
+.btn-detalhe{background:none;border:0;font-size:12px;cursor:pointer;margin-left:7px;opacity:.6;vertical-align:middle;padding:0}
+.btn-detalhe:hover{opacity:1}
 
-  /* O negócio é filtro, não navegação: tira mais baixa e em pílula, para
-     não competir com a dos meses, que é a escolha principal. Aqui é a ÁREA. */
-  .negocios { display: flex; gap: 7px; align-items: center; background: var(--papel);
-              border: 1px solid var(--borda); border-radius: 12px; padding: 6px 14px; }
-  .negocios .rot { font-size: 12px; font-weight: 800; color: var(--rotulo);
-                   text-transform: uppercase; letter-spacing: .8px; margin-right: 4px; }
-  .negocios button { font-size: 14.5px; font-weight: 800; color: var(--ink-2);
-                     padding: 6px 18px; border-radius: 999px; border: 1px solid var(--borda);
-                     background: var(--papel-2); font-family: inherit; cursor: pointer;
-                     white-space: nowrap; }
-  .negocios button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
-  .negocios button:not(.on):hover { background: #e9eefb; color: var(--ink); }
+/* Modal de detalhe (material + fornecedor / contrato) — 5º nível, só pra empenho */
+.modal-itens{position:fixed;inset:0;z-index:2000;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(28,22,51,.45)}
+.modal-itens.on{display:flex}
+.mi-caixa{background:#fff;border-radius:16px;width:min(1120px,96vw);max-height:86vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 70px rgba(28,22,51,.4)}
+.mi-topo{display:flex;align-items:flex-start;gap:12px;padding:16px 20px;border-bottom:1px solid var(--linha);flex:none}
+.mi-titulo{font-family:var(--serif);font-size:16px;font-weight:700;color:var(--tinta)}
+.mi-sub{font-size:12px;font-weight:600;color:var(--cinza);margin-top:2px}
+.mi-fechar{margin-left:auto;border:none;background:none;font-size:26px;line-height:1;color:var(--cinza2);cursor:pointer;padding:0 2px}
+.mi-fechar:hover{color:var(--tinta)}
 
-  /* Avisa que o painel está fora do automático e quando volta. */
-  .manual { display: none; margin-top: 5px; background: #eda100; color: #1a1a19;
-            font-size: 13px; font-weight: 800; padding: 5px 14px; border-radius: 999px; }
-  .manual.on { display: inline-block; }
+/* Uma tabela só — uma linha por material (ou contrato), comparando as duas safras lado a lado. */
+.mi-corpo{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.mi-scroll{flex:1;min-height:0;overflow:auto}
+.mi-tabela{width:100%;border-collapse:collapse;font-size:12px}
+.mi-tabela thead th{position:sticky;top:0;background:var(--papel);color:var(--cinza);font-weight:700;font-size:10px;letter-spacing:.05em;text-transform:uppercase;padding:8px 12px;border-bottom:1px solid var(--linha);text-align:right;white-space:nowrap;z-index:1}
+.mi-tabela thead th:first-child{text-align:left}
+.mi-tabela thead tr.mi-super th{font-family:var(--serif);text-transform:none;letter-spacing:0;font-size:11.5px;color:var(--p);padding:8px 12px 2px;border-bottom:0;text-align:center;top:0}
+.mi-tabela thead tr.mi-super th:first-child{text-align:left}
+.mi-tabela thead tr:nth-child(2) th{top:27px}
+.mi-tabela .sep{border-left:1px solid var(--linha)}
+.mi-tabela tbody td{padding:9px 12px;border-bottom:1px solid var(--linha);vertical-align:top}
+.mi-tabela tbody tr:last-child td{border-bottom:0}
+.mi-tabela tbody tr.link{cursor:pointer}
+.mi-tabela tbody tr.link:hover td{background:var(--papel)}
+.mi-tabela tbody tr.link td:first-child::after{content:"›";color:var(--cinza2);margin-left:8px}
+.mi-tabela .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.mi-mat{font-size:12.5px;font-weight:600;color:var(--tinta);line-height:1.35}
+.mi-forn{font-size:11px;color:var(--cinza);margin-top:2px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.mi-oc{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--p);background:var(--pc);padding:1px 7px;border-radius:20px;white-space:nowrap}
+.mi-mat .semdet{color:var(--cinza);font-style:italic;font-weight:400}
+.mi-unit{display:block;font-family:var(--mono);font-size:10.5px;color:var(--cinza2);margin-top:1px}
+.mi-dif{font-weight:700}
+.mi-dif.pos{color:var(--rubro)}.mi-dif.neg{color:var(--verde)}.mi-dif.nulo{color:var(--cinza2);font-weight:400}
+.mi-vazio{padding:26px 20px;color:var(--cinza);font-size:13px}
 
-  /* ── Quadro ── */
-  .bloco { background: var(--papel); border: 1px solid var(--borda); border-radius: 12px;
-           padding: 10px 14px 12px; min-height: 0; overflow: hidden; }
-  table.q { width: 100%; border-collapse: collapse; font-size: var(--fonte, 16px);
-            table-layout: fixed; }
-  table.q thead th { background: var(--ink); color: #fff; font-weight: 800; padding: .34em 10px;
-                     white-space: nowrap; text-align: right; font-size: .84em;
-                     border-right: 1px solid rgba(255,255,255,.14); }
-  table.q thead th:last-child { border-right: none; }
-  table.q thead th.rot { text-align: left; }
-  table.q thead tr.faixa th { text-align: center; font-size: .92em; letter-spacing: .4px; }
-  table.q tbody td { padding: .34em 10px; text-align: right; white-space: nowrap;
-                     border-bottom: 1px solid #eef1f8; font-weight: 700; color: var(--ink); }
-  table.q tbody td.rot { text-align: left; overflow: hidden; text-overflow: ellipsis; }
-  table.q tfoot td { padding: .4em 10px; font-weight: 800; color: var(--ink); text-align: right;
-                     border-top: 2px solid var(--borda); background: #eef2fa; }
-  table.q tfoot td.rot { text-align: left; }
-  table.q .divide { border-left: 2px solid var(--borda); }
-  .plan { color: var(--orcado); }
-  table.q td.dif.bem { color: var(--sobra); }
-  table.q td.dif.mal { color: var(--estouro); }
-  .pct { font-weight: 800; }
-  .pct.vermelho { background: var(--sem-vermelho); color: #fff; }
-  .pct.laranja  { background: var(--sem-laranja);  color: #3a2400; }
-  .pct.amarelo  { background: var(--sem-amarelo);  color: #3a3400; }
+/* Nível seguinte: as transações (OC a OC) de UM material — duas colunas, uma por safra. */
+.mi-voltar{flex:none;display:flex;align-items:center;gap:12px;padding:10px 20px;border-bottom:1px solid var(--linha);background:var(--papel)}
+.mi-voltar button{background:none;border:1px solid var(--linha);border-radius:6px;padding:5px 10px;font-size:12px;color:var(--p);cursor:pointer;font-family:inherit}
+.mi-voltar button:hover{border-color:var(--p)}
+.mi-voltar-tit{font-size:13px;font-weight:700;color:var(--tinta)}
+.mi-transacoes{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--linha);overflow:hidden}
+.mi-coluna{display:flex;flex-direction:column;min-height:0;background:#fff}
+.mi-col-head{flex:none;padding:10px 20px;background:var(--papel);border-bottom:1px solid var(--linha);display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.mi-col-tit{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--cinza);flex:1 1 100%}
+.mi-col-val{font-family:var(--serif);font-size:16px;font-weight:600;color:var(--p)}
+.mi-col-n{font-size:11px;color:var(--cinza2)}
+.mi-col-lista{overflow:auto;flex:1;min-height:0}
+.mi-item{display:flex;gap:14px;align-items:center;justify-content:space-between;padding:11px 20px;border-bottom:1px solid var(--linha)}
+.mi-item:last-child{border-bottom:0}
+.mi-desc{flex:1;min-width:0}
+.mi-mat .mes{display:inline-block;color:var(--cinza2);font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-right:8px;vertical-align:middle}
+.mi-val{font-weight:700;color:var(--tinta);white-space:nowrap;font-variant-numeric:tabular-nums;font-size:12.5px}
+@media(max-width:760px){.mi-transacoes{grid-template-columns:1fr}}
+.bar{display:inline-block;height:5px;border-radius:3px;vertical-align:middle;margin-right:5px}
+.graficos{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;gap:14px}
 
-  table.q tbody tr.grupo { cursor: pointer; }
-  table.q tbody tr.grupo:hover td { background: var(--papel-2); }
-  table.q tbody tr.grupo .seta { display: inline-block; width: .8em; color: var(--ink-3);
-                                 transition: transform .15s; }
-  table.q tbody tr.grupo.aberto .seta { transform: rotate(90deg); }
-  table.q tbody tr.empenho td { background: var(--papel-2); color: var(--ink-2);
-                                font-weight: 600; font-size: .92em; }
-  table.q tbody tr.empenho td.rot { padding-left: 2.2em; }
-  table.q tbody tr.empenho .cod { color: var(--ink-3); font-weight: 800; margin-right: .5em; }
-
-  table.q td.real-drill { cursor: pointer; color: #1e3a8a; font-weight: 800;
-                          text-decoration: underline dotted; text-underline-offset: 3px; }
-
-  .graficos { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; min-height: 0; }
-  .graficos .bloco { display: flex; flex-direction: column; }
-  .cab { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
-  .cab h2 { font-size: 17px; font-weight: 800; color: var(--ink); }
-  .legenda { margin-left: auto; display: flex; gap: 14px; }
-  .legenda span { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px;
-                  font-weight: 800; color: var(--ink-2); }
-  .legenda i { width: 12px; height: 12px; border-radius: 4px; flex: none; }
-  .tela { position: relative; flex: 1; min-height: 0; }
-
-  .carregando { color: var(--ink-3); font-size: 20px; font-weight: 700; padding: 40px 4px; }
-  .tarja { position: fixed; top: 0; left: 0; right: 0; background: #eda100; color: #1a1a19;
-           font-size: 17px; font-weight: 800; text-align: center; padding: 7px;
-           display: none; z-index: 40; }
-  .tarja.on { display: block; }
-
-  /* Modal do comparativo por item — FORA do palco escalado, em pixels reais. */
-  .modal-itens { position: fixed; inset: 0; z-index: 2000; display: none;
-                 align-items: center; justify-content: center; padding: 30px;
-                 background: rgba(15,36,96,.5); }
-  .modal-itens.on { display: flex; }
-  .mi-caixa { background: #fff; border-radius: 18px; width: min(1200px, 94vw); max-height: 88vh;
-              display: flex; flex-direction: column; overflow: hidden;
-              box-shadow: 0 30px 90px rgba(15,36,96,.5);
-              font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
-  .mi-topo { display: flex; align-items: flex-start; gap: 14px; padding: 20px 26px;
-             border-bottom: 1px solid #eef1f8; flex: none; }
-  .mi-titulo { font-size: 22px; font-weight: 800; color: #0f2460; }
-  .mi-sub { font-size: 14px; font-weight: 700; color: #898781; margin-top: 3px; }
-  .mi-fechar { margin-left: auto; border: none; background: none; font-size: 34px; line-height: 1;
-               color: #94a0b8; cursor: pointer; }
-  .mi-corpo { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
-  .mi-scroll { flex: 1; min-height: 0; overflow: auto; }
-  .mi-tabela { width: 100%; border-collapse: collapse; font-size: 15px; }
-  .mi-tabela thead th { position: sticky; top: 0; background: #f8faff; color: #898781; font-weight: 800;
-                        font-size: 12px; letter-spacing: .05em; text-transform: uppercase; padding: 10px 14px;
-                        border-bottom: 1px solid #eef1f8; text-align: right; white-space: nowrap; z-index: 1; }
-  .mi-tabela thead th:first-child { text-align: left; }
-  .mi-tabela thead tr.mi-super th { text-transform: none; letter-spacing: 0; font-size: 14px;
-                                     color: #1a3a7c; padding: 10px 14px 3px; border-bottom: 0; text-align: center; top: 0; }
-  .mi-tabela thead tr.mi-super th:first-child { text-align: left; }
-  .mi-tabela thead tr:nth-child(2) th { top: 33px; }
-  .mi-tabela .sep { border-left: 1px solid #eef1f8; }
-  .mi-tabela tbody td { padding: 12px 14px; border-bottom: 1px solid #eef1f8; vertical-align: top; }
-  .mi-tabela tbody tr:last-child td { border-bottom: 0; }
-  .mi-tabela tbody tr.link { cursor: pointer; }
-  .mi-tabela tbody tr.link:hover td { background: #f8faff; }
-  .mi-tabela .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .mi-mat { font-size: 15px; font-weight: 700; color: #0f2460; line-height: 1.35; }
-  .mi-forn { font-size: 12.5px; color: #898781; margin-top: 3px; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
-  .mi-oc { font-size: 11px; font-weight: 800; color: #1a3a7c; background: #E3EAF7; padding: 1px 8px; border-radius: 20px; white-space: nowrap; }
-  .mi-unit { display: block; font-size: 12px; color: #94a0b8; margin-top: 2px; }
-  .mi-dif { font-weight: 800; }
-  .mi-dif.pos { color: #B3261E; } .mi-dif.neg { color: #1F4E9C; } .mi-dif.nulo { color: #94a0b8; font-weight: 400; }
-  .mi-vazio { padding: 32px 26px; color: #898781; font-size: 16px; }
-  .mi-voltar { flex: none; display: flex; align-items: center; gap: 14px; padding: 12px 26px;
-               border-bottom: 1px solid #eef1f8; background: #f8faff; }
-  .mi-voltar button { background: none; border: 1px solid #eef1f8; border-radius: 8px; padding: 7px 14px;
-                       font-size: 14px; color: #1a3a7c; cursor: pointer; font-family: inherit; font-weight: 700; }
-  .mi-voltar-tit { font-size: 16px; font-weight: 800; color: #0f2460; }
-  .mi-transacoes { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
-                   background: #eef1f8; overflow: hidden; }
-  .mi-coluna { display: flex; flex-direction: column; min-height: 0; background: #fff; }
-  .mi-col-head { flex: none; padding: 12px 26px; background: #f8faff; border-bottom: 1px solid #eef1f8;
-                 display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
-  .mi-col-tit { font-size: 12.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: #898781; flex: 1 1 100%; }
-  .mi-col-val { font-size: 19px; font-weight: 800; color: #1a3a7c; }
-  .mi-col-n { font-size: 12.5px; color: #94a0b8; }
-  .mi-col-lista { overflow: auto; flex: 1; min-height: 0; }
-  .mi-item { display: flex; gap: 16px; align-items: center; justify-content: space-between; padding: 13px 26px; border-bottom: 1px solid #eef1f8; }
-  .mi-item:last-child { border-bottom: 0; }
-  .mi-desc { flex: 1; min-width: 0; }
-  .mi-mat .mes { display: inline-block; color: #94a0b8; font-size: 11.5px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; margin-right: 9px; vertical-align: middle; }
-  .mi-val { font-weight: 800; color: #0f2460; white-space: nowrap; font-size: 15px; }
+/* Cores de fundo da tela Resumo */
+.card.c1{background:#E3EAF7;border-color:#C6D6EF}
+.card.c2{background:#E9F5EE;border-color:#CFE7D8}
+.card.c3{background:#FBF4E4;border-color:#EEDFB9}
+.card.c4{background:#EDF2FA;border-color:#D4DEF0}
+.card.c5{background:#FCEFEA;border-color:#F1D6CC}
+.card.c1 .grande,.card.c2 .grande,.card.c3 .grande{color:var(--tinta)}
+footer{flex:none;font-size:10.5px;color:var(--cinza2);padding:0 28px 8px;display:flex;justify-content:space-between}
+.estado{flex:1;display:flex;align-items:center;justify-content:center;color:var(--cinza);font-size:14px;flex-direction:column;gap:12px}
+.spinner{width:28px;height:28px;border:3px solid var(--linha);border-top-color:var(--p);border-radius:50%;animation:girar .8s linear infinite}
+@keyframes girar{to{transform:rotate(360deg)}}
+.erro{color:var(--rubro)}
+@media(max-width:1100px){.cards{grid-template-columns:1fr 1fr 1fr}.baixo{grid-template-columns:1fr}.graficos{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
-
-<div class="tarja" id="tarja"></div>
-
-<div id="palco-wrap"><div id="palco">
-
-  <div class="topo">
-    <div class="marca"><img src="img/logo.png" alt="USC"></div>
-    <div>
-      <h1>Usina Santa Clotilde</h1>
-      <div class="sub" id="subArea">Orçamento de Compras — Safra</div>
-    </div>
-    <div class="cartoes">
-      <div class="cartao" style="--cor:var(--orcado)">
-        <div class="rot">Planejado</div><div class="cifra" id="cPlan">—</div>
-        <div class="base" id="cPlanBase"></div>
-      </div>
-      <div class="cartao" style="--cor:var(--realizado)">
-        <div class="rot">Realizado</div><div class="cifra" id="cReal">—</div>
-        <div class="base" id="cRealBase"></div>
-      </div>
-      <div class="cartao" style="--cor:var(--sem-laranja)">
-        <div class="rot">Execução %</div><div class="cifra" id="cExec">—</div>
-        <div class="base" id="cExecBase"></div>
-      </div>
-      <div class="cartao cartao-tipo" id="tipos"></div>
-    </div>
-    <div class="direita">
-      <div class="periodo" id="periodo">—</div>
-      <div class="relogio" id="relogio"></div>
-      <div class="manual" id="manual"></div>
-    </div>
+<header>
+  <div class="marca"><div class="selo" id="logo"><img src="img/logo.png" alt="Usina Santa Clotilde"></div><h1>Usina Santa Clotilde S/A<small id="subtitulo">Acompanhamento do Orçamento de Compras</small></h1></div>
+  <div class="seletor-safra"><span class="rot">Período</span><select id="selPeriodo" onchange="trocarPeriodo()"></select></div>
+  <div class="cabecalho-direita">
+    <div class="emissao"><b id="relogio"></b></div>
+    <a class="btn-voltar" href="hub.html">
+      <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Voltar ao Hub
+    </a>
   </div>
-
-  <div class="meses" id="meses"></div>
-  <div class="negocios" id="areas"></div>
-
-  <div class="bloco"><div id="quadro"><div class="carregando">Consultando o orçamento…</div></div></div>
-
-  <div class="graficos">
-    <div class="bloco">
-      <div class="cab"><h2>Mês a mês</h2>
-        <div class="legenda">
-          <span><i style="background:#5b6675"></i>Orçado</span>
-          <span><i style="background:#2a78d6"></i>Realizado</span>
-        </div>
-      </div>
-      <div class="tela"><canvas id="gMensal"></canvas></div>
-    </div>
-    <div class="bloco">
-      <div class="cab"><h2>Acumulado na safra</h2>
-        <div class="legenda">
-          <span><i style="background:#0ca30c"></i>Orçado</span>
-          <span><i style="background:#1e3a8a"></i>Realizado</span>
-        </div>
-      </div>
-      <div class="tela"><canvas id="gAcum"></canvas></div>
-    </div>
+</header>
+<div class="faixa">
+  <div class="areas" id="areas"></div>
+  <div class="tipos" id="tipos">
+    <button class="on" data-t="OC" title="Ordens de compra"><span class="cx"></span>OC</button>
+    <button class="on" data-t="CT" title="Contratos"><span class="cx"></span>CT</button>
   </div>
+  <div class="regua" id="regua"><span class="rot">Mês</span></div>
+</div>
 
-</div></div>
+<main id="main">
+  <div class="estado" id="carregando"><div class="spinner"></div>Consultando o orçamento no Oracle… (pode levar alguns segundos)</div>
 
+  <!-- RESUMO -->
+  <section class="tela" id="t-resumo">
+    <div class="titulo"><div class="visao"><button class="ativa" data-v="corrente">Orçado atual x Realizado atual</button><button data-v="anterior">Orçado atual x Realizado anterior</button><button data-v="real">Realizado atual x Realizado anterior</button><span class="rot" style="margin-left:14px">Visão</span><button class="ativa" data-m="geral">Geral</button><button data-m="grupo">Grupo de empenho</button><button data-m="graficos">Gráficos</button></div><span class="sub" id="r-sub"></span></div>
+    <div class="resumo" id="resumo-geral">
+      <div class="cards" id="cards"></div>
+      <div class="baixo">
+        <div class="card flex c4"><h3>Evolução da safra</h3><div class="sub">Mês a mês, com o acumulado em linha</div><div class="cv"><canvas id="g-mensal"></canvas></div></div>
+        <div class="card flex c5"><h3>Maiores variações do acumulado</h3><div class="sub" id="var-sub"></div><ul class="lista" id="lista-var"></ul></div>
+      </div>
+    </div>
+    <div class="graficos" id="resumo-graf" style="display:none">
+      <div class="card flex c4"><h3>Acumulado por grupo de despesa</h3><div class="sub" id="gg-sub"></div><div class="cv"><canvas id="g-grupo"></canvas></div></div>
+      <div class="card flex c5"><h3 id="ga-tit">Acumulado por área de negócio</h3><div class="sub" id="ga-sub"></div><div class="cv"><canvas id="g-area"></canvas></div></div>
+    </div>
+    <div class="tab" id="resumo-grupo" style="display:none"><table>
+      <thead>
+        <tr class="super"><th rowspan="2" class="mesclada">Grupo de empenho</th><th colspan="4" class="sep" id="rg-mes"></th><th colspan="4" class="sep" id="rg-acum"></th></tr>
+        <tr><th class="sep" id="rg-o1">Orçado</th><th id="rg-r1">Realizado</th><th>Diferença R$</th><th>Dif. %</th><th class="sep" id="rg-o2">Orçado</th><th id="rg-r2">Realizado</th><th>Diferença R$</th><th>Dif. %</th></tr>
+      </thead>
+      <tbody id="rg-corpo"></tbody><tfoot id="rg-rodape"></tfoot>
+    </table></div>
+  </section>
+
+  <!-- GRUPOS / ÁREAS / DETALHE -->
+  <section class="tela" id="t-tabela">
+    <div class="titulo"><h2 id="tb-tit"></h2><span class="sub" id="tb-sub"></span></div>
+    <div class="tab"><table>
+      <thead>
+        <tr class="super"><th></th><th colspan="4" class="sep" id="th-mes"></th><th colspan="4" class="sep" id="th-acum"></th></tr>
+        <tr><th id="th-n1"></th><th class="sep" id="th-o1">Orçado</th><th id="th-r1">Realizado</th><th>Diferença R$</th><th>Dif. %</th><th class="sep" id="th-o2">Orçado</th><th id="th-r2">Realizado</th><th>Diferença R$</th><th>Dif. %</th></tr>
+      </thead>
+      <tbody id="corpo"></tbody><tfoot id="rodape"></tfoot>
+    </table></div>
+  </section>
+</main>
 <div class="modal-itens" id="modalItens" onclick="if(event.target===this)fecharDetalheItens()">
   <div class="mi-caixa">
     <div class="mi-topo">
@@ -283,261 +261,255 @@
     <div class="mi-corpo" id="miCorpo"></div>
   </div>
 </div>
+<footer><span id="rodape-fonte">Fonte: ERP (Oracle), consultado ao vivo. OC = ordens de compra (tipo de empenho 1, 5 e demais); CT = contratos (tipo 2); o orçado herda o tipo pelo empenho.</span><span>Usina Santa Clotilde · SGO · Módulo Compras</span></footer>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
 "use strict";
-// A contabilidade de custo fecha ao longo do mês; de dez em dez minutos a
-// parede acompanha sem martelar o Oracle.
-const INTERVALO_MS = 10 * 60 * 1000;
+let DADOS = [], MESES = [], PERIODO_ATUAL = null, PERIODO_ANTERIOR = null, TEM_REALIZADO_ATUAL = false;
+let mes = 0, tela = 'resumo', pilha = [], area = null, visao = 'corrente', modo = 'geral', tipos = { OC: true, CT: true };
 
-/* ?area=agricola|industrial|administrativa|comercial — vazio/ausente = Empresa
-   inteira. É o estado "automático" desta parede: cada TV recebe o ?area= da
-   sua própria área e volta pra ele sozinha depois de mexerem na tela. */
-const AREA_SLUG_PARA_NOME = {
-  agricola: 'ÁREA AGRÍCOLA', industrial: 'ÁREA INDUSTRIAL',
-  administrativa: 'ÁREA ADMINISTRATIVA', comercial: 'LOGÍSTICA E COMERCIALIZAÇÃO'
+// Visões: main = coluna da esquerda, comp = coluna de comparação. O realizado do
+// período ATUAL só existe de verdade quando o período já passou (ou está em
+// curso) — daí semComp/semMain dependerem de TEM_REALIZADO_ATUAL, descoberto
+// nos dados a cada carga.
+const VIS = {
+  anterior:{main:'Orçado',mainM:M=>M.orc,comp:'Realizado',compM:M=>M.rea,semMain:()=>false,semComp:()=>false,rotMain:()=>PERIODO_ATUAL.rotulo,rotComp:()=>PERIODO_ANTERIOR.rotulo,nota:()=>'Diferença = Realizado menos Orçado · R$'},
+  corrente:{main:'Orçado',mainM:M=>M.orc,comp:'Realizado',compM:M=>M.orc,semMain:()=>false,semComp:()=>!TEM_REALIZADO_ATUAL,rotMain:()=>PERIODO_ATUAL.rotulo,rotComp:()=>PERIODO_ATUAL.rotulo,nota:()=>TEM_REALIZADO_ATUAL?'Diferença = Realizado menos Orçado · R$':'Realizado do período atual ainda não aconteceu (ou não foi lançado) nesses meses'},
+  real:{main:'Realizado',mainM:M=>M.orc,comp:'Realizado',compM:M=>M.rea,semMain:()=>!TEM_REALIZADO_ATUAL,semComp:()=>false,rotMain:()=>PERIODO_ATUAL.rotulo,rotComp:()=>PERIODO_ANTERIOR.rotulo,nota:()=>TEM_REALIZADO_ATUAL?'Diferença = Realizado atual menos Realizado anterior · R$':'Realizado do período atual ainda não aconteceu (ou não foi lançado) nesses meses'}
 };
-const AREA_ROTULO = { '': 'Empresa', 'ÁREA AGRÍCOLA': 'Agrícola', 'ÁREA INDUSTRIAL': 'Industrial',
-                      'ÁREA ADMINISTRATIVA': 'Administrativa', 'LOGÍSTICA E COMERCIALIZAÇÃO': 'Comercial' };
-const AREA_INICIAL = AREA_SLUG_PARA_NOME[(new URLSearchParams(location.search).get('area') || '').toLowerCase()] || '';
-
-let DADOS = [], MESES = [], PERIODO_ATUAL = null, PERIODO_ANTERIOR = null;
-let AREA = AREA_INICIAL, mes = 0, tipos = { OC: true, CT: true }, ABERTOS = {};
-
-/* ── Interação numa parede é temporária ──
-   Quem clica vai embora. Sem isto, o painel ficaria preso na área/mês
-   escolhido para sempre. */
-const VOLTA_MS = 3 * 60 * 1000;
-let MANUAL = false;
-let relogioVolta = null;
-
-function mexeu() {
-  MANUAL = true;
-  clearTimeout(relogioVolta);
-  relogioVolta = setTimeout(voltarAoAutomatico, VOLTA_MS);
-  contarVolta();
-}
-function voltarAoAutomatico() {
-  MANUAL = false;
-  AREA = AREA_INICIAL;
-  tipos = { OC: true, CT: true };
-  ABERTOS = {};
-  clearTimeout(relogioVolta);
-  document.getElementById('manual').classList.remove('on');
-  mes = mesAutomatico();
-  render();
-}
-function contarVolta() {
-  const cx = document.getElementById('manual');
-  const fim = Date.now() + VOLTA_MS;
-  cx.classList.add('on');
-  clearInterval(contarVolta.tique);
-  contarVolta.tique = setInterval(() => {
-    const resta = Math.max(0, Math.round((fim - Date.now()) / 1000));
-    if (!MANUAL || resta === 0) { clearInterval(contarVolta.tique); return; }
-    cx.textContent = 'Visualização manual · volta ao automático em '
-                   + Math.floor(resta / 60) + ':' + String(resta % 60).padStart(2, '0');
-  }, 1000);
-  cx.textContent = 'Visualização manual · volta ao automático em 3:00';
-}
-
-/** O mês que o painel mostra sozinho: o último com movimento (orçado ou realizado). */
-function mesAutomatico() {
-  if (!DADOS.length) return 0;
-  const comDado = new Set(DADOS.filter(d => d[4] || d[7]).map(d => d[3]));
-  for (let i = 5; i >= 0; i--) if (comDado.has(i)) return i;
-  return 5;
-}
-
-function trocarMes(i) { if (mes === i) return; mes = i; mexeu(); render(); }
-function trocarArea(a) { if (AREA === a) return; AREA = a; ABERTOS = {}; mexeu(); render(); }
-function alternarTipo(qual) {
-  if (tipos[qual] && !tipos[qual === 'OC' ? 'CT' : 'OC']) return;
-  tipos[qual] = !tipos[qual];
-  mexeu(); render();
-}
-function alternarGrupo(k) { ABERTOS[k] = !ABERTOS[k]; mexeu(); render(); }
-
-const fmt = n => Math.round(Number(n) || 0).toLocaleString('pt-BR');
-const fmtDif = d => d < 0 ? '(' + fmt(Math.abs(d)) + ')' : fmt(d);
-const fmtQtd = n => Number.isInteger(n) ? String(n) : n.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
-const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const V = () => VIS[visao];
+const SD = '<span class="d-nulo">—</span>';
+const ORDEM_A = ['ÁREA AGRÍCOLA','ÁREA INDUSTRIAL','ÁREA ADMINISTRATIVA','LOGÍSTICA E COMERCIALIZAÇÃO','MATÉRIA-PRIMA DE TERCEIROS','OBRAS EM ANDAMENTO / INVESTIMENTOS/PERDA'];
+let AREAS = [];
+const ROTULO = a => tit(a).replace('Área ','').replace('Obras Em Andamento / Investimentos/perda','Imobilizado').replace('Logística e Comercialização','Comercial');
+const fArea = () => area ? [{ k: 'a', v: area }] : [];
 const $ = s => document.querySelector(s);
+const fmt = n => Math.round(n).toLocaleString('pt-BR');
+const fmtS = n => n < 0 ? '(' + fmt(-n) + ')' : fmt(n);
+const fmtM = n => Math.abs(n) < 1e6 && n !== 0 ? Math.round(n / 1e3).toLocaleString('pt-BR') + ' mil' : (n / 1e6).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' mi';
+const pct = (o, r) => o === 0 ? null : (r - o) / Math.abs(o) * 100;
+const fmtP = p => p === null ? '<span class="d-nulo">n/a</span>' : (p <= -0.05 ? '(' + (-p).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%)' : (p >= 0.05 ? '+' : '') + Math.abs(p).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%');
+const cls = d => Math.abs(d) < .5 ? 'd-nulo' : (d > 0 ? 'd-pos' : 'd-neg');
+const tit = s => String(s || '').toLowerCase().replace(/(^|\s)\S/g, t => t.toUpperCase()).replace(/\bE\b/g, 'e').replace(/\bCom\b/g, 'com').replace(/\bDe\b/g, 'de').replace(/Ped\b/, 'P&D');
+const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const NOME = { g: 'Grupo de despesa', e: 'Empenho', a: 'Área de negócio' };
 
-function ajustarEscala() {
-  const s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
-  document.getElementById('palco').style.transform = 'translate(-50%, -50%) scale(' + s + ')';
-}
-window.addEventListener('resize', ajustarEscala);
+let PERIODO_PADRAO_CHAVE = null;   // o período que o servidor escolhe sozinho (o "atual") — descoberto na 1ª carga
 
-async function carregar() {
+// ── Modo TV: só o que muda em relação à tela normal ──
+// ?area=agricola|industrial|administrativa|comercial (ausente/vazio = Empresa
+// inteira) é o estado "automático" desta parede — pra onde ela volta sozinha.
+const AREA_SLUG_PARA_NOME = { agricola: 'ÁREA AGRÍCOLA', industrial: 'ÁREA INDUSTRIAL',
+                               administrativa: 'ÁREA ADMINISTRATIVA', comercial: 'LOGÍSTICA E COMERCIALIZAÇÃO' };
+const AREA_TV_INICIAL = AREA_SLUG_PARA_NOME[(new URLSearchParams(location.search).get('area') || '').toLowerCase()] || null;
+
+async function carregar(ini, fim) {
+  const primeiraCarga = PERIODO_ATUAL === null;
+  if (!primeiraCarga) {
+    document.getElementById('carregando').style.display = 'flex';
+    document.getElementById('carregando').innerHTML = '<div class="spinner"></div>Consultando o orçamento no Oracle…';
+    document.querySelectorAll('.tela').forEach(s => s.classList.remove('ativa'));
+  }
   try {
-    const r = await fetch('api/orcamento-safra', { headers: { 'Accept': 'application/json' } });
-    if (r.status === 401) {
-      const t = document.getElementById('tarja');
-      t.textContent = '⚠ Sessão expirada — faça login neste navegador para o painel voltar a atualizar';
-      t.classList.add('on');
-      return;
-    }
+    const url = 'api/orcamento-safra' + (ini ? ('?ini=' + ini + '&fim=' + fim) : '');
+    const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
     const j = await r.json();
-    if (!j.ok) throw new Error(j.erro || 'Consulta recusada');
-    document.getElementById('tarja').classList.remove('on');
+    if (!j.ok) throw new Error(j.erro || 'Falha ao consultar');
     DADOS = j.dados || [];
     MESES = j.meses || [];
     PERIODO_ATUAL = j.periodoAtual;
     PERIODO_ANTERIOR = j.periodoAnterior;
-    document.getElementById('periodo').textContent = PERIODO_ATUAL.rotulo;
-    document.getElementById('relogio').textContent = 'Atualizado em ' + new Date().toLocaleTimeString('pt-BR');
-    // A recarga de dez em dez minutos NÃO rouba a área/mês de quem está olhando.
-    if (!MANUAL) mes = mesAutomatico();
+    TEM_REALIZADO_ATUAL = DADOS.some(d => d[7] !== 0);
+    if (primeiraCarga) { PERIODO_PADRAO_CHAVE = PERIODO_ATUAL.chave; montarSeletorPeriodo(); }
+    AREAS = [...new Set(DADOS.map(d => d[2]))]
+      .filter(a => a !== 'MATÉRIA-PRIMA DE TERCEIROS' && a !== 'OBRAS EM ANDAMENTO / INVESTIMENTOS/PERDA')
+      .sort((a, b) => ORDEM_A.indexOf(a) - ORDEM_A.indexOf(b));
+    document.getElementById('subtitulo').textContent = 'Acompanhamento do Orçamento de Compras — ' + PERIODO_ATUAL.rotulo;
+    if (!j.temNegocio) {
+      document.getElementById('rodape-fonte').textContent += ' Obs.: esta base não tem a coluna de área de negócio configurada — tudo aparece como "Não disponível".';
+    }
+    tela = 'resumo'; pilha = []; area = AREA_TV_INICIAL;
+    document.getElementById('carregando').style.display = 'none';
+    document.getElementById('t-resumo').classList.add('ativa');
     render();
   } catch (e) {
-    if (!DADOS.length) document.getElementById('quadro').innerHTML =
-      `<div class="carregando" style="color:#d03b3b">Não foi possível consultar: ${esc(e.message || e)}</div>`;
+    document.getElementById('carregando').style.display = 'flex';
+    document.getElementById('carregando').innerHTML =
+      '<div class="erro"><b>Não foi possível carregar o orçamento.</b></div><div style="font-size:12.5px">' + esc(e.message) + '</div>';
   }
 }
 
-function agregar() {
-  const grupos = new Map();
+/* ── Períodos ──
+   Safra: setembro a fevereiro (a moagem). EntreSafra: março a agosto (a
+   parada e a manutenção). Sempre 6 meses cada, alternados. */
+function safraDe(ano) { return { chave: 'S' + ano, rotulo: 'Safra ' + ano + '/' + (ano + 1), ini: ano * 100 + 9, fim: (ano + 1) * 100 + 2 }; }
+function entressafraDe(ano) { return { chave: 'E' + ano, rotulo: 'EntreSafra ' + ano, ini: ano * 100 + 3, fim: ano * 100 + 8 }; }
+let PERIODOS = [];
+function montarSeletorPeriodo() {
+  const h = new Date(), ano = h.getFullYear(), mes = h.getMonth() + 1;
+  PERIODOS = [];
+  if (mes >= 3 && mes <= 8) PERIODOS.push(entressafraDe(ano));
+  else PERIODOS.push(safraDe(mes >= 9 ? ano : ano - 1));
+  for (let a = ano; a >= ano - 4; a--) {
+    for (const p of [entressafraDe(a), safraDe(a)]) {
+      if (!PERIODOS.some(x => x.chave === p.chave)) PERIODOS.push(p);
+    }
+  }
+  const sel = document.getElementById('selPeriodo');
+  sel.innerHTML = PERIODOS.map((p, i) => `<option value="${i}">${esc(p.rotulo)}${p.chave === PERIODO_PADRAO_CHAVE ? ' (atual)' : ''}</option>`).join('');
+  const idx = PERIODOS.findIndex(p => p.chave === PERIODO_ATUAL.chave);
+  sel.value = idx >= 0 ? idx : 0;
+}
+function trocarPeriodo() {
+  const p = PERIODOS[Number(document.getElementById('selPeriodo').value) || 0];
+  if (p.chave === PERIODO_ATUAL.chave) return;
+  carregar(p.ini, p.fim);
+}
+
+function agg(keys, filtro, usarAtual) {
+  const map = new Map();
   for (const [g, e, a, mi, o, rAnt, tp, rAtu, ce] of DADOS) {
     if (!tipos[tp]) continue;
-    if (AREA && a !== AREA) continue;
-    let grp = grupos.get(g);
-    if (!grp) { grp = { chave: g, nome: g, oM: 0, rM: 0, oA: 0, rA: 0, emp: new Map() }; grupos.set(g, grp); }
-    let emp = grp.emp.get(e);
-    if (!emp) { emp = { chave: g + '|' + e, cod: ce, nome: e, oM: 0, rM: 0, oA: 0, rA: 0 }; grp.emp.set(e, emp); }
-    if (mi === mes) { grp.oM += o; grp.rM += rAtu; emp.oM += o; emp.rM += rAtu; }
-    if (mi <= mes)  { grp.oA += o; grp.rA += rAtu; emp.oA += o; emp.rA += rAtu; }
+    const row = { g, e, a };
+    if (filtro.some(f => row[f.k] !== f.v)) continue;
+    const r = usarAtual ? rAtu : rAnt;
+    const k = keys.map(kk => row[kk]).join('||');
+    if (!map.has(k)) map.set(k, { parts: keys.map(kk => row[kk]), codEmpenho: ce, oM: 0, rM: 0, oA: 0, rA: 0, oS: 0, rS: 0 });
+    const x = map.get(k);
+    if (mi === mes) { x.oM += o; x.rM += r; }
+    if (mi <= mes) { x.oA += o; x.rA += r; }
+    x.oS += o; x.rS += r;
   }
-  const vivo = x => x.oM || x.rM || x.oA || x.rA;
-  const maior = (a, b) => Math.max(b.oA, b.rA) - Math.max(a.oA, a.rA);
-  const lista = [...grupos.values()].filter(vivo).sort(maior);
-  lista.forEach(g => { g.empenhos = [...g.emp.values()].filter(vivo).sort(maior); });
-  return lista;
+  return [...map.values()];
 }
-function serie() {
-  const arr = MESES.map(m => ({ label: m.m, o: 0, r: 0 }));
+function tot(filtro = [], usarAtual) {
+  const t = { oM: 0, rM: 0, oA: 0, rA: 0, oS: 0, rS: 0 };
   for (const [g, e, a, mi, o, rAnt, tp, rAtu] of DADOS) {
     if (!tipos[tp]) continue;
-    if (AREA && a !== AREA) continue;
-    arr[mi].o += o; arr[mi].r += rAtu;
+    const row = { g, e, a };
+    if (filtro.some(f => row[f.k] !== f.v)) continue;
+    const r = usarAtual ? rAtu : rAnt;
+    if (mi === mes) { t.oM += o; t.rM += r; }
+    if (mi <= mes) { t.oA += o; t.rA += r; }
+    t.oS += o; t.rS += r;
   }
-  let ao = 0, ar = 0;
-  arr.forEach(m => { ao += m.o; ar += m.r; m.ao = ao; m.ar = ar; });
-  return arr;
+  return t;
+}
+function mensal(filtro = [], usarAtual) {
+  const o = Array(6).fill(0), r = Array(6).fill(0);
+  for (const [g, e, a, mi, oo, rAnt, tp, rAtu] of DADOS) {
+    if (!tipos[tp]) continue;
+    const row = { g, e, a };
+    if (filtro.some(f => row[f.k] !== f.v)) continue;
+    o[mi] += oo; r[mi] += usarAtual ? rAtu : rAnt;
+  }
+  return { o, r };
 }
 
-function pct(r, p) { return p ? r * 100 / p : null; }
-function classePct(p) {
-  if (p === null) return '';
-  if (p > 100) return 'vermelho';
-  if (p >= 90)  return 'laranja';
-  if (p >= 85)  return 'amarelo';
-  return '';
+function renderAreas() {
+  const el = $('#areas');
+  el.innerHTML = `<button class="${area === null ? 'ativa' : ''}" data-a="">Empresa</button><span class="divisor"></span>` +
+    AREAS.map(a => `<button class="${area === a ? 'ativa' : ''}" data-a="${esc(a)}">${esc(ROTULO(a))}</button>`).join('');
+  el.querySelectorAll('button').forEach(b => b.onclick = () => { area = b.dataset.a || null; tela = 'resumo'; pilha = []; render(); });
+}
+function renderRegua() {
+  const el = $('#regua');
+  el.querySelectorAll('button').forEach(b => b.remove());
+  MESES.forEach((M, i) => {
+    const b = document.createElement('button');
+    b.textContent = M.m;
+    b.className = i === mes ? 'ativo' : '';
+    b.title = `${M.l}: orçado ${M.orc} x realizado ${M.rea}`;
+    b.onclick = () => { mes = i; render(); };
+    el.appendChild(b);
+  });
+}
+function deltaHTML(o, r) {
+  const d = r - o, p = pct(o, r), c = Math.abs(d) < .5 ? 'flat' : (d > 0 ? 'up' : 'down');
+  return `<div class="delta ${c}">${c === 'up' ? '▲' : c === 'down' ? '▼' : '●'} ${fmtS(d)} <span class="pct">${fmtP(p)}</span></div>`;
 }
 
-function render() {
-  const grupos = agregar();
+function renderResumoGrupo() {
+  const M = MESES[mes], v = V(), f = fArea(), usarAtual = visao !== 'anterior';
+  $('#rg-mes').textContent = `${M.l}: ${v.main.toLowerCase()} ${v.mainM(M)} x ${v.comp.toLowerCase()} ${v.compM(M)}`;
+  $('#rg-acum').textContent = `Acumulado ${MESES[0].m.toLowerCase()} a ${M.m.toLowerCase()}: ${v.rotMain()} x ${v.rotComp()}`;
+  $('#rg-o1').textContent = $('#rg-o2').textContent = `${v.main} ${v.rotMain()}`;
+  $('#rg-r1').textContent = $('#rg-r2').textContent = `${v.comp} ${v.rotComp()}`;
+  const L = agg(['g'], f, usarAtual).sort((a, b) => (v.semMain() ? b.rA - a.rA : b.oA - a.oA)), t = tot(f, usarAtual), maxA = Math.max(...L.map(x => Math.abs(x.oA - x.rA)), 1), bs = v.semMain() ? 'rA' : 'oA';
+  $('#rg-corpo').innerHTML = L.map(x => `<tr class="link" onclick="abrir('g','${esc(x.parts[0]).replace(/'/g, "\\'")}')"><td>${esc(tit(x.parts[0]))}${t[bs] ? `<span class="share">${(x[bs] / t[bs] * 100).toFixed(1).replace('.', ',')}%</span>` : ''}</td>${celulas(x, maxA, v)}</tr>`).join('');
+  $('#rg-rodape').innerHTML = `<tr><td>Total</td>${celulas(t, 0, v)}</tr>`;
+}
+function renderResumo() {
+  const usarAtual = visao !== 'anterior';
+  const t = tot(fArea(), usarAtual), M = MESES[mes], v = V(), cor = v.semComp(), sem = v.semMain() || v.semComp();
+  document.querySelectorAll('.visao button[data-m]').forEach(b => b.classList.toggle('ativa', b.dataset.m === modo));
+  $('#resumo-geral').style.display = modo === 'geral' ? '' : 'none';
+  $('#resumo-grupo').style.display = modo === 'grupo' ? '' : 'none';
+  $('#resumo-graf').style.display = modo === 'graficos' ? '' : 'none';
+  if (modo === 'grupo') renderResumoGrupo();
+  document.querySelectorAll('.visao button[data-v]').forEach(b => b.classList.toggle('ativa', b.dataset.v === visao));
+  $('#r-sub').textContent = v.nota();
+  const c = [
+    { rot: 'Mês selecionado', per: M.l, o: t.oM, r: t.rM, lo: `${v.main} ${v.mainM(M)}`, lr: `${v.comp} ${v.compM(M)}` },
+    { rot: 'Acumulado até o mês', per: `${MESES[0].l} a ${M.l.toLowerCase()}`, o: t.oA, r: t.rA, lo: `${v.main} ${v.rotMain()}`, lr: `${v.comp} ${v.rotComp()}` },
+    { rot: 'Período completo', per: `${MESES[0].l} a ${MESES[5].l.toLowerCase()}`, o: t.oS, r: t.rS, lo: `${v.main} ${v.rotMain()}`, lr: `${v.comp} ${v.rotComp()}` }
+  ];
+  $('#cards').innerHTML = c.map((x, i) => `<div class="card c${i + 1}"><div class="rot">${esc(x.rot)}</div><div class="per">${esc(x.per)}</div><div class="grande">${v.semMain() ? '<span style="font-size:18px;color:var(--cinza)">sem dado</span>' : 'R$ ' + fmt(x.o)}<small>${esc(x.lo)}</small></div><div class="comp"><span>${esc(x.lr)}</span><span class="val num">${cor ? 'sem dado' : 'R$ ' + fmt(x.r)}</span></div>${sem ? '<div class="delta flat">— diferença a apurar</div>' : deltaHTML(x.o, x.r)}</div>`).join('');
+  $('#var-sub').textContent = v.semMain()
+    ? `Maiores grupos do realizado do período anterior, acumulado ${MESES[0].m.toLowerCase()} a ${M.m.toLowerCase()}. Clique para detalhar.`
+    : cor
+      ? `Maiores grupos do orçado acumulado ${MESES[0].m.toLowerCase()} a ${M.m.toLowerCase()}. Clique para detalhar.`
+      : `Grupos${area ? ' da área' : ''} com maior diferença no acumulado ${MESES[0].m.toLowerCase()} a ${M.m.toLowerCase()}. Clique para detalhar.`;
+  const G = agg(['g'], fArea(), usarAtual).map(x => v.semMain() ? { ...x, d: x.rA } : cor ? { ...x, rA: 0, d: x.oA } : { ...x, d: x.rA - x.oA }).sort((a, b) => Math.abs(b.d) - Math.abs(a.d)).slice(0, 6);
+  $('#lista-var').innerHTML = G.map(x => `<li onclick="abrir('g','${esc(x.parts[0]).replace(/'/g, "\\'")}')"><div><div class="nome">${esc(tit(x.parts[0]))}</div><div class="base">${v.semMain() ? 'Realizado ant. ' + fmt(x.rA) : 'Orçado ' + fmt(x.oA) + (cor ? '' : ' · Realizado ' + fmt(x.rA))}</div></div><div class="d ${sem ? '' : cls(x.d)}">${sem ? fmt(x.d) : fmtS(x.d)}</div><div class="pct ${sem ? 'd-nulo' : cls(x.d)}">${sem ? 'n/a' : fmtP(pct(x.oA, x.rA))}</div></li>`).join('');
+}
+
+function celulas(x, maxA, v) {
+  v = v || { semMain: () => false, semComp: () => false };
+  const dM = x.rM - x.oM, dA = x.rA - x.oA, w = maxA ? Math.min(50, Math.round(Math.abs(dA) / maxA * 50)) : 0, sem = v.semMain() || v.semComp();
+  if (sem) {
+    const m = n => v.semMain() ? SD : fmt(n), c = n => v.semComp() ? SD : fmt(n), na = '<span class="d-nulo">n/a</span>';
+    return `<td class="num sep">${m(x.oM)}</td><td class="num">${c(x.rM)}</td><td class="num">${na}</td><td class="num pct">${na}</td><td class="num sep">${m(x.oA)}</td><td class="num">${c(x.rA)}</td><td class="num">${na}</td><td class="num pct">${na}</td>`;
+  }
+  return `<td class="num sep">${fmt(x.oM)}</td><td class="num">${fmt(x.rM)}</td><td class="num ${cls(dM)}">${fmtS(dM)}</td><td class="num pct ${cls(dM)}">${fmtP(pct(x.oM, x.rM))}</td>
+  <td class="num sep">${fmt(x.oA)}</td><td class="num">${fmt(x.rA)}</td><td class="num ${cls(dA)}">${w ? `<span class="bar" style="width:${w}px;background:${dA > 0 ? 'var(--rubro)' : 'var(--verde)'}"></span>` : ''}${fmtS(dA)}</td><td class="num pct ${cls(dA)}">${fmtP(pct(x.oA, x.rA))}</td>`;
+}
+function renderTabela() {
   const M = MESES[mes];
-
-  document.getElementById('subArea').textContent = 'Orçamento de Compras — Safra · ' + AREA_ROTULO[AREA];
-
-  document.getElementById('areas').innerHTML = '<span class="rot">Área</span>'
-    + ['', 'ÁREA AGRÍCOLA', 'ÁREA INDUSTRIAL', 'ÁREA ADMINISTRATIVA', 'LOGÍSTICA E COMERCIALIZAÇÃO'].map(a =>
-        `<button class="${AREA === a ? 'on' : ''}" onclick="trocarArea('${a}')">${esc(AREA_ROTULO[a])}</button>`
-      ).join('');
-
-  // Compra (OC) / Contrato (CT) ao lado do card de Execução — os dois
-  // ligados por padrão, cada um alternável de forma independente.
-  document.getElementById('tipos').innerHTML = '<div class="rot">Tipo</div>'
-    + `<button class="mini-tog ${tipos.OC ? 'on' : ''}" onclick="alternarTipo('OC')">OC</button>`
-    + `<button class="mini-tog ${tipos.CT ? 'on' : ''}" onclick="alternarTipo('CT')">CT</button>`;
-
-  const comDado = new Set(DADOS.filter(d => d[4] || d[7]).map(d => d[3]));
-  document.getElementById('meses').innerHTML = MESES.map((m, i) =>
-    `<button class="${mes === i ? 'on' : ''} ${comDado.has(i) ? '' : 'futuro'}"
-             onclick="trocarMes(${i})">${esc(m.m)}</button>`).join('');
-
-  const tp = grupos.reduce((a, g) => a + g.oM, 0), tr = grupos.reduce((a, g) => a + g.rM, 0);
-  const tap = grupos.reduce((a, g) => a + g.oA, 0), tar = grupos.reduce((a, g) => a + g.rA, 0);
-  const ex = pct(tr, tp), exA = pct(tar, tap);
-  document.getElementById('cPlan').textContent = fmt(tp);
-  document.getElementById('cPlanBase').textContent = M.l + ' · R$';
-  document.getElementById('cReal').textContent = fmt(tr);
-  document.getElementById('cRealBase').textContent = M.l + ' · R$';
-  const cx = document.getElementById('cExec');
-  cx.textContent = ex === null ? '—' : ex.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-  cx.className = 'cifra' + (ex !== null && ex > 100 ? ' mal' : '');
-  document.getElementById('cExecBase').textContent =
-    'acumulado ' + (exA === null ? '—' : exA.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%');
-
-  const bloco = (p, r, acaoReal) => {
-    const d = p - r;
-    const drill = (acaoReal && r) ? ` class="real-drill" onclick="event.stopPropagation();${acaoReal}"` : '';
-    return `<td class="plan divide">${p ? fmt(p) : ''}</td>
-            <td${drill}>${r ? fmt(r) : ''}</td>
-            <td class="dif ${d >= 0 ? 'bem' : 'mal'}">${(p || r) ? fmtDif(d) : ''}</td>
-            <td class="pct ${classePct(pct(r, p))}">${pct(r, p) === null ? '—' : pct(r, p).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</td>`;
-  };
-
-  document.getElementById('quadro').innerHTML = `
-    <table class="q">
-      <colgroup><col style="width:430px">${Array(8).fill('<col>').join('')}</colgroup>
-      <thead>
-        <tr class="faixa"><th class="rot" rowspan="2">Grupo de Empenho</th>
-          <th colspan="4" class="divide">${esc(M.l)}</th>
-          <th colspan="4" class="divide">Acumulado</th></tr>
-        <tr><th class="divide">Plan (R$)</th><th>Real (R$)</th><th>Dif.</th><th>%</th>
-            <th class="divide">Plan (R$)</th><th>Real (R$)</th><th>Dif.</th><th>%</th></tr>
-      </thead>
-      <tbody>${grupos.map(g => {
-        const aberto = ABERTOS[g.chave];
-        return `<tr class="grupo ${aberto ? 'aberto' : ''}"
-                    onclick="alternarGrupo('${esc(g.chave).replace(/'/g, "\\'")}')">
-          <td class="rot"><span class="seta">▶</span> ${esc(g.nome)}</td>
-          ${bloco(g.oM, g.rM)}${bloco(g.oA, g.rA)}
-        </tr>` + (aberto ? g.empenhos.map(e => {
-          const acao = e.cod ? acaoDetalhe(e.cod, e.nome) : null;
-          return `<tr class="empenho">
-            <td class="rot"><span class="cod">${esc(e.cod)}</span>${esc(e.nome)}</td>
-            ${bloco(e.oM, e.rM, acao)}${bloco(e.oA, e.rA, acao)}
-          </tr>`;
-        }).join('') : '');
-      }).join('')}</tbody>
-      <tfoot><tr><td class="rot">Total</td>${bloco(tp, tr)}${bloco(tap, tar)}</tr></tfoot>
-    </table>`;
-
-  encaixar();
-  graficoMensal();
-  graficoAcumulado();
+  const ordem = tela === 'grupos' ? ['g', 'e', 'a'] : ['a', 'g', 'e'];
+  const nivel = ordem[pilha.length], filtro = pilha;
+  const crumbs = pilha.map(p => tit(p.v));
+  $('#tb-tit').innerHTML = `<button class="volta" onclick="voltar()">‹ Voltar</button>` + (crumbs.length ? crumbs.map(esc).join(' › ') + ' · ' : '') + (nivel === 'g' ? 'Grupos de despesa' : nivel === 'a' ? 'Áreas de negócio' : 'Empenhos');
+  $('#tb-sub').textContent = pilha.length ? `Detalhamento por ${NOME[nivel].toLowerCase()}` : 'Clique numa linha para detalhar';
+  $('#th-mes').textContent = `${M.l}: orçado ${M.orc} x realizado ${M.rea}`;
+  $('#th-acum').textContent = `Acumulado ${MESES[0].m.toLowerCase()} a ${M.m.toLowerCase()}: ${PERIODO_ATUAL.rotulo} x ${PERIODO_ANTERIOR.rotulo}`;
+  $('#th-n1').textContent = NOME[nivel];
+  const L = agg([nivel], filtro).sort((a, b) => b.oA - a.oA), t = tot(filtro), maxA = Math.max(...L.map(x => Math.abs(x.oA - x.rA)), 1);
+  const ultimo = pilha.length === 2;
+  $('#corpo').innerHTML = L.map(x => `<tr class="${ultimo ? '' : 'link'}" ${ultimo ? '' : `onclick="abrir('${nivel}','${esc(x.parts[0]).replace(/'/g, "\\'")}')"`}><td>${nivel === 'e' ? esc(x.parts[0]) : esc(tit(x.parts[0]))}${nivel === 'e' && x.codEmpenho ? `<button class="btn-detalhe" title="Ver material e fornecedor do realizado" onclick="event.stopPropagation();abrirDetalheItens('${esc(x.codEmpenho)}','${esc(x.parts[0]).replace(/'/g, "\\'")}')">🔎</button>` : ''}${t.oA ? `<span class="share">${(x.oA / t.oA * 100).toFixed(1).replace('.', ',')}%</span>` : ''}</td>${celulas(x, maxA)}</tr>`).join('');
+  $('#rodape').innerHTML = `<tr><td>Total</td>${celulas(t, 0)}</tr>`;
 }
-
-function encaixar() {
-  const caixa = document.querySelector('#quadro').parentElement;
-  const tabela = caixa.querySelector('table');
-  if (!tabela) return;
-  const disponivel = caixa.clientHeight - 24;
-  let fonte = 16;
-  for (let passada = 0; passada < 3; passada++) {
-    document.documentElement.style.setProperty('--fonte', fonte.toFixed(2) + 'px');
-    const ocupado = tabela.offsetHeight;
-    if (!ocupado) return;
-    fonte = Math.max(8, Math.min(26, fonte * (disponivel * 0.99) / ocupado));
-  }
-  document.documentElement.style.setProperty('--fonte', fonte.toFixed(2) + 'px');
+let base = 0;
+function abrir(k, v) {
+  if (tela === 'resumo') { tela = area ? 'areas' : 'grupos'; pilha = area ? [{ k: 'a', v: area }] : []; base = pilha.length; }
+  pilha.push({ k, v });
+  render();
 }
+function voltar() { pilha.pop(); if (pilha.length <= base) { tela = 'resumo'; pilha = []; } render(); }
 
-// ── Comparativo por item (material/fornecedor), safra atual x anterior ──
-// Reaproveita o mesmo endpoint do BI de Compras (api/orcamento-compras/itens)
-// e a mesma lógica de orcamento-safra.html — escopo só do mês selecionado.
+// ── Detalhe do realizado por material/fornecedor (5º nível, só empenho) ──
+// Reaproveita o mesmo endpoint do BI de Compras (api/orcamento-compras/itens);
+// sem "objeto" na URL ele traz TODOS os objetos de custo do empenho, porque
+// esta tela não navega por objeto de custo — só por área/grupo/empenho.
 const ITENS_DETALHE = {};
 
+/** O anomes do índice (0-5) dentro do período que começa em "ini" — mesma conta de indiceMes()/somar() do servidor, só que do lado do cliente. */
 function anomesDoMes(ini, indice) {
   let ano = Math.floor(ini / 100), m = (ini % 100) + indice;
   while (m > 12) { m -= 12; ano++; }
   return ano * 100 + m;
 }
+
 async function buscarItens(codEmpenho, anomes) {
   const url = 'api/orcamento-compras/itens?meses=' + encodeURIComponent(anomes)
             + '&empenho=' + encodeURIComponent(codEmpenho);
@@ -546,17 +518,18 @@ async function buscarItens(codEmpenho, anomes) {
   if (!j.ok) throw new Error(j.erro || 'Falha ao detalhar');
   return { lista: j.itens || [], soma: j.soma || 0 };
 }
-function acaoDetalhe(codEmpenho, nomeEmpenho) {
-  const a = s => esc(String(s == null ? '' : s)).replace(/'/g, "\\'");
-  return `abrirDetalheItens('${a(codEmpenho)}','${a(nomeEmpenho)}')`;
-}
+
+/**
+ * Escopo do comparativo: só o mês selecionado na régua (não o período
+ * inteiro) — comparado com o MESMO mês na safra anterior. A chave do cache
+ * leva o mês pra trocar de mês na régua não mostrar dado do mês errado.
+ */
 async function abrirDetalheItens(codEmpenho, tituloEmpenho) {
   const modal = $('#modalItens');
   const M = MESES[mes];
   $('#miTitulo').textContent = tituloEmpenho;
   $('#miSub').textContent = `Comparativo por item — ${M.l}: ${PERIODO_ATUAL.rotulo} x ${PERIODO_ANTERIOR.rotulo}`;
   modal.classList.add('on');
-  mexeu();
 
   const ck = codEmpenho + '|' + mes;
   if (!ITENS_DETALHE[ck]) {
@@ -574,11 +547,12 @@ async function abrirDetalheItens(codEmpenho, tituloEmpenho) {
   }
   pintarDetalheItens(ck);
 }
+
 function pintarDetalheItens(ck) {
   const it = ITENS_DETALHE[ck];
   const corpo = $('#miCorpo');
   if (!it || it.carregando) { corpo.innerHTML = '<div class="mi-vazio">Carregando itens…</div>'; return; }
-  if (it.erro) { corpo.innerHTML = `<div class="mi-vazio" style="color:#d03b3b">${esc(it.erro)}</div>`; return; }
+  if (it.erro) { corpo.innerHTML = `<div class="mi-vazio" style="color:var(--rubro)">${esc(it.erro)}</div>`; return; }
   if (it.vendo) { pintarTransacoesItem(ck, it); return; }
   const linhas = montarComparativo(it.atual.lista, it.anterior.lista);
   if (!linhas.length) { corpo.innerHTML = '<div class="mi-vazio">Sem itens detalhados no período.</div>'; return; }
@@ -590,14 +564,23 @@ function pintarDetalheItens(ck) {
     <tbody>${linhas.map(l => linhaComparativoHtml(ck, l)).join('')}</tbody>
   </table></div>`;
 }
+
 function fecharDetalheItens() { $('#modalItens').classList.remove('on'); }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharDetalheItens(); });
 
+/** Quantidade com 1-2 casas só quando fracionária (litro/kg) — inteira fica sem casas. */
+function fmtQtd(n) {
+  return Number.isInteger(n) ? String(n) : n.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
+}
+
+/** A chave que agrupa um item: por material (código, ou descrição se não tiver código), por contrato, ou "sem detalhe". */
 function chaveItem(x) {
   if (x.origem === 'contrato' && x.contrato) return 'c:' + x.contrato;
   if (x.material || x.fornecedor) return 'm:' + (x.codMaterial || x.material || '?');
   return 's:semdetalhe';
 }
+
+/** Agrupa os itens de UM período por {@link chaveItem} — soma valor e quantidade. As OCs individuais ficam para o próximo nível (ver abrirTransacoesItem). */
 function agruparPorItem(lista) {
   const map = new Map();
   for (const x of lista) {
@@ -614,6 +597,8 @@ function agruparPorItem(lista) {
   }
   return map;
 }
+
+/** Uma linha por material (ou contrato) que apareceu em QUALQUER um dos dois períodos, já com o preço unitário dos dois lados. */
 function montarComparativo(listaAtual, listaAnterior) {
   const ma = agruparPorItem(listaAtual), mb = agruparPorItem(listaAnterior);
   const chaves = new Set([...ma.keys(), ...mb.keys()]);
@@ -629,6 +614,7 @@ function montarComparativo(listaAtual, listaAnterior) {
   }
   return linhas.sort((x, y) => Math.max(y.valorA, y.valorB) - Math.max(x.valorA, x.valorB));
 }
+
 function linhaComparativoHtml(ck, l) {
   const puA = l.qtdeA ? l.valorA / l.qtdeA : null, puB = l.qtdeB ? l.valorB / l.qtdeB : null;
   const dif = puA !== null && puB !== null ? (puA / puB - 1) * 100 : null;
@@ -643,8 +629,17 @@ function linhaComparativoHtml(ck, l) {
     <td class="num sep mi-dif ${difCls}">${difTxt}</td>
   </tr>`;
 }
-function abrirTransacoesItem(ck, chave) { ITENS_DETALHE[ck].vendo = chave; pintarDetalheItens(ck); }
-function voltarComparativo(ck) { ITENS_DETALHE[ck].vendo = null; pintarDetalheItens(ck); }
+
+// ── Nível seguinte: as transações (OC a OC) de um material/contrato ──────
+function abrirTransacoesItem(ck, chave) {
+  ITENS_DETALHE[ck].vendo = chave;
+  pintarDetalheItens(ck);
+}
+function voltarComparativo(ck) {
+  ITENS_DETALHE[ck].vendo = null;
+  pintarDetalheItens(ck);
+}
+
 function pintarTransacoesItem(ck, it) {
   const chave = it.vendo;
   const itensA = it.atual.lista.filter(x => chaveItem(x) === chave);
@@ -658,6 +653,8 @@ function pintarTransacoesItem(ck, it) {
       ${colunaTransacoes(PERIODO_ANTERIOR.rotulo, itensB)}
     </div>`;
 }
+
+/** Uma coluna com as transações (uma por OC/mês) de um único material, num único período. */
 function colunaTransacoes(titulo, itens) {
   const soma = itens.reduce((s, x) => s + (x.valor || 0), 0);
   const ordenados = itens.slice().sort((a, b) => (a.anomes || 0) - (b.anomes || 0));
@@ -673,78 +670,95 @@ function colunaTransacoes(titulo, itens) {
     <div class="mi-col-lista">${lista}</div>
   </div>`;
 }
+
+/** 202609 -> "set/26" — só pra rotular o mês de cada transação do detalhe. */
 function rotuloAnomes(anomes) {
   const ABREV = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
   const ano = Math.floor(anomes / 100), m = anomes % 100;
   return ABREV[m - 1] + '/' + String(ano % 100).padStart(2, '0');
 }
 
-// ── Gráficos ────────────────────────────────────────────────────────────
-const graficos = {};
-function linha(id, dados, series, doZero) {
-  const canvas = document.getElementById(id);
-  if (graficos[id]) graficos[id].destroy();
-  graficos[id] = new Chart(canvas, {
-    type: 'line',
-    data: { labels: dados.map(m => m.label), datasets: series },
-    options: {
-      responsive: true, maintainAspectRatio: false, animation: false,
-      layout: { padding: { top: 26, right: 16, left: 10, bottom: 4 } },
-      scales: {
-        x: { grid: { display: false }, border: { color: '#e3e8f5' },
-             ticks: { color: '#52514e', font: { size: 14, weight: '800' } } },
-        y: { ticks: { color: '#898781', font: { size: 12, weight: '700' }, maxTicksLimit: 5,
-                      callback: v => v === 0 ? '0' : (v / 1e6).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' mi' },
-             grid: { color: '#e9edf6' }, border: { display: false },
-             beginAtZero: doZero, grace: doZero ? 0 : '18%' }
+let cM, cG, cA;
+const TEM = typeof Chart !== 'undefined';
+if (TEM) { Chart.defaults.font.family = "'IBM Plex Sans',system-ui,sans-serif"; Chart.defaults.font.size = 11; Chart.defaults.color = '#6B6480'; }
+const leg = { position: 'bottom', labels: { boxWidth: 8, usePointStyle: true, padding: 12 } };
+const tt = { callbacks: { label: c => ` ${c.dataset.label}: R$ ${fmt(c.chart.config.options.indexAxis === 'y' ? c.parsed.x : c.parsed.y)}` } };
+function renderGraficos() {
+  if (!TEM) return;
+  const vr = tela === 'resumo' ? V() : VIS.anterior, usarAtual = tela === 'resumo' && visao !== 'anterior';
+  const mm = mensal(tela === 'resumo' ? fArea() : [], usarAtual), o = vr.semMain() ? Array(6).fill(0) : mm.o, r = vr.semComp() ? Array(6).fill(0) : mm.r, M = MESES[mes], RS = vr.rotComp(), OS = `${vr.main} ${vr.rotMain()}`;
+  if (tela === 'resumo') $('#resumo-graf').style.display = modo === 'graficos' ? '' : 'none';
+  if (tela === 'resumo' && modo === 'geral') {
+    const acO = [], acR = [];
+    o.reduce((s, v, i) => (acO[i] = s + v, s + v), 0);
+    r.reduce((s, v, i) => (acR[i] = s + v, s + v), 0);
+    if (cM) cM.destroy();
+    cM = new Chart($('#g-mensal'), {
+      type: 'bar', data: {
+        labels: MESES.map(x => x.m), datasets: [
+          { label: OS, data: o, backgroundColor: o.map((_, i) => i === mes ? '#1a3a7c' : i < mes ? '#4d6fa8' : '#c6d6ef'), borderRadius: 3, order: 2 },
+          { label: 'Realizado ' + RS, data: r, backgroundColor: r.map((_, i) => i === mes ? '#9B95AD' : '#D9D5E6'), borderRadius: 3, order: 2 },
+          { label: 'Acum. ' + vr.main.toLowerCase() + ' ' + vr.rotMain(), data: acO, type: 'line', borderColor: '#1a3a7c', borderWidth: 2, pointRadius: 2.5, yAxisID: 'y2', order: 1, tension: .25 },
+          { label: 'Acum. realizado ' + RS, data: acR, type: 'line', borderColor: '#6B6480', borderDash: [4, 3], borderWidth: 2, pointRadius: 2.5, yAxisID: 'y2', order: 1, tension: .25 }
+        ]
       },
-      plugins: { legend: { display: false }, tooltip: { enabled: false } }
-    },
-    plugins: [{
-      id: 'rotulos',
-      afterDatasetsDraw(chart) {
-        const ctx = chart.ctx;
-        ctx.save();
-        ctx.font = '800 13px system-ui, sans-serif';
-        chart.data.datasets.forEach((ds, di) => {
-          ctx.fillStyle = ds.borderColor;
-          const outro = chart.getDatasetMeta(1 - di).data;
-          const ultimo = ds.data.length - 1;
-          chart.getDatasetMeta(di).data.forEach((p, i) => {
-            const v = ds.data[i];
-            if (!v) return;
-            const acima = !outro[i] || p.y <= outro[i].y;
-            ctx.textBaseline = acima ? 'bottom' : 'top';
-            ctx.textAlign = i === 0 ? 'left' : (i === ultimo ? 'right' : 'center');
-            const dx = i === 0 ? 5 : (i === ultimo ? -5 : 0);
-            ctx.fillText((v / 1e6).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' mi', p.x + dx, p.y + (acima ? -9 : 9));
-          });
-        });
-        ctx.restore();
+      options: {
+        responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: leg, tooltip: tt },
+        scales: { y: { ticks: { callback: fmtM }, grid: { color: '#EEEBF5' } }, y2: { position: 'right', ticks: { callback: fmtM }, grid: { drawOnChartArea: false } }, x: { grid: { display: false } } }
       }
-    }]
-  });
+    });
+  }
+  if (tela === 'resumo' && modo === 'graficos') {
+    const z = x => ({ ...x, oA: vr.semMain() ? 0 : x.oA, rA: vr.semComp() ? 0 : x.rA }), f = fArea(), bs = vr.semMain() ? 'rA' : 'oA';
+    const G = agg(['g'], f, usarAtual).map(z).sort((a, b) => b[bs] - a[bs]), A = (area ? agg(['e'], f, usarAtual).map(z).sort((a, b) => b[bs] - a[bs]).slice(0, 12) : agg(['a'], f, usarAtual).map(z).sort((a, b) => b[bs] - a[bs]));
+    $('#gg-sub').textContent = $('#ga-sub').textContent = `Acumulado ${MESES[0].m.toLowerCase()} a ${M.m.toLowerCase()}: ${vr.main.toLowerCase()} ${vr.rotMain()} x realizado ${RS}`;
+    $('#ga-tit').textContent = area ? 'Acumulado por empenho (12 maiores)' : 'Acumulado por área de negócio';
+    const hb = (labels, d) => ({
+      type: 'bar', data: { labels, datasets: [{ label: OS, data: d.map(x => x.oA), backgroundColor: '#1a3a7c', borderRadius: 3 }, { label: 'Realizado ' + RS, data: d.map(x => x.rA), backgroundColor: '#c6d6ef', borderRadius: 3 }] },
+      options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: leg, tooltip: tt }, scales: { x: { ticks: { callback: fmtM }, grid: { color: '#EEEBF5' } }, y: { grid: { display: false }, ticks: { autoSkip: false } } } }
+    });
+    if (cG) cG.destroy();
+    cG = new Chart($('#g-grupo'), hb(G.map(x => tit(x.parts[0]).replace(/Despesas (com |de )?/, '')), G));
+    if (cA) cA.destroy();
+    cA = new Chart($('#g-area'), hb(A.map(x => area ? x.parts[0] : ROTULO(x.parts[0])), A));
+  }
 }
-const estilo = (label, cor, dados) => ({
-  label, data: dados, borderColor: cor, backgroundColor: 'transparent',
-  borderWidth: 3, pointRadius: 5, pointBackgroundColor: cor,
-  pointBorderColor: '#fff', pointBorderWidth: 2, tension: .3, spanGaps: false
-});
-const zeroNulo = v => (Number(v) || 0) === 0 ? null : Number(v);
-function graficoMensal() {
-  const s = serie();
-  linha('gMensal', s, [ estilo('Orçado', '#5b6675', s.map(m => zeroNulo(m.o))),
-                        estilo('Realizado', '#2a78d6', s.map(m => zeroNulo(m.r))) ], false);
+function render() {
+  renderAreas(); renderRegua();
+  document.querySelectorAll('.tela').forEach(s => s.classList.remove('ativa'));
+  $(tela === 'resumo' ? '#t-resumo' : '#t-tabela').classList.add('ativa');
+  if (tela === 'resumo') renderResumo(); else renderTabela();
+  renderGraficos();
 }
-function graficoAcumulado() {
-  const s = serie();
-  linha('gAcum', s, [ estilo('Orçado', '#0ca30c', s.map(m => zeroNulo(m.ao))),
-                      estilo('Realizado', '#1e3a8a', s.map(m => zeroNulo(m.ar))) ], true);
-}
+document.querySelectorAll('.visao button[data-v]').forEach(b => b.onclick = () => { visao = b.dataset.v; render(); });
+document.querySelectorAll('#tipos button').forEach(b => b.onclick = () => { tipos[b.dataset.t] = !tipos[b.dataset.t]; b.classList.toggle('on', tipos[b.dataset.t]); render(); });
+document.querySelectorAll('.visao button[data-m]').forEach(b => b.onclick = () => { modo = b.dataset.m; render(); });
 
-ajustarEscala();
 carregar();
-setInterval(carregar, INTERVALO_MS);
+(function relogio(){const d=new Date();$('#relogio').textContent=d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR');setTimeout(relogio,1000)})();
+
+// ── Comportamento de TV: atualiza sozinho e volta ao estado da URL ──
+// Igual ao resto das telas de TV da usina (ex.: orcamento-tv.html) — aceita
+// clique pra navegar, mas depois de alguém mexer e ficar 3 minutos parado,
+// volta pro estado automático (a área da URL, mês 0, Resumo/Geral). A
+// atualização periódica só recarrega se ninguém estiver mexendo, pra não
+// tirar a tela de quem está olhando.
+const INTERVALO_TV_MS = 10 * 60 * 1000, VOLTA_TV_MS = 3 * 60 * 1000;
+let TV_MANUAL = false, tvRelogioVolta = null;
+function tvMexeu() {
+  TV_MANUAL = true;
+  clearTimeout(tvRelogioVolta);
+  tvRelogioVolta = setTimeout(tvVoltarAutomatico, VOLTA_TV_MS);
+}
+function tvVoltarAutomatico() {
+  TV_MANUAL = false;
+  tela = 'resumo'; pilha = []; area = AREA_TV_INICIAL; visao = 'corrente'; modo = 'geral'; mes = 0;
+  tipos = { OC: true, CT: true };
+  document.querySelectorAll('#tipos button').forEach(b => b.classList.toggle('on', tipos[b.dataset.t]));
+  render();
+}
+document.addEventListener('click', tvMexeu);
+setInterval(() => { if (!TV_MANUAL) carregar(); }, INTERVALO_TV_MS);
 </script>
 </body>
 </html>
