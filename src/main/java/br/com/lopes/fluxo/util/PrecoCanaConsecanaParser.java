@@ -131,12 +131,29 @@ public final class PrecoCanaConsecanaParser {
         int pos = c.texto().indexOf(ancoraSemEspaco);
         if (pos < 0) throw new IllegalArgumentException(
                 "não achei a linha esperada (" + ancoraSemEspaco + ") no PDF");
+        int inicioNoOriginal = c.mapa()[pos];
         int fimNoOriginal = c.mapa()[pos + ancoraSemEspaco.length() - 1] + 1;
 
         Matcher n = DOIS_NUMEROS.matcher(texto).region(fimNoOriginal, texto.length());
-        if (!n.find()) throw new IllegalArgumentException(
-                "achei a linha mas não os dois valores (no mês e acumulado) depois dela");
+        if (!n.find()) {
+            // Duas rodadas de regex já tentaram adivinhar o espaçamento e
+            // não bastou — em vez de arriscar um terceiro palpite, mostra o
+            // texto de verdade que a extração do PDF produziu ali (antes e
+            // depois da âncora), pra decidir com o dado real na mão.
+            throw new IllegalArgumentException(
+                    "achei a linha mas não os dois valores (no mês e acumulado) depois dela — texto extraído ali: "
+                    + trechoVisivel(texto, inicioNoOriginal, fimNoOriginal));
+        }
         return new double[]{ numero(n.group(1)), numero(n.group(2)) };
+    }
+
+    /** Um trecho do texto original em volta de [inicio, fim), com quebra de linha e espaço tornados visíveis, pra caber numa mensagem de erro. */
+    private static String trechoVisivel(String texto, int inicio, int fim) {
+        int de = Math.max(0, inicio - 60);
+        int ate = Math.min(texto.length(), fim + 240);
+        String bruto = texto.substring(de, ate);
+        String visivel = bruto.replace("\\", "\\\\").replace("\n", "⏎").replace("\t", "→");
+        return "\"" + visivel + "\"";
     }
 
     /** texto: maiúsculas, sem acento, sem espaço. mapa[i] = posição no texto ORIGINAL do caractere que está em texto.charAt(i). */
