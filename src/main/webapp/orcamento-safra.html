@@ -580,7 +580,7 @@ function agruparPorItem(lista) {
   for (const x of lista) {
     const chave = chaveItem(x);
     let rotulo, contrato = false;
-    if (x.origem === 'contrato' && x.contrato) { rotulo = '📄 Contrato ' + esc(x.contrato); contrato = true; }
+    if (x.origem === 'contrato' && x.contrato) { rotulo = '📄 Contrato ' + esc(x.contrato) + (x.contratoResumo ? ' — ' + esc(x.contratoResumo) : ''); contrato = true; }
     else if (x.material || x.fornecedor) { rotulo = x.material || '(material sem descrição)'; }
     else { rotulo = 'Sem detalhe de compra'; }
     if (!map.has(chave)) map.set(chave, { rotulo, contrato, fornecedor: '', valor: 0, qtde: 0 });
@@ -639,7 +639,9 @@ function pintarTransacoesItem(ck, it) {
   const itensA = it.atual.lista.filter(x => chaveItem(x) === chave);
   const itensB = it.anterior.lista.filter(x => chaveItem(x) === chave);
   const base = itensA[0] || itensB[0];
-  const titulo = !base ? '' : base.origem === 'contrato' ? '📄 Contrato ' + esc(base.contrato) : esc(base.material || '(material sem descrição)');
+  const titulo = !base ? '' : base.origem === 'contrato'
+    ? '📄 Contrato ' + esc(base.contrato) + (base.contratoResumo ? ' — ' + esc(base.contratoResumo) : '') + (base.fornecedor ? ' · ' + esc(base.fornecedor) : '')
+    : esc(base.material || '(material sem descrição)');
   $('#miCorpo').innerHTML = `
     <div class="mi-voltar"><button onclick="voltarComparativo('${esc(ck)}')">‹ Voltar ao comparativo</button><span class="mi-voltar-tit">${titulo}</span></div>
     <div class="mi-transacoes">

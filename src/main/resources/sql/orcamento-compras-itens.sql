@@ -11,9 +11,14 @@
 --  1. MATERIAL.APROVACAOPARACOMPRA — a compra por cotação, que dá material,
 --     fornecedor, ordem de compra, cotação e solicitação;
 --  2. FINANCEIRO.PARCELASCONTRATO (obj# 84) — a parcela de contrato, que dá o
---     número do contrato.
+--     número do contrato; dali chega-se a FINANCEIRO.CONTRATO (mesma junção
+--     de ParcelaContratoAprovacaoDAO: numerocontrato + cod_grupoempresa) pra
+--     trazer o resumo (descricaoresumida) e o fornecedor do contrato — sem
+--     isso, um contrato aparecia na tela só com o número, sem dizer do quê
+--     se trata nem com quem foi fechado.
 -- Como cada linha resolve por uma das duas, o detalhe fecha com o realizado do
--- objeto — nada fica sem endereço.
+-- objeto — nada fica sem endereço. cod_fornecedor/nome_fornecedor vêm com
+-- nvl() das duas fontes porque numa dada linha só uma delas está preenchida.
 --
 -- O valor de cada item é o valorintegracao da integração (a parte que entrou
 -- naquele realizado), então a soma dos itens bate com o realizado do objeto.
@@ -37,12 +42,13 @@ select r.anomes
             else 'outro' end                            origem
      , ac.cod_material
      , substr(mt.descricao, 1, 80)                      descricao_material
-     , ct.cod_fornecedor
-     , p.nome                                           nome_fornecedor
+     , nvl(ct.cod_fornecedor, fc.cod_fornecedor)         cod_fornecedor
+     , nvl(p.nome, fcp.nome)                             nome_fornecedor
      , oc.nroc
      , ac.nr_cotacao
      , ac.nr_solicitacao
      , pc.numerocontrato
+     , substr(fc.descricaoresumida, 1, 120)              contrato_resumo
      , ci.quantidade
      , ci.qtde_aprovada
 from        material.realizado         r
@@ -60,6 +66,10 @@ from        material.realizado         r
   left join rh.pessoa                  p   on p.cod_pessoa    = forn.cod_pessoa
   left join financeiro.parcelascontrato pc on pc.numero_integracao = ti.numero_integracao_origem
                                           and ti.obj# = 84
+  left join financeiro.contrato        fc  on fc.numerocontrato   = pc.numerocontrato
+                                          and fc.cod_grupoempresa  = pc.cod_grupoempresa
+  left join material.fornecedor        fcforn on fcforn.cod_fornecedor = fc.cod_fornecedor
+  left join rh.pessoa                  fcp on fcp.cod_pessoa    = fcforn.cod_pessoa
 where  r.tipo             = 'R'
 and    r.cod_empenho      = ?
 and    r.cod_filial       = 1

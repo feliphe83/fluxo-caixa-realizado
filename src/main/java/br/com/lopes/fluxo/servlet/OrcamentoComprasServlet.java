@@ -166,6 +166,7 @@ public class OrcamentoComprasServlet extends HttpServlet {
             o.addProperty("cotacao", texto(l.get("nr_cotacao")));
             o.addProperty("solicitacao", texto(l.get("nr_solicitacao")));
             o.addProperty("contrato", texto(l.get("numerocontrato")));
+            o.addProperty("contratoResumo", texto(l.get("contrato_resumo")));
             o.addProperty("quantidade", quantidade);
             o.addProperty("valorUnitario", valorUnitario);
             arr.add(o);
