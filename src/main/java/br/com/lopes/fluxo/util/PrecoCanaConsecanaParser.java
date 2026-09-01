@@ -46,6 +46,13 @@ public final class PrecoCanaConsecanaParser {
     private static final Pattern DOIS_NUMEROS = Pattern.compile(
             "([0-9]{1,3},[0-9]{3,4})\\D+([0-9]{1,3},[0-9]{3,4})");
 
+    // As duas linhas em que "numerosApos" ancora — sem espaço nenhum (ver
+    // por quê em numerosApos/compactar): a extração de PDF às vezes imprime
+    // essas linhas (que no documento saem em negrito, mais espaçadas) com um
+    // espaço entre CADA letra ("A P Ó S"), não só entre palavras.
+    private static final String ANCORA_PARTICIPACAO = "PARTICIPACAODAMATERIA";
+    private static final String ANCORA_LIQUIDO = "APOSDEDUCOES";
+
     /** Lê um PDF já convertido em texto. Lança se faltar algo essencial. */
     public static Registro ler(String texto) {
         String t = texto.replace('\u00a0', ' ');
@@ -57,8 +64,8 @@ public final class PrecoCanaConsecanaParser {
         if (mes == null) throw new IllegalArgumentException("mês não reconhecido: " + mMes.group(1));
         int ano = Integer.parseInt(mMes.group(2));
 
-        double[] participacao = numerosApos(t, "PARTICIPA[ÇC][ÃA]O DA MAT[ÉE]RIA");
-        double[] liquido = numerosApos(t, "AP[ÓO]S DEDU[ÇC][ÕO]ES");
+        double[] participacao = numerosApos(t, ANCORA_PARTICIPACAO);
+        double[] liquido = numerosApos(t, ANCORA_LIQUIDO);
 
         int anomes = ano * 100 + mes;
         String rotulo = ABREV[mes - 1] + "/" + ano;
@@ -93,15 +100,57 @@ public final class PrecoCanaConsecanaParser {
         }
     }
 
-    /** Os dois números que vêm depois da âncora (no mês, acumulado). */
-    private static double[] numerosApos(String texto, String ancoraRegex) {
-        Matcher a = Pattern.compile(ancoraRegex, Pattern.CASE_INSENSITIVE).matcher(texto);
-        if (!a.find()) throw new IllegalArgumentException(
-                "não achei a linha esperada (" + ancoraRegex + ") no PDF");
-        Matcher n = DOIS_NUMEROS.matcher(texto).region(a.end(), texto.length());
+    /**
+     * Os dois números que vêm depois da âncora (no mês, acumulado).
+     *
+     * A âncora é achada num texto COMPACTADO (maiúsculas, sem acento, sem
+     * espaço nenhum — nem entre palavras, nem dentro delas): essas duas
+     * linhas saem em negrito no PDF, com as letras mais espaçadas do que o
+     * resto do documento, e pelo menos uma extração já reproduziu isso
+     * como um espaço entre CADA letra ("A P Ó S D E D U Ç Õ E S") — um
+     * `\s*` entre palavras não pega esse caso, porque o espaço está dentro
+     * da própria palavra. Compactando tudo (tira espaço e acento antes de
+     * comparar) a forma como o extrator espaçou deixa de importar.
+     *
+     * Achada a âncora no texto compactado, o índice mapeado por
+     * {@link #compactar} devolve a posição correspondente no texto
+     * ORIGINAL, e é dali que os dois números são procurados — os números
+     * em si não sofrem esse espaçamento extra, então continuam sendo lidos
+     * do jeito de sempre.
+     */
+    private static double[] numerosApos(String texto, String ancoraSemEspaco) {
+        Compacto c = compactar(texto);
+        int pos = c.texto().indexOf(ancoraSemEspaco);
+        if (pos < 0) throw new IllegalArgumentException(
+                "não achei a linha esperada (" + ancoraSemEspaco + ") no PDF");
+        int fimNoOriginal = c.mapa()[pos + ancoraSemEspaco.length() - 1] + 1;
+
+        Matcher n = DOIS_NUMEROS.matcher(texto).region(fimNoOriginal, texto.length());
         if (!n.find()) throw new IllegalArgumentException(
                 "achei a linha mas não os dois valores (no mês e acumulado) depois dela");
         return new double[]{ numero(n.group(1)), numero(n.group(2)) };
+    }
+
+    /** texto: maiúsculas, sem acento, sem espaço. mapa[i] = posição no texto ORIGINAL do caractere que está em texto.charAt(i). */
+    private record Compacto(String texto, int[] mapa) {}
+
+    private static Compacto compactar(String original) {
+        // NFD decompõe cada acentuada em base + marca de combinação — e como
+        // é sempre uma marca só nos acentos deste texto (Ç, Ã, Õ, É, Ó...), o
+        // índice de cada caractere não muda: dá pra usar a posição em
+        // "semAcentoMesmoTamanho" como se fosse a posição no original.
+        String semAcentoMesmoTamanho = java.text.Normalizer.normalize(original, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "").toUpperCase();
+        StringBuilder sb = new StringBuilder(semAcentoMesmoTamanho.length());
+        int[] mapa = new int[semAcentoMesmoTamanho.length()];
+        int n = 0;
+        for (int i = 0; i < semAcentoMesmoTamanho.length(); i++) {
+            char ch = semAcentoMesmoTamanho.charAt(i);
+            if (Character.isWhitespace(ch)) continue;
+            sb.append(ch);
+            mapa[n++] = i;
+        }
+        return new Compacto(sb.toString(), java.util.Arrays.copyOf(mapa, n));
     }
 
     private static double numero(String s) {
