@@ -285,6 +285,7 @@ const ROTULO = a => tit(a).replace('Área ','').replace('Obras Em Andamento / In
 const fArea = () => area ? [{ k: 'a', v: area }] : [];
 const $ = s => document.querySelector(s);
 const fmt = n => Math.round(n).toLocaleString('pt-BR');
+const fmtU = n => (Number(n) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtS = n => n < 0 ? '(' + fmt(-n) + ')' : fmt(n);
 const fmtM = n => Math.abs(n) < 1e6 && n !== 0 ? Math.round(n / 1e3).toLocaleString('pt-BR') + ' mil' : (n / 1e6).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' mi';
 const pct = (o, r) => o === 0 ? null : (r - o) / Math.abs(o) * 100;
@@ -623,9 +624,9 @@ function linhaComparativoHtml(ck, l) {
   return `<tr class="link" onclick="abrirTransacoesItem('${esc(ck)}','${l.chave.replace(/'/g, "\\'")}')">
     <td><div class="mi-mat">${l.contrato ? l.rotulo : esc(l.rotulo)}</div>${l.fornecedor ? `<div class="mi-forn">${esc(l.fornecedor)}</div>` : ''}</td>
     <td class="num sep">${l.valorA ? fmt(l.valorA) : '—'}</td>
-    <td class="num">${puA !== null ? fmt(puA) + `<span class="mi-unit">${fmtQtd(l.qtdeA)} un</span>` : '—'}</td>
+    <td class="num">${puA !== null ? fmtU(puA) + `<span class="mi-unit">${fmtQtd(l.qtdeA)} un</span>` : '—'}</td>
     <td class="num sep">${l.valorB ? fmt(l.valorB) : '—'}</td>
-    <td class="num">${puB !== null ? fmt(puB) + `<span class="mi-unit">${fmtQtd(l.qtdeB)} un</span>` : '—'}</td>
+    <td class="num">${puB !== null ? fmtU(puB) + `<span class="mi-unit">${fmtQtd(l.qtdeB)} un</span>` : '—'}</td>
     <td class="num sep mi-dif ${difCls}">${difTxt}</td>
   </tr>`;
 }
@@ -661,7 +662,7 @@ function colunaTransacoes(titulo, itens) {
   const lista = ordenados.length ? ordenados.map(x => `<div class="mi-item">
       <div class="mi-desc">
         <div class="mi-mat">${x.anomes ? `<span class="mes">${esc(rotuloAnomes(x.anomes))}</span>` : ''}${x.nroc ? `<span class="mi-oc">OC ${esc(x.nroc)}</span>` : ''}</div>
-        ${x.quantidade ? `<div class="mi-forn">${fmtQtd(x.quantidade)} un · ${fmt(x.valorUnitario || 0)}/un</div>` : ''}
+        ${x.quantidade ? `<div class="mi-forn">${fmtQtd(x.quantidade)} un · ${fmtU(x.valorUnitario || 0)}/un</div>` : ''}
       </div>
       <div class="mi-val">${x.valor ? fmt(x.valor) : ''}</div>
     </div>`).join('') : '<div class="mi-vazio">Sem itens neste período.</div>';
