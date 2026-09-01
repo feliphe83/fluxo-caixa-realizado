@@ -42,9 +42,17 @@ public final class PrecoCanaConsecanaParser {
 
     private static final Pattern MES = Pattern.compile(
             "M[eê]s:\\s*([A-Z\\u00c0-\\u00dc]+)\\s*/\\s*(\\d{4})", Pattern.CASE_INSENSITIVE);
-    // Dois decimais com vírgula logo após a âncora (tolera pontilhado e espaços).
+    // Um número: 1-3 dígitos, vírgula, 3-4 dígitos — tolerando até 2 espaços
+    // em CADA junção entre caracteres. Mesmo motivo da âncora compactada: a
+    // linha de "líquido após deduções" sai em negrito, mais espaçada, e essa
+    // linha inclui os dois números — então eles também podem vir com espaço
+    // entre dígito e dígito ("1 , 2 9 2 2"), não só a palavra do rótulo.
+    private static final String UM_NUMERO =
+            "[0-9](?:\\s{0,2}[0-9]){0,2}\\s{0,2},\\s{0,2}[0-9](?:\\s{0,2}[0-9]){2,3}";
+    // \D+? (preguiçoso, não guloso): para no primeiro número válido depois
+    // do primeiro, em vez de arriscar pular pra um número mais distante.
     private static final Pattern DOIS_NUMEROS = Pattern.compile(
-            "([0-9]{1,3},[0-9]{3,4})\\D+([0-9]{1,3},[0-9]{3,4})");
+            "(" + UM_NUMERO + ")\\D+?(" + UM_NUMERO + ")");
 
     // As duas linhas em que "numerosApos" ancora — sem espaço nenhum (ver
     // por quê em numerosApos/compactar): a extração de PDF às vezes imprime
@@ -154,7 +162,10 @@ public final class PrecoCanaConsecanaParser {
     }
 
     private static double numero(String s) {
-        return Double.parseDouble(s.trim().replace(".", "").replace(',', '.'));
+        // Tira todo espaço primeiro — UM_NUMERO agora aceita espaço entre
+        // dígitos ("1 , 2 9 2 2"), e Double.parseDouble não aceita.
+        String semEspaco = s.replaceAll("\\s+", "");
+        return Double.parseDouble(semEspaco.replace(".", "").replace(',', '.'));
     }
 
     private static String semAcento(String s) {
