@@ -219,6 +219,7 @@ public class AuthFilter implements Filter {
             || uri.equals(ctx + "/faturamento-tv.html")
             || uri.equals(ctx + "/indicadores-tv.html")
             || uri.equals(ctx + "/orcamento-tv.html")
+            || uri.equals(ctx + "/orcamento-safra-tv.html")
             // scripts de raiz que essas telas carregam (não estão em /js/)
             || uri.equals(ctx + "/indicadores-comum.js")
             || uri.equals(ctx + "/balanco-historico.js")
@@ -231,7 +232,8 @@ public class AuthFilter implements Filter {
             || uri.startsWith(ctx + "/api/diesel-recebimento")
             || uri.startsWith(ctx + "/api/faturamento-vendas")
             || uri.startsWith(ctx + "/api/indicadores")
-            || uri.startsWith(ctx + "/api/orcamento-compras");
+            || uri.startsWith(ctx + "/api/orcamento-compras")
+            || uri.startsWith(ctx + "/api/orcamento-safra");
     }
 
     /**
