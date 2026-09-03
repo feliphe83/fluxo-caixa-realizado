@@ -188,6 +188,34 @@ footer{flex:none;font-size:10.5px;color:var(--cinza2);padding:0 28px 8px;display
 @keyframes girar{to{transform:rotate(360deg)}}
 .erro{color:var(--rubro)}
 @media(max-width:1100px){.cards{grid-template-columns:1fr 1fr 1fr}.baixo{grid-template-columns:1fr}.graficos{grid-template-columns:1fr}}
+
+/* Celular: a tela toda foi pensada pra caber numa altura de monitor sem
+   rolar (html,body com overflow:hidden e tudo em flex/grid dividindo uma
+   altura fixa). Numa tela de celular, mais estreita e mais baixa, essa
+   divisão de altura espreme tudo a ponto de sobrepor texto — em vez de só
+   apertar, quebra. A partir daqui a página passa a rolar normalmente, como
+   qualquer outra tela do sistema, e cada bloco toma a altura que o próprio
+   conteúdo pede. */
+@media(max-width:700px){
+  html,body{height:auto;overflow-y:auto;overflow-x:hidden}
+  header{height:auto;flex-wrap:wrap;padding:14px 16px;row-gap:10px}
+  .marca .selo{width:48px;height:48px}
+  .marca h1{font-size:17px}
+  .marca h1 small{margin-top:5px}
+  .cabecalho-direita{margin-left:0}
+  .faixa{height:auto;flex-wrap:wrap;padding:10px 16px;row-gap:8px}
+  .regua{margin-left:0}
+  main{flex:none;min-height:0;overflow:visible;padding:14px 16px}
+  .tela{flex:none;min-height:0}
+  .resumo{display:block}
+  .cards{grid-template-columns:1fr;margin-bottom:14px}
+  .baixo{display:block}
+  .baixo .card{margin-bottom:14px}
+  .cv{height:240px}
+  .lista{display:block;overflow:visible;height:auto}
+  .lista li{flex:none;min-height:auto;padding:10px 0}
+  .tab{flex:none;min-height:0;max-height:65vh}
+}
 </style>
 </head>
 <body>
