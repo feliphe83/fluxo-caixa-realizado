@@ -73,7 +73,7 @@
   }
   .btn-export:hover { border-color: #1a3a7c; color: #1a3a7c; }
 
-  .resultado-card { background: white; border: 1.5px solid #e3e8f5; border-radius: 14px; overflow: hidden; }
+  .resultado-card { background: white; border: 1.5px solid #e3e8f5; border-radius: 14px; overflow: auto; -webkit-overflow-scrolling: touch; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   thead th {
     background: #0f2460; color: white; text-align: left;
@@ -174,7 +174,7 @@
 
   /* ===== RESUMO (relatório em PDF) ===== */
   #resumoContainer { display: none; }
-  .resumo-bloco { background: white; border: 1.5px solid #e3e8f5; border-radius: 10px; overflow: hidden; margin-bottom: 20px; }
+  .resumo-bloco { background: white; border: 1.5px solid #e3e8f5; border-radius: 10px; overflow: auto; -webkit-overflow-scrolling: touch; margin-bottom: 20px; }
   .resumo-titulo-secao {
     background: #ffd54a; color: #1a1a2e; font-weight: 800; font-size: 12.5px;
     text-align: center; padding: 8px; letter-spacing: .5px;
@@ -254,6 +254,19 @@
     body.modo-resumo table.resumo-table tr.linha-total-geral { break-before: avoid; }
     /* Cabeçalho do relatório só na primeira página. */
     body.modo-resumo #cabecalhoImpressao { break-after: avoid; }
+  }
+
+  @media (max-width: 900px) {
+    .header { flex-wrap: wrap; gap: 10px; padding: 14px 16px; }
+    .conteudo { padding: 16px; }
+    .filtros-card { padding: 16px; }
+    .filtros-grid { grid-template-columns: 1fr 1fr; }
+    .btn-gerar { margin-top: 0; grid-column: 1 / -1; }
+    .export-bar { flex-wrap: wrap; justify-content: flex-start; }
+  }
+  @media (max-width: 560px) {
+    .filtros-grid { grid-template-columns: 1fr; }
+    .header-title { font-size: 14.5px; }
   }
 </style>
 </head>
