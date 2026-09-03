@@ -174,6 +174,15 @@
     tbody tr.subtotal td, tbody tr.total-geral td { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     @page { margin: 10mm; size: landscape; }
   }
+  @media (max-width: 900px) {
+    .filtros-grid { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 640px) {
+    .header { flex-wrap: wrap; row-gap: 8px; padding: 12px 16px; }
+    .conteudo { padding: 16px; }
+    .filtros-card { padding: 16px; }
+    .filtros-grid { grid-template-columns: 1fr; }
+  }
 </style>
 </head>
 <body>
