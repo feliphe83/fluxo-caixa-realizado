@@ -70,6 +70,12 @@
   .spinner { width: 30px; height: 30px; border: 3px solid var(--borda); border-top-color: #1a3a7c;
              border-radius: 50%; animation: girar .8s linear infinite; margin: 0 auto 12px; }
   @keyframes girar { to { transform: rotate(360deg); } }
+  @media (max-width: 640px) {
+    .header { flex-wrap: wrap; row-gap: 8px; padding: 12px 16px; }
+    .conteudo { padding: 16px; }
+    .card-cab { gap: 10px; }
+    .progresso { margin-left: 0; }
+  }
 </style>
 </head>
 <body>
