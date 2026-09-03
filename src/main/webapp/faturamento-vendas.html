@@ -166,8 +166,11 @@
   @keyframes spin { to { transform: rotate(360deg); } }
   .erro { color: #d03b3b; }
 
+  #resultado { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
   @media (max-width: 900px) {
     .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .capa { grid-template-columns: repeat(2, 1fr); }
     .grid-2 { grid-template-columns: 1fr; }
     .header { padding: 0 16px; }
     .conteudo { padding: 16px 14px 40px; }

@@ -42,6 +42,7 @@
   .obs { font-size: 12px; color: var(--ink-3); margin-bottom: 14px; line-height: 1.5; }
 
   .tab { background: white; border: 1.5px solid var(--borda); border-radius: 14px; overflow: hidden; }
+  .tab-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
   thead th { text-align: left; padding: 10px 14px; background: #f8faff; color: var(--ink-3);
              font-weight: 700; font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase;
@@ -69,6 +70,16 @@
              border-radius: 50%; animation: girar .8s linear infinite; margin: 0 auto 12px; }
   @keyframes girar { to { transform: rotate(360deg); } }
   @media(max-width:900px){ .resumo{grid-template-columns:1fr 1fr} .assunto{max-width:180px} }
+  @media(max-width:560px){
+    .header{flex-wrap:wrap;padding:14px 16px;gap:10px}
+    .header-title{font-size:16px}
+    .header-sub{font-size:11.5px}
+    .btn-voltar{padding:7px 12px;font-size:12.5px}
+    .conteudo{padding:14px}
+    .resumo{grid-template-columns:1fr 1fr;gap:10px}
+    .rcard{padding:12px 14px}
+    .rcard .n{font-size:22px}
+  }
 </style>
 </head>
 <body>
@@ -90,13 +101,13 @@
 <div class="conteudo">
   <div class="resumo" id="resumo"></div>
   <div class="obs" id="obs"></div>
-  <div class="tab"><table>
+  <div class="tab"><div class="tab-scroll"><table>
     <thead><tr>
       <th>Status</th><th>NF / Série</th><th>CNPJ emitente</th><th>Data do e-mail</th><th>Dias</th>
       <th>Remetente</th><th>Assunto</th><th>Anexo</th><th>PDF</th>
     </tr></thead>
     <tbody id="corpo"><tr><td colspan="9"><div class="estado"><div class="spinner"></div>Carregando…</div></td></tr></tbody>
-  </table></div>
+  </table></div></div>
 </div>
 
 <script>
