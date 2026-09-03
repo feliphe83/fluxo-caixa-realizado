@@ -80,7 +80,7 @@
   }
   .btn-export:hover { border-color: #1a3a7c; color: #1a3a7c; }
 
-  .resultado-card { background: white; border: 1.5px solid #e3e8f5; border-radius: 14px; overflow: hidden; }
+  .resultado-card { background: white; border: 1.5px solid #e3e8f5; border-radius: 14px; overflow: auto; -webkit-overflow-scrolling: touch; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   thead th {
     background: #0f2460; color: white; text-align: left;
@@ -138,6 +138,20 @@
   #cabecalhoImpressao { display: none; }
   #cabecalhoImpressao .titulo-rel { font-size: 14px; font-weight: 800; color: #0f2460; }
   #cabecalhoImpressao .periodo-rel { font-size: 11px; color: #475569; margin-top: 2px; }
+
+  @media (max-width: 900px) {
+    .header { flex-wrap: wrap; gap: 10px; padding: 14px 16px; }
+    .conteudo { padding: 16px; }
+    .filtros-card { padding: 16px; }
+    .filtros-grid { grid-template-columns: 1fr 1fr; }
+    .btn-gerar { grid-column: 1 / -1; }
+    .export-bar { flex-wrap: wrap; justify-content: flex-start; }
+    .legenda { flex-wrap: wrap; gap: 10px 18px; }
+  }
+  @media (max-width: 560px) {
+    .filtros-grid { grid-template-columns: 1fr; }
+    .header-title { font-size: 14.5px; }
+  }
 </style>
 </head>
 <body>
