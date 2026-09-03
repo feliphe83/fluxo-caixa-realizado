@@ -252,19 +252,26 @@ public class ServicosFornecedorServlet extends HttpServlet {
                 String codServico = rs.getString(7);
                 String descObjeto = rs.getString(16);
 
-                // De-para Tipo de Serviço -> Objeto de Custo (MySQL, mantido
-                // pelo admin): enriquece descObjeto quando o Oracle não traz
-                // essa classificação, usando cod_tiposervico. Só se aplica a
-                // blocos de MÃO DE OBRA cujo codServico É de fato
-                // cod_tiposervico — não ao bloco TRANSPORTE DE PESSOAL, que
-                // usa cod_operacaoagricola (domínio de código diferente), nem
-                // a ENCARGOS SOCIAIS, que não entra na quebra por Objeto.
+                // De-para Tipo de Serviço -> Objeto de Custo/Subprocesso
+                // (MySQL, mantido pelo admin): enriquece descObjeto e origem
+                // quando o Oracle não traz essa classificação, usando
+                // cod_tiposervico. Só se aplica a blocos de MÃO DE OBRA cujo
+                // codServico É de fato cod_tiposervico — não ao bloco
+                // TRANSPORTE DE PESSOAL, que usa cod_operacaoagricola
+                // (domínio de código diferente), nem a ENCARGOS SOCIAIS, que
+                // não entra na quebra por Objeto. "origem" é o que alimenta o
+                // filtro "Subprocesso" da tela — sem isto, o de-para corrigia
+                // o Objeto de Custo mas o filtro continuava mostrando a
+                // classificação crua do Oracle.
                 if ("MÃO DE OBRA".equals(tipo) && origem != null
                         && !origem.trim().equals("TRANSPORTE DE PESSOAL")
                         && !origem.trim().equals("ENCARGOS SOCIAIS")) {
                     DeParaTipoServicoCache.Registro reg = DeParaTipoServicoCache.buscar(codServico);
                     if (reg != null && reg.objetoCusto != null && !reg.objetoCusto.isBlank()) {
                         descObjeto = reg.objetoCusto;
+                    }
+                    if (reg != null && reg.subprocesso != null && !reg.subprocesso.isBlank()) {
+                        origem = reg.subprocesso;
                     }
                 }
 
