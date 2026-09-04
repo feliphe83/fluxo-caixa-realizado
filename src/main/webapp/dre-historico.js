@@ -35,7 +35,11 @@
    da tela).
  */
 
-const ANOS = [2026, 2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018];
+// Só os 5 anos mais recentes aparecem na tela (computador e TV) — os valores
+// de 2018 a 2021 continuam abaixo, em v[5..8], só não são mais consultados;
+// tirar as colunas do array quebraria a posição das outras (cada v[i] é
+// ANOS[i]), então quem muda é só até onde ANOS vai.
+const ANOS = [2026, 2025, 2024, 2023, 2022];
 
 const DRE = [
   { chave:'receita_bruta', rotulo:'(+) RECEITA BRUTA DE VENDAS', tipo:'destaque',

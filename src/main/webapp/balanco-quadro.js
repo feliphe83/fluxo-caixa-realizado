@@ -14,7 +14,11 @@
    desenharem hierarquias diferentes do mesmo documento.
    ══════════════════════════════════════════════════════════════════════════ */
 
-const BAL_ANOS = BALANCO.anos;
+// Só os 5 anos mais recentes — BALANCO.anos vem com 9 (o gerador guarda o
+// histórico inteiro), mas a tela (computador e TV) mostra só os últimos 5.
+// BALANCO.anos[0] é sempre o ano corrente, então o slice preserva essa
+// convenção de índice usada no arquivo inteiro.
+const BAL_ANOS = BALANCO.anos.slice(0, 5);
 
 /** A chave que o servlet usa nas linhas vivas. */
 function balChave(l) { return l.tipo + '|' + l.grupo + '|' + l.nivel + '|' + l.nivel2; }
