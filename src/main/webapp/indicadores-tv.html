@@ -31,15 +31,20 @@
   #palco-wrap { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
   #palco { position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px;
            transform-origin: center center; padding: 20px 26px 18px;
-           display: grid; grid-template-rows: auto auto 1fr; gap: 14px; }
+           display: grid; grid-template-rows: auto auto auto 1fr; gap: 14px; }
+
+  /* ── Cabeçalho — mesmo padrão azul-marinho de todas as telas normais. */
+  .header { background: var(--ink); color: #fff; height: 74px; border-radius: 12px;
+            padding: 0 24px; display: flex; align-items: center; flex: none; }
+  .header-left { display: flex; align-items: center; gap: 14px; }
+  .header-logo { width: 48px; height: 48px; border-radius: 10px; background: #fff;
+                 display: flex; align-items: center; justify-content: center; padding: 6px; flex: none; }
+  .header-logo img { width: 100%; height: 100%; object-fit: contain; }
+  .header-title { font-size: 24px; font-weight: 800; letter-spacing: -.4px; }
+  .header-sub { font-size: 13px; font-weight: 700; color: rgba(255,255,255,.65);
+                text-transform: uppercase; letter-spacing: .7px; margin-top: 2px; }
 
   .topo { display: flex; align-items: center; gap: 18px; }
-  .marca { width: 46px; height: 46px; border-radius: 11px; background: var(--ink);
-           display: flex; align-items: center; justify-content: center; padding: 6px; flex: none; }
-  .marca img { width: 100%; height: 100%; object-fit: contain; }
-  .topo h1 { font-size: 30px; font-weight: 800; color: var(--ink); letter-spacing: -.6px; }
-  .topo .sub { font-size: 13.5px; font-weight: 700; color: var(--ink-3);
-               text-transform: uppercase; letter-spacing: .8px; margin-top: 1px; }
   .topo .direita { margin-left: auto; text-align: right; }
   .relogio { font-size: 26px; font-weight: 800; color: var(--ink); }
   .quando { font-size: 13px; font-weight: 700; color: var(--ink-3); margin-top: 3px; }
@@ -159,12 +164,17 @@
 
 <div id="palco-wrap"><div id="palco">
 
-  <div class="topo">
-    <div class="marca"><img src="img/logo.png" alt="USC"></div>
-    <div>
-      <h1>Usina Santa Clotilde</h1>
-      <div class="sub">Indicadores Econômicos / Financeiros · câmbio, commodities e índices</div>
+  <div class="header">
+    <div class="header-left">
+      <div class="header-logo"><img src="img/logo.png" alt="USC"></div>
+      <div>
+        <div class="header-title">Usina Santa Clotilde</div>
+        <div class="header-sub">Indicadores Econômicos / Financeiros · câmbio, commodities e índices</div>
+      </div>
     </div>
+  </div>
+
+  <div class="topo">
     <div class="direita">
       <div class="relogio" id="relogio">—</div>
       <div class="quando" id="quando"></div>

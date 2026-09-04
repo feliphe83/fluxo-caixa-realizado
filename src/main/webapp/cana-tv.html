@@ -68,18 +68,23 @@
     transform-origin: center center;
     padding: 36px 44px 34px;
     display: grid;
-    grid-template-rows: auto auto 1fr auto;
+    grid-template-rows: auto auto auto 1fr auto;
     gap: 20px;
   }
 
-  /* ── Cabeçalho ── */
+  /* ── Cabeçalho — mesmo padrão azul-marinho de todas as telas normais. */
+  .header { background: var(--ink); color: #fff; height: 84px; border-radius: 12px;
+            padding: 0 30px; display: flex; align-items: center; flex: none; }
+  .header-left { display: flex; align-items: center; gap: 18px; }
+  .header-logo { width: 56px; height: 56px; border-radius: 12px; background: #fff;
+                 display: flex; align-items: center; justify-content: center; padding: 6px; flex: none; }
+  .header-logo img { width: 100%; height: 100%; object-fit: contain; }
+  .header-title { font-size: 27px; font-weight: 800; letter-spacing: -.4px; }
+  .header-sub { font-size: 14.5px; font-weight: 700; color: rgba(255,255,255,.65);
+                letter-spacing: .2px; margin-top: 3px; }
+
   .topo { display: flex; align-items: center; gap: 20px;
           padding-bottom: 18px; border-bottom: 1px solid var(--borda); }
-  .topo img { width: 58px; height: 58px; object-fit: contain; background: var(--ink);
-              border-radius: 12px; padding: 6px; }
-  .topo h1 { font-size: 38px; font-weight: 750; letter-spacing: -.4px; color: var(--ink); }
-  .topo .sub { font-size: 17px; color: var(--ink-3); margin-top: 3px;
-               letter-spacing: .2px; }
   .topo .direita { margin-left: auto; text-align: right; }
   /* Continua com cara de selo — na TV ninguém vai clicar. Mas é um select
      de verdade, para quem abrir o painel no computador poder conferir outra
@@ -186,12 +191,17 @@
 <div id="palco-wrap">
 <div id="palco">
 
-  <div class="topo">
-    <img src="img/logo.png" alt="USC">
-    <div>
-      <h1>Usina Santa Clotilde</h1>
-      <div class="sub">Entrada de Cana · acompanhamento da safra</div>
+  <div class="header">
+    <div class="header-left">
+      <div class="header-logo"><img src="img/logo.png" alt="USC"></div>
+      <div>
+        <div class="header-title">Usina Santa Clotilde</div>
+        <div class="header-sub">Entrada de Cana · acompanhamento da safra</div>
+      </div>
     </div>
+  </div>
+
+  <div class="topo">
     <div class="direita">
       <select class="selo-safra" id="selSafra" onchange="trocarSafra(this.value)">
         <option>Safra —</option>

@@ -39,16 +39,26 @@
   #palco-wrap { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
   #palco { position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px;
            transform-origin: center center; padding: 18px 24px 16px;
-           display: grid; grid-template-rows: auto auto auto 1fr 300px; gap: 10px; }
+           display: grid; grid-template-rows: auto auto auto auto 1fr 300px; gap: 10px; }
+
+  /* ── Cabeçalho — mesmo padrão azul-marinho de todas as telas normais
+     (header/header-logo/header-title/header-sub), pra a parede de TV não
+     parecer um sistema diferente do resto da intranet. Fica dentro do
+     mesmo respiro do palco, como um cartão arredondado — sangrar até a
+     borda exigiria margem negativa, que um palco escalado por largura
+     cortaria pelo overflow:hidden do palco-wrap em telas 16:9 exatas. */
+  .header { background: var(--ink); color: #fff; height: 74px; border-radius: 12px;
+            padding: 0 24px; display: flex; align-items: center; flex: none; }
+  .header-left { display: flex; align-items: center; gap: 14px; }
+  .header-logo { width: 48px; height: 48px; border-radius: 10px; background: #fff;
+                 display: flex; align-items: center; justify-content: center; padding: 6px; flex: none; }
+  .header-logo img { width: 100%; height: 100%; object-fit: contain; }
+  .header-title { font-size: 24px; font-weight: 800; letter-spacing: -.4px; }
+  .header-sub { font-size: 13px; font-weight: 700; color: rgba(255,255,255,.65);
+                text-transform: uppercase; letter-spacing: .7px; margin-top: 2px; }
 
   /* ── Topo ── */
-  .topo { display: flex; align-items: center; gap: 16px; }
-  .marca { width: 44px; height: 44px; border-radius: 11px; background: var(--ink);
-           display: flex; align-items: center; justify-content: center; padding: 6px; flex: none; }
-  .marca img { width: 100%; height: 100%; object-fit: contain; }
-  .topo h1 { font-size: 27px; font-weight: 800; color: var(--ink); letter-spacing: -.5px; }
-  .topo .sub { font-size: 12.5px; font-weight: 700; color: var(--ink-3);
-               text-transform: uppercase; letter-spacing: .8px; margin-top: 1px; }
+  .topo { display: flex; align-items: center; gap: 16px; padding-top: 12px; }
   .cartoes { display: flex; gap: 11px; margin-left: 22px; }
   .cartao-tipo { display: flex; flex-direction: column; justify-content: center; gap: 5px; min-width: 168px; }
   .cartao-tipo .rot { margin-bottom: 2px; }
@@ -212,12 +222,17 @@
 
 <div id="palco-wrap"><div id="palco">
 
-  <div class="topo">
-    <div class="marca"><img src="img/logo.png" alt="USC"></div>
-    <div>
-      <h1>Usina Santa Clotilde</h1>
-      <div class="sub">Orçamento de Compras · planejado × realizado</div>
+  <div class="header">
+    <div class="header-left">
+      <div class="header-logo"><img src="img/logo.png" alt="USC"></div>
+      <div>
+        <div class="header-title">Usina Santa Clotilde</div>
+        <div class="header-sub">Orçamento de Compras · planejado × realizado</div>
+      </div>
     </div>
+  </div>
+
+  <div class="topo">
     <div class="cartoes">
       <div class="cartao" style="--cor:var(--orcado)">
         <div class="rot">Planejado</div><div class="cifra" id="cPlan">—</div>
