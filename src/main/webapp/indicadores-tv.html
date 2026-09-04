@@ -31,11 +31,13 @@
   #palco-wrap { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
   #palco { position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px;
            transform-origin: center center; padding: 20px 26px 18px;
-           display: grid; grid-template-rows: auto auto auto 1fr; gap: 14px; }
+           display: grid; grid-template-rows: auto auto 1fr; gap: 14px; }
 
-  /* ── Cabeçalho — mesmo padrão azul-marinho de todas as telas normais. */
+  /* ── Cabeçalho — mesmo padrão azul-marinho de todas as telas normais. O
+     relógio (a informação mais lida da tela) vem no mesmo cabeçalho, à
+     direita. */
   .header { background: var(--ink); color: #fff; height: 74px; border-radius: 12px;
-            padding: 0 24px; display: flex; align-items: center; flex: none; }
+            padding: 0 24px; display: flex; align-items: center; justify-content: space-between; flex: none; }
   .header-left { display: flex; align-items: center; gap: 14px; }
   .header-logo { width: 48px; height: 48px; border-radius: 10px; background: #fff;
                  display: flex; align-items: center; justify-content: center; padding: 6px; flex: none; }
@@ -43,11 +45,9 @@
   .header-title { font-size: 24px; font-weight: 800; letter-spacing: -.4px; }
   .header-sub { font-size: 13px; font-weight: 700; color: rgba(255,255,255,.65);
                 text-transform: uppercase; letter-spacing: .7px; margin-top: 2px; }
-
-  .topo { display: flex; align-items: center; gap: 18px; }
-  .topo .direita { margin-left: auto; text-align: right; }
-  .relogio { font-size: 26px; font-weight: 800; color: var(--ink); }
-  .quando { font-size: 13px; font-weight: 700; color: var(--ink-3); margin-top: 3px; }
+  .header .direita { text-align: right; }
+  .header .relogio { font-size: 26px; font-weight: 800; color: #fff; }
+  .header .quando { font-size: 13px; font-weight: 700; color: rgba(255,255,255,.65); margin-top: 3px; }
 
   .capa { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
   .cartao { background: var(--papel); border: 1px solid var(--borda); border-radius: 13px;
@@ -172,9 +172,6 @@
         <div class="header-sub">Indicadores Econômicos / Financeiros · câmbio, commodities e índices</div>
       </div>
     </div>
-  </div>
-
-  <div class="topo">
     <div class="direita">
       <div class="relogio" id="relogio">—</div>
       <div class="quando" id="quando"></div>

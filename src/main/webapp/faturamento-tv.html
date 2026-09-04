@@ -56,12 +56,13 @@
     /* A linha de cima leva mais altura: é onde estão o gráfico da safra e a
        tabela por produto, que é o que se lê de longe. A de baixo tem três
        gráficos pequenos e duas listas curtas, e sobrava espaço nela. */
-    display: grid; grid-template-rows: auto auto auto 1.5fr 1fr; gap: 14px;
+    display: grid; grid-template-rows: auto auto 1.5fr 1fr; gap: 14px;
   }
 
-  /* ── Cabeçalho — mesmo padrão azul-marinho de todas as telas normais. */
+  /* ── Cabeçalho — mesmo padrão azul-marinho de todas as telas normais. O
+     seletor de safra e o relógio vêm no mesmo cabeçalho, à direita. */
   .header { background: var(--ink); color: #fff; height: 74px; border-radius: 12px;
-            padding: 0 24px; display: flex; align-items: center; flex: none; }
+            padding: 0 24px; display: flex; align-items: center; justify-content: space-between; flex: none; }
   .header-left { display: flex; align-items: center; gap: 14px; }
   .header-logo { width: 48px; height: 48px; border-radius: 10px; background: #fff;
                  display: flex; align-items: center; justify-content: center; padding: 6px; flex: none; }
@@ -69,14 +70,13 @@
   .header-title { font-size: 24px; font-weight: 800; letter-spacing: -.4px; }
   .header-sub { font-size: 13px; font-weight: 700; color: rgba(255,255,255,.65);
                 text-transform: uppercase; letter-spacing: .7px; margin-top: 2px; }
-
-  .topo { display: flex; align-items: center; gap: 16px; }
-  .topo .direita { margin-left: auto; text-align: right; }
+  .header .direita { text-align: right; }
   .selo-safra { font-size: 21px; font-weight: 700; color: var(--ink);
                 background: var(--papel); border: 1px solid var(--borda);
                 border-radius: 9px; padding: 6px 14px; font-family: inherit;
                 cursor: pointer; appearance: none; text-align: center; text-align-last: center; }
-  .relogio { font-size: 13px; color: var(--ink-3); margin-top: 5px; }
+  .relogio { font-size: 13px; margin-top: 5px; }
+  .header .relogio { color: rgba(255,255,255,.65); }
 
   /* ── Capa ── */
   .capa { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
@@ -195,9 +195,6 @@
         <div class="header-sub">Faturamento de Vendas · vendas de produtos por safra</div>
       </div>
     </div>
-  </div>
-
-  <div class="topo">
     <div class="direita">
       <select class="selo-safra" id="selSafra" onchange="carregar()"></select>
       <div class="relogio" id="relogio">—</div>

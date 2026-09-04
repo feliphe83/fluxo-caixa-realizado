@@ -68,13 +68,14 @@
     transform-origin: center center;
     padding: 36px 44px 34px;
     display: grid;
-    grid-template-rows: auto auto auto 1fr auto;
+    grid-template-rows: auto auto 1fr auto;
     gap: 20px;
   }
 
-  /* ── Cabeçalho — mesmo padrão azul-marinho de todas as telas normais. */
+  /* ── Cabeçalho — mesmo padrão azul-marinho de todas as telas normais. O
+     seletor de safra e o relógio vêm no mesmo cabeçalho, à direita. */
   .header { background: var(--ink); color: #fff; height: 84px; border-radius: 12px;
-            padding: 0 30px; display: flex; align-items: center; flex: none; }
+            padding: 0 30px; display: flex; align-items: center; justify-content: space-between; flex: none; }
   .header-left { display: flex; align-items: center; gap: 18px; }
   .header-logo { width: 56px; height: 56px; border-radius: 12px; background: #fff;
                  display: flex; align-items: center; justify-content: center; padding: 6px; flex: none; }
@@ -82,10 +83,8 @@
   .header-title { font-size: 27px; font-weight: 800; letter-spacing: -.4px; }
   .header-sub { font-size: 14.5px; font-weight: 700; color: rgba(255,255,255,.65);
                 letter-spacing: .2px; margin-top: 3px; }
-
-  .topo { display: flex; align-items: center; gap: 20px;
-          padding-bottom: 18px; border-bottom: 1px solid var(--borda); }
-  .topo .direita { margin-left: auto; text-align: right; }
+  .header .direita { text-align: right; }
+  .header .relogio { color: rgba(255,255,255,.65); }
   /* Continua com cara de selo — na TV ninguém vai clicar. Mas é um select
      de verdade, para quem abrir o painel no computador poder conferir outra
      safra sem mexer na URL. */
@@ -199,9 +198,6 @@
         <div class="header-sub">Entrada de Cana · acompanhamento da safra</div>
       </div>
     </div>
-  </div>
-
-  <div class="topo">
     <div class="direita">
       <select class="selo-safra" id="selSafra" onchange="trocarSafra(this.value)">
         <option>Safra —</option>

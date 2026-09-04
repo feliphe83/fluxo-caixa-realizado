@@ -48,7 +48,8 @@
      borda exigiria margem negativa, que um palco escalado por largura
      cortaria pelo overflow:hidden do palco-wrap em telas 16:9 exatas. */
   .header { background: var(--ink); color: #fff; height: 74px; border-radius: 12px;
-            padding: 0 24px; display: flex; align-items: center; flex: none; }
+            padding: 0 24px; display: flex; align-items: center; justify-content: space-between;
+            flex: none; }
   .header-left { display: flex; align-items: center; gap: 14px; }
   .header-logo { width: 48px; height: 48px; border-radius: 10px; background: #fff;
                  display: flex; align-items: center; justify-content: center; padding: 6px; flex: none; }
@@ -76,11 +77,12 @@
                    margin-top: 2px; letter-spacing: -.8px; }
   .cartao .cifra.mal { color: var(--estouro); }
   .cartao .base { font-size: 11.5px; font-weight: 700; color: var(--ink-3); margin-top: 1px; }
-  .direita { margin-left: auto; text-align: right; }
+  .direita { text-align: right; }
   .periodo { font-size: 19px; font-weight: 800; color: var(--ink); background: var(--papel);
              border: 1px solid var(--borda); border-radius: 11px; padding: 7px 16px;
              display: inline-block; }
-  .relogio { font-size: 12.5px; font-weight: 700; color: var(--ink-3); margin-top: 5px; }
+  .relogio { font-size: 12.5px; font-weight: 700; margin-top: 5px; }
+  .header .relogio { color: rgba(255,255,255,.65); }
 
   /* ── Tira de meses ── */
   .meses { display: flex; gap: 6px; background: var(--papel); border: 1px solid var(--borda);
@@ -230,6 +232,11 @@
         <div class="header-sub">Orçamento de Compras · planejado × realizado</div>
       </div>
     </div>
+    <div class="direita">
+      <div class="periodo" id="periodo">—</div>
+      <div class="relogio" id="relogio"></div>
+      <div class="manual" id="manual"></div>
+    </div>
   </div>
 
   <div class="topo">
@@ -247,11 +254,6 @@
         <div class="base" id="cExecBase"></div>
       </div>
       <div class="cartao cartao-tipo" id="tipos"></div>
-    </div>
-    <div class="direita">
-      <div class="periodo" id="periodo">—</div>
-      <div class="relogio" id="relogio"></div>
-      <div class="manual" id="manual"></div>
     </div>
   </div>
 

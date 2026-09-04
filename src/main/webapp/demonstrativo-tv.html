@@ -43,12 +43,15 @@
     width: 1920px; height: 1080px;
     transform-origin: center center;
     padding: 20px 26px 18px;
-    display: grid; grid-template-rows: auto auto 1fr; gap: 14px;
+    display: grid; grid-template-rows: auto 1fr; gap: 14px;
   }
 
-  /* ── Cabeçalho — mesmo padrão azul-marinho de todas as telas normais. */
+  /* ── Cabeçalho — mesmo padrão azul-marinho de todas as telas normais. O
+     aviso de fechamento vem no mesmo cabeçalho, à direita: é a segunda
+     informação mais importante da tela, depois dos números, e fica melhor
+     junto da marca do que solto numa faixa clara por baixo. */
   .header { background: var(--ink); color: #fff; height: 74px; border-radius: 12px;
-            padding: 0 24px; display: flex; align-items: center; flex: none; }
+            padding: 0 24px; display: flex; align-items: center; justify-content: space-between; flex: none; }
   .header-left { display: flex; align-items: center; gap: 14px; }
   .header-logo { width: 48px; height: 48px; border-radius: 10px; background: #fff;
                  display: flex; align-items: center; justify-content: center; padding: 6px; flex: none; }
@@ -56,18 +59,12 @@
   .header-title { font-size: 24px; font-weight: 800; letter-spacing: -.4px; }
   .header-sub { font-size: 13px; font-weight: 700; color: rgba(255,255,255,.65);
                 text-transform: uppercase; letter-spacing: .7px; margin-top: 2px; }
-
-  /* ── Topo ── */
-  .topo { display: flex; align-items: center; gap: 18px; }
-  .topo .direita { margin-left: auto; text-align: right; }
-  /* O fechamento é a segunda informação mais importante da tela, depois dos
-     números: é ele que diz de quando é o retrato. */
-  .topo .fechamento { font-size: 20px; font-weight: 800; color: var(--ink);
-                      background: var(--papel); border: 1px solid var(--borda);
-                      border-radius: 11px; padding: 8px 18px; display: inline-block; }
-  .topo .fechamento b { color: #0a7d3a; }
-  .topo .unidade { font-size: 13px; font-weight: 800; color: var(--ink-3);
-                   margin-top: 6px; text-transform: uppercase; letter-spacing: .7px; }
+  .header .direita { text-align: right; }
+  .header .fechamento { font-size: 18px; font-weight: 800; color: var(--ink);
+                         background: #fff; border-radius: 10px; padding: 7px 16px; display: inline-block; }
+  .header .fechamento b { color: #0a7d3a; }
+  .header .unidade { font-size: 12px; font-weight: 800; color: rgba(255,255,255,.65);
+                      margin-top: 5px; text-transform: uppercase; letter-spacing: .7px; }
 
   /* ── O quadro ──
      Mesmo desenho da planilha da controladoria: subtotal em azul cheio,
@@ -128,9 +125,6 @@
         <div class="header-sub">Demonstrativo do Resultado do Exercício · últimos 5 anos</div>
       </div>
     </div>
-  </div>
-
-  <div class="topo">
     <div class="direita">
       <div class="fechamento" id="fechamento">—</div>
       <div class="unidade">Valores em R$ mil</div>

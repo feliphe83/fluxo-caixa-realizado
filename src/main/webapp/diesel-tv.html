@@ -52,12 +52,13 @@
     /* As duas linhas quase iguais, com uma folga para a de baixo: ali vão
        duas listas empilhadas, e a de cima sobrava espaço vazio embaixo da
        tabela de 7 meses. Medido no render, não no chute. */
-    display: grid; grid-template-rows: auto auto auto 1fr 1.04fr; gap: 14px;
+    display: grid; grid-template-rows: auto auto 1fr 1.04fr; gap: 14px;
   }
 
-  /* ── Cabeçalho — mesmo padrão azul-marinho de todas as telas normais. */
+  /* ── Cabeçalho — mesmo padrão azul-marinho de todas as telas normais. A
+     janela de datas vem no mesmo cabeçalho, à direita. */
   .header { background: var(--ink); color: #fff; height: 74px; border-radius: 12px;
-            padding: 0 24px; display: flex; align-items: center; flex: none; }
+            padding: 0 24px; display: flex; align-items: center; justify-content: space-between; flex: none; }
   .header-left { display: flex; align-items: center; gap: 14px; }
   .header-logo { width: 48px; height: 48px; border-radius: 10px; background: #fff;
                  display: flex; align-items: center; justify-content: center; padding: 6px; flex: none; }
@@ -65,14 +66,10 @@
   .header-title { font-size: 24px; font-weight: 800; letter-spacing: -.4px; }
   .header-sub { font-size: 13px; font-weight: 700; color: rgba(255,255,255,.65);
                 text-transform: uppercase; letter-spacing: .7px; margin-top: 2px; }
-
-  /* ── Topo ── */
-  .topo { display: flex; align-items: center; gap: 18px; }
-  .topo .direita { margin-left: auto; text-align: right; }
-  .topo .janela { font-size: 21px; font-weight: 800; color: var(--ink);
-                  background: var(--papel); border: 1px solid var(--borda);
-                  border-radius: 11px; padding: 8px 18px; display: inline-block; }
-  .topo .contra { font-size: 13.5px; font-weight: 700; color: var(--ink-3); margin-top: 6px; }
+  .header .direita { text-align: right; }
+  .header .janela { font-size: 18px; font-weight: 800; color: var(--ink); background: #fff;
+                     border-radius: 10px; padding: 7px 16px; display: inline-block; }
+  .header .contra { font-size: 12px; font-weight: 700; color: rgba(255,255,255,.65); margin-top: 5px; }
 
   /* ── Capa ── */
   .capa { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
@@ -167,9 +164,6 @@
         <div class="header-sub">Recebimento de Óleo Diesel</div>
       </div>
     </div>
-  </div>
-
-  <div class="topo">
     <div class="direita">
       <div class="janela" id="janela">—</div>
       <div class="contra" id="contra"></div>

@@ -35,9 +35,10 @@
            transform-origin: center center; padding: 20px 26px 18px;
            display: grid; grid-template-rows: auto auto 1fr; gap: 12px; }
 
-  /* ── Cabeçalho — mesmo padrão azul-marinho de todas as telas normais. */
+  /* ── Cabeçalho — mesmo padrão azul-marinho de todas as telas normais. O
+     aviso de fechamento vem no mesmo cabeçalho, à direita. */
   .header { background: var(--ink); color: #fff; height: 74px; border-radius: 12px;
-            padding: 0 24px; display: flex; align-items: center; flex: none; }
+            padding: 0 24px; display: flex; align-items: center; justify-content: space-between; flex: none; }
   .header-left { display: flex; align-items: center; gap: 14px; }
   .header-logo { width: 48px; height: 48px; border-radius: 10px; background: #fff;
                  display: flex; align-items: center; justify-content: center; padding: 6px; flex: none; }
@@ -45,23 +46,21 @@
   .header-title { font-size: 24px; font-weight: 800; letter-spacing: -.4px; }
   .header-sub { font-size: 13px; font-weight: 700; color: rgba(255,255,255,.65);
                 text-transform: uppercase; letter-spacing: .7px; margin-top: 2px; }
+  .header .direita { text-align: right; }
+  .header .fechamento { font-size: 18px; font-weight: 800; color: var(--ink); background: #fff;
+                         border-radius: 10px; padding: 7px 16px; display: inline-block; }
+  .header .fechamento b { color: #0a7d3a; }
+  .header .unidade { font-size: 12px; font-weight: 800; color: rgba(255,255,255,.65);
+                      margin-top: 5px; text-transform: uppercase; letter-spacing: .7px; }
 
   .topo { display: flex; align-items: center; gap: 18px; }
 
   /* O lado em exibição, no meio e grande: quem chega no meio da troca
      precisa saber num relance se está vendo ativo ou passivo. */
-  .lados { display: flex; gap: 8px; margin-left: 26px; }
+  .lados { display: flex; gap: 8px; }
   .lados span { font-size: 20px; font-weight: 800; padding: 8px 26px; border-radius: 10px;
                 color: var(--ink-3); background: var(--papel); border: 1px solid var(--borda); }
   .lados span.on { background: var(--ink); color: #fff; border-color: var(--ink); }
-
-  .direita { margin-left: auto; text-align: right; }
-  .fechamento { font-size: 20px; font-weight: 800; color: var(--ink); background: var(--papel);
-                border: 1px solid var(--borda); border-radius: 11px; padding: 8px 18px;
-                display: inline-block; }
-  .fechamento b { color: #0a7d3a; }
-  .unidade { font-size: 13px; font-weight: 800; color: var(--ink-3); margin-top: 6px;
-             text-transform: uppercase; letter-spacing: .7px; }
 
   .quadro { background: var(--papel); border: 1px solid var(--borda); border-radius: 13px;
             padding: 12px 16px 14px; min-height: 0; overflow: hidden; }
@@ -117,16 +116,16 @@
         <div class="header-sub">Balanço Patrimonial · últimos 5 anos</div>
       </div>
     </div>
+    <div class="direita">
+      <div class="fechamento" id="fechamento">—</div>
+      <div class="unidade">Valores em R$ mil</div>
+    </div>
   </div>
 
   <div class="topo">
     <div class="lados">
       <span id="lAtivo" class="on">Ativo</span>
       <span id="lPassivo">Passivo</span>
-    </div>
-    <div class="direita">
-      <div class="fechamento" id="fechamento">—</div>
-      <div class="unidade">Valores em R$ mil</div>
     </div>
   </div>
 
