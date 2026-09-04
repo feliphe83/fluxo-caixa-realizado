@@ -2,149 +2,128 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Usina Santa Clotilde · Painel de Mercado</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..800&display=swap" rel="stylesheet">
+<link rel="icon" href="img/logo.png">
 <style>
-  :root{
-    --fundo:#160D2B;
-    --painel:#221244;
-    --painel-claro:#2C1A55;
-    --linha:rgba(160,130,240,.18);
-    --texto:#F3EFFC;
-    --texto-suave:#B7A8E0;
-    --roxo-usc:#7A52F0;
-    --ambar:#E9B44C;
-    --alta:#6FCE8B;
-    --baixa:#F07C9C;
+/* ────────────────────────────────────────────────────────────────────────
+   Painel de mercado (câmbio, açúcar e etanol), no MESMO padrão visual das
+   outras telas de TV: palco de 1920×1080 escalado, cabeçalho azul-marinho
+   com o relógio à direita, cartões brancos com a barra de cor à esquerda.
+   ──────────────────────────────────────────────────────────────────────── */
+  :root {
+    --serie-1: #2a78d6; --serie-2: #eb6834; --serie-3: #1baf7a;
+    --serie-4: #eda100; --serie-6: #008300;
+    --sobe: #0ca30c; --desce: #d03b3b;
+    --ink: #0f2460; --ink-2: #52514e; --ink-3: #898781; --rotulo: #64748b;
+    --borda: #e3e8f5; --papel: #fff; --papel-2: #f8faff; --fundo: #f4f6fb;
   }
-  *{margin:0;padding:0;box-sizing:border-box}
-  html,body{height:100%}
-  body{
-    background:var(--fundo);
-    color:var(--texto);
-    font-family:'Archivo',system-ui,sans-serif;
-    font-variant-numeric:tabular-nums;
-    overflow:hidden;
-  }
-  .tela{
-    height:100vh;
-    display:grid;
-    grid-template-rows:7vh 56vh 33vh;
-    gap:1.4vh;
-    padding:1.6vh 1.4vw 1.8vh;
-  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--fundo); color: var(--ink-2);
+               font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+               overflow: hidden; font-variant-numeric: tabular-nums; }
 
-  /* ── Cabeçalho ───────────────────────────── */
-  header{
-    display:flex;align-items:center;justify-content:space-between;
-    border-bottom:1px solid var(--linha);
-    padding:0 .4vw .8vh;
-  }
-  .marca{display:flex;align-items:center;gap:1vw}
-  .marca img{height:2.6vw;width:2.6vw;border-radius:.5vw;background:#fff;padding:.25vw;object-fit:contain}
-  .marca .textos{display:flex;flex-direction:column}
-  .marca h1{font-size:2.3vw;font-weight:700;letter-spacing:-.01em}
-  .marca span{font-size:1.05vw;color:var(--texto-suave);font-weight:400}
-  .relogio{text-align:right}
-  .relogio .hora{font-size:2.4vw;font-weight:600;line-height:1}
-  .relogio .data{font-size:1vw;color:var(--texto-suave);margin-top:.4vh}
+  #palco-wrap { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
+  #palco { position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px;
+           transform-origin: center center; padding: 20px 26px 18px;
+           display: grid; grid-template-rows: auto 1.7fr 1fr; gap: 16px; }
 
-  /* ── Linha principal ─────────────────────── */
-  .principal{display:grid;grid-template-columns:1fr 1.25fr 1.25fr;gap:1vw}
-  .cartao{
-    background:var(--painel);
-    border:1px solid var(--linha);
-    border-radius:1.2vw;
-    padding:2.2vh 1.6vw;
-    display:flex;flex-direction:column;
-  }
-  .cartao h2{font-size:1.25vw;font-weight:600;color:var(--texto-suave);letter-spacing:.02em}
-  .cartao .fonte{font-size:.85vw;color:var(--texto-suave);opacity:.7;font-weight:400}
+  /* ── Cabeçalho — mesmo padrão azul-marinho das demais telas de TV. ── */
+  .header { background: var(--ink); color: #fff; height: 74px; border-radius: 12px;
+            padding: 0 24px; display: flex; align-items: center; justify-content: space-between; flex: none; }
+  .header-left { display: flex; align-items: center; gap: 14px; }
+  .header-logo { width: 48px; height: 48px; border-radius: 10px; background: #fff;
+                 display: flex; align-items: center; justify-content: center; padding: 6px; flex: none; }
+  .header-logo img { width: 100%; height: 100%; object-fit: contain; }
+  .header-title { font-size: 24px; font-weight: 800; letter-spacing: -.4px; }
+  .header-sub { font-size: 13px; font-weight: 700; color: rgba(255,255,255,.65);
+                text-transform: uppercase; letter-spacing: .7px; margin-top: 2px; }
+  .header .direita { text-align: right; }
+  .header .relogio { font-size: 26px; font-weight: 800; color: #fff; }
+  .header .quando { font-size: 13px; font-weight: 700; color: rgba(255,255,255,.65); margin-top: 3px; }
+  .header .quando .aviso { color: #ffd98a; }
+
+  /* ── Cartões ─────────────────────────────── */
+  .principal { display: grid; grid-template-columns: 1fr 1.25fr 1.25fr; gap: 16px; min-height: 0; }
+  .cartao { background: var(--papel); border: 1px solid var(--borda); border-radius: 13px;
+            padding: 18px 22px 20px; display: flex; flex-direction: column;
+            position: relative; overflow: hidden; min-height: 0; }
+  .cartao::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+                     background: var(--cor, var(--ink)); }
+  .cartao h2 { font-size: 20px; font-weight: 800; color: var(--ink); }
+  .cartao .fonte { font-size: 12px; font-weight: 700; color: var(--ink-3); margin-left: 8px; }
 
   /* Câmbio */
-  .cambio .valor-heroi{font-size:5.6vw;font-weight:700;line-height:1.05;margin-top:1.2vh;letter-spacing:-.02em}
-  .cambio .prefixo{font-size:2vw;font-weight:500;color:var(--texto-suave);vertical-align:baseline;margin-right:.3vw}
-  .variacao{font-size:1.5vw;font-weight:600;margin-top:.8vh}
-  .alta{color:var(--alta)} .baixa{color:var(--baixa)}
-  .futuro{
-    margin-top:auto;
-    background:var(--painel-claro);
-    border-radius:.8vw;
-    padding:1.6vh 1.2vw;
-  }
-  .futuro .rotulo{font-size:1.05vw;color:var(--texto-suave)}
-  .futuro .valor{font-size:2.8vw;font-weight:700;margin-top:.4vh}
-  .futuro .implicito{font-size:1vw;color:var(--texto-suave);margin-top:.3vh}
-  .mini-grafico{margin-top:1.6vh;height:9vh}
+  .cambio .valor-heroi { font-size: 64px; font-weight: 800; line-height: 1.05;
+                          margin-top: 10px; letter-spacing: -1px; color: var(--ink); }
+  .cambio .prefixo { font-size: 24px; font-weight: 700; color: var(--ink-3); margin-right: 4px; }
+  .variacao { font-size: 17px; font-weight: 800; margin-top: 8px; }
+  .sobe { color: var(--sobe); } .desce { color: var(--desce); }
+  .futuro { margin-top: auto; background: var(--papel-2); border: 1px solid var(--borda);
+            border-radius: 10px; padding: 14px 16px; }
+  .futuro .rotulo { font-size: 12px; font-weight: 700; color: var(--ink-3);
+                     text-transform: uppercase; letter-spacing: .4px; }
+  .futuro .valor { font-size: 28px; font-weight: 800; margin-top: 4px; color: var(--ink); }
+  .futuro .implicito { font-size: 12px; font-weight: 700; color: var(--ink-3); margin-top: 3px; }
+  .mini-grafico { margin-top: 14px; height: 100px; }
 
   /* Açúcar */
-  .acucar{border-top:.5vh solid var(--ambar)}
-  .acucar .contrato{display:flex;align-items:baseline;justify-content:space-between}
-  .acucar .contrato .venc{font-size:1.6vw;font-weight:700;color:var(--ambar)}
-  .acucar .valor-heroi{font-size:5.2vw;font-weight:700;line-height:1.05;margin-top:1vh;letter-spacing:-.02em}
-  .acucar .unidade{font-size:1.6vw;font-weight:500;color:var(--texto-suave)}
-  .conversao{
-    margin-top:auto;
-    border-top:1px solid var(--linha);
-    padding-top:1.4vh;
-    display:grid;grid-template-columns:1fr auto;
-    row-gap:1vh;column-gap:1vw;
-    align-items:baseline;
-  }
-  .conversao .rot{font-size:1.15vw;color:var(--texto-suave)}
-  .conversao .num{font-size:2.1vw;font-weight:700;text-align:right}
-  .conversao .num small{font-size:1vw;font-weight:400;color:var(--texto-suave)}
+  .acucar .contrato { display: flex; align-items: baseline; justify-content: space-between; }
+  .acucar .contrato .venc { font-size: 15px; font-weight: 800; color: var(--serie-2);
+                             background: rgba(235,104,52,.12); padding: 3px 10px; border-radius: 999px; }
+  .acucar .valor-heroi { font-size: 58px; font-weight: 800; line-height: 1.05;
+                          margin-top: 8px; letter-spacing: -1px; color: var(--ink); }
+  .acucar .unidade { font-size: 18px; font-weight: 700; color: var(--ink-3); }
+  .conversao { margin-top: auto; border-top: 1px solid var(--borda); padding-top: 12px;
+               display: grid; grid-template-columns: 1fr auto; row-gap: 8px; column-gap: 14px;
+               align-items: baseline; }
+  .conversao .rot { font-size: 13px; font-weight: 700; color: var(--ink-3); }
+  .conversao .num { font-size: 20px; font-weight: 800; text-align: right; color: var(--ink); }
+  .conversao .num small { font-size: 11px; font-weight: 700; color: var(--ink-3); }
 
   /* ── Linha inferior ──────────────────────── */
-  .inferior{display:grid;grid-template-columns:1fr 1.6fr;gap:1vw}
-  .etanol .duplo{display:grid;grid-template-columns:1fr 1fr;gap:1vw;margin-top:1.4vh;flex:1}
-  .etanol .bloco{
-    background:var(--painel-claro);border-radius:.8vw;
-    padding:1.6vh 1.1vw;display:flex;flex-direction:column;justify-content:center;
-  }
-  .etanol .tipo{font-size:1.1vw;color:var(--texto-suave)}
-  .etanol .num{font-size:2.6vw;font-weight:700;margin-top:.6vh;text-align:right}
-  .etanol .num small{font-size:1vw;font-weight:400;color:var(--texto-suave)}
-  .nota-etanol{font-size:.95vw;color:var(--texto-suave);margin-top:1.2vh;line-height:1.35}
-  .grafico-area{display:flex;flex-direction:column}
-  .grafico-area svg{flex:1;width:100%;margin-top:1vh}
-  .rodape-atualizacao{font-size:.95vw;color:var(--texto-suave);text-align:right;margin-top:.6vh}
-  .rodape-atualizacao .aviso{color:var(--ambar)}
-  .legenda{font-size:1.05vw;color:var(--texto);font-weight:500;margin-left:1.2vw}
-  .legenda i{display:inline-block;width:.9vw;height:.9vw;border-radius:50%;margin-right:.35vw;vertical-align:-0.05vw}
+  .inferior { display: grid; grid-template-columns: 1fr 1.6fr; gap: 16px; min-height: 0; }
+  .etanol .duplo { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; flex: 1; }
+  .etanol .bloco { background: var(--papel-2); border: 1px solid var(--borda); border-radius: 10px;
+                   padding: 14px 16px; display: flex; flex-direction: column; justify-content: center; }
+  .etanol .tipo { font-size: 13px; font-weight: 700; color: var(--ink-3);
+                   text-transform: uppercase; letter-spacing: .4px; }
+  .etanol .num { font-size: 26px; font-weight: 800; margin-top: 6px; text-align: right; color: var(--ink); }
+  .etanol .num small { font-size: 11px; font-weight: 700; color: var(--ink-3); }
+  .nota-etanol { font-size: 12px; color: var(--ink-3); margin-top: 12px; line-height: 1.4; }
+  .grafico-area { display: flex; flex-direction: column; min-height: 0; }
+  .grafico-area svg { flex: 1; width: 100%; margin-top: 10px; min-height: 0; }
 
-  .tarja{position:fixed;top:0;left:0;right:0;background:#eda100;color:#1a1a19;
-         font-size:1.1vw;font-weight:800;text-align:center;padding:.6vh;
-         display:none;z-index:40}
-  .tarja.on{display:block}
+  .tarja { position: fixed; top: 0; left: 0; right: 0; background: #eda100; color: #1a1a19;
+           font-size: 17px; font-weight: 800; text-align: center; padding: 7px;
+           display: none; z-index: 40; }
+  .tarja.on { display: block; }
 </style>
 </head>
 <body>
 
 <div class="tarja" id="tarja"></div>
 
-<div class="tela">
+<div id="palco-wrap"><div id="palco">
 
-  <header>
-    <div class="marca">
-      <img src="img/logo.png" alt="USC">
-      <div class="textos">
-        <h1>Usina Santa Clotilde</h1>
-        <span>Painel de mercado · câmbio, açúcar e etanol</span>
+  <div class="header">
+    <div class="header-left">
+      <div class="header-logo"><img src="img/logo.png" alt="USC"></div>
+      <div>
+        <div class="header-title">Usina Santa Clotilde</div>
+        <div class="header-sub">Painel de Mercado · câmbio, açúcar e etanol</div>
       </div>
     </div>
-    <div class="relogio">
-      <div class="hora" id="hora">--:--</div>
-      <div class="data" id="data">—</div>
+    <div class="direita">
+      <div class="relogio" id="relogio">—</div>
+      <div class="quando" id="quando">—</div>
     </div>
-  </header>
+  </div>
 
   <div class="principal">
 
     <!-- CÂMBIO -->
-    <div class="cartao cambio">
+    <div class="cartao cambio" style="--cor:var(--serie-1)">
       <h2>Dólar comercial <span class="fonte">USD/BRL, tempo real</span></h2>
       <div class="valor-heroi"><span class="prefixo">R$</span><span id="cambio-spot">—</span></div>
       <div class="variacao" id="cambio-var">—</div>
@@ -157,7 +136,7 @@
     </div>
 
     <!-- AÇÚCAR — 1º vencimento acompanhado -->
-    <div class="cartao acucar">
+    <div class="cartao acucar" style="--cor:var(--serie-2)">
       <div class="contrato">
         <h2>Açúcar NY nº 11</h2>
         <span class="venc" id="ny-a-venc">—</span>
@@ -173,7 +152,7 @@
     </div>
 
     <!-- AÇÚCAR — 2º vencimento acompanhado -->
-    <div class="cartao acucar">
+    <div class="cartao acucar" style="--cor:var(--serie-2)">
       <div class="contrato">
         <h2>Açúcar NY nº 11</h2>
         <span class="venc" id="ny-b-venc">—</span>
@@ -192,7 +171,7 @@
   <div class="inferior">
 
     <!-- ETANOL -->
-    <div class="cartao etanol">
+    <div class="cartao etanol" style="--cor:var(--serie-3)">
       <h2>Etanol — mercado Alagoas <span class="fonte">CEPEA/ESALQ, preço bruto</span></h2>
       <div class="duplo">
         <div class="bloco">
@@ -208,14 +187,13 @@
     </div>
 
     <!-- GRÁFICO -->
-    <div class="cartao grafico-area">
+    <div class="cartao grafico-area" style="--cor:var(--serie-2)">
       <h2>Açúcar NY nº 11 <span id="graf-venc">—</span> · últimos pregões <span class="fonte">¢/lb</span></h2>
       <svg id="grafico-acucar" viewBox="0 0 1000 220" preserveAspectRatio="none"></svg>
-      <div class="rodape-atualizacao" id="atualizado">—</div>
     </div>
   </div>
 
-</div>
+</div></div>
 
 <script src="indicadores-comum.js?v=20260904d"></script>
 <script>
@@ -242,9 +220,21 @@ const ICMS_HIDRATADO = 0.12;       // 12%, venda para fora do estado
 const INTERVALO_MS = 5 * 60 * 1000;
 let DADOS = null;
 
+function ajustarEscala() {
+  const s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+  document.getElementById('palco').style.transform = 'translate(-50%, -50%) scale(' + s + ')';
+}
+window.addEventListener('resize', ajustarEscala);
+
+function tique() {
+  const h = new Date();
+  document.getElementById('relogio').textContent =
+    String(h.getHours()).padStart(2,'0') + ':' + String(h.getMinutes()).padStart(2,'0');
+}
+
 function fmtVar(v, sufixo){
   const seta = v > 0 ? '▲' : (v < 0 ? '▼' : '');
-  const cls  = v > 0 ? 'alta' : (v < 0 ? 'baixa' : '');
+  const cls  = v > 0 ? 'sobe' : (v < 0 ? 'desce' : '');
   return {texto:`${seta} ${fmt(Math.abs(v),2)}${sufixo}`, cls};
 }
 
@@ -266,8 +256,8 @@ async function carregar(){
   }catch(e){
     // Sem os dados de agora, mantém o que já estava na tela (o painel
     // nunca fica em branco por causa de uma falha passageira) e avisa
-    // só no rodapé.
-    document.getElementById('atualizado').innerHTML =
+    // só no cabeçalho.
+    document.getElementById('quando').innerHTML =
       `<span class="aviso">Sem conexão com o servidor — ${esc(e.message||e)}</span>`;
   }
 }
@@ -289,7 +279,7 @@ function render(){
       `${imp>=0?'+':'-'}${fmt(Math.abs(imp),2)}% sobre o câmbio à vista`;
   }
   const serieDolar = ((d.dolarDiario && d.dolarDiario.dado) || []).map(p => p.valor).slice(-8);
-  if (serieDolar.length > 1) desenhaLinha('spark-dolar', serieDolar, {cor:'#7A52F0', esp:2.5, raio:3});
+  if (serieDolar.length > 1) desenhaLinha('spark-dolar', serieDolar, {cor:'#2a78d6', esp:2.5, raio:3});
 
   // ── Açúcar: os dois vencimentos mais próximos que a usina acompanha
   //    (Out/Mar — maio e julho já saem filtrados no /api/indicadores) ──
@@ -335,7 +325,7 @@ function render(){
   document.getElementById('graf-venc').textContent = venc[0] ? '· ' + venc[0].rotulo : '';
   if (diario.length > 1){
     desenhaLinha('grafico-acucar', diario.map(p=>p.valor), {
-      cor:'#E9B44C', esp:3, raio:5, pad:26, rotulos: diario.map(p=>p.rotulo)
+      cor:'#eb6834', esp:3, raio:5, pad:26, rotulos: diario.map(p=>p.rotulo)
     });
   }
 
@@ -343,12 +333,12 @@ function render(){
   if (d.dolar && d.dolar.erro) avisos.push(`dólar ${idadeTexto(d.dolar)}`);
   if (d.acucar && d.acucar.erro) avisos.push(`açúcar ${idadeTexto(d.acucar)}`);
   if (d.cepea && d.cepea.erro) avisos.push(`etanol ${idadeTexto(d.cepea)}`);
-  document.getElementById('atualizado').innerHTML =
+  document.getElementById('quando').innerHTML =
     `Atualizado em ${esc(d.atualizadoEm)}` +
     (avisos.length ? ` · <span class="aviso">${avisos.map(esc).join(' · ')}</span>` : '');
 }
 
-/** "fonte fora do ar, mostrando de 12 min" — condensado para o rodapé. */
+/** "fonte fora do ar, mostrando de 12 min" — condensado para o cabeçalho. */
 function idadeTexto(env){
   return env.erro
     ? (env.dado ? `indisponível (mostrando de ${minutos(env.idadeMinutos)})` : 'indisponível')
@@ -370,13 +360,13 @@ function desenhaLinha(svgId, serie, opts={}){
   let extra = '';
   if (opts.rotulos){
     extra += pts.map((p,i)=>
-      `<text x="${p[0]}" y="${H-2}" font-size="13" fill="#B7A8E0" text-anchor="middle" font-family="Archivo">${esc(opts.rotulos[i]||'')}</text>` +
-      `<text x="${p[0]}" y="${p[1]-10}" font-size="15" font-weight="600" fill="#F3EFFC" text-anchor="middle" font-family="Archivo">${fmt(serie[i],2)}</text>`
+      `<text x="${p[0]}" y="${H-2}" font-size="13" fill="#898781" text-anchor="middle" font-family="system-ui">${esc(opts.rotulos[i]||'')}</text>` +
+      `<text x="${p[0]}" y="${p[1]-10}" font-size="15" font-weight="600" fill="#0f2460" text-anchor="middle" font-family="system-ui">${fmt(serie[i],2)}</text>`
     ).join('');
   }
   svg.innerHTML = `
     <defs><linearGradient id="g-${svgId}" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="${opts.cor}" stop-opacity=".28"/>
+      <stop offset="0%" stop-color="${opts.cor}" stop-opacity=".18"/>
       <stop offset="100%" stop-color="${opts.cor}" stop-opacity="0"/>
     </linearGradient></defs>
     <path d="${area}" fill="url(#g-${svgId})"/>
@@ -385,17 +375,9 @@ function desenhaLinha(svgId, serie, opts={}){
     ${extra}`;
 }
 
-/* ── Relógio ── */
-function relogio(){
-  const ag = new Date();
-  document.getElementById('hora').textContent =
-    ag.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-  document.getElementById('data').textContent =
-    ag.toLocaleDateString('pt-BR',{weekday:'long', day:'2-digit', month:'long', year:'numeric'});
-}
-
-relogio(); carregar();
-setInterval(relogio, 1000);
+ajustarEscala();
+tique(); carregar();
+setInterval(tique, 20000);
 setInterval(carregar, INTERVALO_MS);
 </script>
 </body>
