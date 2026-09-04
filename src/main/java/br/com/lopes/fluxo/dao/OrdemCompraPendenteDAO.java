@@ -44,6 +44,13 @@ import java.util.logging.Logger;
  * corrigido para preco_total/quantidade, senão "Preço Unitário × Quantidade"
  * na mensagem do alerta não batia com o "Total". A ordem de compra normal
  * (cotação) já calculava o unitário corretamente e não foi alterada.
+ *
+ * Na ordem de compra NORMAL (cotação), preco_unitario/precototal vinham só
+ * de preco/precoparaxqtde, sem descontar vrdesc_rateio_ind — a coluna já era
+ * lida (resultadocotacaoitem.vrdesc_rateio_ind) mas ficava sem uso na conta.
+ * Na imediata isso não acontece porque ali o total passa inteiro por
+ * fn_calcula_valoritem, que já recebe o rateio equivalente
+ * (itensordemcompraimediata.vrdesc_rateio) como parâmetro.
  */
 public class OrdemCompraPendenteDAO {
 
@@ -109,8 +116,8 @@ public class OrdemCompraPendenteDAO {
                 select tmp.* from (
                     select resultadocotacaoitem.nr_cotacao, resultadocotacaoitem.cod_plano,
                            resultadocotacaoitem.cod_material, resultadocotacaoitem.nr_solicitacao,
-                           ((resultadocotacaoitem.preco/resultadocotacaoitem.precoparaxqtde) * cotacaoitem.qtde_aprovada) precototal,
-                           (resultadocotacaoitem.preco/resultadocotacaoitem.precoparaxqtde) preco_unitario,
+                           (((resultadocotacaoitem.preco - resultadocotacaoitem.vrdesc_rateio_ind)/resultadocotacaoitem.precoparaxqtde) * cotacaoitem.qtde_aprovada) precototal,
+                           ((resultadocotacaoitem.preco - resultadocotacaoitem.vrdesc_rateio_ind)/resultadocotacaoitem.precoparaxqtde) preco_unitario,
                            material.fn_busca_valoritem('CO','A',resultadocotacaoitem.cod_material,resultadocotacaoitem.nr_solicitacao,0,resultadocotacaoitem.cod_plano,resultadocotacaoitem.nr_cotacao,'N','S','N','U') vrliquido,
                            material.fn_busca_valoritem('CO','A',resultadocotacaoitem.cod_material,resultadocotacaoitem.nr_solicitacao,0,resultadocotacaoitem.cod_plano,resultadocotacaoitem.nr_cotacao,'S','S','S','U') vrfinal,
                            material.fn_busca_valoritem('CO','A',resultadocotacaoitem.cod_material,resultadocotacaoitem.nr_solicitacao,0,resultadocotacaoitem.cod_plano,resultadocotacaoitem.nr_cotacao,'S','S','S','IPI') valoripi,
