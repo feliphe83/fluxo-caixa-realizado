@@ -79,7 +79,11 @@ function balMontar(tipo) {
       // linhas mesmo assim. Mantido: é o documento que a diretoria conhece.
       saida.push({ tipo: 'nivel', rotulo: l.nivel, v: porNivel.get(l.grupo + '|' + l.nivel) });
     }
-    saida.push({ tipo: 'item', rotulo: l.nivel2, v: l.v });
+    // l.v vem cru de BALANCO.linhas (9 anos, o histórico inteiro) — grupo e
+    // nível já saem certos porque passam por acumular()/zero() (do tamanho
+    // de BAL_ANOS), mas o item é o próprio l.v sem cortar. Sem o slice aqui,
+    // a tabela mostrava 5 colunas nas linhas de grupo/nível e 9 nas de item.
+    saida.push({ tipo: 'item', rotulo: l.nivel2, v: l.v.slice(0, BAL_ANOS.length) });
   });
 
   saida.push({ tipo: 'total', rotulo: 'Total', v: linhas.reduce((a, l) => acumular(a, l.v), zero()) });

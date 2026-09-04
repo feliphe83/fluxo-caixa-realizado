@@ -89,12 +89,16 @@ const DRE = [
  * não fica em branco — mostra o ano corrente pelo último número oficial, que
  * é melhor do que buraco, e a tela diz de onde veio.
  */
-let QUADRO = DRE;
+// v vem cru do DRE (9 anos, o histórico inteiro) — sem o slice aqui, a
+// tabela mostrava só os anos de ANOS no cabeçalho mas todas as 9 colunas de
+// valor em cada linha, porque .map em l.v não olha pra ANOS.length sozinho.
+const cortarQuadro = linhas => linhas.map(l => ({ chave: l.chave, rotulo: l.rotulo, tipo: l.tipo, v: l.v.slice(0, ANOS.length) }));
+let QUADRO = cortarQuadro(DRE);
 
 function aplicarBalancete(linhas) {
-  if (!linhas) { QUADRO = DRE; return false; }
+  if (!linhas) { QUADRO = cortarQuadro(DRE); return false; }
   QUADRO = DRE.map(function (l) {
-    const v = l.v.slice();
+    const v = l.v.slice(0, ANOS.length);
     if (Object.prototype.hasOwnProperty.call(linhas, l.chave)) {
       const n = Number(linhas[l.chave]);
       // Arredondado para R$ mil inteiro, como todo o resto do quadro. O
