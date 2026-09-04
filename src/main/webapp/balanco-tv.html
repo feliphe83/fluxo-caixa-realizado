@@ -234,7 +234,7 @@ function encaixar() {
   const tabela = caixa.querySelector('table');
   if (!tabela) return;
   const disponivel = caixa.clientHeight - 26;   // o padding do próprio quadro
-  let fonte = 19;
+  let fonte = 23;
   for (let passada = 0; passada < 2; passada++) {
     document.documentElement.style.setProperty('--fonte', fonte.toFixed(2) + 'px');
     const ocupado = tabela.offsetHeight;
@@ -242,7 +242,7 @@ function encaixar() {
     // 0.99 de margem: encostar exato no limite arrisca o último pixel.
     const razao = (disponivel * 0.99) / ocupado;
     if (passada === 0 && razao > 1) break;      // já cabe; não estica
-    fonte = Math.max(9, Math.min(21, fonte * razao));
+    fonte = Math.max(9, Math.min(23, fonte * razao));
   }
   document.documentElement.style.setProperty('--fonte', fonte.toFixed(2) + 'px');
 }
