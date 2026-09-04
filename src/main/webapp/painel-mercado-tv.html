@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Usina Santa Clotilde · Painel de Mercado</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --fundo:#160D2B;
+    --painel:#221244;
+    --painel-claro:#2C1A55;
+    --linha:rgba(160,130,240,.18);
+    --texto:#F3EFFC;
+    --texto-suave:#B7A8E0;
+    --roxo-usc:#7A52F0;
+    --ambar:#E9B44C;
+    --alta:#6FCE8B;
+    --baixa:#F07C9C;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    background:var(--fundo);
+    color:var(--texto);
+    font-family:'Archivo',system-ui,sans-serif;
+    font-variant-numeric:tabular-nums;
+    overflow:hidden;
+  }
+  .tela{
+    height:100vh;
+    display:grid;
+    grid-template-rows:7vh 56vh 33vh;
+    gap:1.4vh;
+    padding:1.6vh 1.4vw 1.8vh;
+  }
+
+  /* ── Cabeçalho ───────────────────────────── */
+  header{
+    display:flex;align-items:center;justify-content:space-between;
+    border-bottom:1px solid var(--linha);
+    padding:0 .4vw .8vh;
+  }
+  .marca{display:flex;align-items:center;gap:1vw}
+  .marca img{height:2.6vw;width:2.6vw;border-radius:.5vw;background:#fff;padding:.25vw;object-fit:contain}
+  .marca .textos{display:flex;flex-direction:column}
+  .marca h1{font-size:2.3vw;font-weight:700;letter-spacing:-.01em}
+  .marca span{font-size:1.05vw;color:var(--texto-suave);font-weight:400}
+  .relogio{text-align:right}
+  .relogio .hora{font-size:2.4vw;font-weight:600;line-height:1}
+  .relogio .data{font-size:1vw;color:var(--texto-suave);margin-top:.4vh}
+
+  /* ── Linha principal ─────────────────────── */
+  .principal{display:grid;grid-template-columns:1fr 1.25fr 1.25fr;gap:1vw}
+  .cartao{
+    background:var(--painel);
+    border:1px solid var(--linha);
+    border-radius:1.2vw;
+    padding:2.2vh 1.6vw;
+    display:flex;flex-direction:column;
+  }
+  .cartao h2{font-size:1.25vw;font-weight:600;color:var(--texto-suave);letter-spacing:.02em}
+  .cartao .fonte{font-size:.85vw;color:var(--texto-suave);opacity:.7;font-weight:400}
+
+  /* Câmbio */
+  .cambio .valor-heroi{font-size:5.6vw;font-weight:700;line-height:1.05;margin-top:1.2vh;letter-spacing:-.02em}
+  .cambio .prefixo{font-size:2vw;font-weight:500;color:var(--texto-suave);vertical-align:baseline;margin-right:.3vw}
+  .variacao{font-size:1.5vw;font-weight:600;margin-top:.8vh}
+  .alta{color:var(--alta)} .baixa{color:var(--baixa)}
+  .futuro{
+    margin-top:auto;
+    background:var(--painel-claro);
+    border-radius:.8vw;
+    padding:1.6vh 1.2vw;
+  }
+  .futuro .rotulo{font-size:1.05vw;color:var(--texto-suave)}
+  .futuro .valor{font-size:2.8vw;font-weight:700;margin-top:.4vh}
+  .futuro .implicito{font-size:1vw;color:var(--texto-suave);margin-top:.3vh}
+  .mini-grafico{margin-top:1.6vh;height:9vh}
+
+  /* Açúcar */
+  .acucar{border-top:.5vh solid var(--ambar)}
+  .acucar .contrato{display:flex;align-items:baseline;justify-content:space-between}
+  .acucar .contrato .venc{font-size:1.6vw;font-weight:700;color:var(--ambar)}
+  .acucar .valor-heroi{font-size:5.2vw;font-weight:700;line-height:1.05;margin-top:1vh;letter-spacing:-.02em}
+  .acucar .unidade{font-size:1.6vw;font-weight:500;color:var(--texto-suave)}
+  .conversao{
+    margin-top:auto;
+    border-top:1px solid var(--linha);
+    padding-top:1.4vh;
+    display:grid;grid-template-columns:1fr auto;
+    row-gap:1vh;column-gap:1vw;
+    align-items:baseline;
+  }
+  .conversao .rot{font-size:1.15vw;color:var(--texto-suave)}
+  .conversao .num{font-size:2.1vw;font-weight:700;text-align:right}
+  .conversao .num small{font-size:1vw;font-weight:400;color:var(--texto-suave)}
+
+  /* ── Linha inferior ──────────────────────── */
+  .inferior{display:grid;grid-template-columns:1fr 1.6fr;gap:1vw}
+  .etanol .duplo{display:grid;grid-template-columns:1fr 1fr;gap:1vw;margin-top:1.4vh;flex:1}
+  .etanol .bloco{
+    background:var(--painel-claro);border-radius:.8vw;
+    padding:1.6vh 1.1vw;display:flex;flex-direction:column;justify-content:center;
+  }
+  .etanol .tipo{font-size:1.1vw;color:var(--texto-suave)}
+  .etanol .num{font-size:2.6vw;font-weight:700;margin-top:.6vh;text-align:right}
+  .etanol .num small{font-size:1vw;font-weight:400;color:var(--texto-suave)}
+  .nota-etanol{font-size:.95vw;color:var(--texto-suave);margin-top:1.2vh;line-height:1.35}
+  .grafico-area{display:flex;flex-direction:column}
+  .grafico-area svg{flex:1;width:100%;margin-top:1vh}
+  .rodape-atualizacao{font-size:.95vw;color:var(--texto-suave);text-align:right;margin-top:.6vh}
+  .rodape-atualizacao .aviso{color:var(--ambar)}
+  .legenda{font-size:1.05vw;color:var(--texto);font-weight:500;margin-left:1.2vw}
+  .legenda i{display:inline-block;width:.9vw;height:.9vw;border-radius:50%;margin-right:.35vw;vertical-align:-0.05vw}
+
+  .tarja{position:fixed;top:0;left:0;right:0;background:#eda100;color:#1a1a19;
+         font-size:1.1vw;font-weight:800;text-align:center;padding:.6vh;
+         display:none;z-index:40}
+  .tarja.on{display:block}
+</style>
+</head>
+<body>
+
+<div class="tarja" id="tarja"></div>
+
+<div class="tela">
+
+  <header>
+    <div class="marca">
+      <img src="img/logo.png" alt="USC">
+      <div class="textos">
+        <h1>Usina Santa Clotilde</h1>
+        <span>Painel de mercado · câmbio, açúcar e etanol</span>
+      </div>
+    </div>
+    <div class="relogio">
+      <div class="hora" id="hora">--:--</div>
+      <div class="data" id="data">—</div>
+    </div>
+  </header>
+
+  <div class="principal">
+
+    <!-- CÂMBIO -->
+    <div class="cartao cambio">
+      <h2>Dólar comercial <span class="fonte">USD/BRL, tempo real</span></h2>
+      <div class="valor-heroi"><span class="prefixo">R$</span><span id="cambio-spot">—</span></div>
+      <div class="variacao" id="cambio-var">—</div>
+      <div class="mini-grafico"><svg id="spark-dolar" viewBox="0 0 400 90" preserveAspectRatio="none"></svg></div>
+      <div class="futuro">
+        <div class="rotulo">Câmbio projetado 30 dias <span class="fonte">estimativa interna</span></div>
+        <div class="valor">R$ <span id="cambio-futuro">—</span></div>
+        <div class="implicito" id="cambio-implicito">—</div>
+      </div>
+    </div>
+
+    <!-- AÇÚCAR — 1º vencimento acompanhado -->
+    <div class="cartao acucar">
+      <div class="contrato">
+        <h2>Açúcar NY nº 11</h2>
+        <span class="venc" id="ny-a-venc">—</span>
+      </div>
+      <div class="valor-heroi"><span id="ny-a-valor">—</span> <span class="unidade">¢/lb</span></div>
+      <div class="variacao" id="ny-a-var">—</div>
+      <div class="conversao">
+        <span class="rot">Tonelada (VHP)</span>
+        <span class="num" id="ny-a-ton">— <small>R$/t</small></span>
+        <span class="rot">Saco de 50 kg</span>
+        <span class="num" id="ny-a-saco">— <small>R$/sc</small></span>
+      </div>
+    </div>
+
+    <!-- AÇÚCAR — 2º vencimento acompanhado -->
+    <div class="cartao acucar">
+      <div class="contrato">
+        <h2>Açúcar NY nº 11</h2>
+        <span class="venc" id="ny-b-venc">—</span>
+      </div>
+      <div class="valor-heroi"><span id="ny-b-valor">—</span> <span class="unidade">¢/lb</span></div>
+      <div class="variacao" id="ny-b-var">—</div>
+      <div class="conversao">
+        <span class="rot">Tonelada (VHP)</span>
+        <span class="num" id="ny-b-ton">— <small>R$/t</small></span>
+        <span class="rot">Saco de 50 kg</span>
+        <span class="num" id="ny-b-saco">— <small>R$/sc</small></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="inferior">
+
+    <!-- ETANOL -->
+    <div class="cartao etanol">
+      <h2>Etanol — mercado Alagoas <span class="fonte">CEPEA/ESALQ, preço bruto</span></h2>
+      <div class="duplo">
+        <div class="bloco">
+          <div class="tipo">Hidratado</div>
+          <div class="num" id="etanol-hid">— <small>R$/m³</small></div>
+        </div>
+        <div class="bloco">
+          <div class="tipo">Anidro</div>
+          <div class="num" id="etanol-ani">— <small>R$/m³</small></div>
+        </div>
+      </div>
+      <div class="nota-etanol">Inclui PIS/Cofins de R$ 192,20/m³. ICMS do hidratado considerado a 12%, venda para fora do estado.</div>
+    </div>
+
+    <!-- GRÁFICO -->
+    <div class="cartao grafico-area">
+      <h2>Açúcar NY nº 11 <span id="graf-venc">—</span> · últimos pregões <span class="fonte">¢/lb</span></h2>
+      <svg id="grafico-acucar" viewBox="0 0 1000 220" preserveAspectRatio="none"></svg>
+      <div class="rodape-atualizacao" id="atualizado">—</div>
+    </div>
+  </div>
+
+</div>
+
+<script src="indicadores-comum.js?v=20260904d"></script>
+<script>
+/* ═══════════════════════════════════════════════════════════════════════
+   Este painel busca tudo do MESMO jeito que indicadores.html/indicadores-tv
+   fazem: uma chamada a /api/indicadores, servida pelo backend (que já
+   guarda cache e cai para o último sucesso se a fonte externa falhar). Não
+   há chave de API nem CONFIG de cotação para editar manualmente aqui — só
+   o câmbio projetado a 30 dias fica manual, porque é uma estimativa
+   interna, não uma cotação: nenhuma fonte pública fornece isso.
+   ═══════════════════════════════════════════════════════════════════════ */
+const CONFIG_MANUAL = {
+  // Sem fonte automática — ajustar aqui conforme a projeção interna de câmbio.
+  cambioFuturo30d: 5.1735
+};
+
+/** Frete e demais custos até a usina, e o ICMS do hidratado — a mesma
+ *  conta que o painel de modelo fazia; não existe no backend porque é uma
+ *  leitura específica deste painel (preço BRUTO de venda), diferente da
+ *  conversão "Etanol · DE/FE" que o servidor calcula para o valor da cana. */
+const AJUSTE_ETANOL_M3 = 192.20;   // PIS/Cofins, R$/m³ (LC 214/24)
+const ICMS_HIDRATADO = 0.12;       // 12%, venda para fora do estado
+
+const INTERVALO_MS = 5 * 60 * 1000;
+let DADOS = null;
+
+function fmtVar(v, sufixo){
+  const seta = v > 0 ? '▲' : (v < 0 ? '▼' : '');
+  const cls  = v > 0 ? 'alta' : (v < 0 ? 'baixa' : '');
+  return {texto:`${seta} ${fmt(Math.abs(v),2)}${sufixo}`, cls};
+}
+
+/* ── Busca em /api/indicadores — a mesma rota da tela de indicadores ── */
+async function carregar(){
+  try{
+    const r = await fetch('api/indicadores', {headers:{'Accept':'application/json'}});
+    if (r.status === 401){
+      const t = document.getElementById('tarja');
+      t.textContent = '⚠ Sessão expirada — faça login neste navegador para o painel voltar a atualizar';
+      t.classList.add('on');
+      return;
+    }
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.erro || 'Consulta recusada');
+    document.getElementById('tarja').classList.remove('on');
+    DADOS = j;
+    render();
+  }catch(e){
+    // Sem os dados de agora, mantém o que já estava na tela (o painel
+    // nunca fica em branco por causa de uma falha passageira) e avisa
+    // só no rodapé.
+    document.getElementById('atualizado').innerHTML =
+      `<span class="aviso">Sem conexão com o servidor — ${esc(e.message||e)}</span>`;
+  }
+}
+
+function render(){
+  const d = DADOS;
+
+  // ── Câmbio ──
+  const dolar = d.dolar && d.dolar.dado;
+  if (dolar){
+    document.getElementById('cambio-spot').textContent = fmt(dolar.ultimo,4);
+    const v = fmtVar(dolar.variacao,'% no dia');
+    const elV = document.getElementById('cambio-var');
+    elV.textContent = v.texto; elV.className = 'variacao ' + v.cls;
+
+    document.getElementById('cambio-futuro').textContent = fmt(CONFIG_MANUAL.cambioFuturo30d,4);
+    const imp = (CONFIG_MANUAL.cambioFuturo30d/dolar.ultimo - 1) * 100;
+    document.getElementById('cambio-implicito').textContent =
+      `${imp>=0?'+':'-'}${fmt(Math.abs(imp),2)}% sobre o câmbio à vista`;
+  }
+  const serieDolar = ((d.dolarDiario && d.dolarDiario.dado) || []).map(p => p.valor).slice(-8);
+  if (serieDolar.length > 1) desenhaLinha('spark-dolar', serieDolar, {cor:'#7A52F0', esp:2.5, raio:3});
+
+  // ── Açúcar: os dois vencimentos mais próximos que a usina acompanha
+  //    (Out/Mar — maio e julho já saem filtrados no /api/indicadores) ──
+  const venc = serieAcucar(d.acucar).slice(0, 2);
+  const produtos = d.produtos || [];
+  const KG_POR_SACO = 50;
+  ['a','b'].forEach((sufixo, i) => {
+    const v = venc[i];
+    if (!v) return;
+    document.getElementById(`ny-${sufixo}-venc`).textContent = v.rotulo;
+    document.getElementById(`ny-${sufixo}-valor`).textContent = fmt(v.valor,2);
+    const vv = fmtVar(v.variacao,' ¢');
+    const elV = document.getElementById(`ny-${sufixo}-var`);
+    elV.textContent = vv.texto; elV.className = 'variacao ' + vv.cls;
+
+    // Tonelada VHP já vem convertida pelo servidor (mesma fórmula da
+    // tabela "Preço dos Produtos" do indicadores.html) — não recalcula
+    // aqui para nunca divergir dela.
+    const p = produtos.find(x => x.produto === 'Açúcar VHP ME' && x.data === v.rotulo);
+    if (p){
+      document.getElementById(`ny-${sufixo}-ton`).innerHTML = `${fmt(p.valor,2)} <small>R$/t</small>`;
+      document.getElementById(`ny-${sufixo}-saco`).innerHTML = `${fmt(p.valor/(1000/KG_POR_SACO),2)} <small>R$/sc</small>`;
+    }
+  });
+
+  // ── Etanol: indicador líquido do CEPEA (Alagoas), bruto calculado aqui ──
+  const cepea = (d.cepea && d.cepea.dado) || [];
+  const hid = cepea.find(x => /Hidratado/.test(x.produto));
+  const ani = cepea.find(x => /Anidro/.test(x.produto));
+  if (hid){
+    const bruto = (hid.valor + AJUSTE_ETANOL_M3) / (1 - ICMS_HIDRATADO);
+    document.getElementById('etanol-hid').innerHTML = `${fmt(bruto,2)} <small>R$/m³</small>`;
+  }
+  if (ani){
+    const bruto = ani.valor + AJUSTE_ETANOL_M3;
+    document.getElementById('etanol-ani').innerHTML = `${fmt(bruto,2)} <small>R$/m³</small>`;
+  }
+
+  // ── Gráfico: só existe histórico diário do vencimento mais próximo
+  //    (fc_cotacao_acucar_hist guarda um único, o "primeiro" da bolsa) —
+  //    por isso é uma linha só, e não a comparação de dois vencimentos. ──
+  const diario = serieAcucar(d.acucarDiario);
+  document.getElementById('graf-venc').textContent = venc[0] ? '· ' + venc[0].rotulo : '';
+  if (diario.length > 1){
+    desenhaLinha('grafico-acucar', diario.map(p=>p.valor), {
+      cor:'#E9B44C', esp:3, raio:5, pad:26, rotulos: diario.map(p=>p.rotulo)
+    });
+  }
+
+  const avisos = [];
+  if (d.dolar && d.dolar.erro) avisos.push(`dólar ${idadeTexto(d.dolar)}`);
+  if (d.acucar && d.acucar.erro) avisos.push(`açúcar ${idadeTexto(d.acucar)}`);
+  if (d.cepea && d.cepea.erro) avisos.push(`etanol ${idadeTexto(d.cepea)}`);
+  document.getElementById('atualizado').innerHTML =
+    `Atualizado em ${esc(d.atualizadoEm)}` +
+    (avisos.length ? ` · <span class="aviso">${avisos.map(esc).join(' · ')}</span>` : '');
+}
+
+/** "fonte fora do ar, mostrando de 12 min" — condensado para o rodapé. */
+function idadeTexto(env){
+  return env.erro
+    ? (env.dado ? `indisponível (mostrando de ${minutos(env.idadeMinutos)})` : 'indisponível')
+    : '';
+}
+
+/* ── Gráfico SVG sem dependências: uma linha, com rótulo de valor e de
+   data em cada ponto quando opts.rotulos vem preenchido ── */
+function desenhaLinha(svgId, serie, opts={}){
+  const svg = document.getElementById(svgId);
+  const W = svg.viewBox.baseVal.width, H = svg.viewBox.baseVal.height;
+  const pad = opts.pad ?? 14;
+  const min = Math.min(...serie), max = Math.max(...serie);
+  const esc2 = (v)=> H - pad - ((v-min)/(max-min || 1))*(H-2*pad);
+  const passo = (W-2*pad)/(serie.length-1);
+  const pts = serie.map((v,i)=>[pad+i*passo, esc2(v)]);
+  const linha = pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
+  const area = linha + ` L${(W-pad).toFixed(1)},${H} L${pad},${H} Z`;
+  let extra = '';
+  if (opts.rotulos){
+    extra += pts.map((p,i)=>
+      `<text x="${p[0]}" y="${H-2}" font-size="13" fill="#B7A8E0" text-anchor="middle" font-family="Archivo">${esc(opts.rotulos[i]||'')}</text>` +
+      `<text x="${p[0]}" y="${p[1]-10}" font-size="15" font-weight="600" fill="#F3EFFC" text-anchor="middle" font-family="Archivo">${fmt(serie[i],2)}</text>`
+    ).join('');
+  }
+  svg.innerHTML = `
+    <defs><linearGradient id="g-${svgId}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${opts.cor}" stop-opacity=".28"/>
+      <stop offset="100%" stop-color="${opts.cor}" stop-opacity="0"/>
+    </linearGradient></defs>
+    <path d="${area}" fill="url(#g-${svgId})"/>
+    <path d="${linha}" fill="none" stroke="${opts.cor}" stroke-width="${opts.esp??3}" stroke-linejoin="round" stroke-linecap="round"/>
+    ${pts.map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="${opts.raio??4}" fill="${opts.cor}"/>`).join('')}
+    ${extra}`;
+}
+
+/* ── Relógio ── */
+function relogio(){
+  const ag = new Date();
+  document.getElementById('hora').textContent =
+    ag.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('data').textContent =
+    ag.toLocaleDateString('pt-BR',{weekday:'long', day:'2-digit', month:'long', year:'numeric'});
+}
+
+relogio(); carregar();
+setInterval(relogio, 1000);
+setInterval(carregar, INTERVALO_MS);
+</script>
+</body>
+</html>

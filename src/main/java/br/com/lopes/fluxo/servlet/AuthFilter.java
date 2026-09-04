@@ -220,6 +220,7 @@ public class AuthFilter implements Filter {
             || uri.equals(ctx + "/indicadores-tv.html")
             || uri.equals(ctx + "/orcamento-tv.html")
             || uri.equals(ctx + "/orcamento-safra-tv.html")
+            || uri.equals(ctx + "/painel-mercado-tv.html")
             // scripts de raiz que essas telas carregam (não estão em /js/)
             || uri.equals(ctx + "/indicadores-comum.js")
             || uri.equals(ctx + "/balanco-historico.js")
