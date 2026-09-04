@@ -48,6 +48,19 @@ import java.util.logging.Logger;
  * Colunas usadas na mensagem: numero_processo, aprovador, nome_fornecedor,
  * desc_material, qtdesolicitada, preco, ultima_compra, variacao_percentual,
  * vencimento, vlrtotal, vlr_total_por_numero_processo.
+ *
+ * Duas correções pedidas depois de conferir o alerta contra a consulta
+ * original:
+ *
+ * - o PRECO do 3º ramo (cotação com plano de pagamento INFORMADO
+ *   MANUALMENTE) não descontava vrdesc_rateio_ind — o 2º ramo (plano
+ *   automático) já descontava. Os dois ramos são a mesma operação (cotação
+ *   virada em ordem de compra), só mudando de onde vem o vencimento; o
+ *   preço tinha que sair igual;
+ * - COD_UNIDADE = 'SV' (serviço) sempre entra com variacao_percentual = 0:
+ *   a "última compra" de um serviço não é uma referência comparável do
+ *   mesmo jeito que a de um material físico, e a variação calculada normal
+ *   virava ruído nesses itens.
  */
 public class OrdemCompraAprovadaDAO {
 
@@ -99,7 +112,9 @@ public class OrdemCompraAprovadaDAO {
                  , tmp.ultima_compra
                  , tmp.cod_fornecedor
                  , material.fn_buscanomefornec(tmp.cod_fornecedor, SYSDATE) AS nome_fornecedor
-                 , ROUND((tmp.preco - tmp.ultima_compra) / NULLIF(tmp.ultima_compra, 0) * 100, 2) AS variacao_percentual
+                 , CASE WHEN tmp.cod_unidade = 'SV' THEN 0
+                        ELSE ROUND((tmp.preco - tmp.ultima_compra) / NULLIF(tmp.ultima_compra, 0) * 100, 2)
+                   END AS variacao_percentual
                  , tmp.cod_unidade
             FROM (
                 select rh.fn_nomefuncionario(ordemcompraimediata.cod_grupoempresa,ordemcompraimediata.cod_aprovador) aprovador
@@ -279,7 +294,7 @@ public class OrdemCompraAprovadaDAO {
                      , solicitacaocompra.cod_empresa_destino as cod_empresa
                      , solicitacaocompra.cod_filial_destino as cod_filial
                      , sum(solicitacaocompra.qtdesolicitada * resultadocotacaoitem.preco-resultadocotacaoitem.descontototal ) vlrtotal
-                     , (resultadocotacaoitem.preco-resultadocotacaoitem.descontototal) preco
+                     , (resultadocotacaoitem.preco-resultadocotacaoitem.descontototal-resultadocotacaoitem.vrdesc_rateio_ind) preco
                      , material.fn_busca_ultimo_preco(1,1,1,solicitacaocompra.cod_material) ultima_compra
                      , oc1.cod_fornecedor, material.cod_unidade , TO_CHAR(PP1.DATAPGTO)
                 from   material.material
@@ -332,7 +347,7 @@ public class OrdemCompraAprovadaDAO {
                        , solicitacaocompra.cod_grupoempresa_destino
                        , solicitacaocompra.cod_empresa_destino
                        , solicitacaocompra.cod_filial_destino
-                       , (resultadocotacaoitem.preco-resultadocotacaoitem.descontototal)
+                       , (resultadocotacaoitem.preco-resultadocotacaoitem.descontototal-resultadocotacaoitem.vrdesc_rateio_ind)
                        , oc.nroc
                        , oc1.cod_fornecedor, material.cod_unidade, PP1.DATAPGTO
             ) tmp
