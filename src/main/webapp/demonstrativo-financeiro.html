@@ -123,10 +123,18 @@
   table.dre tr.destaque td.neg { color: #ffb0b0; }
   table.dre tr.item td.neg { color: var(--prejuizo); }
   table.dre td.vazio { color: #cfd7e6; }
+  /* Resultado Financeiro Líquido e IRPJ/CSLL: mesmas linhas de destaque,
+     cores invertidas (fundo branco, letra azul) — pedido pra elas se
+     diferenciarem do resto sem competir visualmente com os totais escuros. */
+  table.dre tr.destaque-inv td { background: var(--papel); color: var(--ink); border-top: 1.5px solid var(--ink); border-bottom: 1.5px solid var(--ink); }
+  table.dre tr.destaque-inv td:first-child { border-left: 1.5px solid var(--ink); }
+  table.dre tr.destaque-inv td:last-child { border-right: 1.5px solid var(--ink); }
+  table.dre tr.destaque-inv td.neg { color: var(--prejuizo); }
   /* A coluna do ano corrente é a única que ainda anda; marcá-la evita que
      alguém compare um ano de quatro meses com um ano inteiro sem perceber. */
   table.dre .col-parcial { background: #fff8e6 !important; }
   table.dre tr.destaque .col-parcial { background: #1b3a7a !important; }
+  table.dre tr.destaque-inv .col-parcial { background: #fff8e6 !important; }
 
 
   .estado { text-align: center; padding: 40px 20px; color: var(--ink-3); font-size: 14px; }
@@ -205,7 +213,7 @@
 <script src="js/chart.umd.min.js"></script>
 <!-- Os valores fixos do DRE, compartilhados com a tela de televisão.
      Fora de /js/ de propósito: aquele caminho é liberado sem sessão. -->
-<script src="dre-historico.js?v=20260904c"></script>
+<script src="dre-historico.js?v=20260904d"></script>
 <script>
 const linhaDe = ch => QUADRO.find(l => l.chave === ch);
 const valor = (ch, ano) => { const l = linhaDe(ch); const i = ANOS.indexOf(ano);
@@ -379,7 +387,7 @@ function tabela(parcial) {
   const cab = ANOS.map((a, i) =>
     `<th class="${i === 0 && parcial ? 'parcial' : ''}">${a}${i === 0 && parcial ? '*' : ''}</th>`).join('');
   const corpo = QUADRO.map(l => `
-    <tr class="${l.tipo === 'destaque' ? 'destaque' : (l.tipo === 'sub' ? 'item sub' : 'item')}">
+    <tr class="${l.tipo === 'destaque' ? 'destaque' : l.tipo === 'destaque-inv' ? 'destaque destaque-inv' : (l.tipo === 'sub' ? 'item sub' : 'item')}">
       <td>${esc(l.rotulo)}</td>
       ${l.v.map((v, i) => {
         const classes = [];

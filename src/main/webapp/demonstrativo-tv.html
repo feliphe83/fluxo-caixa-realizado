@@ -91,10 +91,17 @@
   table.dre tr.destaque td.neg { color: #ffb0b0; }
   table.dre tr.item td.neg { color: var(--neg); }
   table.dre td.vazio { color: #cfd7e6; }
+  /* Resultado Financeiro Líquido e IRPJ/CSLL: mesma linha de destaque,
+     cores invertidas (fundo branco, letra azul). */
+  table.dre tr.destaque-inv td { background: var(--papel); color: var(--ink); border-top: 2px solid var(--ink); border-bottom: 2px solid var(--ink); }
+  table.dre tr.destaque-inv td:first-child { border-left: 2px solid var(--ink); }
+  table.dre tr.destaque-inv td:last-child { border-right: 2px solid var(--ink); }
+  table.dre tr.destaque-inv td.neg { color: var(--neg); }
   /* A coluna do ano corrente é a única que ainda anda. Marcá-la evita que
      alguém, de longe, compare cinco meses com anos inteiros sem perceber. */
   table.dre .col-parcial { background: #fff3d6 !important; }
   table.dre tr.destaque .col-parcial { background: #1b3a7a !important; }
+  table.dre tr.destaque-inv .col-parcial { background: #fff3d6 !important; }
 
   .carregando { color: var(--ink-3); font-size: 22px; font-weight: 700; padding: 40px 4px; }
 
@@ -133,7 +140,7 @@
 
 <!-- Os valores fixos do DRE, os mesmos da tela de computador.
      Fora de /js/ de propósito: aquele caminho é liberado sem sessão. -->
-<script src="dre-historico.js?v=20260904c"></script>
+<script src="dre-historico.js?v=20260904d"></script>
 <script>
 // A contabilidade fecha uma vez por mês; de meia em meia hora é de sobra
 // para a TV pegar o fechamento novo no mesmo dia em que ele acontece.
@@ -198,7 +205,7 @@ function desenhar() {
     `<th class="${i === 0 && parcial ? 'parcial' : ''}">${a}${i === 0 && parcial ? '*' : ''}</th>`).join('');
 
   const corpo = QUADRO.map(l => `
-    <tr class="${l.tipo === 'destaque' ? 'destaque' : (l.tipo === 'sub' ? 'item sub' : 'item')}">
+    <tr class="${l.tipo === 'destaque' ? 'destaque' : l.tipo === 'destaque-inv' ? 'destaque destaque-inv' : (l.tipo === 'sub' ? 'item sub' : 'item')}">
       <td>${esc(l.rotulo)}</td>
       ${l.v.map((v, i) => {
         const classes = [];
