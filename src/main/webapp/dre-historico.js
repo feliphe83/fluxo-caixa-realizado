@@ -48,10 +48,12 @@ const DRE = [
     v:[  -237, -10820,  -2228,   -504,  -2584,   -577,    818,   6637,   4297] },
   { chave:'receita_liquida', rotulo:'(=) RECEITA LÍQUIDA DE VENDAS', tipo:'destaque',
     v:[ 66546, 173157, 323541, 352370, 268805, 236794, 175206,  94341,  84114] },
+  // Ociosidade somada aqui dentro (não é mais linha própria): o Lucro Bruto
+  // abaixo já era CPV + Ociosidade descontados juntos (ex.: 2023 —
+  // 352.370 - 293.542 = 58.828, bate com o lucro bruto de 2023), então
+  // juntar as duas não muda nenhum total, só deixa de expor a quebra.
   { chave:'cpv', rotulo:'(-) CUSTOS DOS PRODUTOS VENDIDOS', tipo:'item',
-    v:[-79975,-197381,-275281,-257479,-196795,-167565, 117128,  92699,  87654] },
-  { chave:'ociosidade', rotulo:'(-) CUSTOS DE OCIOSIDADE', tipo:'item',
-    v:[  null,   null,   null, -36063, -27967,   null,   null,   null,   null] },
+    v:[-79975,-197381,-275281,-293542,-224762,-167565, 117128,  92699,  87654] },
   { chave:'lucro_bruto', rotulo:'(=) LUCRO BRUTO', tipo:'destaque',
     v:[-13429, -24224,  48260,  58828,  44042,  69229,  58078,   1642,   3540] },
   { chave:'despesas_op', rotulo:'(-) DESPESAS E OUTRAS RECEITAS OPERACIONAIS', tipo:'destaque',
