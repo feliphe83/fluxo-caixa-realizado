@@ -151,20 +151,33 @@ async function gerar() {
   btn.disabled = true;
   painel.innerHTML = '<div class="estado-card"><div class="spinner"></div>Consultando as entradas de materiais no ERP…</div>';
 
+  // Duas etapas com erros bem diferentes: falar com o servidor e montar o
+  // arquivo. Misturar as duas num try só rotulava qualquer coisa — inclusive
+  // um problema ao montar o Excel — como "erro de conexão", o que confundia
+  // mais do que ajudava.
+  let linhas;
   try {
     const r = await fetch("api/entrada-materiais?dataIni=" + ini + "&dataFim=" + fim);
     const j = await r.json();
     if (!j.ok) {
       painel.innerHTML = '<div class="estado-card"><div class="erro-box">' + escapar(j.erro || "Falha ao consultar.") + '</div></div>';
+      btn.disabled = false;
       return;
     }
+    linhas = j.linhas || [];
+  } catch (e) {
+    painel.innerHTML = '<div class="estado-card"><div class="erro-box">Não foi possível falar com o servidor. Verifique a conexão e tente de novo.</div></div>';
+    btn.disabled = false;
+    return;
+  }
 
-    const linhas = j.linhas || [];
-    if (!linhas.length) {
-      painel.innerHTML = '<div class="estado-card">Nenhuma entrada de material no período de ' + fmtBR(ini) + ' a ' + fmtBR(fim) + '.</div>';
-      return;
-    }
+  if (!linhas.length) {
+    painel.innerHTML = '<div class="estado-card">Nenhuma entrada de material no período de ' + fmtBR(ini) + ' a ' + fmtBR(fim) + '.</div>';
+    btn.disabled = false;
+    return;
+  }
 
+  try {
     const nomeArquivo = exportarExcel(linhas, ini, fim);
     painel.innerHTML =
       '<div class="estado-card" style="text-align:left">' +
@@ -173,7 +186,7 @@ async function gerar() {
       '<div class="arquivo">' + escapar(nomeArquivo) + '</div>' +
       '</div></div>';
   } catch (e) {
-    painel.innerHTML = '<div class="estado-card"><div class="erro-box">Erro de conexão: ' + escapar(e.message) + '</div></div>';
+    painel.innerHTML = '<div class="estado-card"><div class="erro-box">A consulta trouxe ' + linhas.length + ' linha(s), mas não foi possível montar o arquivo Excel. Avise quem cuida da tela — pode ser uma coluna com formato inesperado.</div></div>';
   } finally {
     btn.disabled = false;
   }
@@ -183,7 +196,13 @@ function escapar(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").r
 
 /** Monta e já baixa o .xlsx — as colunas são as que a consulta devolveu, sem lista fixa. */
 function exportarExcel(linhas, ini, fim) {
-  const colunas = Object.keys(linhas[0]);
+  // A união das chaves de TODAS as linhas, não só a primeira: o servidor já
+  // manda toda coluna mesmo quando o valor é null (serializeNulls), mas essa
+  // é uma segunda camada de segurança caso uma linha venha com um formato
+  // diferente das demais.
+  const colunas = [];
+  const vistas = new Set();
+  linhas.forEach(l => Object.keys(l).forEach(c => { if (!vistas.has(c)) { vistas.add(c); colunas.push(c); } }));
   const cabecalho = colunas.map(rotularColuna);
   const corpo = linhas.map(l => colunas.map(c => l[c]));
 

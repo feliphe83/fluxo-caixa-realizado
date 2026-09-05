@@ -3,6 +3,7 @@ package br.com.lopes.fluxo.servlet;
 import br.com.lopes.fluxo.dao.EntradaMateriaisDAO;
 import br.com.lopes.fluxo.util.DataParamUtil;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 
 import javax.servlet.annotation.WebServlet;
@@ -27,12 +28,18 @@ import java.util.logging.Logger;
  * o Excel genericamente a partir das chaves de cada linha — ver
  * EntradaMateriaisDAO para o porquê de não haver uma lista fixa de colunas
  * aqui no servidor).
+ *
+ * serializeNulls() é obrigatório aqui: o Gson padrão OMITE do JSON as chaves
+ * cujo valor é null, e o front-end usa as chaves da PRIMEIRA linha para
+ * montar o cabeçalho do Excel — se essa linha tivesse uma coluna nula (comum
+ * num relatório com dezenas de colunas), o cabeçalho sairia sem ela, e as
+ * colunas desalinhariam nas linhas seguintes que não têm aquela coluna nula.
  */
 @WebServlet("/api/entrada-materiais")
 public class EntradaMateriaisServlet extends HttpServlet {
 
     private static final Logger LOG = Logger.getLogger(EntradaMateriaisServlet.class.getName());
-    private final Gson gson = new Gson();
+    private final Gson gson = new GsonBuilder().serializeNulls().create();
     private final EntradaMateriaisDAO dao = new EntradaMateriaisDAO();
 
     @Override
