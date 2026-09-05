@@ -157,16 +157,25 @@ async function gerar() {
   // mais do que ajudava.
   let linhas;
   try {
-    const r = await fetch("api/entrada-materiais?dataIni=" + ini + "&dataFim=" + fim);
+    // Accept: application/json é essencial aqui — sem ele, uma sessão
+    // expirada faz o AuthFilter REDIRECIONAR para login.html (HTML) em vez
+    // de responder com erro em JSON; o fetch segue o redirecionamento
+    // sozinho, e o r.json() quebrava tentando interpretar a página de login
+    // como JSON, com uma mensagem de erro do navegador sem nexo nenhum.
+    const r = await fetch("api/entrada-materiais?dataIni=" + ini + "&dataFim=" + fim,
+      { headers: { "Accept": "application/json" } });
     const j = await r.json();
     if (!j.ok) {
-      painel.innerHTML = '<div class="estado-card"><div class="erro-box">' + escapar(j.erro || "Falha ao consultar.") + '</div></div>';
+      const msg = j.redirect
+        ? 'Sua sessão expirou. <a href="login.html" style="color:#b23b3b;font-weight:700">Faça login novamente</a> e tente de novo.'
+        : escapar(j.erro || "Falha ao consultar.");
+      painel.innerHTML = '<div class="estado-card"><div class="erro-box">' + msg + '</div></div>';
       btn.disabled = false;
       return;
     }
     linhas = j.linhas || [];
   } catch (e) {
-    painel.innerHTML = '<div class="estado-card"><div class="erro-box">Não foi possível falar com o servidor. Verifique a conexão e tente de novo.</div></div>';
+    painel.innerHTML = '<div class="estado-card"><div class="erro-box">Não foi possível entender a resposta do servidor. Se a sessão tiver expirado, <a href="login.html" style="color:#b23b3b;font-weight:700">faça login novamente</a>.</div></div>';
     btn.disabled = false;
     return;
   }
